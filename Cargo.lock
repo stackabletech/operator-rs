@@ -1480,7 +1480,7 @@ dependencies = [
 [[package]]
 name = "kube"
 version = "2.0.1"
-source = "git+https://github.com/stackabletech/kube-rs?branch=2.0.1-fix-schema-hoisting#f7f8a9c95b4f7b80e2eaec9094058306367ccda3"
+source = "git+https://github.com/stackabletech/kube-rs?branch=2.0.1-fix-schema-hoisting#26543e85dc7daaf82d8f7dbd902b26775798879e"
 dependencies = [
  "k8s-openapi",
  "kube-client",
@@ -1492,7 +1492,7 @@ dependencies = [
 [[package]]
 name = "kube-client"
 version = "2.0.1"
-source = "git+https://github.com/stackabletech/kube-rs?branch=2.0.1-fix-schema-hoisting#f7f8a9c95b4f7b80e2eaec9094058306367ccda3"
+source = "git+https://github.com/stackabletech/kube-rs?branch=2.0.1-fix-schema-hoisting#26543e85dc7daaf82d8f7dbd902b26775798879e"
 dependencies = [
  "base64",
  "bytes",
@@ -1527,7 +1527,7 @@ dependencies = [
 [[package]]
 name = "kube-core"
 version = "2.0.1"
-source = "git+https://github.com/stackabletech/kube-rs?branch=2.0.1-fix-schema-hoisting#f7f8a9c95b4f7b80e2eaec9094058306367ccda3"
+source = "git+https://github.com/stackabletech/kube-rs?branch=2.0.1-fix-schema-hoisting#26543e85dc7daaf82d8f7dbd902b26775798879e"
 dependencies = [
  "chrono",
  "derive_more",
@@ -1545,7 +1545,7 @@ dependencies = [
 [[package]]
 name = "kube-derive"
 version = "2.0.1"
-source = "git+https://github.com/stackabletech/kube-rs?branch=2.0.1-fix-schema-hoisting#f7f8a9c95b4f7b80e2eaec9094058306367ccda3"
+source = "git+https://github.com/stackabletech/kube-rs?branch=2.0.1-fix-schema-hoisting#26543e85dc7daaf82d8f7dbd902b26775798879e"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -1558,7 +1558,7 @@ dependencies = [
 [[package]]
 name = "kube-runtime"
 version = "2.0.1"
-source = "git+https://github.com/stackabletech/kube-rs?branch=2.0.1-fix-schema-hoisting#f7f8a9c95b4f7b80e2eaec9094058306367ccda3"
+source = "git+https://github.com/stackabletech/kube-rs?branch=2.0.1-fix-schema-hoisting#26543e85dc7daaf82d8f7dbd902b26775798879e"
 dependencies = [
  "ahash",
  "async-broadcast",
