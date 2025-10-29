@@ -50,13 +50,26 @@ pub mod versioned {
         #[serde(default)]
         pub service_annotations: BTreeMap<String, String>,
 
-        /// `externalTrafficPolicy` that should be set on the created [`Service`] objects.
+        /// `externalTrafficPolicy` that should be set on the created Service objects.
         ///
-        /// The default is `Local` (in contrast to `Cluster`), as we aim to direct traffic to a node running the workload
-        /// and we should keep testing that as the primary configuration. Cluster is a fallback option for providers that
-        /// break Local mode (IONOS so far).
-        #[serde(default = "ListenerClassSpec::default_service_external_traffic_policy")]
-        pub service_external_traffic_policy: core_v1alpha1::KubernetesTrafficPolicy,
+        /// It is a Kubernetes feature that controls how external traffic is routed to a Kubernetes
+        /// Service.
+        ///
+        /// * `Cluster`: Kubernetes default. Traffic is routed to any node in the Kubernetes cluster that
+        ///   has a pod running the service.
+        /// * `Local`: Traffic is only routed to pods running on the same node as the Service.
+        ///
+        /// The `Local` mode has better performance as it avoids a network hop, but requires a more
+        /// sophisticated LoadBalancer, that respects what Pods run on which nodes and routes traffic only
+        /// to these nodes accordingly. Some cloud providers or bare metal installations do not implement
+        /// some of the required features.
+        //
+        // Please note that Option is used here instead of a different default traffic policy. This will be
+        // deserialized as `None` and will thus forward the selection of the traffic policy to Kubernetes
+        // (which currently defaults to `Cluster`). This should be the most sensible option in most cases.
+        // There is the possibility Kubernetes will automatically choose `Local` if support for it on the
+        // LoadBalancer has been detected.
+        pub service_external_traffic_policy: Option<core_v1alpha1::KubernetesTrafficPolicy>,
 
         /// Whether addresses should prefer using the IP address (`IP`) or the hostname (`Hostname`).
         /// Can also be set to `HostnameConservative`, which will use `IP` for `NodePort` service types, but `Hostname` for everything else.

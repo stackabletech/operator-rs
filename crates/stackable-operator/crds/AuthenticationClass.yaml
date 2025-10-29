@@ -246,7 +246,6 @@ spec:
                           intended to be used (via the `.well-known` discovery).
                         enum:
                         - Keycloak
-                        - null
                         nullable: true
                         type: string
                       rootPath:

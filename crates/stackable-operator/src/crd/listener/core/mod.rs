@@ -45,6 +45,8 @@ pub mod versioned {
 
         /// Preserves the client source IP and avoid a second hop for LoadBalancer and NodePort type
         /// Services, but makes clients responsible for spreading the load.
+        ///
+        /// Does not work on all Kubernetes installations.
         Local,
     }
 
