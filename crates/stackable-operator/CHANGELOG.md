@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.100.2] - 2025-10-25
+
 ### Fixed
 
 - BREAKING: Default ListenerClass `.spec.externalTrafficPolicy` to `null` so that LoadBalancers work everywhere ([#1107]).
