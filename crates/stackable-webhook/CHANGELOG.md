@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Force apply the CRD in the CRD maintainer ([#1116]).
+
+  This ensures the operator will be the sole manager of the CRD (and all its fields) going forward.
+  This avoids running into conflicts when CRDs were previously deployed by helm or stackablectl.
+
+[#1116]: https://github.com/stackabletech/operator-rs/pull/1116
+
 ## [0.7.0] - 2025-10-16
 
 ### Added
