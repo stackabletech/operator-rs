@@ -213,7 +213,28 @@ impl<'a> CustomResourceDefinitionMaintainer<'a> {
 
                 // Deploy the updated CRDs using a server-side apply.
                 let patch = Patch::Apply(&crd);
-                let patch_params = PatchParams::apply(field_manager);
+
+                // We force apply here, because we want to become the sole manager of the CRD. This
+                // avoids any conflicts from previous deployments via helm or stackablectl which are
+                // reported with the following error message:
+                //
+                // Apply failed with 2 conflicts: conflicts with "stackablectl" using apiextensions.k8s.io/v1:
+                //   - .spec.versions
+                //   - .spec.conversion.strategy: Conflict
+                //
+                // The official Kubernetes documentation provides three options on how to solve
+                // these conflicts. Option 1 is used, which is described as follows:
+                //
+                // Overwrite value, become sole manager: If overwriting the value was intentional
+                // (or if the applier is an automated process like a controller) the applier should
+                // set the force query parameter to true [...], and make the request again. This
+                // forces the operation to succeed, changes the value of the field, and removes the
+                // field from all other managers' entries in managedFields.
+                //
+                // See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
+                let patch_params = PatchParams::apply(field_manager).force();
+
+                // Finally apply the patch
                 crd_api
                     .patch(&crd_name, &patch_params, &patch)
                     .await
