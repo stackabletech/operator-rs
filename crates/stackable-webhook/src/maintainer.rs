@@ -234,7 +234,6 @@ impl<'a> CustomResourceDefinitionMaintainer<'a> {
                 // See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
                 let patch_params = PatchParams::apply(field_manager).force();
 
-                // Finally apply the patch
                 crd_api
                     .patch(&crd_name, &patch_params, &patch)
                     .await
