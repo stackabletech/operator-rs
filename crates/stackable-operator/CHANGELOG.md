@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.100.3] - 2025-10-31
+
+### Changed
+
+- Bump stackable-webhook to 0.7.1, refer to its [changelog](../stackable-webhook/CHANGELOG.md) ([#xxxx]).
+
+[#xxxx]: https://github.com/stackabletech/operator-rs/pull/xxxx
+
 ## [0.100.2] - 2025-10-25
 
 ### Fixed

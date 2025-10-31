@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.7.1] - 2025-10-31
+
 ### Fixed
 
 - Force apply the CRD in the CRD maintainer ([#1116]).
