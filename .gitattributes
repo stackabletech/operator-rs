@@ -1,3 +1,3 @@
-crates/stackable-operator/crds/*.yaml linguist-generated
+# We don't mark crates/stackable-operator/crds/*.yaml as generated, as we want to review our CRD changes - they are public API!
 *.stderr linguist-generated
 *.snap linguist-generated
