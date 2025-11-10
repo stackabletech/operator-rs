@@ -2,7 +2,7 @@
 //! workspace.
 
 pub mod crd;
+pub mod patchinator;
 pub mod secret;
-
 pub mod time;
 pub mod yaml;

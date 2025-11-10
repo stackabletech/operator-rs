@@ -8,7 +8,7 @@ use std::{
 #[cfg(doc)]
 use k8s_openapi::api::core::v1::{NodeSelector, Pod};
 use k8s_openapi::{
-    NamespaceResourceScope,
+    DeepMerge, NamespaceResourceScope,
     api::{
         apps::v1::{
             DaemonSet, DaemonSetSpec, Deployment, DeploymentSpec, StatefulSet, StatefulSetSpec,
@@ -22,9 +22,10 @@ use k8s_openapi::{
     },
     apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
 };
-use kube::{Resource, ResourceExt, core::ErrorResponse};
+use kube::{Resource, ResourceExt, api::DynamicObject, core::ErrorResponse};
 use serde::{Serialize, de::DeserializeOwned};
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_shared::patchinator::{self, apply_patches, parse_patches};
 use strum::Display;
 use tracing::{debug, info, warn};
 
@@ -87,6 +88,12 @@ pub enum Error {
         #[snafu(source(from(crate::client::Error, Box::new)))]
         source: Box<crate::client::Error>,
     },
+
+    #[snafu(display("failed to parse user-provided object overrides"))]
+    ParseObjectOverrides { source: patchinator::Error },
+
+    #[snafu(display("failed to apply user-provided object overrides"))]
+    ApplyObjectOverrides { source: patchinator::Error },
 }
 
 /// A cluster resource handled by [`ClusterResources`].
@@ -97,6 +104,7 @@ pub enum Error {
 /// it must be added to [`ClusterResources::delete_orphaned_resources`] as well.
 pub trait ClusterResource:
     Clone
+    + DeepMerge
     + Debug
     + DeserializeOwned
     + Resource<DynamicType = (), Scope = NamespaceResourceScope>
@@ -413,7 +421,7 @@ impl ClusterResource for Deployment {
 ///     Ok(Action::await_change())
 /// }
 /// ```
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub struct ClusterResources {
     /// The namespace of the cluster
     namespace: String,
@@ -442,6 +450,9 @@ pub struct ClusterResources {
     /// Strategy to manage how cluster resources are applied. Resources could be patched, merged
     /// or not applied at all depending on the strategy.
     apply_strategy: ClusterResourceApplyStrategy,
+
+    /// Arbitrary Kubernetes object overrides specified by the user via the CRD.
+    object_overrides: Vec<DynamicObject>,
 }
 
 impl ClusterResources {
@@ -470,6 +481,7 @@ impl ClusterResources {
         controller_name: &str,
         cluster: &ObjectReference,
         apply_strategy: ClusterResourceApplyStrategy,
+        object_overrides: Option<impl AsRef<str>>,
     ) -> Result<Self> {
         let namespace = cluster
             .namespace
@@ -483,6 +495,12 @@ impl ClusterResources {
             .uid
             .clone()
             .context(MissingObjectKeySnafu { key: "uid" })?;
+        let object_overrides = match object_overrides {
+            Some(object_overrides) => {
+                parse_patches(object_overrides).context(ParseObjectOverridesSnafu)?
+            }
+            None => vec![],
+        };
 
         Ok(ClusterResources {
             namespace,
@@ -494,6 +512,7 @@ impl ClusterResources {
             manager: format_full_controller_name(operator_name, controller_name),
             resource_ids: Default::default(),
             apply_strategy,
+            object_overrides,
         })
     }
 
@@ -563,7 +582,11 @@ impl ClusterResources {
                 .unwrap_or_else(|err| warn!("{}", err));
         }
 
-        let mutated = resource.maybe_mutate(&self.apply_strategy);
+        let mut mutated = resource.maybe_mutate(&self.apply_strategy);
+
+        // We apply the object overrides of the user at the very last to offer maximum flexibility.
+        apply_patches(&mut mutated, self.object_overrides.iter())
+            .context(ApplyObjectOverridesSnafu)?;
 
         let patched_resource = self
             .apply_strategy
