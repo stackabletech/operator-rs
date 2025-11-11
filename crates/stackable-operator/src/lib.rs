@@ -22,6 +22,7 @@ pub mod kvp;
 pub mod logging;
 pub mod memory;
 pub mod namespace;
+pub mod patchinator;
 pub mod pod_utils;
 pub mod product_config_utils;
 pub mod product_logging;

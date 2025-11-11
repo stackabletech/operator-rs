@@ -22,10 +22,9 @@ use k8s_openapi::{
     },
     apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
 };
-use kube::{Resource, ResourceExt, api::DynamicObject, core::ErrorResponse};
+use kube::{Resource, ResourceExt, core::ErrorResponse};
 use serde::{Serialize, de::DeserializeOwned};
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_shared::patchinator::{self, apply_patches, parse_patches};
 use strum::Display;
 use tracing::{debug, info, warn};
 
@@ -43,6 +42,7 @@ use crate::{
         Label, LabelError, Labels,
         consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
     },
+    patchinator::{self, ObjectOverrides, apply_patches},
     utils::format_full_controller_name,
 };
 
@@ -422,7 +422,7 @@ impl ClusterResource for Deployment {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct ClusterResources {
+pub struct ClusterResources<'a> {
     /// The namespace of the cluster
     namespace: String,
 
@@ -452,10 +452,10 @@ pub struct ClusterResources {
     apply_strategy: ClusterResourceApplyStrategy,
 
     /// Arbitrary Kubernetes object overrides specified by the user via the CRD.
-    object_overrides: Vec<DynamicObject>,
+    object_overrides: &'a ObjectOverrides,
 }
 
-impl ClusterResources {
+impl<'a> ClusterResources<'a> {
     /// Constructs new `ClusterResources`.
     ///
     /// # Arguments
@@ -481,7 +481,7 @@ impl ClusterResources {
         controller_name: &str,
         cluster: &ObjectReference,
         apply_strategy: ClusterResourceApplyStrategy,
-        object_overrides: Option<impl AsRef<str>>,
+        object_overrides: &'a ObjectOverrides,
     ) -> Result<Self> {
         let namespace = cluster
             .namespace
@@ -495,12 +495,6 @@ impl ClusterResources {
             .uid
             .clone()
             .context(MissingObjectKeySnafu { key: "uid" })?;
-        let object_overrides = match object_overrides {
-            Some(object_overrides) => {
-                parse_patches(object_overrides).context(ParseObjectOverridesSnafu)?
-            }
-            None => vec![],
-        };
 
         Ok(ClusterResources {
             namespace,
@@ -585,8 +579,7 @@ impl ClusterResources {
         let mut mutated = resource.maybe_mutate(&self.apply_strategy);
 
         // We apply the object overrides of the user at the very last to offer maximum flexibility.
-        apply_patches(&mut mutated, self.object_overrides.iter())
-            .context(ApplyObjectOverridesSnafu)?;
+        apply_patches(&mut mutated, self.object_overrides).context(ApplyObjectOverridesSnafu)?;
 
         let patched_resource = self
             .apply_strategy

@@ -1,13 +1,13 @@
 use k8s_openapi::DeepMerge;
 use kube::core::DynamicObject;
-use serde::{Deserialize, de::DeserializeOwned};
+use serde::de::DeserializeOwned;
 use snafu::{ResultExt, Snafu};
+
+mod crd;
+pub use crd::ObjectOverrides;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("failed to deserialize dynamic object"))]
-    DeserializeDynamicObject { source: serde_yaml::Error },
-
     #[snafu(display(
         "failed to parse dynamic object as apiVersion {target_api_version:?} and kind {target_kind:?}"
     ))]
@@ -18,20 +18,11 @@ pub enum Error {
     },
 }
 
-pub fn parse_patches(patch: impl AsRef<str>) -> Result<Vec<DynamicObject>, Error> {
-    serde_yaml::Deserializer::from_str(patch.as_ref())
-        .map(|manifest| DynamicObject::deserialize(manifest).context(DeserializeDynamicObjectSnafu))
-        .collect()
-}
-
-pub fn apply_patches<'a, R>(
-    base: &mut R,
-    patches: impl Iterator<Item = &'a DynamicObject>,
-) -> Result<(), Error>
+pub fn apply_patches<R>(base: &mut R, patches: &ObjectOverrides) -> Result<(), Error>
 where
     R: kube::Resource<DynamicType = ()> + DeepMerge + DeserializeOwned,
 {
-    for patch in patches {
+    for patch in &patches.object_overrides {
         apply_patch(base, patch)?;
     }
     Ok(())
@@ -100,6 +91,7 @@ mod tests {
 
     use super::*;
 
+    /// Using [`serde_yaml`] to generate the test data
     fn generate_service_account() -> ServiceAccount {
         serde_yaml::from_str(
             "
@@ -123,6 +115,7 @@ metadata:
         .unwrap()
     }
 
+    /// Generate the test data programmatically (as operators would normally do)
     fn generate_stateful_set() -> StatefulSet {
         StatefulSet {
             metadata: generate_metadata("trino-coordinator-default"),
@@ -178,131 +171,133 @@ metadata:
     #[test]
     fn service_account_patched() {
         let mut sa = generate_service_account();
-        let patches = parse_patches(
+        let object_overrides: ObjectOverrides = serde_yaml::from_str(
             "
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: trino-serviceaccount
-  namespace: default
-  labels:
-    app.kubernetes.io/name: overwritten
-    foo: bar
+objectOverrides:
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: trino-serviceaccount
+      namespace: default
+      labels:
+        app.kubernetes.io/name: overwritten
+        foo: bar
 ",
         )
-        .unwrap();
+        .expect("test input is valid YAML");
 
         assert_has_label(&sa, "app.kubernetes.io/name", "trino");
-        apply_patches(&mut sa, patches.iter()).unwrap();
+        apply_patches(&mut sa, &object_overrides).unwrap();
         assert_has_label(&sa, "app.kubernetes.io/name", "overwritten");
     }
 
     #[test]
     fn service_account_not_patched_as_different_name() {
         let mut sa = generate_service_account();
-        let patches = parse_patches(
+        let object_overrides: ObjectOverrides = serde_yaml::from_str(
             "
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: other-sa
-  namespace: default
-  labels:
-    app.kubernetes.io/name: overwritten
-    foo: bar
+objectOverrides:
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: other-sa
+      namespace: default
+      labels:
+        app.kubernetes.io/name: overwritten
+        foo: bar
 ",
         )
-        .unwrap();
+        .expect("test input is valid YAML");
 
         let original = sa.clone();
-        apply_patches(&mut sa, patches.iter()).unwrap();
+        apply_patches(&mut sa, &object_overrides).unwrap();
         assert_eq!(sa, original, "The patch shouldn't have changed anything");
     }
 
     #[test]
     fn service_account_not_patched_as_different_namespace() {
         let mut sa = generate_service_account();
-        let patches = parse_patches(
+        let object_overrides: ObjectOverrides = serde_yaml::from_str(
             "
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: trino-serviceaccount
-  namespace: other-namespace
-  labels:
-    app.kubernetes.io/name: overwritten
-    foo: bar
+objectOverrides:
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: trino-serviceaccount
+      namespace: other-namespace
+      labels:
+        app.kubernetes.io/name: overwritten
+        foo: bar
 ",
         )
-        .unwrap();
+        .expect("test input is valid YAML");
 
         let original = sa.clone();
-        apply_patches(&mut sa, patches.iter()).unwrap();
+        apply_patches(&mut sa, &object_overrides).unwrap();
         assert_eq!(sa, original, "The patch shouldn't have changed anything");
     }
 
     #[test]
     fn service_account_not_patched_as_different_api_version() {
         let mut sa = generate_service_account();
-        let patches = parse_patches(
+        let object_overrides: ObjectOverrides = serde_yaml::from_str(
             "
-apiVersion: v42
-kind: ServiceAccount
-metadata:
-  name: trino-serviceaccount
-  namespace: default
-  labels:
-    app.kubernetes.io/name: overwritten
-    foo: bar
+objectOverrides:
+  - apiVersion: v42
+    kind: ServiceAccount
+    metadata:
+      name: trino-serviceaccount
+      namespace: default
+      labels:
+        app.kubernetes.io/name: overwritten
+        foo: bar
 ",
         )
-        .unwrap();
+        .expect("test input is valid YAML");
 
         let original = sa.clone();
-        apply_patches(&mut sa, patches.iter()).unwrap();
+        apply_patches(&mut sa, &object_overrides).unwrap();
         assert_eq!(sa, original, "The patch shouldn't have changed anything");
     }
 
     #[test]
     fn statefulset_patched_multiple_patches() {
         let mut sts = generate_stateful_set();
-
-        let patches = parse_patches(
+        let object_overrides: ObjectOverrides = serde_yaml::from_str(
             "
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: trino-serviceaccount
-  namespace: default
-  labels:
-    app.kubernetes.io/name: overwritten
-    foo: bar
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: trino-coordinator-default
-  namespace: default
-spec:
-  template:
+objectOverrides:
+  - apiVersion: v1
+    kind: ServiceAccount
     metadata:
+      name: trino-serviceaccount
+      namespace: default
       labels:
+        app.kubernetes.io/name: overwritten
         foo: bar
+  - apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: trino-coordinator-default
+      namespace: default
     spec:
-      containers:
-      - name: trino
-        image: custom-image
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: trino-coordinator-default
-  namespace: default
-spec:
-  replicas: 3
+      template:
+        metadata:
+          labels:
+            foo: bar
+        spec:
+          containers:
+          - name: trino
+            image: custom-image
+  - apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: trino-coordinator-default
+      namespace: default
+    spec:
+      replicas: 3
 ",
         )
-        .unwrap();
+        .expect("test input is valid YAML");
 
         let get_replicas = |sts: &StatefulSet| sts.spec.as_ref().unwrap().replicas;
         let get_trino_container = |sts: &StatefulSet| {
@@ -326,7 +321,7 @@ spec:
             get_trino_container_image(&sts).as_deref(),
             Some("trino-image")
         );
-        apply_patches(&mut sts, patches.iter()).unwrap();
+        apply_patches(&mut sts, &object_overrides).unwrap();
         assert_eq!(get_replicas(&sts), Some(3));
         assert_eq!(
             get_trino_container_image(&sts).as_deref(),
@@ -338,33 +333,34 @@ spec:
     fn configmap_patched() {
         let mut cm: ConfigMap = serde_yaml::from_str(
             "
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: game-demo
-data:
-  foo: bar
-  config.properties: |-
-    coordinator=true
-    http-server.https.enabled=true
-  log.properties: |-
-    =info
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: game-demo
+    data:
+      foo: bar
+      config.properties: |-
+        coordinator=true
+        http-server.https.enabled=true
+      log.properties: |-
+        =info
 ",
         )
         .unwrap();
-        let patches = parse_patches(
+        let object_overrides: ObjectOverrides = serde_yaml::from_str(
             "
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: game-demo
-data:
-  foo: overwritten
-  log.properties: |-
-    =info,tech.stackable=debug
+objectOverrides:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: game-demo
+    data:
+      foo: overwritten
+      log.properties: |-
+        =info,tech.stackable=debug
 ",
         )
-        .unwrap();
+        .expect("test input is valid YAML");
 
         assert_eq!(
             cm.data.as_ref().unwrap(),
@@ -377,7 +373,7 @@ data:
                 ("log.properties".to_owned(), "=info".to_owned()),
             ])
         );
-        apply_patches(&mut cm, patches.iter()).unwrap();
+        apply_patches(&mut cm, &object_overrides).unwrap();
         assert_eq!(
             cm.data.as_ref().unwrap(),
             &BTreeMap::from([
@@ -398,30 +394,31 @@ data:
     fn secret_patched() {
         let mut secret: Secret = serde_yaml::from_str(
             "
-apiVersion: v1
-kind: Secret
-metadata:
-  name: dotfile-secret
-stringData:
-  foo: bar
-data:
-  raw: YmFyCg== # echo bar | base64
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: dotfile-secret
+    stringData:
+      foo: bar
+    data:
+      raw: YmFyCg== # echo bar | base64
 ",
         )
         .unwrap();
-        let patches = parse_patches(
+        let object_overrides: ObjectOverrides = serde_yaml::from_str(
             "
-apiVersion: v1
-kind: Secret
-metadata:
-  name: dotfile-secret
-stringData:
-  foo: overwritten
-data:
-  raw: b3ZlcndyaXR0ZW4K # echo overwritten | base64
+objectOverrides:
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: dotfile-secret
+    stringData:
+      foo: overwritten
+    data:
+      raw: b3ZlcndyaXR0ZW4K # echo overwritten | base64
 ",
         )
-        .unwrap();
+        .expect("test input is valid YAML");
 
         assert_eq!(
             secret.string_data.as_ref().unwrap(),
@@ -432,7 +429,7 @@ data:
             &BTreeMap::from([("raw".to_owned(), ByteString(b"bar\n".to_vec()))])
         );
 
-        apply_patches(&mut secret, patches.iter()).unwrap();
+        apply_patches(&mut secret, &object_overrides).unwrap();
         assert_eq!(
             secret.string_data.as_ref().unwrap(),
             &BTreeMap::from([("foo".to_owned(), "overwritten".to_owned()),])
@@ -447,41 +444,40 @@ data:
     fn cluster_scoped_object_patched() {
         let mut storage_class: StorageClass = serde_yaml::from_str(
             "
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: low-latency
-  labels:
-    foo: original
-  annotations:
-    storageclass.kubernetes.io/is-default-class: \"false\"
-provisioner: csi-driver.example-vendor.example
+    apiVersion: storage.k8s.io/v1
+    kind: StorageClass
+    metadata:
+      name: low-latency
+      labels:
+        foo: original
+      annotations:
+        storageclass.kubernetes.io/is-default-class: \"false\"
+    provisioner: csi-driver.example-vendor.example
 ",
         )
         .unwrap();
-        let patches = parse_patches(
+        let object_overrides: ObjectOverrides = serde_yaml::from_str(
             "
----
-apiVersion: v1
-kind: ServiceAccount
----
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: low-latency
-  labels:
-    foo: overwritten
-  annotations:
-    new: annotation
-provisioner: custom-provisioner
----
-foo: bar
+objectOverrides:
+  - apiVersion: v1
+    kind: ServiceAccount
+  - apiVersion: storage.k8s.io/v1
+    kind: StorageClass
+    metadata:
+      name: low-latency
+      labels:
+        foo: overwritten
+      annotations:
+        new: annotation
+    provisioner: custom-provisioner
+  - foo: bar
+  - {}
 ",
         )
-        .unwrap();
+        .expect("test input is valid YAML");
 
         assert_has_label(&storage_class, "foo", "original");
-        apply_patches(&mut storage_class, patches.iter()).unwrap();
+        apply_patches(&mut storage_class, &object_overrides).unwrap();
         assert_has_label(&storage_class, "foo", "overwritten");
     }
 
