@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Support `objectOverrides` ([#1118]).
+
+### Changed
+
+- BREAKING: `ClusterResources` now requires the objects added to implement `DeepMerge`.
+  This is very likely a stackable-operator internal change, but technically breaking ([#1118]).
+
+### Removed
+
+- BREAKING: `ClusterResources` no longer derives `Eq` and `PartialEq` ([#1118]).
+
+[#1118]: https://github.com/stackabletech/operator-rs/pull/1118
+
 ## [0.100.3] - 2025-10-31
 
 ### Changed
