@@ -7,6 +7,7 @@ use crate::utils::crds::raw_object_list_schema;
 #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectOverrides {
+    /// TODO docs
     #[serde(default)]
     #[schemars(schema_with = "raw_object_list_schema")]
     pub object_overrides: Vec<DynamicObject>,
