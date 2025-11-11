@@ -340,6 +340,7 @@ impl ClusterResource for Deployment {
 /// use serde::{Deserialize, Serialize};
 /// use stackable_operator::client::Client;
 /// use stackable_operator::cluster_resources::{self, ClusterResourceApplyStrategy, ClusterResources};
+/// use stackable_operator::patchinator::ObjectOverrides;
 /// use stackable_operator::product_config_utils::ValidatedRoleConfigByPropertyKind;
 /// use stackable_operator::role_utils::Role;
 /// use std::sync::Arc;
@@ -356,7 +357,10 @@ impl ClusterResource for Deployment {
 ///     plural = "AppClusters",
 ///     namespaced,
 /// )]
-/// struct AppClusterSpec {}
+/// struct AppClusterSpec {
+///     #[serde(flatten)]
+///     pub object_overrides: ObjectOverrides,
+/// }
 ///
 /// enum Error {
 ///     CreateClusterResources {
@@ -379,6 +383,7 @@ impl ClusterResource for Deployment {
 ///         CONTROLLER_NAME,
 ///         &app.object_ref(&()),
 ///         ClusterResourceApplyStrategy::Default,
+///         &app.spec.object_overrides,
 ///     )
 ///     .map_err(|source| Error::CreateClusterResources { source })?;
 ///
