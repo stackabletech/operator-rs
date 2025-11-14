@@ -1,63 +1,24 @@
-//! Utility types and functions to easily create ready-to-use webhook servers
-//! which can handle different tasks, for example CRD conversions. All webhook
-//! servers use HTTPS by default. This library is fully compatible with the
-//! [`tracing`] crate and emits debug level tracing data.
-//!
-//! Most users will only use the top-level exported generic [`WebhookServer`]
-//! which enables complete control over the [Router] which handles registering
-//! routes and their handler functions.
-//!
-//! ```
-//! use stackable_webhook::{WebhookServer, WebhookOptions};
-//! use axum::Router;
-//!
-//! # async fn test() {
-//! let router = Router::new();
-//! let (server, cert_rx) = WebhookServer::new(router, WebhookOptions::default())
-//!     .await
-//!     .expect("failed to create WebhookServer");
-//! # }
-//! ```
-//!
-//! For some usages, complete end-to-end [`WebhookServer`] implementations
-//! exist. One such implementation is the [`ConversionWebhookServer`][1].
-//!
-//! This library additionally also exposes lower-level structs and functions to
-//! enable complete control over these details if needed.
-//!
-//! [1]: crate::servers::ConversionWebhookServer
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use ::x509_cert::Certificate;
 use axum::{Router, routing::get};
-use futures_util::{FutureExt as _, pin_mut, select};
+use futures_util::{FutureExt as _, TryFutureExt, select};
+use k8s_openapi::ByteString;
+use servers::{WebhookServerImplementation, WebhookServerImplementationError};
 use snafu::{ResultExt, Snafu};
 use stackable_telemetry::AxumTraceLayer;
 use tokio::{
     signal::unix::{SignalKind, signal},
     sync::mpsc,
+    try_join,
 };
 use tower::ServiceBuilder;
+use x509_cert::der::{EncodePem, pem::LineEnding};
 
-// Selected re-exports
-pub use crate::options::WebhookOptions;
 use crate::tls::TlsServer;
 
-pub mod maintainer;
-pub mod options;
 pub mod servers;
 pub mod tls;
-
-/// A generic webhook handler receiving a request and sending back a response.
-///
-/// This trait is not intended to be implemented by external crates and this
-/// library provides various ready-to-use implementations for it. One such an
-/// implementation is part of the [`ConversionWebhookServer`][1].
-///
-/// [1]: crate::servers::ConversionWebhookServer
-pub trait WebhookHandler<Req, Res> {
-    fn call(self, req: Req) -> Res;
-}
 
 /// A result type alias with the [`WebhookError`] type as the default error type.
 pub type Result<T, E = WebhookError> = std::result::Result<T, E>;
@@ -69,24 +30,38 @@ pub enum WebhookError {
 
     #[snafu(display("failed to run TLS server"))]
     RunTlsServer { source: tls::TlsServerError },
+
+    #[snafu(display("failed to update certificate"))]
+    UpdateCertificate {
+        source: WebhookServerImplementationError,
+    },
+
+    #[snafu(display("failed to encode CA certificate as PEM format"))]
+    EncodeCertificateAuthorityAsPem { source: x509_cert::der::Error },
 }
 
-/// A ready-to-use webhook server.
-///
-/// This server abstracts away lower-level details like TLS termination
-/// and other various configurations, validations or middlewares. The routes
-/// and their handlers are completely customizable by bringing your own
-/// Axum [`Router`].
-///
-/// For complete end-to-end implementations, see [`ConversionWebhookServer`][1].
-///
-/// [1]: crate::servers::ConversionWebhookServer
 pub struct WebhookServer {
+    options: WebhookOptions,
+    webhooks: Vec<Box<dyn WebhookServerImplementation>>,
     tls_server: TlsServer,
+    cert_rx: mpsc::Receiver<Certificate>,
+}
+
+#[derive(Clone, Debug)]
+pub struct WebhookOptions {
+    /// The default HTTPS socket address the [`TcpListener`][tokio::net::TcpListener]
+    /// binds to.
+    pub socket_addr: SocketAddr,
+
+    /// The namespace the operator/webhook is running in.
+    pub operator_namespace: String,
+
+    /// The name of the Kubernetes service which points to the operator/webhook.
+    pub operator_service_name: String,
 }
 
 impl WebhookServer {
-    /// The default HTTPS port `8443`
+    /// The default HTTPS port
     pub const DEFAULT_HTTPS_PORT: u16 = 8443;
     /// The default IP address [`Ipv4Addr::UNSPECIFIED`] (`0.0.0.0`) the webhook server binds to,
     /// which represents binding on all network addresses.
@@ -99,52 +74,10 @@ impl WebhookServer {
     pub const DEFAULT_SOCKET_ADDRESS: SocketAddr =
         SocketAddr::new(Self::DEFAULT_LISTEN_ADDRESS, Self::DEFAULT_HTTPS_PORT);
 
-    /// Creates a new ready-to-use webhook server.
-    ///
-    /// The server listens on `socket_addr` which is provided via the [`WebhookOptions`] and handles
-    /// routing based on the provided Axum `router`. Most of the time it is sufficient to use
-    /// [`WebhookOptions::default()`]. See the documentation for [`WebhookOptions`] for more details
-    /// on the default values.
-    ///
-    /// To start the server, use the [`WebhookServer::run()`] function. This will
-    /// run the server using the Tokio runtime until it is terminated.
-    ///
-    /// ### Basic Example
-    ///
-    /// ```
-    /// use stackable_webhook::{WebhookServer, WebhookOptions};
-    /// use axum::Router;
-    ///
-    /// # async fn test() {
-    /// let router = Router::new();
-    /// let (server, cert_rx) = WebhookServer::new(router, WebhookOptions::default())
-    ///     .await
-    ///     .expect("failed to create WebhookServer");
-    /// # }
-    /// ```
-    ///
-    /// ### Example with Custom Options
-    ///
-    /// ```
-    /// use stackable_webhook::{WebhookServer, WebhookOptions};
-    /// use axum::Router;
-    ///
-    /// # async fn test() {
-    /// let options = WebhookOptions::builder()
-    ///     .bind_address([127, 0, 0, 1], 8080)
-    ///     .add_subject_alterative_dns_name("my-san-entry")
-    ///     .build();
-    ///
-    /// let router = Router::new();
-    /// let (server, cert_rx) = WebhookServer::new(router, options)
-    ///     .await
-    ///     .expect("failed to create WebhookServer");
-    /// # }
-    /// ```
     pub async fn new(
-        router: Router,
         options: WebhookOptions,
-    ) -> Result<(Self, mpsc::Receiver<Certificate>)> {
+        webhooks: Vec<Box<dyn WebhookServerImplementation>>,
+    ) -> Result<Self> {
         tracing::trace!("create new webhook server");
 
         // TODO (@Techassi): Make opt-in configurable from the outside
@@ -161,17 +94,26 @@ impl WebhookServer {
 
         // Create the root router and merge the provided router into it.
         tracing::debug!("create core router and merge provided router");
-        let router = router
+        let mut router = Router::new()
             .layer(service_builder)
             // The health route is below the AxumTraceLayer so as not to be instrumented
             .route("/health", get(|| async { "ok" }));
 
+        for webhook in webhooks.iter() {
+            router = webhook.register_routes(router);
+        }
+
         tracing::debug!("create TLS server");
-        let (tls_server, cert_rx) = TlsServer::new(router, options)
+        let (tls_server, cert_rx) = TlsServer::new(router, options.clone())
             .await
             .context(CreateTlsServerSnafu)?;
 
-        Ok((Self { tls_server }, cert_rx))
+        Ok(Self {
+            options,
+            webhooks,
+            tls_server,
+            cert_rx,
+        })
     }
 
     /// Runs the Webhook server and sets up signal handlers for shutting down.
@@ -200,19 +142,59 @@ impl WebhookServer {
         };
 
         // select requires Future + Unpin
-        pin_mut!(future_server);
-        pin_mut!(future_signal);
+        tokio::pin!(future_server);
+        tokio::pin!(future_signal);
 
-        futures_util::future::select(future_server, future_signal).await;
+        tokio::select! {
+            res = &mut future_server => {
+                // If the server future errors, propagate the error
+                res?;
+            }
+            _ = &mut future_signal => {
+                tracing::info!("shutdown signal received, stopping server");
+            }
+        }
 
         Ok(())
     }
 
-    /// Runs the webhook server by creating a TCP listener and binding it to
-    /// the specified socket address.
     async fn run_server(self) -> Result<()> {
         tracing::debug!("run webhook server");
 
-        self.tls_server.run().await.context(RunTlsServerSnafu)
+        let Self {
+            options,
+            mut webhooks,
+            tls_server,
+            mut cert_rx,
+            // initial_reconcile_tx,
+        } = self;
+        let tls_server = tls_server
+            .run()
+            .map_err(|err| WebhookError::RunTlsServer { source: err });
+
+        let cert_update_loop = async {
+            loop {
+                while let Some(cert) = cert_rx.recv().await {
+                    // The caBundle needs to be provided as a base64-encoded PEM envelope.
+                    let ca_bundle = cert
+                        .to_pem(LineEnding::LF)
+                        .context(EncodeCertificateAuthorityAsPemSnafu)?;
+                    let ca_bundle = ByteString(ca_bundle.as_bytes().to_vec());
+
+                    for webhook in webhooks.iter_mut() {
+                        webhook
+                            .handle_certificate_rotation(&cert, &ca_bundle, &options)
+                            .await
+                            .context(UpdateCertificateSnafu)?;
+                    }
+                }
+            }
+
+            // We need to hint the return type to the compiler
+            #[allow(unreachable_code)]
+            Ok(())
+        };
+
+        try_join!(cert_update_loop, tls_server).map(|_| ())
     }
 }

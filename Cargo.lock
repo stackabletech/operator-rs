@@ -2996,6 +2996,7 @@ name = "stackable-webhook"
 version = "0.7.1"
 dependencies = [
  "arc-swap",
+ "async-trait",
  "axum",
  "clap",
  "futures-util",
@@ -3006,6 +3007,7 @@ dependencies = [
  "opentelemetry",
  "opentelemetry-semantic-conventions",
  "rand 0.9.2",
+ "serde",
  "serde_json",
  "snafu 0.8.9",
  "stackable-certs",
