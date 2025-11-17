@@ -1,4 +1,4 @@
-use std::{fmt::Debug, marker::PhantomData};
+use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
 use async_trait::async_trait;
 use axum::{Json, Router, routing::post};
@@ -31,9 +31,10 @@ pub enum MutatingWebhookError {
 
 /// As the webhook is typed with the Resource type `R`, it can only handle a single resource
 /// mutation. Use multiple [`MutatingWebhookServer`] if you need to mutate multiple resource kinds.
-pub struct MutatingWebhookServer<H, R> {
+pub struct MutatingWebhookServer<H, S, R> {
     mutating_webhook_configuration: MutatingWebhookConfiguration,
     handler: H,
+    handler_state: Arc<S>,
     resource: PhantomData<R>,
 
     disable_mutating_webhook_configuration_maintenance: bool,
@@ -43,10 +44,11 @@ pub struct MutatingWebhookServer<H, R> {
     field_manager: String,
 }
 
-impl<H, R> MutatingWebhookServer<H, R> {
+impl<H, S, R> MutatingWebhookServer<H, S, R> {
     pub fn new(
         mutating_webhook_configuration: MutatingWebhookConfiguration,
         handler: H,
+        handler_state: Arc<S>,
         disable_mutating_webhook_configuration_maintenance: bool,
         client: Client,
         field_manager: String,
@@ -54,6 +56,7 @@ impl<H, R> MutatingWebhookServer<H, R> {
         Self {
             mutating_webhook_configuration,
             handler,
+            handler_state,
             resource: PhantomData,
             disable_mutating_webhook_configuration_maintenance,
             client,
@@ -67,14 +70,17 @@ impl<H, R> MutatingWebhookServer<H, R> {
 }
 
 #[async_trait]
-impl<H, R> WebhookServerImplementation for MutatingWebhookServer<H, R>
+impl<H, S, R, Fut> WebhookServerImplementation for MutatingWebhookServer<H, S, R>
 where
-    H: FnOnce(AdmissionRequest<R>) -> AdmissionResponse + Clone + Send + Sync + 'static,
+    H: Fn(Arc<S>, AdmissionRequest<R>) -> Fut + Clone + Send + Sync + 'static,
+    Fut: Future<Output = AdmissionResponse> + Send + 'static,
     R: Resource + Send + Sync + DeserializeOwned + Serialize + 'static,
+    S: Send + Sync + 'static,
 {
     fn register_routes(&self, router: Router) -> Router {
+        let handler_state = self.handler_state.clone();
         let handler = self.handler.clone();
-        let handler_fn = |Json(review): Json<AdmissionReview<R>>| async {
+        let handler_fn = |Json(review): Json<AdmissionReview<R>>| async move {
             let request: AdmissionRequest<R> = match review.try_into() {
                 Ok(request) => request,
                 Err(err) => {
@@ -85,7 +91,7 @@ where
                 }
             };
 
-            let response = handler(request);
+            let response = handler(handler_state, request).await;
             let review = response.into_review();
             Json(review)
         };
