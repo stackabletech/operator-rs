@@ -45,6 +45,8 @@ pub struct MutatingWebhookServer<H, S, R> {
 }
 
 impl<H, S, R> MutatingWebhookServer<H, S, R> {
+    /// All webhooks need to set the admissionReviewVersions to `["v1"]`, as this mutating webhook
+    /// only supports that version! A failure to do so will result in a panic.
     pub fn new(
         mutating_webhook_configuration: MutatingWebhookConfiguration,
         handler: H,
@@ -53,6 +55,14 @@ impl<H, S, R> MutatingWebhookServer<H, S, R> {
         client: Client,
         field_manager: String,
     ) -> Self {
+        for webhook in mutating_webhook_configuration.webhooks.iter().flatten() {
+            assert_eq!(
+                webhook.admission_review_versions,
+                vec!["v1"],
+                "We decide how we de-serialize the JSON and with that what AdmissionReview version we support (currently only v1)"
+            );
+        }
+
         Self {
             mutating_webhook_configuration,
             handler,
@@ -118,17 +128,6 @@ where
         );
 
         for webhook in mutating_webhook_configuration.webhooks.iter_mut().flatten() {
-            // TODO: Think is this is a bit excessive
-            // assert!(
-            //     webhook.failure_policy.is_some(),
-            //     "Users of the mutating webhook need to make an explicit choice on the failure policy"
-            // );
-            assert_eq!(
-                webhook.admission_review_versions,
-                vec!["v1"],
-                "We decide how we de-serialize the JSON and with that what AdmissionReview version we support (currently only v1)"
-            );
-
             // We know how we can be called (and with what certificate), so we can always set that
             webhook.client_config = WebhookClientConfig {
                 service: Some(ServiceReference {
