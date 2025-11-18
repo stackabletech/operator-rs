@@ -29,8 +29,76 @@ pub enum MutatingWebhookError {
     },
 }
 
+/// Mutating webhook, which let's you intercept object creations/modification and modify the object
+/// on the fly.
+///
 /// As the webhook is typed with the Resource type `R`, it can only handle a single resource
 /// mutation. Use multiple [`MutatingWebhookServer`] if you need to mutate multiple resource kinds.
+///
+/// ### Example usage
+///
+/// This is only some high-level basic usage!
+///
+/// For concrete usage please have a look at the restart controller mutating webhook in
+/// commons-operator.
+///
+/// ```
+/// use std::sync::Arc;
+///
+/// use k8s_openapi::api::admissionregistration::v1::MutatingWebhook;
+/// use k8s_openapi::api::admissionregistration::v1::MutatingWebhookConfiguration;
+/// use k8s_openapi::api::apps::v1::StatefulSet;
+///
+/// use stackable_operator::builder::meta::ObjectMetaBuilder;
+/// use stackable_operator::kube::Client;
+/// use stackable_operator::kube::core::admission::{AdmissionRequest, AdmissionResponse};
+/// use stackable_operator::kvp::Label;
+/// use stackable_webhook::WebhookServer;
+/// use stackable_webhook::servers::MutatingWebhookServer;
+///
+/// # async fn docs() {
+/// // The Kubernetes client
+/// let client = Client::try_default().await.unwrap();
+/// // The context of the controller, e.g. contains a Kubernetes client
+/// let ctx = Arc::new(());
+/// // Read in from user input, e.g. CLI arguments
+/// let disable_restarter_mutating_webhook = false;
+///
+/// let mutating_webhook = Box::new(MutatingWebhookServer::new(
+///     get_mutating_webhook_configuration(),
+///     my_handler,
+///     ctx,
+///     disable_restarter_mutating_webhook,
+///     client,
+///     "my-field-manager".to_owned(),
+/// ));
+///
+/// let webhook_options = todo!();
+/// let webhook_server = WebhookServer::new(webhook_options, vec![mutating_webhook]).await.unwrap();
+/// webhook_server.run().await.unwrap();
+/// # }
+///
+/// fn get_mutating_webhook_configuration() -> MutatingWebhookConfiguration {
+///     let webhook_name = "pod-labeler.stackable.tech";
+///
+///     MutatingWebhookConfiguration {
+///         webhooks: Some(vec![MutatingWebhook {
+///             // This is checked by the stackable_webhook code
+///             admission_review_versions: vec!["v1".to_owned()],
+///             ..Default::default()
+///         }]),
+///         ..Default::default()
+///     }
+/// }
+///
+/// // Basic no-op implementation
+/// pub async fn my_handler(
+///     ctx: Arc<()>,
+///     request: AdmissionRequest<StatefulSet>,
+/// ) -> AdmissionResponse {
+///     AdmissionResponse::from(&request)
+/// }
+/// ```
 pub struct MutatingWebhookServer<H, S, R> {
     mutating_webhook_configuration: MutatingWebhookConfiguration,
     handler: H,
