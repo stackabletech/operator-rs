@@ -22,8 +22,8 @@ use snafu::{ResultExt, Snafu, ensure};
 use tokio::sync::oneshot;
 use x509_cert::Certificate;
 
-use super::{WebhookServerImplementation, WebhookServerImplementationError};
-use crate::WebhookOptions;
+use super::{Webhook, WebhookError};
+use crate::WebhookServerOptions;
 
 #[derive(Debug, Snafu)]
 pub enum ConversionWebhookError {
@@ -37,7 +37,7 @@ pub enum ConversionWebhookError {
     },
 }
 
-pub struct ConversionWebhookServer<H> {
+pub struct ConversionWebhook<H> {
     crds_and_handlers: Vec<(CustomResourceDefinition, H)>,
     disable_crd_maintenance: bool,
     client: Client,
@@ -49,7 +49,7 @@ pub struct ConversionWebhookServer<H> {
     initial_reconcile_tx: Option<oneshot::Sender<()>>,
 }
 
-impl<H> ConversionWebhookServer<H> {
+impl<H> ConversionWebhook<H> {
     pub fn new(
         crds_and_handlers: impl IntoIterator<Item = (CustomResourceDefinition, H)>,
         disable_crd_maintenance: bool,
@@ -72,7 +72,7 @@ impl<H> ConversionWebhookServer<H> {
 }
 
 #[async_trait]
-impl<H> WebhookServerImplementation for ConversionWebhookServer<H>
+impl<H> Webhook for ConversionWebhook<H>
 where
     H: FnOnce(ConversionReview) -> ConversionReview + Clone + Send + Sync + 'static,
 {
@@ -95,8 +95,8 @@ where
         &mut self,
         _new_certificate: &Certificate,
         new_ca_bundle: &ByteString,
-        options: &WebhookOptions,
-    ) -> Result<(), WebhookServerImplementationError> {
+        options: &WebhookServerOptions,
+    ) -> Result<(), WebhookError> {
         if self.disable_crd_maintenance {
             return Ok(());
         }

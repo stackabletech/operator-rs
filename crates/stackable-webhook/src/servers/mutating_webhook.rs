@@ -17,15 +17,15 @@ use serde::{Serialize, de::DeserializeOwned};
 use snafu::{ResultExt, Snafu};
 use x509_cert::Certificate;
 
-use super::{WebhookServerImplementation, WebhookServerImplementationError};
-use crate::WebhookOptions;
+use super::{Webhook, WebhookError};
+use crate::WebhookServerOptions;
 
 #[derive(Debug, Snafu)]
 pub enum MutatingWebhookError {
-    #[snafu(display("failed to patch MutatingWebhookConfiguration {vwc_name:?}"))]
+    #[snafu(display("failed to patch MutatingWebhookConfiguration {mwc_name:?}"))]
     PatchMutatingWebhookConfiguration {
         source: kube::Error,
-        vwc_name: String,
+        mwc_name: String,
     },
 }
 
@@ -99,11 +99,11 @@ pub enum MutatingWebhookError {
 ///     AdmissionResponse::from(&request)
 /// }
 /// ```
-pub struct MutatingWebhookServer<H, S, R> {
+pub struct MutatingWebhook<H, S, R> {
     mutating_webhook_configuration: MutatingWebhookConfiguration,
     handler: H,
     handler_state: Arc<S>,
-    resource: PhantomData<R>,
+    _resource: PhantomData<R>,
 
     disable_mutating_webhook_configuration_maintenance: bool,
     client: Client,
@@ -112,7 +112,7 @@ pub struct MutatingWebhookServer<H, S, R> {
     field_manager: String,
 }
 
-impl<H, S, R> MutatingWebhookServer<H, S, R> {
+impl<H, S, R> MutatingWebhook<H, S, R> {
     /// All webhooks need to set the admissionReviewVersions to `["v1"]`, as this mutating webhook
     /// only supports that version! A failure to do so will result in a panic.
     pub fn new(
@@ -135,7 +135,7 @@ impl<H, S, R> MutatingWebhookServer<H, S, R> {
             mutating_webhook_configuration,
             handler,
             handler_state,
-            resource: PhantomData,
+            _resource: PhantomData,
             disable_mutating_webhook_configuration_maintenance,
             client,
             field_manager,
@@ -148,7 +148,7 @@ impl<H, S, R> MutatingWebhookServer<H, S, R> {
 }
 
 #[async_trait]
-impl<H, S, R, Fut> WebhookServerImplementation for MutatingWebhookServer<H, S, R>
+impl<H, S, R, Fut> Webhook for MutatingWebhook<H, S, R>
 where
     H: Fn(Arc<S>, AdmissionRequest<R>) -> Fut + Clone + Send + Sync + 'static,
     Fut: Future<Output = AdmissionResponse> + Send + 'static,
@@ -182,16 +182,16 @@ where
         &mut self,
         _new_certificate: &Certificate,
         new_ca_bundle: &ByteString,
-        options: &WebhookOptions,
-    ) -> Result<(), WebhookServerImplementationError> {
+        options: &WebhookServerOptions,
+    ) -> Result<(), WebhookError> {
         if self.disable_mutating_webhook_configuration_maintenance {
             return Ok(());
         }
 
         let mut mutating_webhook_configuration = self.mutating_webhook_configuration.clone();
-        let vwc_name = mutating_webhook_configuration.name_any();
+        let mwc_name = mutating_webhook_configuration.name_any();
         tracing::info!(
-            k8s.MutatingWebhookConfiguration.name = vwc_name,
+            k8s.mutatingwebhookconfiguration.name = mwc_name,
             "reconciling mutating webhook configurations"
         );
 
@@ -210,15 +210,15 @@ where
             };
         }
 
-        let vwc_api: Api<MutatingWebhookConfiguration> = Api::all(self.client.clone());
+        let mwc_api: Api<MutatingWebhookConfiguration> = Api::all(self.client.clone());
         // Other than with the CRDs we don't need to force-apply the MutatingWebhookConfiguration
         let patch = Patch::Apply(&mutating_webhook_configuration);
         let patch_params = PatchParams::apply(&self.field_manager);
 
-        vwc_api
-            .patch(&vwc_name, &patch_params, &patch)
+        mwc_api
+            .patch(&mwc_name, &patch_params, &patch)
             .await
-            .with_context(|_| PatchMutatingWebhookConfigurationSnafu { vwc_name })?;
+            .with_context(|_| PatchMutatingWebhookConfigurationSnafu { mwc_name })?;
 
         Ok(())
     }

@@ -31,7 +31,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 use x509_cert::Certificate;
 
 use crate::{
-    WebhookOptions,
+    WebhookServerOptions,
     tls::cert_resolver::{CertificateResolver, CertificateResolverError},
 };
 
@@ -86,11 +86,11 @@ impl TlsServer {
     #[instrument(name = "create_tls_server", skip(router))]
     pub async fn new(
         router: Router,
-        options: WebhookOptions,
+        options: WebhookServerOptions,
     ) -> Result<(Self, mpsc::Receiver<Certificate>)> {
         let (certificate_tx, certificate_rx) = mpsc::channel(1);
 
-        let WebhookOptions {
+        let WebhookServerOptions {
             socket_addr,
             operator_namespace,
             operator_service_name,

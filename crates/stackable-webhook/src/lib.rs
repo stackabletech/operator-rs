@@ -4,7 +4,7 @@ use ::x509_cert::Certificate;
 use axum::{Router, routing::get};
 use futures_util::{FutureExt as _, TryFutureExt, select};
 use k8s_openapi::ByteString;
-use servers::{WebhookServerImplementation, WebhookServerImplementationError};
+use servers::{Webhook, WebhookError};
 use snafu::{ResultExt, Snafu};
 use stackable_telemetry::AxumTraceLayer;
 use tokio::{
@@ -21,10 +21,10 @@ pub mod servers;
 pub mod tls;
 
 /// A result type alias with the [`WebhookError`] type as the default error type.
-pub type Result<T, E = WebhookError> = std::result::Result<T, E>;
+pub type Result<T, E = WebhookServerError> = std::result::Result<T, E>;
 
 #[derive(Debug, Snafu)]
-pub enum WebhookError {
+pub enum WebhookServerError {
     #[snafu(display("failed to create TLS server"))]
     CreateTlsServer { source: tls::TlsServerError },
 
@@ -32,23 +32,21 @@ pub enum WebhookError {
     RunTlsServer { source: tls::TlsServerError },
 
     #[snafu(display("failed to update certificate"))]
-    UpdateCertificate {
-        source: WebhookServerImplementationError,
-    },
+    UpdateCertificate { source: WebhookError },
 
     #[snafu(display("failed to encode CA certificate as PEM format"))]
     EncodeCertificateAuthorityAsPem { source: x509_cert::der::Error },
 }
 
 pub struct WebhookServer {
-    options: WebhookOptions,
-    webhooks: Vec<Box<dyn WebhookServerImplementation>>,
+    options: WebhookServerOptions,
+    webhooks: Vec<Box<dyn Webhook>>,
     tls_server: TlsServer,
     cert_rx: mpsc::Receiver<Certificate>,
 }
 
 #[derive(Clone, Debug)]
-pub struct WebhookOptions {
+pub struct WebhookServerOptions {
     /// The default HTTPS socket address the [`TcpListener`][tokio::net::TcpListener]
     /// binds to.
     pub socket_addr: SocketAddr,
@@ -75,8 +73,8 @@ impl WebhookServer {
         SocketAddr::new(Self::DEFAULT_LISTEN_ADDRESS, Self::DEFAULT_HTTPS_PORT);
 
     pub async fn new(
-        options: WebhookOptions,
-        webhooks: Vec<Box<dyn WebhookServerImplementation>>,
+        options: WebhookServerOptions,
+        webhooks: Vec<Box<dyn Webhook>>,
     ) -> Result<Self> {
         tracing::trace!("create new webhook server");
 
@@ -170,7 +168,7 @@ impl WebhookServer {
         } = self;
         let tls_server = tls_server
             .run()
-            .map_err(|err| WebhookError::RunTlsServer { source: err });
+            .map_err(|err| WebhookServerError::RunTlsServer { source: err });
 
         let cert_update_loop = async {
             loop {
