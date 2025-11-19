@@ -33,7 +33,7 @@ pub enum MutatingWebhookError {
 /// on the fly.
 ///
 /// As the webhook is typed with the Resource type `R`, it can only handle a single resource
-/// mutation. Use multiple [`MutatingWebhookServer`] if you need to mutate multiple resource kinds.
+/// mutation. Use multiple [`MutatingWebhook`] if you need to mutate multiple resource kinds.
 ///
 /// ### Example usage
 ///

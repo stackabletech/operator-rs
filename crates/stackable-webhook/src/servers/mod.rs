@@ -24,12 +24,21 @@ pub enum WebhookError {
     },
 }
 
+/// A webhook (such as a conversion or mutating webhook) needs to implement this trait.
+//
 // We still need to use the async-trait crate, as Rust 1.91.1 does not support dynamic dispatch
 // in combination with async functions.
 #[async_trait]
 pub trait Webhook {
+    /// The webhook can add arbitrary routes to the passed [`Router`] and needs to return the
+    /// resulting [`Router`].
     fn register_routes(&self, router: Router) -> Router;
 
+    /// The HTTPS server periodically rotates it's certificate.
+    ///
+    /// Typically, some caller of the webhook (e.g. Kubernetes) needs to know the certificate to be
+    /// able to establish the TLS connection.
+    /// Webhooks are informed about new certificates by this function and can react accordingly.
     async fn handle_certificate_rotation(
         &mut self,
         new_certificate: &Certificate,

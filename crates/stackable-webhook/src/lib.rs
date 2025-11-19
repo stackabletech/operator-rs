@@ -72,6 +72,12 @@ impl WebhookServer {
     pub const DEFAULT_SOCKET_ADDRESS: SocketAddr =
         SocketAddr::new(Self::DEFAULT_LISTEN_ADDRESS, Self::DEFAULT_HTTPS_PORT);
 
+    /// Creates a new webhook server with the given config and list of webhooks.
+    ///
+    /// Currently the webhooks [`ConversionWebhook`](servers::ConversionWebhook) and
+    /// [`MutatingWebhook`](servers::MutatingWebhook) are implemented.
+    ///
+    /// Please read their documentation for details.
     pub async fn new(
         options: WebhookServerOptions,
         webhooks: Vec<Box<dyn Webhook>>,
