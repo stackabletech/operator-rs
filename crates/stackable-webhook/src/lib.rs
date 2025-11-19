@@ -38,6 +38,28 @@ pub enum WebhookServerError {
     EncodeCertificateAuthorityAsPem { source: x509_cert::der::Error },
 }
 
+/// An HTTPS server that serves a bunch of webhooks.
+///
+/// It handles TLS certificate rotation.
+///
+/// ### Example usage
+///
+/// ```
+/// use stackable_webhook::WebhookServer;
+/// use stackable_webhook::WebhookServerOptions;
+/// use stackable_webhook::servers::Webhook;
+///
+/// # async fn docs() {
+/// let mut webhooks: Vec<Box<dyn Webhook>> = vec![];
+///
+/// let webhook_options = WebhookServerOptions {
+///     socket_addr: WebhookServer::DEFAULT_SOCKET_ADDRESS,
+///     operator_namespace: "my-namespace".to_owned(),
+///     operator_service_name: "my-operator".to_owned(),
+/// };
+/// let webhook_server = WebhookServer::new(webhook_options, webhooks).await.unwrap();
+/// # }
+/// ```
 pub struct WebhookServer {
     options: WebhookServerOptions,
     webhooks: Vec<Box<dyn Webhook>>,

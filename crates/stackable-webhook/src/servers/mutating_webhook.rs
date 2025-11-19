@@ -45,7 +45,6 @@ pub enum MutatingWebhookError {
 /// ```
 /// use std::sync::Arc;
 ///
-/// use k8s_openapi::api::admissionregistration::v1::MutatingWebhook;
 /// use k8s_openapi::api::admissionregistration::v1::MutatingWebhookConfiguration;
 /// use k8s_openapi::api::apps::v1::StatefulSet;
 ///
@@ -54,7 +53,7 @@ pub enum MutatingWebhookError {
 /// use stackable_operator::kube::core::admission::{AdmissionRequest, AdmissionResponse};
 /// use stackable_operator::kvp::Label;
 /// use stackable_webhook::WebhookServer;
-/// use stackable_webhook::servers::MutatingWebhookServer;
+/// use stackable_webhook::servers::MutatingWebhook;
 ///
 /// # async fn docs() {
 /// // The Kubernetes client
@@ -64,7 +63,7 @@ pub enum MutatingWebhookError {
 /// // Read in from user input, e.g. CLI arguments
 /// let disable_restarter_mutating_webhook = false;
 ///
-/// let mutating_webhook = Box::new(MutatingWebhookServer::new(
+/// let mutating_webhook = Box::new(MutatingWebhook::new(
 ///     get_mutating_webhook_configuration(),
 ///     my_handler,
 ///     ctx,
@@ -82,7 +81,7 @@ pub enum MutatingWebhookError {
 ///     let webhook_name = "pod-labeler.stackable.tech";
 ///
 ///     MutatingWebhookConfiguration {
-///         webhooks: Some(vec![MutatingWebhook {
+///         webhooks: Some(vec![k8s_openapi::api::admissionregistration::v1::MutatingWebhook {
 ///             // This is checked by the stackable_webhook code
 ///             admission_review_versions: vec!["v1".to_owned()],
 ///             ..Default::default()
