@@ -198,8 +198,8 @@ where
             // We know how we can be called (and with what certificate), so we can always set that
             webhook.client_config = WebhookClientConfig {
                 service: Some(ServiceReference {
-                    name: options.operator_service_name.to_owned(),
-                    namespace: options.operator_namespace.to_owned(),
+                    name: options.webhook_service_name.to_owned(),
+                    namespace: options.webhook_namespace.to_owned(),
                     path: Some(self.http_path()),
                     port: Some(options.socket_addr.port().into()),
                 }),

@@ -92,8 +92,8 @@ impl TlsServer {
 
         let WebhookServerOptions {
             socket_addr,
-            operator_namespace,
-            operator_service_name,
+            webhook_namespace,
+            webhook_service_name,
         } = options;
 
         // This is how Kubernetes calls us, so it decides about the naming.
@@ -101,7 +101,7 @@ impl TlsServer {
         // TODO (@Techassi): The cluster domain should be included here, so that (non Kubernetes)
         // HTTP clients can use the FQDN of the service for testing or user use-cases.
         let subject_alterative_dns_names =
-            vec![format!("{operator_service_name}.{operator_namespace}.svc")];
+            vec![format!("{webhook_service_name}.{webhook_namespace}.svc")];
 
         let cert_resolver = CertificateResolver::new(subject_alterative_dns_names, certificate_tx)
             .await

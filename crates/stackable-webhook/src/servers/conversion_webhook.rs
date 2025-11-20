@@ -130,8 +130,8 @@ where
                     conversion_review_versions: vec!["v1".to_owned()],
                     client_config: Some(WebhookClientConfig {
                         service: Some(ServiceReference {
-                            name: options.operator_service_name.to_owned(),
-                            namespace: options.operator_namespace.to_owned(),
+                            name: options.webhook_service_name.to_owned(),
+                            namespace: options.webhook_namespace.to_owned(),
                             path: Some(format!("/convert/{crd_name}")),
                             port: Some(options.socket_addr.port().into()),
                         }),

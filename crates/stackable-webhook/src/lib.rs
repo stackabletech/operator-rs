@@ -54,8 +54,8 @@ pub enum WebhookServerError {
 ///
 /// let webhook_options = WebhookServerOptions {
 ///     socket_addr: WebhookServer::DEFAULT_SOCKET_ADDRESS,
-///     operator_namespace: "my-namespace".to_owned(),
-///     operator_service_name: "my-operator".to_owned(),
+///     webhook_namespace: "my-namespace".to_owned(),
+///     webhook_service_name: "my-operator".to_owned(),
 /// };
 /// let webhook_server = WebhookServer::new(webhook_options, webhooks).await.unwrap();
 /// # }
@@ -72,11 +72,11 @@ pub struct WebhookServerOptions {
     /// The HTTPS socket address the [`TcpListener`][tokio::net::TcpListener] binds to.
     pub socket_addr: SocketAddr,
 
-    /// The namespace the operator/webhook is running in.
-    pub operator_namespace: String,
+    /// The namespace the webhook is running in.
+    pub webhook_namespace: String,
 
-    /// The name of the Kubernetes service which points to the operator/webhook.
-    pub operator_service_name: String,
+    /// The name of the Kubernetes service which points to the webhook.
+    pub webhook_service_name: String,
 }
 
 impl WebhookServer {
