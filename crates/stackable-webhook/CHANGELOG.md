@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: Refactor the entire [`WebhookServer`] mechanism, so multiple webhooks can run in parallel.
+- BREAKING: Refactor the entire `WebhookServer` mechanism, so multiple webhooks can run in parallel.
   Put individual webhooks (currently `ConversionWebhook` and `MutatingWebhook`) behind the `Webhook` trait ([#1119]).
 
 [#1119]: https://github.com/stackabletech/operator-rs/pull/1119
