@@ -142,7 +142,8 @@ impl<H, S, R> MutatingWebhook<H, S, R> {
     }
 
     fn http_path(&self) -> String {
-        format!("/mutate/{}", self.mutating_webhook_configuration.name_any())
+        let mutating_webhook_configuration_name = self.mutating_webhook_configuration.name_any();
+        format!("/mutate/{mutating_webhook_configuration_name}")
     }
 }
 
