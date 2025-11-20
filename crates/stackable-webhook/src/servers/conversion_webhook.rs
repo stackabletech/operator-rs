@@ -20,6 +20,7 @@ use kube::{
 };
 use snafu::{ResultExt, Snafu, ensure};
 use tokio::sync::oneshot;
+use tracing::instrument;
 use x509_cert::Certificate;
 
 use super::{Webhook, WebhookError};
@@ -69,6 +70,84 @@ impl<H> ConversionWebhook<H> {
             initial_reconcile_rx,
         )
     }
+
+    #[instrument(
+        skip(self, crd, crd_api),
+        fields(
+            name = crd.name_any(),
+            kind = &crd.spec.names.kind
+        )
+    )]
+    async fn reconcile_crd(
+        &self,
+        mut crd: CustomResourceDefinition,
+        crd_api: &Api<CustomResourceDefinition>,
+        new_ca_bundle: &ByteString,
+        options: &WebhookServerOptions,
+    ) -> Result<(), WebhookError> {
+        let crd_kind = &crd.spec.names.kind;
+        let crd_name = crd.name_any();
+
+        tracing::info!(
+            k8s.crd.kind = crd_kind,
+            k8s.crd.name = crd_name,
+            "reconciling custom resource definition"
+        );
+
+        crd.spec.conversion = Some(CustomResourceConversion {
+            strategy: "Webhook".to_owned(),
+            webhook: Some(WebhookConversion {
+                // conversionReviewVersions indicates what ConversionReview versions are
+                // supported by the webhook. The first version in the list understood by the
+                // API server is sent to the webhook. The webhook must respond with a
+                // ConversionReview object in the same version it received. We only support
+                // the stable v1 ConversionReview to keep the implementation as simple as
+                // possible.
+                conversion_review_versions: vec!["v1".to_owned()],
+                client_config: Some(WebhookClientConfig {
+                    service: Some(ServiceReference {
+                        name: options.webhook_service_name.to_owned(),
+                        namespace: options.webhook_namespace.to_owned(),
+                        path: Some(format!("/convert/{crd_name}")),
+                        port: Some(options.socket_addr.port().into()),
+                    }),
+                    // Here, ByteString takes care of encoding the provided content as base64.
+                    ca_bundle: Some(new_ca_bundle.to_owned()),
+                    url: None,
+                }),
+            }),
+        });
+
+        // Deploy the updated CRDs using a server-side apply.
+        let patch = Patch::Apply(&crd);
+
+        // We force apply here, because we want to become the sole manager of the CRD. This
+        // avoids any conflicts from previous deployments via helm or stackablectl which are
+        // reported with the following error message:
+        //
+        // Apply failed with 2 conflicts: conflicts with "stackablectl" using apiextensions.k8s.io/v1:
+        //   - .spec.versions
+        //   - .spec.conversion.strategy: Conflict
+        //
+        // The official Kubernetes documentation provides three options on how to solve
+        // these conflicts. Option 1 is used, which is described as follows:
+        //
+        // Overwrite value, become sole manager: If overwriting the value was intentional
+        // (or if the applier is an automated process like a controller) the applier should
+        // set the force query parameter to true [...], and make the request again. This
+        // forces the operation to succeed, changes the value of the field, and removes the
+        // field from all other managers' entries in managedFields.
+        //
+        // See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
+        let patch_params = PatchParams::apply(&self.field_manager).force();
+
+        crd_api
+            .patch(&crd_name, &patch_params, &patch)
+            .await
+            .with_context(|_| PatchCrdSnafu { crd_name })?;
+
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -91,6 +170,7 @@ where
         router
     }
 
+    #[instrument(skip(self))]
     async fn handle_certificate_rotation(
         &mut self,
         _new_certificate: &Certificate,
@@ -101,74 +181,10 @@ where
             return Ok(());
         }
 
-        tracing::info!(
-            k8s.crd.names = ?self.crds_and_handlers.iter().map(|(crd, _)| crd.name_any()).collect::<Vec<_>>(),
-            "reconciling custom resource definitions"
-        );
-
         let crd_api: Api<CustomResourceDefinition> = Api::all(self.client.clone());
-
-        for mut crd in self.crds_and_handlers.iter().map(|(crd, _)| crd).cloned() {
-            let crd_kind = &crd.spec.names.kind;
-            let crd_name = crd.name_any();
-
-            tracing::debug!(
-                k8s.crd.kind = crd_kind,
-                k8s.crd.name = crd_name,
-                "reconciling custom resource definition"
-            );
-
-            crd.spec.conversion = Some(CustomResourceConversion {
-                strategy: "Webhook".to_owned(),
-                webhook: Some(WebhookConversion {
-                    // conversionReviewVersions indicates what ConversionReview versions are
-                    // supported by the webhook. The first version in the list understood by the
-                    // API server is sent to the webhook. The webhook must respond with a
-                    // ConversionReview object in the same version it received. We only support
-                    // the stable v1 ConversionReview to keep the implementation as simple as
-                    // possible.
-                    conversion_review_versions: vec!["v1".to_owned()],
-                    client_config: Some(WebhookClientConfig {
-                        service: Some(ServiceReference {
-                            name: options.webhook_service_name.to_owned(),
-                            namespace: options.webhook_namespace.to_owned(),
-                            path: Some(format!("/convert/{crd_name}")),
-                            port: Some(options.socket_addr.port().into()),
-                        }),
-                        // Here, ByteString takes care of encoding the provided content as base64.
-                        ca_bundle: Some(new_ca_bundle.to_owned()),
-                        url: None,
-                    }),
-                }),
-            });
-
-            // Deploy the updated CRDs using a server-side apply.
-            let patch = Patch::Apply(&crd);
-
-            // We force apply here, because we want to become the sole manager of the CRD. This
-            // avoids any conflicts from previous deployments via helm or stackablectl which are
-            // reported with the following error message:
-            //
-            // Apply failed with 2 conflicts: conflicts with "stackablectl" using apiextensions.k8s.io/v1:
-            //   - .spec.versions
-            //   - .spec.conversion.strategy: Conflict
-            //
-            // The official Kubernetes documentation provides three options on how to solve
-            // these conflicts. Option 1 is used, which is described as follows:
-            //
-            // Overwrite value, become sole manager: If overwriting the value was intentional
-            // (or if the applier is an automated process like a controller) the applier should
-            // set the force query parameter to true [...], and make the request again. This
-            // forces the operation to succeed, changes the value of the field, and removes the
-            // field from all other managers' entries in managedFields.
-            //
-            // See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
-            let patch_params = PatchParams::apply(&self.field_manager).force();
-
-            crd_api
-                .patch(&crd_name, &patch_params, &patch)
-                .await
-                .with_context(|_| PatchCrdSnafu { crd_name })?;
+        for (crd, _) in &self.crds_and_handlers {
+            self.reconcile_crd(crd.clone(), &crd_api, new_ca_bundle, options)
+                .await?;
         }
 
         // After the reconciliation of the CRDs, the initial reconcile heartbeat is sent out

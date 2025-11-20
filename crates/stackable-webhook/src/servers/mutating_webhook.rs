@@ -15,6 +15,7 @@ use kube::{
 };
 use serde::{Serialize, de::DeserializeOwned};
 use snafu::{ResultExt, Snafu};
+use tracing::instrument;
 use x509_cert::Certificate;
 
 use super::{Webhook, WebhookError};
@@ -178,6 +179,7 @@ where
         router.route(&route, post(handler_fn))
     }
 
+    #[instrument(skip(self))]
     async fn handle_certificate_rotation(
         &mut self,
         _new_certificate: &Certificate,
