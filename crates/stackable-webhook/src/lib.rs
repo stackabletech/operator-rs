@@ -3,8 +3,8 @@
 //!
 //! Currently the following webhooks are supported:
 //!
-//! * CRD conversion webhooks: [`ConversionWebhook`](`webhooks::ConversionWebhook`)
-//! * Mutating webhooks: [`MutatingWebhook`](`webhooks::MutatingWebhook`)
+//! * [webhooks::ConversionWebhook]
+//! * [webhooks::MutatingWebhook]
 //! * In the future validating webhooks wil be added
 //!
 //! This library is fully compatible with the  [`tracing`] crate and emits debug level tracing data.
