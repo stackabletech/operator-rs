@@ -4,7 +4,6 @@ use ::x509_cert::Certificate;
 use axum::{Router, routing::get};
 use futures_util::{FutureExt as _, TryFutureExt, select};
 use k8s_openapi::ByteString;
-use servers::{Webhook, WebhookError};
 use snafu::{ResultExt, Snafu};
 use stackable_telemetry::AxumTraceLayer;
 use tokio::{
@@ -13,12 +12,13 @@ use tokio::{
     try_join,
 };
 use tower::ServiceBuilder;
+use webhooks::{Webhook, WebhookError};
 use x509_cert::der::{EncodePem, pem::LineEnding};
 
 use crate::tls::TlsServer;
 
-pub mod servers;
 pub mod tls;
+pub mod webhooks;
 
 /// A result type alias with the [`WebhookError`] type as the default error type.
 pub type Result<T, E = WebhookServerError> = std::result::Result<T, E>;
