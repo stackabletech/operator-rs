@@ -3,6 +3,7 @@ use stackable_operator::{
     commons::resources::{JvmHeapLimits, Resources},
     config::fragment::Fragment,
     kube::CustomResource,
+    patchinator::ObjectOverrides,
     role_utils::Role,
     schemars::JsonSchema,
     status::condition::ClusterCondition,
@@ -27,7 +28,7 @@ pub mod versioned {
         status = "v1alpha1::DummyClusterStatus",
         namespaced,
     ))]
-    #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+    #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, Serialize)]
     #[schemars(crate = "stackable_operator::schemars")]
     #[serde(rename_all = "camelCase")]
     pub struct DummyClusterSpec {
@@ -47,6 +48,9 @@ pub mod versioned {
         secret_class_volume: stackable_operator::commons::secret_class::SecretClassVolume,
         secret_reference: stackable_operator::shared::secret::SecretReference,
         tls_client_details: stackable_operator::commons::tls_verification::TlsClientDetails,
+
+        #[serde(flatten)]
+        pub object_overrides: ObjectOverrides,
 
         // Already versioned
         client_authentication_details:
