@@ -1,3 +1,16 @@
+//! Utility types and functions to easily create ready-to-use webhook servers which can handle
+//! different tasks. All webhook servers use HTTPS by default.
+//!
+//! Currently the following webhooks are supported:
+//!
+//! * CRD conversion webhooks: [`ConversionWebhook`](`webhooks::ConversionWebhook`)
+//! * Mutating webhooks: [`MutatingWebhook`](`webhooks::MutatingWebhook`)
+//! * In the future validating webhooks wil be added
+//!
+//! This library is fully compatible with the  [`tracing`] crate and emits debug level tracing data.
+//!
+//! For usage please look at the [`WebhookServer`] docs as well as the specific [`Webhook`] you are
+//! using.
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use ::x509_cert::Certificate;
@@ -93,10 +106,7 @@ impl WebhookServer {
     pub const DEFAULT_SOCKET_ADDRESS: SocketAddr =
         SocketAddr::new(Self::DEFAULT_LISTEN_ADDRESS, Self::DEFAULT_HTTPS_PORT);
 
-    /// Creates a new webhook server with the given config and list of webhooks.
-    ///
-    /// Currently the webhooks [`ConversionWebhook`](servers::ConversionWebhook) and
-    /// [`MutatingWebhook`](servers::MutatingWebhook) are implemented.
+    /// Creates a new webhook server with the given config and list of [`Webhook`]s.
     ///
     /// Please read their documentation for details.
     pub async fn new(
