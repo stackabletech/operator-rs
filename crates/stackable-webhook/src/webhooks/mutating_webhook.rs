@@ -115,6 +115,10 @@ pub struct MutatingWebhook<H, S, R> {
 impl<H, S, R> MutatingWebhook<H, S, R> {
     /// All webhooks need to set the admissionReviewVersions to `["v1"]`, as this mutating webhook
     /// only supports that version! A failure to do so will result in a panic.
+    ///
+    /// Your [`MutatingWebhookConfiguration`] can contain 0..n webhooks, but it is recommended to
+    /// only have a single entry in there, as the clientConfig of all entries will be set to the
+    /// same service, port and HTTP path.
     pub fn new(
         mutating_webhook_configuration: MutatingWebhookConfiguration,
         handler: H,
