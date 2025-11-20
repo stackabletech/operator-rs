@@ -38,9 +38,9 @@ pub enum WebhookServerError {
     EncodeCertificateAuthorityAsPem { source: x509_cert::der::Error },
 }
 
-/// An HTTPS server that serves a bunch of webhooks.
+/// An HTTPS server that serves one or more webhooks.
 ///
-/// It handles TLS certificate rotation.
+/// It also handles TLS certificate rotation.
 ///
 /// ### Example usage
 ///
