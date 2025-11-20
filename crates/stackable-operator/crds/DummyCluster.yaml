@@ -639,6 +639,8 @@ spec:
                 description: |-
                   A list of generic Kubernetes objects, which are merged onto the objects that the operator
                   creates.
+
+                  List entries are arbitrary YAML objects, which need to be valid Kubernetes objects.
                 items:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true

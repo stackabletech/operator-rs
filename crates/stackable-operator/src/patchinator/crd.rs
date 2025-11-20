@@ -10,6 +10,8 @@ pub struct ObjectOverrides {
     /// A list of generic Kubernetes objects, which are merged onto the objects that the operator
     /// creates.
     ///
+    /// List entries are arbitrary YAML objects, which need to be valid Kubernetes objects.
+    //
     // TODO: Add link to concepts page once it exists
     #[serde(default)]
     #[schemars(schema_with = "raw_object_list_schema")]
