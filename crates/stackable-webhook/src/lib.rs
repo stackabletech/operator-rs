@@ -114,19 +114,22 @@ impl WebhookServer {
         // by the Axum project.
         //
         // See https://docs.rs/axum/latest/axum/middleware/index.html#applying-multiple-middleware
-        // TODO (@NickLarsenNZ): rename this server_builder and keep it specific to tracing, since it's placement in the chain is important
-        let service_builder = ServiceBuilder::new().layer(trace_layer);
+        // TODO (@NickLarsenNZ): keep this server_builder specific to tracing, since it's placement in the chain is important
+        let trace_service_builder = ServiceBuilder::new().layer(trace_layer);
 
         // Create the root router and merge the provided router into it.
         tracing::debug!("create core router and merge provided router");
-        let mut router = Router::new()
-            .layer(service_builder)
-            // The health route is below the AxumTraceLayer so as not to be instrumented
-            .route("/health", get(|| async { "ok" }));
-
-        for webhook in webhooks.iter() {
+        let mut router = Router::new();
+        for webhook in &webhooks {
             router = webhook.register_routes(router);
         }
+
+        let router = router
+            // Enrich spans for routes added above.
+            // Routes defined below it will not be instrumented to reduce noise.
+            .layer(trace_service_builder)
+            // The health route is below the AxumTraceLayer so as not to be instrumented
+            .route("/health", get(|| async { "ok" }));
 
         tracing::debug!("create TLS server");
         let (tls_server, cert_rx) = TlsServer::new(router, &options)
