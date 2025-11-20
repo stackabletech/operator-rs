@@ -129,7 +129,7 @@ impl WebhookServer {
         }
 
         tracing::debug!("create TLS server");
-        let (tls_server, cert_rx) = TlsServer::new(router, options.clone())
+        let (tls_server, cert_rx) = TlsServer::new(router, &options)
             .await
             .context(CreateTlsServerSnafu)?;
 

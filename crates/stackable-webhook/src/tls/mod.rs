@@ -86,7 +86,7 @@ impl TlsServer {
     #[instrument(name = "create_tls_server", skip(router))]
     pub async fn new(
         router: Router,
-        options: WebhookServerOptions,
+        options: &WebhookServerOptions,
     ) -> Result<(Self, mpsc::Receiver<Certificate>)> {
         let (certificate_tx, certificate_rx) = mpsc::channel(1);
 
@@ -121,7 +121,7 @@ impl TlsServer {
         let tls_server = Self {
             config,
             cert_resolver,
-            socket_addr,
+            socket_addr: *socket_addr,
             router,
         };
 
