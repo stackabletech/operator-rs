@@ -54,7 +54,7 @@ pub enum MutatingWebhookError {
 /// use stackable_operator::kube::core::admission::{AdmissionRequest, AdmissionResponse};
 /// use stackable_operator::kvp::Label;
 /// use stackable_webhook::WebhookServer;
-/// use stackable_webhook::servers::MutatingWebhook;
+/// use stackable_webhook::webhooks::MutatingWebhook;
 ///
 /// # async fn docs() {
 /// // The Kubernetes client
