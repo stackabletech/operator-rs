@@ -69,8 +69,7 @@ pub struct WebhookServer {
 
 #[derive(Clone, Debug)]
 pub struct WebhookServerOptions {
-    /// The HTTPS socket address the [`TcpListener`][tokio::net::TcpListener]
-    /// binds to.
+    /// The HTTPS socket address the [`TcpListener`][tokio::net::TcpListener] binds to.
     pub socket_addr: SocketAddr,
 
     /// The namespace the operator/webhook is running in.
