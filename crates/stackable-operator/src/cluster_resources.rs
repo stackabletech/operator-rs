@@ -89,9 +89,6 @@ pub enum Error {
         source: Box<crate::client::Error>,
     },
 
-    #[snafu(display("failed to parse user-provided object overrides"))]
-    ParseObjectOverrides { source: patchinator::Error },
-
     #[snafu(display("failed to apply user-provided object overrides"))]
     ApplyObjectOverrides { source: patchinator::Error },
 }
