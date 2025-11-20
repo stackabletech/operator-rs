@@ -191,7 +191,6 @@ impl WebhookServer {
             mut webhooks,
             tls_server,
             mut cert_rx,
-            // initial_reconcile_tx,
         } = self;
         let tls_server = tls_server
             .run()
