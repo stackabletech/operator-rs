@@ -188,7 +188,7 @@ impl WebhookServer {
                 res?;
             }
             _ = &mut future_signal => {
-                tracing::info!("shutdown signal received, stopping server");
+                tracing::info!("shutdown signal received, stopping webhook server");
             }
         }
 
