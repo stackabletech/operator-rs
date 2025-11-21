@@ -11,8 +11,9 @@ pub struct ObjectOverrides {
     /// creates.
     ///
     /// List entries are arbitrary YAML objects, which need to be valid Kubernetes objects.
-    //
-    // TODO: Add link to concepts page once it exists
+    ///
+    /// Read the [Object overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#object-overrides)
+    /// for more information.
     #[serde(default)]
     #[schemars(schema_with = "raw_object_list_schema")]
     pub object_overrides: Vec<DynamicObject>,

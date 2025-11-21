@@ -641,6 +641,9 @@ spec:
                   creates.
 
                   List entries are arbitrary YAML objects, which need to be valid Kubernetes objects.
+
+                  Read the [Object overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#object-overrides)
+                  for more information.
                 items:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
