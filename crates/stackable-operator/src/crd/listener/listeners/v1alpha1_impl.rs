@@ -31,6 +31,7 @@ impl DeepMerge for ListenerSpec {
         merge_strategies::list::map(
             &mut self.ports,
             other.ports,
+            // The unique thing identifying a port is it's name
             &[|lhs, rhs| lhs.name == rhs.name],
             |current_item, other_item| {
                 DeepMerge::merge_from(current_item, other_item);
@@ -49,6 +50,7 @@ impl DeepMerge for ListenerStatus {
         merge_strategies::list::map(
             &mut self.ingress_addresses,
             other.ingress_addresses,
+            // The unique thing identifying an ingress address is it's address
             &[|lhs, rhs| lhs.address == rhs.address],
             |current_item, other_item| {
                 DeepMerge::merge_from(current_item, other_item);
