@@ -580,7 +580,7 @@ impl ClusterResources {
 
         let mut mutated = resource.maybe_mutate(&self.apply_strategy);
 
-        // We apply the object overrides of the user at the very last to offer maximum flexibility.
+        // We apply the object overrides of the user at the very end to offer maximum flexibility.
         apply_patches(&mut mutated, self.object_overrides.clone())
             .context(ApplyObjectOverridesSnafu)?;
 
