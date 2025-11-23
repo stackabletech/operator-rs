@@ -6,7 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Support `objectOverrides` ([#1118]).
+- Support `objectOverrides`, which are a list of generic Kubernetes objects, which are merged onto the objects that the operator creates.
+  Alongside, a `patchinator` module was added, which takes a Kubernetes object and a list of patches and applies them to the object ([#1118]).
 
 ### Changed
 
