@@ -1,5 +1,5 @@
 use k8s_openapi::DeepMerge;
-use kube::core::DynamicObject;
+use kube::{ResourceExt, core::DynamicObject};
 use serde::de::DeserializeOwned;
 use snafu::{ResultExt, Snafu};
 
@@ -32,8 +32,6 @@ pub fn apply_patch<R>(base: &mut R, patch: &DynamicObject) -> Result<(), Error>
 where
     R: kube::Resource<DynamicType = ()> + DeepMerge + DeserializeOwned,
 {
-    use kube::ResourceExt;
-
     let Some(patch_type) = &patch.types else {
         return Ok(());
     };
