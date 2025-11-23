@@ -424,7 +424,7 @@ impl ClusterResource for Deployment {
 /// }
 /// ```
 #[derive(Debug, PartialEq)]
-pub struct ClusterResources<'a> {
+pub struct ClusterResources {
     /// The namespace of the cluster
     namespace: String,
 
@@ -454,10 +454,10 @@ pub struct ClusterResources<'a> {
     apply_strategy: ClusterResourceApplyStrategy,
 
     /// Arbitrary Kubernetes object overrides specified by the user via the CRD.
-    object_overrides: &'a ObjectOverrides,
+    object_overrides: ObjectOverrides,
 }
 
-impl<'a> ClusterResources<'a> {
+impl ClusterResources {
     /// Constructs new `ClusterResources`.
     ///
     /// # Arguments
@@ -483,7 +483,7 @@ impl<'a> ClusterResources<'a> {
         controller_name: &str,
         cluster: &ObjectReference,
         apply_strategy: ClusterResourceApplyStrategy,
-        object_overrides: &'a ObjectOverrides,
+        object_overrides: ObjectOverrides,
     ) -> Result<Self> {
         let namespace = cluster
             .namespace
@@ -581,7 +581,8 @@ impl<'a> ClusterResources<'a> {
         let mut mutated = resource.maybe_mutate(&self.apply_strategy);
 
         // We apply the object overrides of the user at the very last to offer maximum flexibility.
-        apply_patches(&mut mutated, self.object_overrides).context(ApplyObjectOverridesSnafu)?;
+        apply_patches(&mut mutated, self.object_overrides.clone())
+            .context(ApplyObjectOverridesSnafu)?;
 
         let patched_resource = self
             .apply_strategy

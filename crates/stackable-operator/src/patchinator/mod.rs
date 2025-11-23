@@ -18,17 +18,17 @@ pub enum Error {
     },
 }
 
-pub fn apply_patches<R>(base: &mut R, patches: &ObjectOverrides) -> Result<(), Error>
+pub fn apply_patches<R>(base: &mut R, patches: ObjectOverrides) -> Result<(), Error>
 where
     R: kube::Resource<DynamicType = ()> + DeepMerge + DeserializeOwned,
 {
-    for patch in &patches.object_overrides {
+    for patch in patches.object_overrides {
         apply_patch(base, patch)?;
     }
     Ok(())
 }
 
-pub fn apply_patch<R>(base: &mut R, patch: &DynamicObject) -> Result<(), Error>
+pub fn apply_patch<R>(base: &mut R, patch: DynamicObject) -> Result<(), Error>
 where
     R: kube::Resource<DynamicType = ()> + DeepMerge + DeserializeOwned,
 {
@@ -53,14 +53,12 @@ where
         return Ok(());
     }
 
-    let deserialized_patch =
-        patch
-            .clone()
-            .try_parse()
-            .with_context(|_| ParseDynamicObjectSnafu {
-                target_api_version: R::api_version(&()),
-                target_kind: R::kind(&()),
-            })?;
+    let deserialized_patch = patch
+        .try_parse()
+        .with_context(|_| ParseDynamicObjectSnafu {
+            target_api_version: R::api_version(&()),
+            target_kind: R::kind(&()),
+        })?;
     base.merge_from(deserialized_patch);
 
     Ok(())
@@ -185,7 +183,7 @@ objectOverrides:
         .expect("test input is valid YAML");
 
         assert_has_label(&sa, "app.kubernetes.io/name", "trino");
-        apply_patches(&mut sa, &object_overrides).unwrap();
+        apply_patches(&mut sa, object_overrides).unwrap();
         assert_has_label(&sa, "app.kubernetes.io/name", "overwritten");
     }
 
@@ -208,7 +206,7 @@ objectOverrides:
         .expect("test input is valid YAML");
 
         let original = sa.clone();
-        apply_patches(&mut sa, &object_overrides).unwrap();
+        apply_patches(&mut sa, object_overrides).unwrap();
         assert_eq!(sa, original, "The patch shouldn't have changed anything");
     }
 
@@ -231,7 +229,7 @@ objectOverrides:
         .expect("test input is valid YAML");
 
         let original = sa.clone();
-        apply_patches(&mut sa, &object_overrides).unwrap();
+        apply_patches(&mut sa, object_overrides).unwrap();
         assert_eq!(sa, original, "The patch shouldn't have changed anything");
     }
 
@@ -254,7 +252,7 @@ objectOverrides:
         .expect("test input is valid YAML");
 
         let original = sa.clone();
-        apply_patches(&mut sa, &object_overrides).unwrap();
+        apply_patches(&mut sa, object_overrides).unwrap();
         assert_eq!(sa, original, "The patch shouldn't have changed anything");
     }
 
@@ -319,7 +317,7 @@ objectOverrides:
             get_trino_container_image(&sts).as_deref(),
             Some("trino-image")
         );
-        apply_patches(&mut sts, &object_overrides).unwrap();
+        apply_patches(&mut sts, object_overrides).unwrap();
         assert_eq!(get_replicas(&sts), Some(3));
         assert_eq!(
             get_trino_container_image(&sts).as_deref(),
@@ -371,7 +369,7 @@ objectOverrides:
                 ("log.properties".to_owned(), "=info".to_owned()),
             ])
         );
-        apply_patches(&mut cm, &object_overrides).unwrap();
+        apply_patches(&mut cm, object_overrides).unwrap();
         assert_eq!(
             cm.data.as_ref().unwrap(),
             &BTreeMap::from([
@@ -427,7 +425,7 @@ objectOverrides:
             &BTreeMap::from([("raw".to_owned(), ByteString(b"bar\n".to_vec()))])
         );
 
-        apply_patches(&mut secret, &object_overrides).unwrap();
+        apply_patches(&mut secret, object_overrides).unwrap();
         assert_eq!(
             secret.string_data.as_ref().unwrap(),
             &BTreeMap::from([("foo".to_owned(), "overwritten".to_owned()),])
@@ -475,7 +473,7 @@ objectOverrides:
         .expect("test input is valid YAML");
 
         assert_has_label(&storage_class, "foo", "original");
-        apply_patches(&mut storage_class, &object_overrides).unwrap();
+        apply_patches(&mut storage_class, object_overrides).unwrap();
         assert_has_label(&storage_class, "foo", "overwritten");
     }
 
