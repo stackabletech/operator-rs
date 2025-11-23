@@ -18,6 +18,10 @@ pub enum Error {
     },
 }
 
+// Takes an arbitrary Kubernetes object (`base`) and applies the given list of patches onto it.
+//
+// Patches are only applied to objects that have the same apiVersion, kind, name
+// and namespace.
 pub fn apply_patches<R>(base: &mut R, patches: ObjectOverrides) -> Result<(), Error>
 where
     R: kube::Resource<DynamicType = ()> + DeepMerge + DeserializeOwned,
@@ -28,6 +32,10 @@ where
     Ok(())
 }
 
+// Takes an arbitrary Kubernetes object (`base`) and applies the patch.
+//
+// Patches are only applied to objects that have the same apiVersion, kind, name
+// and namespace.
 pub fn apply_patch<R>(base: &mut R, patch: DynamicObject) -> Result<(), Error>
 where
     R: kube::Resource<DynamicType = ()> + DeepMerge + DeserializeOwned,
