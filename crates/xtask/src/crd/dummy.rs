@@ -28,7 +28,7 @@ pub mod versioned {
         status = "v1alpha1::DummyClusterStatus",
         namespaced,
     ))]
-    #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, Serialize)]
+    #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
     #[schemars(crate = "stackable_operator::schemars")]
     #[serde(rename_all = "camelCase")]
     pub struct DummyClusterSpec {
