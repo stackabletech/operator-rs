@@ -15,7 +15,7 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
-- BREAKING: `ClusterResources` no longer derives `Eq` and `PartialEq` ([#1118]).
+- BREAKING: `ClusterResources` no longer derives `Eq` ([#1118]).
 
 [#1118]: https://github.com/stackabletech/operator-rs/pull/1118
 

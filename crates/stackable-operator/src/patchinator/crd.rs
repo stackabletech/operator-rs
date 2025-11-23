@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::utils::crds::raw_object_list_schema;
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectOverrides {
     /// A list of generic Kubernetes objects, which are merged onto the objects that the operator

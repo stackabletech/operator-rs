@@ -423,7 +423,7 @@ impl ClusterResource for Deployment {
 ///     Ok(Action::await_change())
 /// }
 /// ```
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ClusterResources<'a> {
     /// The namespace of the cluster
     namespace: String,
