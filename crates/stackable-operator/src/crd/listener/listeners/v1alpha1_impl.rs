@@ -111,7 +111,7 @@ ports:
         )
         .unwrap();
 
-        let patch: ListenerSpec = serde_yaml::from_str(
+        let merge: ListenerSpec = serde_yaml::from_str(
             "
 className: custom-listener-class
 extraPodSelectorLabels:
@@ -125,7 +125,7 @@ publishNotReadyAddresses: false
         )
         .unwrap();
 
-        base.merge_from(patch);
+        base.merge_from(merge);
 
         let expected: ListenerSpec = serde_yaml::from_str(
             "
