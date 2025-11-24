@@ -584,18 +584,18 @@ impl ClusterResources {
         apply_object_overrides(&mut mutated, self.object_overrides.clone())
             .context(ApplyObjectOverridesSnafu)?;
 
-        let merged_resource = self
+        let patched_resource = self
             .apply_strategy
             .run(&self.manager, &mutated, client)
             .await?;
 
-        let resource_id = merged_resource.uid().context(MissingObjectKeySnafu {
+        let resource_id = patched_resource.uid().context(MissingObjectKeySnafu {
             key: "metadata/uid",
         })?;
 
         self.resource_ids.insert(resource_id);
 
-        Ok(merged_resource)
+        Ok(patched_resource)
     }
 
     /// Checks that the given `labels` contain the given `expected_label` with
