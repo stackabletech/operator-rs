@@ -90,60 +90,55 @@ impl DeepMerge for ListenerPort {
 
 #[cfg(test)]
 mod tests {
+    use indoc::indoc;
+
     use super::*;
 
     #[test]
     fn deep_merge_listener() {
-        let mut base: ListenerSpec = serde_yaml::from_str(
-            "
-className: my-listener-class
-extraPodSelectorLabels:
-  foo: bar
-ports:
-  - name: http
-    port: 8080
-    protocol: http
-  - name: https
-    port: 8080
-    protocol: https
-# publishNotReadyAddresses defaults to true
-",
-        )
-        .unwrap();
+        let mut base: ListenerSpec = serde_yaml::from_str(indoc! {"
+            className: my-listener-class
+            extraPodSelectorLabels:
+            foo: bar
+            ports:
+              - name: http
+                port: 8080
+                protocol: http
+              - name: https
+                port: 8080
+                protocol: https
+            # publishNotReadyAddresses defaults to true
+        "})
+        .expect("test YAML is valid");
 
-        let merge: ListenerSpec = serde_yaml::from_str(
-            "
-className: custom-listener-class
-extraPodSelectorLabels:
-  foo: overridden
-  extra: label
-ports:
-  - name: https
-    port: 8443
-publishNotReadyAddresses: false
-",
-        )
-        .unwrap();
+        let merge: ListenerSpec = serde_yaml::from_str(indoc! {"
+            className: custom-listener-class
+            extraPodSelectorLabels:
+            foo: overridden
+            extra: label
+            ports:
+              - name: https
+                port: 8443
+            publishNotReadyAddresses: false
+        "})
+        .expect("test YAML is valid");
 
         base.merge_from(merge);
-
-        let expected: ListenerSpec = serde_yaml::from_str(
-            "
-className: custom-listener-class
-extraPodSelectorLabels:
-  foo: overridden
-  extra: label
-ports:
-  - name: http
-    port: 8080
-    protocol: http
-  - name: https
-    port: 8443 # overridden
-    protocol: https
-publishNotReadyAddresses: false
-",
-        )
-        .unwrap();
+        let expected: ListenerSpec = serde_yaml::from_str(indoc! {"
+            className: custom-listener-class
+            extraPodSelectorLabels:
+            foo: overridden
+            extra: label
+            ports:
+              - name: http
+                port: 8080
+                protocol: http
+              - name: https
+                port: 8443 # overridden
+                protocol: https
+            publishNotReadyAddresses: false
+        "})
+        .expect("test YAML is valid");
 
         assert_eq!(base, expected);
     }
