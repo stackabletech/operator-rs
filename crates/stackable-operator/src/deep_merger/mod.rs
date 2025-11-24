@@ -18,56 +18,59 @@ pub enum Error {
     },
 }
 
-// Takes an arbitrary Kubernetes object (`base`) and applies the given list of patches onto it.
+// Takes an arbitrary Kubernetes object (`base`) and applies the given list of deep merges onto it.
 //
-// Patches are only applied to objects that have the same apiVersion, kind, name
+// Merges are only applied to objects that have the same apiVersion, kind, name
 // and namespace.
-pub fn apply_patches<R>(base: &mut R, patches: ObjectOverrides) -> Result<(), Error>
+pub fn apply_object_overrides<R>(
+    base: &mut R,
+    object_overrides: ObjectOverrides,
+) -> Result<(), Error>
 where
     R: kube::Resource<DynamicType = ()> + DeepMerge + DeserializeOwned,
 {
-    for patch in patches.object_overrides {
-        apply_patch(base, patch)?;
+    for object_override in object_overrides.object_overrides {
+        apply_deep_merge(base, object_override)?;
     }
     Ok(())
 }
 
-// Takes an arbitrary Kubernetes object (`base`) and applies the patch.
+// Takes an arbitrary Kubernetes object (`base`) and applies the deep merge.
 //
-// Patches are only applied to objects that have the same apiVersion, kind, name
+// Merges are only applied to objects that have the same apiVersion, kind, name
 // and namespace.
-pub fn apply_patch<R>(base: &mut R, patch: DynamicObject) -> Result<(), Error>
+pub fn apply_deep_merge<R>(base: &mut R, merge: DynamicObject) -> Result<(), Error>
 where
     R: kube::Resource<DynamicType = ()> + DeepMerge + DeserializeOwned,
 {
-    let Some(patch_type) = &patch.types else {
+    let Some(merge_type) = &merge.types else {
         return Ok(());
     };
-    if patch_type.api_version != R::api_version(&()) || patch_type.kind != R::kind(&()) {
+    if merge_type.api_version != R::api_version(&()) || merge_type.kind != R::kind(&()) {
         return Ok(());
     }
-    let Some(patch_name) = &patch.metadata.name else {
+    let Some(merge_name) = &merge.metadata.name else {
         return Ok(());
     };
 
     // The name always needs to match
-    if &base.name_any() != patch_name {
+    if &base.name_any() != merge_name {
         return Ok(());
     }
 
     // If there is a namespace on the base object, it needs to match as well
     // Note that it is not set for cluster-scoped objects.
-    if base.namespace() != patch.metadata.namespace {
+    if base.namespace() != merge.metadata.namespace {
         return Ok(());
     }
 
-    let deserialized_patch = patch
+    let deserialized_merge = merge
         .try_parse()
         .with_context(|_| ParseDynamicObjectSnafu {
             target_api_version: R::api_version(&()),
             target_kind: R::kind(&()),
         })?;
-    base.merge_from(deserialized_patch);
+    base.merge_from(deserialized_merge);
 
     Ok(())
 }
@@ -173,7 +176,7 @@ metadata:
     }
 
     #[test]
-    fn service_account_patched() {
+    fn service_account_merged() {
         let mut sa = generate_service_account();
         let object_overrides: ObjectOverrides = serde_yaml::from_str(
             "
@@ -191,12 +194,12 @@ objectOverrides:
         .expect("test input is valid YAML");
 
         assert_has_label(&sa, "app.kubernetes.io/name", "trino");
-        apply_patches(&mut sa, object_overrides).unwrap();
+        apply_object_overrides(&mut sa, object_overrides).unwrap();
         assert_has_label(&sa, "app.kubernetes.io/name", "overwritten");
     }
 
     #[test]
-    fn service_account_not_patched_as_different_name() {
+    fn service_account_not_merged_as_different_name() {
         let mut sa = generate_service_account();
         let object_overrides: ObjectOverrides = serde_yaml::from_str(
             "
@@ -214,12 +217,12 @@ objectOverrides:
         .expect("test input is valid YAML");
 
         let original = sa.clone();
-        apply_patches(&mut sa, object_overrides).unwrap();
-        assert_eq!(sa, original, "The patch shouldn't have changed anything");
+        apply_object_overrides(&mut sa, object_overrides).unwrap();
+        assert_eq!(sa, original, "The merge shouldn't have changed anything");
     }
 
     #[test]
-    fn service_account_not_patched_as_different_namespace() {
+    fn service_account_not_merged_as_different_namespace() {
         let mut sa = generate_service_account();
         let object_overrides: ObjectOverrides = serde_yaml::from_str(
             "
@@ -237,12 +240,12 @@ objectOverrides:
         .expect("test input is valid YAML");
 
         let original = sa.clone();
-        apply_patches(&mut sa, object_overrides).unwrap();
-        assert_eq!(sa, original, "The patch shouldn't have changed anything");
+        apply_object_overrides(&mut sa, object_overrides).unwrap();
+        assert_eq!(sa, original, "The merge shouldn't have changed anything");
     }
 
     #[test]
-    fn service_account_not_patched_as_different_api_version() {
+    fn service_account_not_merged_as_different_api_version() {
         let mut sa = generate_service_account();
         let object_overrides: ObjectOverrides = serde_yaml::from_str(
             "
@@ -260,12 +263,12 @@ objectOverrides:
         .expect("test input is valid YAML");
 
         let original = sa.clone();
-        apply_patches(&mut sa, object_overrides).unwrap();
-        assert_eq!(sa, original, "The patch shouldn't have changed anything");
+        apply_object_overrides(&mut sa, object_overrides).unwrap();
+        assert_eq!(sa, original, "The merge shouldn't have changed anything");
     }
 
     #[test]
-    fn statefulset_patched_multiple_patches() {
+    fn statefulset_merged_multiple_merges() {
         let mut sts = generate_stateful_set();
         let object_overrides: ObjectOverrides = serde_yaml::from_str(
             "
@@ -325,7 +328,7 @@ objectOverrides:
             get_trino_container_image(&sts).as_deref(),
             Some("trino-image")
         );
-        apply_patches(&mut sts, object_overrides).unwrap();
+        apply_object_overrides(&mut sts, object_overrides).unwrap();
         assert_eq!(get_replicas(&sts), Some(3));
         assert_eq!(
             get_trino_container_image(&sts).as_deref(),
@@ -334,7 +337,7 @@ objectOverrides:
     }
 
     #[test]
-    fn configmap_patched() {
+    fn configmap_merged() {
         let mut cm: ConfigMap = serde_yaml::from_str(
             "
     apiVersion: v1
@@ -377,7 +380,7 @@ objectOverrides:
                 ("log.properties".to_owned(), "=info".to_owned()),
             ])
         );
-        apply_patches(&mut cm, object_overrides).unwrap();
+        apply_object_overrides(&mut cm, object_overrides).unwrap();
         assert_eq!(
             cm.data.as_ref().unwrap(),
             &BTreeMap::from([
@@ -395,7 +398,7 @@ objectOverrides:
     }
 
     #[test]
-    fn secret_patched() {
+    fn secret_merged() {
         let mut secret: Secret = serde_yaml::from_str(
             "
     apiVersion: v1
@@ -433,7 +436,7 @@ objectOverrides:
             &BTreeMap::from([("raw".to_owned(), ByteString(b"bar\n".to_vec()))])
         );
 
-        apply_patches(&mut secret, object_overrides).unwrap();
+        apply_object_overrides(&mut secret, object_overrides).unwrap();
         assert_eq!(
             secret.string_data.as_ref().unwrap(),
             &BTreeMap::from([("foo".to_owned(), "overwritten".to_owned()),])
@@ -445,7 +448,7 @@ objectOverrides:
     }
 
     #[test]
-    fn cluster_scoped_object_patched() {
+    fn cluster_scoped_object_merged() {
         let mut storage_class: StorageClass = serde_yaml::from_str(
             "
     apiVersion: storage.k8s.io/v1
@@ -481,7 +484,7 @@ objectOverrides:
         .expect("test input is valid YAML");
 
         assert_has_label(&storage_class, "foo", "original");
-        apply_patches(&mut storage_class, object_overrides).unwrap();
+        apply_object_overrides(&mut storage_class, object_overrides).unwrap();
         assert_has_label(&storage_class, "foo", "overwritten");
     }
 

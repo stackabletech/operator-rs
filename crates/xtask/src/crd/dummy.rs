@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use stackable_operator::{
     commons::resources::{JvmHeapLimits, Resources},
     config::fragment::Fragment,
+    deep_merger::ObjectOverrides,
     kube::CustomResource,
-    patchinator::ObjectOverrides,
     role_utils::Role,
     schemars::JsonSchema,
     status::condition::ClusterCondition,

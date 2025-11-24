@@ -38,11 +38,11 @@ use crate::{
         },
     },
     crd::listener,
+    deep_merger::{self, ObjectOverrides, apply_object_overrides},
     kvp::{
         Label, LabelError, Labels,
         consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
     },
-    patchinator::{self, ObjectOverrides, apply_patches},
     utils::format_full_controller_name,
 };
 
@@ -90,7 +90,7 @@ pub enum Error {
     },
 
     #[snafu(display("failed to apply user-provided object overrides"))]
-    ApplyObjectOverrides { source: patchinator::Error },
+    ApplyObjectOverrides { source: deep_merger::Error },
 }
 
 /// A cluster resource handled by [`ClusterResources`].
@@ -581,21 +581,21 @@ impl ClusterResources {
         let mut mutated = resource.maybe_mutate(&self.apply_strategy);
 
         // We apply the object overrides of the user at the very end to offer maximum flexibility.
-        apply_patches(&mut mutated, self.object_overrides.clone())
+        apply_object_overrides(&mut mutated, self.object_overrides.clone())
             .context(ApplyObjectOverridesSnafu)?;
 
-        let patched_resource = self
+        let merged_resource = self
             .apply_strategy
             .run(&self.manager, &mutated, client)
             .await?;
 
-        let resource_id = patched_resource.uid().context(MissingObjectKeySnafu {
+        let resource_id = merged_resource.uid().context(MissingObjectKeySnafu {
             key: "metadata/uid",
         })?;
 
         self.resource_ids.insert(resource_id);
 
-        Ok(patched_resource)
+        Ok(merged_resource)
     }
 
     /// Checks that the given `labels` contain the given `expected_label` with
