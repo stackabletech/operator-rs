@@ -337,7 +337,7 @@ impl ClusterResource for Deployment {
 /// use serde::{Deserialize, Serialize};
 /// use stackable_operator::client::Client;
 /// use stackable_operator::cluster_resources::{self, ClusterResourceApplyStrategy, ClusterResources};
-/// use stackable_operator::patchinator::ObjectOverrides;
+/// use stackable_operator::deep_merger::ObjectOverrides;
 /// use stackable_operator::product_config_utils::ValidatedRoleConfigByPropertyKind;
 /// use stackable_operator::role_utils::Role;
 /// use std::sync::Arc;
@@ -380,7 +380,7 @@ impl ClusterResource for Deployment {
 ///         CONTROLLER_NAME,
 ///         &app.object_ref(&()),
 ///         ClusterResourceApplyStrategy::Default,
-///         &app.spec.object_overrides,
+///         app.spec.object_overrides.clone(),
 ///     )
 ///     .map_err(|source| Error::CreateClusterResources { source })?;
 ///
