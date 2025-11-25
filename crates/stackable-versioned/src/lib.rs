@@ -1,5 +1,8 @@
 //! This crate enables versioning of structs and enums through procedural macros.
 //!
+//! It is part of the project DeLorean and converts between different CRD versions by using 1.21 GW
+//! of power, 142km/h and time travel.
+//!
 //! Currently supported versioning schemes:
 //!
 //! - Kubernetes API versions (eg: `v1alpha1`, `v1beta1`, `v1`, `v2`), with optional support for
