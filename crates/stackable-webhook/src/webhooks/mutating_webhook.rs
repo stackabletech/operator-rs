@@ -108,7 +108,7 @@ pub struct MutatingWebhook<H, S, R> {
     disable_mutating_webhook_configuration_maintenance: bool,
     client: Client,
 
-    /// The field manager used when maintaining the CRDs.
+    /// The field manager used when maintaining the MutatingWebhookConfigurations.
     field_manager: String,
 }
 
