@@ -6,9 +6,8 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use super::apply_deep_merge;
 use crate::utils::crds::raw_object_list_schema;
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ObjectOverrides {
+#[derive(Clone, Debug, Deserialize, Default, JsonSchema, Serialize, PartialEq)]
+pub struct ObjectOverrides(
     /// A list of generic Kubernetes objects, which are merged on the objects that the operator
     /// creates.
     ///
@@ -16,10 +15,11 @@ pub struct ObjectOverrides {
     ///
     /// Read the [Object overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#object-overrides)
     /// for more information.
-    #[serde(default)]
+    //
+    // Remember to use `#[serde(default)]` when including this into a CRD!
     #[schemars(schema_with = "raw_object_list_schema")]
-    pub object_overrides: Vec<DynamicObject>,
-}
+    Vec<DynamicObject>,
+);
 
 impl ObjectOverrides {
     /// Takes an arbitrary Kubernetes object (`base`) and applies the configured list of deep merges
@@ -31,7 +31,7 @@ impl ObjectOverrides {
     where
         R: kube::Resource<DynamicType = ()> + DeepMerge + DeserializeOwned,
     {
-        for object_override in &self.object_overrides {
+        for object_override in &self.0 {
             apply_deep_merge(base, object_override)?;
         }
         Ok(())

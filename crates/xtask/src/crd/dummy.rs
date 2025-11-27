@@ -49,7 +49,7 @@ pub mod versioned {
         secret_reference: stackable_operator::shared::secret::SecretReference,
         tls_client_details: stackable_operator::commons::tls_verification::TlsClientDetails,
 
-        #[serde(flatten)]
+        #[serde(default)]
         pub object_overrides: ObjectOverrides,
 
         // Already versioned
