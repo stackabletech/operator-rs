@@ -9,7 +9,9 @@ use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
     builder::pod::{
-        container::ContainerBuilder, resources::ResourceRequirementsBuilder, volume::VolumeBuilder,
+        container::ContainerBuilder,
+        resources::ResourceRequirementsBuilder,
+        volume::{VolumeBuilder, VolumeMountBuilder},
     },
     commons::product_image_selection::ResolvedProductImage,
     crd::git_sync::v1alpha1::GitSync,
@@ -24,6 +26,8 @@ use crate::{
 pub const CONTAINER_NAME_PREFIX: &str = "git-sync";
 pub const VOLUME_NAME_PREFIX: &str = "content-from-git";
 pub const MOUNT_PATH_PREFIX: &str = "/stackable/app/git";
+pub const SSH_VOLUME_NAME_PREFIX: &str = "ssh-keys-info";
+pub const SSH_MOUNT_PATH_PREFIX: &str = "/stackable/gitssh";
 pub const GIT_SYNC_SAFE_DIR_OPTION: &str = "safe.directory";
 pub const GIT_SYNC_ROOT_DIR: &str = "/tmp/git";
 pub const GIT_SYNC_LINK: &str = "current";
@@ -58,6 +62,10 @@ impl GitSync {
     pub(crate) fn default_wait() -> Duration {
         Duration::from_secs(20)
     }
+
+    pub(crate) fn default_ssh_known_hosts() -> bool {
+        true
+    }
 }
 
 /// Kubernetes resources generated from `GitSync` specifications which should be added to the Pod.
@@ -77,6 +85,12 @@ pub struct GitSyncResources {
 
     /// Absolute paths to the Git contents in the mounted volumes
     pub git_content_folders: Vec<PathBuf>,
+
+    /// GitSync volumes containing the synchronized repository
+    pub git_ssh_volumes: Vec<Volume>,
+
+    /// Volume mounts for the GitSync volumes
+    pub git_ssh_volume_mounts: Vec<VolumeMount>,
 }
 
 impl GitSyncResources {
@@ -120,6 +134,25 @@ impl GitSyncResources {
                     "password",
                 ));
             }
+            if git_sync.ssh_secret.is_some() {
+                env_vars.push(EnvVar {
+                    name: "GITSYNC_SSH_KEY_FILE".to_owned(),
+                    value: Some(format!("{SSH_MOUNT_PATH_PREFIX}-{i}/key").to_owned()),
+                    value_from: None,
+                });
+                env_vars.push(EnvVar {
+                    name: "GITSYNC_SSH_KNOWN_HOSTS_FILE".to_owned(),
+                    value: Some(format!("{SSH_MOUNT_PATH_PREFIX}-{i}/knownHosts").to_owned()),
+                    value_from: None,
+                });
+            }
+            // TODO should we leave to the defaults?
+            // env_vars.push(EnvVar {
+            //     name: "GITSYNC_SSH_KNOWN_HOSTS".to_owned(),
+            //     value: Some(git_sync.ssh_known_hosts.to_string()),
+            //     value_from: None,
+            // });
+
             env_vars = insert_or_update_env_vars(&env_vars, extra_env_vars);
 
             let volume_name = format!("{VOLUME_NAME_PREFIX}-{i}");
@@ -186,6 +219,23 @@ impl GitSyncResources {
                 .git_content_volume_mounts
                 .push(git_content_volume_mount);
             resources.git_content_folders.push(git_content_folder);
+
+            if let Some(get_ssh_secret) = &git_sync.ssh_secret {
+                let ssh_volume_name = format!("{SSH_VOLUME_NAME_PREFIX}-{i}");
+                let ssh_mount_path = format!("{SSH_MOUNT_PATH_PREFIX}-{i}");
+
+                let ssh_secret_volume = VolumeBuilder::new(&ssh_volume_name)
+                    .with_secret(get_ssh_secret, false)
+                    .build();
+                resources.git_ssh_volumes.push(ssh_secret_volume);
+
+                let ssh_secret_volume_mount =
+                    VolumeMountBuilder::new(ssh_volume_name, ssh_mount_path).build();
+
+                resources
+                    .git_ssh_volume_mounts
+                    .push(ssh_secret_volume_mount);
+            }
         }
 
         Ok(resources)

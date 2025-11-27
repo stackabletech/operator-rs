@@ -63,5 +63,15 @@ pub mod versioned {
         /// [example]: DOCS_BASE_URL_PLACEHOLDER/airflow/usage-guide/mounting-dags#_example
         #[serde(default)]
         pub git_sync_conf: BTreeMap<String, String>,
+
+        /// The name of the Secret used for SSH access to the repository.
+        ///
+        /// The referenced Secret must include two fields: `key` and `knownHosts`.
+        ///
+        /// [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
+        pub ssh_secret: Option<String>,
+
+        #[serde(default = "GitSync::default_ssh_known_hosts")]
+        pub ssh_known_hosts: bool,
     }
 }
