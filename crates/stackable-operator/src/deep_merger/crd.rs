@@ -8,7 +8,7 @@ use crate::utils::crds::raw_object_list_schema;
 
 #[derive(Clone, Debug, Deserialize, Default, JsonSchema, Serialize, PartialEq)]
 pub struct ObjectOverrides(
-    /// A list of generic Kubernetes objects, which are merged on the objects that the operator
+    /// A list of generic Kubernetes objects, which are merged into the objects that the operator
     /// creates.
     ///
     /// List entries are arbitrary YAML objects, which need to be valid Kubernetes objects.
