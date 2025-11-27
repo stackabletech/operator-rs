@@ -73,9 +73,9 @@ pub enum WebhookServerError {
 /// let webhook_server = WebhookServer::new(webhook_options, webhooks).await.unwrap();
 /// # }
 /// ```
-pub struct WebhookServer<'a> {
+pub struct WebhookServer {
     options: WebhookServerOptions,
-    webhooks: Vec<&'a mut dyn Webhook>,
+    webhooks: Vec<Box<dyn Webhook>>,
     tls_server: TlsServer,
     cert_rx: mpsc::Receiver<Certificate>,
 }
@@ -92,7 +92,7 @@ pub struct WebhookServerOptions {
     pub webhook_service_name: String,
 }
 
-impl<'a> WebhookServer<'a> {
+impl WebhookServer {
     /// The default HTTPS port
     pub const DEFAULT_HTTPS_PORT: u16 = 8443;
     /// The default IP address [`Ipv4Addr::UNSPECIFIED`] (`0.0.0.0`) the webhook server binds to,
@@ -111,7 +111,7 @@ impl<'a> WebhookServer<'a> {
     /// Please read their documentation for details.
     pub async fn new(
         options: WebhookServerOptions,
-        webhooks: Vec<&'a mut dyn Webhook>,
+        webhooks: Vec<Box<dyn Webhook>>,
     ) -> Result<Self> {
         tracing::trace!("create new webhook server");
 
