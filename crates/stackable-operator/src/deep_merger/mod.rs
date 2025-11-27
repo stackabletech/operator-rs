@@ -168,15 +168,14 @@ mod tests {
         let mut sa = generate_service_account();
 
         let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
-            objectOverrides:
-              - apiVersion: v1
-                kind: ServiceAccount
-                metadata:
-                  name: trino-serviceaccount
-                  namespace: default
-                  labels:
-                    app.kubernetes.io/name: overwritten
-                    foo: bar
+            - apiVersion: v1
+              kind: ServiceAccount
+              metadata:
+                name: trino-serviceaccount
+                namespace: default
+                labels:
+                  app.kubernetes.io/name: overwritten
+                  foo: bar
         "})
         .expect("test YAML is valid");
 
@@ -191,15 +190,14 @@ mod tests {
     fn service_account_not_merged_as_different_name() {
         let mut sa = generate_service_account();
         let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
-            objectOverrides:
-              - apiVersion: v1
-                kind: ServiceAccount
-                metadata:
-                  name: other-sa # name mismatch
-                  namespace: default
-                  labels:
-                    app.kubernetes.io/name: overwritten
-                    foo: bar
+            - apiVersion: v1
+              kind: ServiceAccount
+              metadata:
+                name: other-sa # name mismatch
+                namespace: default
+                labels:
+                  app.kubernetes.io/name: overwritten
+                  foo: bar
         "})
         .expect("test YAML is valid");
 
@@ -214,15 +212,14 @@ mod tests {
     fn service_account_not_merged_as_different_namespace() {
         let mut sa = generate_service_account();
         let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
-            objectOverrides:
-              - apiVersion: v1
-                kind: ServiceAccount
-                metadata:
-                  name: trino-serviceaccount
-                  namespace: other-namespace # namespace mismatch
-                  labels:
-                    app.kubernetes.io/name: overwritten
-                    foo: bar
+            - apiVersion: v1
+              kind: ServiceAccount
+              metadata:
+                name: trino-serviceaccount
+                namespace: other-namespace # namespace mismatch
+                labels:
+                  app.kubernetes.io/name: overwritten
+                  foo: bar
         "})
         .expect("test YAML is valid");
 
@@ -237,15 +234,14 @@ mod tests {
     fn service_account_not_merged_as_different_api_version() {
         let mut sa = generate_service_account();
         let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
-            objectOverrides:
-              - apiVersion: v42 # apiVersion mismatch
-                kind: ServiceAccount
-                metadata:
-                  name: trino-serviceaccount
-                  namespace: default
-                  labels:
-                    app.kubernetes.io/name: overwritten
-                    foo: bar
+            - apiVersion: v42 # apiVersion mismatch
+              kind: ServiceAccount
+              metadata:
+                name: trino-serviceaccount
+                namespace: default
+                labels:
+                  app.kubernetes.io/name: overwritten
+                  foo: bar
         "})
         .expect("test YAML is valid");
 
@@ -260,36 +256,35 @@ mod tests {
     fn statefulset_merged_multiple_merges() {
         let mut sts = generate_stateful_set();
         let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
-            objectOverrides:
-              - apiVersion: v1
-                kind: ServiceAccount
-                metadata:
-                  name: trino-serviceaccount
-                  namespace: default
-                  labels:
-                    app.kubernetes.io/name: overwritten
-                    foo: bar
-              - apiVersion: apps/v1
-                kind: StatefulSet
-                metadata:
-                  name: trino-coordinator-default
-                  namespace: default
-                spec:
-                  template:
-                    metadata:
-                      labels:
-                        foo: bar
-                    spec:
-                      containers:
-                      - name: trino
-                        image: custom-image
-              - apiVersion: apps/v1
-                kind: StatefulSet
-                metadata:
-                  name: trino-coordinator-default
-                  namespace: default
-                spec:
-                  replicas: 3
+            - apiVersion: v1
+              kind: ServiceAccount
+              metadata:
+                name: trino-serviceaccount
+                namespace: default
+                labels:
+                  app.kubernetes.io/name: overwritten
+                  foo: bar
+            - apiVersion: apps/v1
+              kind: StatefulSet
+              metadata:
+                name: trino-coordinator-default
+                namespace: default
+              spec:
+                template:
+                  metadata:
+                    labels:
+                      foo: bar
+                  spec:
+                    containers:
+                    - name: trino
+                      image: custom-image
+            - apiVersion: apps/v1
+              kind: StatefulSet
+              metadata:
+                name: trino-coordinator-default
+                namespace: default
+              spec:
+                replicas: 3
         "})
         .expect("test YAML is valid");
 
@@ -342,15 +337,14 @@ mod tests {
         "})
         .expect("test YAML is valid");
         let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
-            objectOverrides:
-              - apiVersion: v1
-                kind: ConfigMap
-                metadata:
-                  name: game-demo
-                data:
-                  foo: overwritten
-                  log.properties: |-
-                    =info,tech.stackable=debug
+            - apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: game-demo
+              data:
+                foo: overwritten
+                log.properties: |-
+                  =info,tech.stackable=debug
         "})
         .expect("test YAML is valid");
 
@@ -398,15 +392,14 @@ mod tests {
         "})
         .expect("test YAML is valid");
         let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
-            objectOverrides:
-              - apiVersion: v1
-                kind: Secret
-                metadata:
-                  name: dotfile-secret
-                stringData:
-                  foo: overwritten
-                data:
-                  raw: b3ZlcndyaXR0ZW4K # echo overwritten | base64
+            - apiVersion: v1
+              kind: Secret
+              metadata:
+                name: dotfile-secret
+              stringData:
+                foo: overwritten
+              data:
+                raw: b3ZlcndyaXR0ZW4K # echo overwritten | base64
         "})
         .expect("test YAML is valid");
 
@@ -447,20 +440,19 @@ mod tests {
         "})
         .expect("test YAML is valid");
         let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
-            objectOverrides:
-              - apiVersion: v1
-                kind: ServiceAccount
-              - apiVersion: storage.k8s.io/v1
-                kind: StorageClass
-                metadata:
-                  name: low-latency
-                  labels:
-                    foo: overwritten
-                  annotations:
-                    new: annotation
-                provisioner: custom-provisioner
-              - foo: bar
-              - {}
+            - apiVersion: v1
+              kind: ServiceAccount
+            - apiVersion: storage.k8s.io/v1
+              kind: StorageClass
+              metadata:
+                name: low-latency
+                labels:
+                  foo: overwritten
+                annotations:
+                  new: annotation
+              provisioner: custom-provisioner
+            - foo: bar
+            - {}
         "})
         .expect("test YAML is valid");
 

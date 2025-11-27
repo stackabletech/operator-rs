@@ -355,7 +355,7 @@ impl ClusterResource for Deployment {
 ///     namespaced,
 /// )]
 /// struct AppClusterSpec {
-///     #[serde(flatten)]
+///     #[serde(default)]
 ///     pub object_overrides: ObjectOverrides,
 /// }
 ///
