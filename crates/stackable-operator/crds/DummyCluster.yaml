@@ -637,7 +637,7 @@ spec:
               objectOverrides:
                 default: []
                 description: |-
-                  A list of generic Kubernetes objects, which are merged onto the objects that the operator
+                  A list of generic Kubernetes objects, which are merged on the objects that the operator
                   creates.
 
                   List entries are arbitrary YAML objects, which need to be valid Kubernetes objects.

@@ -18,28 +18,15 @@ pub enum Error {
     },
 }
 
-// Takes an arbitrary Kubernetes object (`base`) and applies the given list of deep merges onto it.
-//
-// Merges are only applied to objects that have the same apiVersion, kind, name
-// and namespace.
-pub fn apply_object_overrides<R>(
-    base: &mut R,
-    object_overrides: ObjectOverrides,
-) -> Result<(), Error>
-where
-    R: kube::Resource<DynamicType = ()> + DeepMerge + DeserializeOwned,
-{
-    for object_override in object_overrides.object_overrides {
-        apply_deep_merge(base, object_override)?;
-    }
-    Ok(())
-}
-
-// Takes an arbitrary Kubernetes object (`base`) and applies the deep merge.
-//
-// Merges are only applied to objects that have the same apiVersion, kind, name
-// and namespace.
-pub fn apply_deep_merge<R>(base: &mut R, merge: DynamicObject) -> Result<(), Error>
+/// Takes an arbitrary Kubernetes object (`base`) and applies the deep merge.
+///
+/// Merges are only applied to objects that have the same apiVersion, kind, name
+/// and namespace.
+///
+/// In case the merge matches the base object, it will get cloned prior to merging.
+/// We modeled it this way, as most of the time it won't match, so we don't need to proactively
+/// clone.
+pub fn apply_deep_merge<R>(base: &mut R, merge: &DynamicObject) -> Result<(), Error>
 where
     R: kube::Resource<DynamicType = ()> + DeepMerge + DeserializeOwned,
 {
@@ -65,6 +52,8 @@ where
     }
 
     let deserialized_merge = merge
+        // We only clone if needed, most cases the deep merges don't actually apply
+        .to_owned()
         .try_parse()
         .with_context(|_| ParseDynamicObjectSnafu {
             target_api_version: R::api_version(&()),
@@ -192,7 +181,9 @@ mod tests {
         .expect("test YAML is valid");
 
         assert_has_label(&sa, "app.kubernetes.io/name", "trino");
-        apply_object_overrides(&mut sa, object_overrides).unwrap();
+        object_overrides
+            .apply_to(&mut sa)
+            .expect("merging onto test object works");
         assert_has_label(&sa, "app.kubernetes.io/name", "overwritten");
     }
 
@@ -213,7 +204,9 @@ mod tests {
         .expect("test YAML is valid");
 
         let original = sa.clone();
-        apply_object_overrides(&mut sa, object_overrides).unwrap();
+        object_overrides
+            .apply_to(&mut sa)
+            .expect("merging onto test object works");
         assert_eq!(sa, original, "The merge shouldn't have changed anything");
     }
 
@@ -234,7 +227,9 @@ mod tests {
         .expect("test YAML is valid");
 
         let original = sa.clone();
-        apply_object_overrides(&mut sa, object_overrides).unwrap();
+        object_overrides
+            .apply_to(&mut sa)
+            .expect("merging onto test object works");
         assert_eq!(sa, original, "The merge shouldn't have changed anything");
     }
 
@@ -255,7 +250,9 @@ mod tests {
         .expect("test YAML is valid");
 
         let original = sa.clone();
-        apply_object_overrides(&mut sa, object_overrides).unwrap();
+        object_overrides
+            .apply_to(&mut sa)
+            .expect("merging onto test object works");
         assert_eq!(sa, original, "The merge shouldn't have changed anything");
     }
 
@@ -318,7 +315,9 @@ mod tests {
             get_trino_container_image(&sts).as_deref(),
             Some("trino-image")
         );
-        apply_object_overrides(&mut sts, object_overrides).unwrap();
+        object_overrides
+            .apply_to(&mut sts)
+            .expect("merging onto test object works");
         assert_eq!(get_replicas(&sts), Some(3));
         assert_eq!(
             get_trino_container_image(&sts).as_deref(),
@@ -366,7 +365,9 @@ mod tests {
                 ("log.properties".to_owned(), "=info".to_owned()),
             ])
         );
-        apply_object_overrides(&mut cm, object_overrides).unwrap();
+        object_overrides
+            .apply_to(&mut cm)
+            .expect("merging onto test object works");
         assert_eq!(
             cm.data.as_ref().unwrap(),
             &BTreeMap::from([
@@ -418,7 +419,9 @@ mod tests {
             &BTreeMap::from([("raw".to_owned(), ByteString(b"bar\n".to_vec()))])
         );
 
-        apply_object_overrides(&mut secret, object_overrides).unwrap();
+        object_overrides
+            .apply_to(&mut secret)
+            .expect("merging onto test object works");
         assert_eq!(
             secret.string_data.as_ref().unwrap(),
             &BTreeMap::from([("foo".to_owned(), "overwritten".to_owned()),])
@@ -462,7 +465,9 @@ mod tests {
         .expect("test YAML is valid");
 
         assert_has_label(&storage_class, "foo", "original");
-        apply_object_overrides(&mut storage_class, object_overrides).unwrap();
+        object_overrides
+            .apply_to(&mut storage_class)
+            .expect("merging onto test object works");
         assert_has_label(&storage_class, "foo", "overwritten");
     }
 

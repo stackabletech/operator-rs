@@ -38,7 +38,7 @@ use crate::{
         },
     },
     crd::listener,
-    deep_merger::{self, ObjectOverrides, apply_object_overrides},
+    deep_merger::{self, ObjectOverrides},
     kvp::{
         Label, LabelError, Labels,
         consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
@@ -581,7 +581,8 @@ impl ClusterResources {
         let mut mutated = resource.maybe_mutate(&self.apply_strategy);
 
         // We apply the object overrides of the user at the very end to offer maximum flexibility.
-        apply_object_overrides(&mut mutated, self.object_overrides.clone())
+        self.object_overrides
+            .apply_to(&mut mutated)
             .context(ApplyObjectOverridesSnafu)?;
 
         let patched_resource = self
