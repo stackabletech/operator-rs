@@ -2,12 +2,7 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
 use async_trait::async_trait;
 use axum::{Json, Router, routing::post};
-use k8s_openapi::{
-    ByteString,
-    api::admissionregistration::v1::{
-        ServiceReference, ValidatingWebhookConfiguration, WebhookClientConfig,
-    },
-};
+use k8s_openapi::{ByteString, api::admissionregistration::v1::ValidatingWebhookConfiguration};
 use kube::{
     Api, Client, Resource, ResourceExt,
     api::{Patch, PatchParams},
@@ -19,7 +14,7 @@ use tracing::instrument;
 use x509_cert::Certificate;
 
 use super::{Webhook, WebhookError};
-use crate::WebhookServerOptions;
+use crate::{WebhookServerOptions, webhooks::get_webhook_client_config};
 
 #[derive(Debug, Snafu)]
 pub enum ValidatingWebhookError {
@@ -148,17 +143,8 @@ where
             .flatten()
         {
             // We know how we can be called (and with what certificate), so we can always set that
-            webhook.client_config = WebhookClientConfig {
-                service: Some(ServiceReference {
-                    name: options.webhook_service_name.to_owned(),
-                    namespace: options.webhook_namespace.to_owned(),
-                    path: Some(self.http_path()),
-                    port: Some(options.socket_addr.port().into()),
-                }),
-                // Here, ByteString takes care of encoding the provided content as base64.
-                ca_bundle: Some(new_ca_bundle.to_owned()),
-                url: None,
-            };
+            webhook.client_config =
+                get_webhook_client_config(options, new_ca_bundle.to_owned(), self.http_path());
         }
 
         let vwc_api: Api<ValidatingWebhookConfiguration> = Api::all(self.client.clone());
