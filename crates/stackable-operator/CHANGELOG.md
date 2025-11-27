@@ -6,8 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Support `objectOverrides`, which are a list of generic Kubernetes objects, which are merged onto the objects that the operator creates.
-  Alongside, a `deep_merger` module was added, which takes a Kubernetes object and a list of depp merged and applies them to the object ([#1118]).
+- Support `objectOverrides`, a list of generic Kubernetes objects, which are merged into the objects created by the operator.
+  Alongside, a `deep_merger` module was added, which takes a Kubernetes object and a list of overrides and merges them into the provided object ([#1118]).
 
 ### Changed
 
