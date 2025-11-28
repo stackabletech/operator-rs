@@ -8,7 +8,7 @@ use std::{
 #[cfg(doc)]
 use k8s_openapi::api::core::v1::{NodeSelector, Pod};
 use k8s_openapi::{
-    NamespaceResourceScope,
+    DeepMerge, NamespaceResourceScope,
     api::{
         apps::v1::{
             DaemonSet, DaemonSetSpec, Deployment, DeploymentSpec, StatefulSet, StatefulSetSpec,
@@ -38,6 +38,7 @@ use crate::{
         },
     },
     crd::listener,
+    deep_merger::{self, ObjectOverrides},
     kvp::{
         Label, LabelError, Labels,
         consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
@@ -87,6 +88,9 @@ pub enum Error {
         #[snafu(source(from(crate::client::Error, Box::new)))]
         source: Box<crate::client::Error>,
     },
+
+    #[snafu(display("failed to apply user-provided object overrides"))]
+    ApplyObjectOverrides { source: deep_merger::Error },
 }
 
 /// A cluster resource handled by [`ClusterResources`].
@@ -97,6 +101,7 @@ pub enum Error {
 /// it must be added to [`ClusterResources::delete_orphaned_resources`] as well.
 pub trait ClusterResource:
     Clone
+    + DeepMerge
     + Debug
     + DeserializeOwned
     + Resource<DynamicType = (), Scope = NamespaceResourceScope>
@@ -332,6 +337,7 @@ impl ClusterResource for Deployment {
 /// use serde::{Deserialize, Serialize};
 /// use stackable_operator::client::Client;
 /// use stackable_operator::cluster_resources::{self, ClusterResourceApplyStrategy, ClusterResources};
+/// use stackable_operator::deep_merger::ObjectOverrides;
 /// use stackable_operator::product_config_utils::ValidatedRoleConfigByPropertyKind;
 /// use stackable_operator::role_utils::Role;
 /// use std::sync::Arc;
@@ -348,7 +354,10 @@ impl ClusterResource for Deployment {
 ///     plural = "AppClusters",
 ///     namespaced,
 /// )]
-/// struct AppClusterSpec {}
+/// struct AppClusterSpec {
+///     #[serde(default)]
+///     pub object_overrides: ObjectOverrides,
+/// }
 ///
 /// enum Error {
 ///     CreateClusterResources {
@@ -371,6 +380,7 @@ impl ClusterResource for Deployment {
 ///         CONTROLLER_NAME,
 ///         &app.object_ref(&()),
 ///         ClusterResourceApplyStrategy::Default,
+///         app.spec.object_overrides.clone(),
 ///     )
 ///     .map_err(|source| Error::CreateClusterResources { source })?;
 ///
@@ -413,7 +423,7 @@ impl ClusterResource for Deployment {
 ///     Ok(Action::await_change())
 /// }
 /// ```
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct ClusterResources {
     /// The namespace of the cluster
     namespace: String,
@@ -442,6 +452,9 @@ pub struct ClusterResources {
     /// Strategy to manage how cluster resources are applied. Resources could be patched, merged
     /// or not applied at all depending on the strategy.
     apply_strategy: ClusterResourceApplyStrategy,
+
+    /// Arbitrary Kubernetes object overrides specified by the user via the CRD.
+    object_overrides: ObjectOverrides,
 }
 
 impl ClusterResources {
@@ -470,6 +483,7 @@ impl ClusterResources {
         controller_name: &str,
         cluster: &ObjectReference,
         apply_strategy: ClusterResourceApplyStrategy,
+        object_overrides: ObjectOverrides,
     ) -> Result<Self> {
         let namespace = cluster
             .namespace
@@ -494,6 +508,7 @@ impl ClusterResources {
             manager: format_full_controller_name(operator_name, controller_name),
             resource_ids: Default::default(),
             apply_strategy,
+            object_overrides,
         })
     }
 
@@ -563,7 +578,12 @@ impl ClusterResources {
                 .unwrap_or_else(|err| warn!("{}", err));
         }
 
-        let mutated = resource.maybe_mutate(&self.apply_strategy);
+        let mut mutated = resource.maybe_mutate(&self.apply_strategy);
+
+        // We apply the object overrides of the user at the very end to offer maximum flexibility.
+        self.object_overrides
+            .apply_to(&mut mutated)
+            .context(ApplyObjectOverridesSnafu)?;
 
         let patched_resource = self
             .apply_strategy
