@@ -1035,7 +1035,7 @@ volumeMounts:
 - mountPath: /stackable/gitssh-0
   name: ssh-keys-info-0
 "#,
-            serde_yaml::to_string(&git_sync_resources.git_sync_containers.get(0)).unwrap()
+            serde_yaml::to_string(&git_sync_resources.git_sync_containers.first()).unwrap()
         );
 
         assert_eq!(1, git_sync_resources.git_sync_init_containers.len());
