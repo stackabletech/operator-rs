@@ -44,6 +44,9 @@ pub enum Error {
     AddVolumeMount {
         source: crate::builder::pod::container::Error,
     },
+
+    #[snafu(display("failed to declare unique credentials"))]
+    MultipleCredentials,
 }
 
 impl GitSync {
@@ -114,6 +117,11 @@ impl GitSyncResources {
         let mut resources = GitSyncResources::default();
 
         for (i, git_sync) in git_syncs.iter().enumerate() {
+            if git_sync.credentials_secret.is_some() && git_sync.ssh_secret.is_some() {
+                // Gitsync will not allow the declaration of both ssh-key and password/token credentials
+                return Err(Error::MultipleCredentials);
+            }
+
             let mut env_vars = vec![];
             if let Some(git_credentials_secret) = &git_sync.credentials_secret {
                 env_vars.push(GitSyncResources::env_var_from_secret(
