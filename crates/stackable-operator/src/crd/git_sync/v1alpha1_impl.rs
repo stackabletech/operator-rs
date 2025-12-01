@@ -62,10 +62,6 @@ impl GitSync {
     pub(crate) fn default_wait() -> Duration {
         Duration::from_secs(20)
     }
-
-    pub(crate) fn default_ssh_known_hosts() -> bool {
-        true
-    }
 }
 
 /// Kubernetes resources generated from `GitSync` specifications which should be added to the Pod.
@@ -88,9 +84,6 @@ pub struct GitSyncResources {
 
     /// GitSync volumes containing the synchronized repository
     pub git_ssh_volumes: Vec<Volume>,
-
-    /// Volume mounts for the GitSync volumes
-    pub git_ssh_volume_mounts: Vec<VolumeMount>,
 }
 
 impl GitSyncResources {
@@ -146,12 +139,6 @@ impl GitSyncResources {
                     value_from: None,
                 });
             }
-            // TODO should we leave to the defaults?
-            // env_vars.push(EnvVar {
-            //     name: "GITSYNC_SSH_KNOWN_HOSTS".to_owned(),
-            //     value: Some(git_sync.ssh_known_hosts.to_string()),
-            //     value_from: None,
-            // });
 
             env_vars = insert_or_update_env_vars(&env_vars, extra_env_vars);
 
@@ -172,7 +159,17 @@ impl GitSyncResources {
 
             let mut git_sync_container_volume_mounts =
                 vec![git_sync_root_volume_mount, log_volume_mount];
+
             git_sync_container_volume_mounts.extend_from_slice(extra_volume_mounts);
+
+            if git_sync.ssh_secret.is_some() {
+                let ssh_mount_path = format!("{SSH_MOUNT_PATH_PREFIX}-{i}");
+                let ssh_volume_name = format!("{SSH_VOLUME_NAME_PREFIX}-{i}");
+
+                let ssh_volume_mount =
+                    VolumeMountBuilder::new(ssh_volume_name, ssh_mount_path).build();
+                git_sync_container_volume_mounts.push(ssh_volume_mount);
+            }
 
             let container = Self::create_git_sync_container(
                 &format!("{CONTAINER_NAME_PREFIX}-{i}"),
@@ -222,19 +219,11 @@ impl GitSyncResources {
 
             if let Some(get_ssh_secret) = &git_sync.ssh_secret {
                 let ssh_volume_name = format!("{SSH_VOLUME_NAME_PREFIX}-{i}");
-                let ssh_mount_path = format!("{SSH_MOUNT_PATH_PREFIX}-{i}");
 
                 let ssh_secret_volume = VolumeBuilder::new(&ssh_volume_name)
                     .with_secret(get_ssh_secret, false)
                     .build();
                 resources.git_ssh_volumes.push(ssh_secret_volume);
-
-                let ssh_secret_volume_mount =
-                    VolumeMountBuilder::new(ssh_volume_name, ssh_mount_path).build();
-
-                resources
-                    .git_ssh_volume_mounts
-                    .push(ssh_secret_volume_mount);
             }
         }
 
@@ -924,6 +913,211 @@ name: content-from-git-2
                 .git_content_folders_as_string()
                 .get(2)
                 .unwrap()
+        );
+    }
+
+    #[test]
+    fn test_git_sync_ssh() {
+        let git_sync_spec = r#"
+          # GitSync using SSH
+          - repo: ssh://git@github.com/stackabletech/repo.git
+            branch: trunk
+            gitFolder: ""
+            depth: 3
+            wait: 1m
+            sshSecret: git-sync-ssh
+            gitSyncConf:
+              --rev: HEAD
+              --git-config: http.sslCAInfo:/tmp/ca-cert/ca.crt
+          "#;
+
+        let git_syncs: Vec<GitSync> = yaml_from_str_singleton_map(git_sync_spec).unwrap();
+
+        let resolved_product_image = ResolvedProductImage {
+            image: "oci.stackable.tech/sdp/product:latest".to_string(),
+            app_version_label_value: "1.0.0-latest"
+                .parse()
+                .expect("static app version label is always valid"),
+            product_version: "1.0.0".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        };
+
+        let extra_env_vars = env_vars_from([("VAR1", "value1")]);
+
+        let extra_volume_mounts = [VolumeMount {
+            name: "extra-volume".to_string(),
+            mount_path: "/mnt/extra-volume".to_string(),
+            ..VolumeMount::default()
+        }];
+
+        let git_sync_resources = GitSyncResources::new(
+            &git_syncs,
+            &resolved_product_image,
+            &extra_env_vars,
+            &extra_volume_mounts,
+            "log-volume",
+            &validate(default_container_log_config()).unwrap(),
+        )
+        .unwrap();
+
+        assert!(git_sync_resources.is_git_sync_enabled());
+
+        assert_eq!(1, git_sync_resources.git_sync_containers.len());
+
+        assert_eq!(
+            r#"args:
+- |-
+  mkdir --parents /stackable/log/git-sync-0 && exec > >(tee /stackable/log/git-sync-0/container.stdout.log) 2> >(tee /stackable/log/git-sync-0/container.stderr.log >&2)
+
+  prepare_signal_handlers()
+  {
+      unset term_child_pid
+      unset term_kill_needed
+      trap 'handle_term_signal' TERM
+  }
+
+  handle_term_signal()
+  {
+      if [ "${term_child_pid}" ]; then
+          kill -TERM "${term_child_pid}" 2>/dev/null
+      else
+          term_kill_needed="yes"
+      fi
+  }
+
+  wait_for_termination()
+  {
+      set +e
+      term_child_pid=$1
+      if [[ -v term_kill_needed ]]; then
+          kill -TERM "${term_child_pid}" 2>/dev/null
+      fi
+      wait ${term_child_pid} 2>/dev/null
+      trap - TERM
+      wait ${term_child_pid} 2>/dev/null
+      set -e
+  }
+
+  prepare_signal_handlers
+  /stackable/git-sync --depth=3 --git-config='safe.directory:/tmp/git,http.sslCAInfo:/tmp/ca-cert/ca.crt' --link=current --one-time=false --period=60s --ref=trunk --repo=ssh://git@github.com/stackabletech/repo.git --rev=HEAD --root=/tmp/git &
+  wait_for_termination $!
+command:
+- /bin/bash
+- -x
+- -euo
+- pipefail
+- -c
+env:
+- name: GITSYNC_SSH_KEY_FILE
+  value: /stackable/gitssh-0/key
+- name: GITSYNC_SSH_KNOWN_HOSTS_FILE
+  value: /stackable/gitssh-0/knownHosts
+- name: VAR1
+  value: value1
+image: oci.stackable.tech/sdp/product:latest
+imagePullPolicy: Always
+name: git-sync-0
+resources:
+  limits:
+    cpu: 200m
+    memory: 64Mi
+  requests:
+    cpu: 100m
+    memory: 64Mi
+volumeMounts:
+- mountPath: /tmp/git
+  name: content-from-git-0
+- mountPath: /stackable/log
+  name: log-volume
+- mountPath: /mnt/extra-volume
+  name: extra-volume
+- mountPath: /stackable/gitssh-0
+  name: ssh-keys-info-0
+"#,
+            serde_yaml::to_string(&git_sync_resources.git_sync_containers.get(0)).unwrap()
+        );
+
+        assert_eq!(1, git_sync_resources.git_sync_init_containers.len());
+
+        assert_eq!(
+            r#"args:
+- |-
+  mkdir --parents /stackable/log/git-sync-0-init && exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2)
+  /stackable/git-sync --depth=3 --git-config='safe.directory:/tmp/git,http.sslCAInfo:/tmp/ca-cert/ca.crt' --link=current --one-time=true --period=60s --ref=trunk --repo=ssh://git@github.com/stackabletech/repo.git --rev=HEAD --root=/tmp/git
+command:
+- /bin/bash
+- -x
+- -euo
+- pipefail
+- -c
+env:
+- name: GITSYNC_SSH_KEY_FILE
+  value: /stackable/gitssh-0/key
+- name: GITSYNC_SSH_KNOWN_HOSTS_FILE
+  value: /stackable/gitssh-0/knownHosts
+- name: VAR1
+  value: value1
+image: oci.stackable.tech/sdp/product:latest
+imagePullPolicy: Always
+name: git-sync-0-init
+resources:
+  limits:
+    cpu: 200m
+    memory: 64Mi
+  requests:
+    cpu: 100m
+    memory: 64Mi
+volumeMounts:
+- mountPath: /tmp/git
+  name: content-from-git-0
+- mountPath: /stackable/log
+  name: log-volume
+- mountPath: /mnt/extra-volume
+  name: extra-volume
+- mountPath: /stackable/gitssh-0
+  name: ssh-keys-info-0
+"#,
+            serde_yaml::to_string(&git_sync_resources.git_sync_init_containers.first()).unwrap()
+        );
+
+        assert_eq!(1, git_sync_resources.git_content_volumes.len());
+
+        assert_eq!(
+            "emptyDir: {}
+name: content-from-git-0
+",
+            serde_yaml::to_string(&git_sync_resources.git_content_volumes.first()).unwrap()
+        );
+
+        assert_eq!(1, git_sync_resources.git_content_volume_mounts.len());
+
+        assert_eq!(
+            "mountPath: /stackable/app/git-0
+name: content-from-git-0
+",
+            serde_yaml::to_string(&git_sync_resources.git_content_volume_mounts.first()).unwrap()
+        );
+
+        assert_eq!(1, git_sync_resources.git_content_folders.len());
+
+        assert_eq!(
+            "/stackable/app/git-0/current/",
+            git_sync_resources
+                .git_content_folders_as_string()
+                .first()
+                .unwrap()
+        );
+
+        assert_eq!(1, git_sync_resources.git_ssh_volumes.len());
+
+        assert_eq!(
+            "name: ssh-keys-info-0
+secret:
+  optional: false
+  secretName: git-sync-ssh
+",
+            serde_yaml::to_string(&git_sync_resources.git_ssh_volumes.first()).unwrap()
         );
     }
 }

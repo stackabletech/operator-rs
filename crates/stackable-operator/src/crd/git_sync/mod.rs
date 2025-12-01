@@ -20,7 +20,7 @@ pub mod versioned {
     #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct GitSync {
-        /// The git repository URL that will be cloned, for example: `https://github.com/stackabletech/airflow-operator`.
+        /// The git repository URL that will be cloned, for example: `https://github.com/stackabletech/airflow-operator` or `ssh://git@github.com:stackable-airflow/dags.git`.
         pub repo: Url,
 
         /// The branch to clone; defaults to `main`.
@@ -51,6 +51,7 @@ pub mod versioned {
         /// The referenced Secret must include two fields: `user` and `password`.
         /// The `password` field can either be an actual password (not recommended) or a GitHub token,
         /// as described in the git-sync [documentation].
+        /// This cannot be provided if `ssh_secret` is also provided.
         ///
         /// [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
         pub credentials_secret: Option<String>,
@@ -67,11 +68,9 @@ pub mod versioned {
         /// The name of the Secret used for SSH access to the repository.
         ///
         /// The referenced Secret must include two fields: `key` and `knownHosts`.
+        /// This cannot be provided if `credentials_secret` is also provided.
         ///
         /// [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
         pub ssh_secret: Option<String>,
-
-        #[serde(default = "GitSync::default_ssh_known_hosts")]
-        pub ssh_known_hosts: bool,
     }
 }
