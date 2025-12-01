@@ -13,12 +13,14 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: `ClusterResources` now requires the objects added to implement `DeepMerge`.
   This is very likely a stackable-operator internal change, but technically breaking ([#1118]).
+- Add support for the SSH protocol for pulling git content ([#1121]).
 
 ### Removed
 
 - BREAKING: `ClusterResources` no longer derives `Eq` ([#1118]).
 
 [#1118]: https://github.com/stackabletech/operator-rs/pull/1118
+[#1121]: https://github.com/stackabletech/operator-rs/pull/1121
 
 ## [0.100.3] - 2025-10-31
 
