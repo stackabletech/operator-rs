@@ -84,6 +84,11 @@ url = { version = "2.5.2", features = ["serde"] }
 x509-cert = { version = "0.2.5", features = ["builder"] }
 zeroize = "1.8.1"
 
+[workspace.lints.clippy]
+unwrap_in_result = "deny"
+unwrap_used = "deny"
+panic = "deny"
+
 # Use O3 in tests to improve the RSA key generation speed in the stackable-certs crate
 [profile.test.package]
 stackable-certs.opt-level = 3

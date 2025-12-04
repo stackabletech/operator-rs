@@ -23,3 +23,6 @@ snafu.workspace = true
 insta.workspace = true
 k8s-openapi.workspace = true
 kube.workspace = true
+
+[lints]
+workspace = true

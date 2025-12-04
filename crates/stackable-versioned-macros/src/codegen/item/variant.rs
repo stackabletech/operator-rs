@@ -66,7 +66,10 @@ impl VersionedVariant {
 
         match &self.changes {
             // NOTE (@Techassi): `unwrap_or_else` used instead of `expect`.
-            // See: https://rust-lang.github.io/rust-clippy/master/index.html#/expect_fun_call
+            // See: https://rust-lang.github.io/rust-clippy/master/index.html#expect_fun_call
+            // We could use expect here, but we would lose the version in the panic message. We need to allow
+            // a lint in either case anyway.
+            #[allow(clippy::panic)]
             Some(changes) => match changes.get(&version.inner).unwrap_or_else(|| {
                 panic!(
                     "internal error: chain must contain container version {}",

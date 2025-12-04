@@ -110,7 +110,7 @@ impl PartialEq for Error {
                     x509_cert::builder::Error::Signature(_),
                     x509_cert::builder::Error::Signature(_),
                 ) => panic!(
-                    "it is impossible to compare the opaque Error contained witin signature::error::Error"
+                    "it is impossible to compare the opaque Error contained within signature::error::Error"
                 ),
                 _ => false,
             },
@@ -205,6 +205,16 @@ where
     /// validity, this function offers complete control over these parameters.
     /// If this level of control is not needed, use [`CertificateAuthority::new`]
     /// instead.
+    //
+    // SAFETY: We purposefully allow the `clippy::unwrap_in_result` lint below in this function.
+    // We can use expect here, because the subject name is defined as a constant which must be able
+    // to be parsed.
+    //
+    // FIXME (@Techassi): This attribute can be used on individual unwrap and expect calls since
+    // Rust 1.91.0. We should move this attribute to not contaminate an unnecessarily large scope
+    // once we bump the toolchain to 1.91.0.
+    // See https://github.com/rust-lang/rust-clippy/pull/15445
+    #[allow(clippy::unwrap_in_result)]
     #[instrument(name = "create_certificate_authority_with", skip(signing_key_pair))]
     pub fn new_with(signing_key_pair: S, serial_number: u64, validity: Duration) -> Result<Self> {
         let serial_number = SerialNumber::from(serial_number);
@@ -214,7 +224,7 @@ where
         // created by us should contain the same subject consisting a common set
         // of distinguished names (DNs).
         let subject = Name::from_str(SDP_ROOT_CA_SUBJECT)
-            .expect("the SDP_ROOT_CA_SUBJECT must be a valid subject");
+            .expect("the constant SDP_ROOT_CA_SUBJECT must be a valid subject");
 
         let spki_pem = signing_key_pair
             .verifying_key()
@@ -511,7 +521,7 @@ mod tests {
 
     #[tokio::test]
     async fn rsa_key_generation() {
-        let mut ca = CertificateAuthority::new_rsa().unwrap();
+        let mut ca = CertificateAuthority::new_rsa().expect("must be able to create RSA-based CA");
         let cert = ca
             .generate_rsa_leaf_certificate("Product", "pod", [TEST_SAN], TEST_CERT_LIFETIME)
             .expect(
@@ -523,7 +533,9 @@ mod tests {
 
     #[tokio::test]
     async fn ecdsa_key_generation() {
-        let mut ca = CertificateAuthority::new_ecdsa().unwrap();
+        let mut ca =
+            CertificateAuthority::new_ecdsa().expect("must be able to create ECDSA-based CA");
+
         let cert = ca
             .generate_ecdsa_leaf_certificate("Product", "pod", [TEST_SAN], TEST_CERT_LIFETIME)
             .expect(
@@ -535,11 +547,11 @@ mod tests {
 
     fn assert_cert_attributes(cert: &Certificate) {
         let cert = &cert.tbs_certificate;
+        let expected_subject = Name::from_str("CN=Product Certificate for pod")
+            .expect("constant subject must be valid");
+
         // Test subject
-        assert_eq!(
-            cert.subject,
-            Name::from_str("CN=Product Certificate for pod").unwrap()
-        );
+        assert_eq!(cert.subject, expected_subject);
 
         // Test SAN extension is present
         let extensions = cert.extensions.as_ref().expect("cert must have extensions");

@@ -26,7 +26,10 @@ pub fn roundtrip_conversion_review(
     response_review: ConversionReview,
     desired_api_version: PersonVersion,
 ) -> ConversionReview {
-    let response = response_review.response.unwrap();
+    let response = response_review
+        .response
+        .expect("conversion review must have response");
+
     ConversionReview {
         types: response_review.types,
         request: Some(ConversionRequest {

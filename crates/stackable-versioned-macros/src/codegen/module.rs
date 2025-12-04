@@ -192,9 +192,11 @@ impl Module {
             for container in &self.containers {
                 let versioned = inner_and_between_tokens
                     .get_mut(container.get_original_ident())
-                    .unwrap();
-                let VersionedContainerTokens { inner, between } =
-                    versioned.remove(&version.inner).unwrap();
+                    .expect("inner_and_between_tokens map must contain versioned container tokens");
+
+                let VersionedContainerTokens { inner, between } = versioned
+                    .remove(&version.inner)
+                    .expect("versioned container tokens map must contain tokens for version");
 
                 inner_tokens.extend(inner);
                 between_tokens.extend(between);
