@@ -75,6 +75,77 @@ spec:
               domainName:
                 description: A validated domain name type conforming to RFC 1123, so e.g. not an IP address
                 type: string
+              gitSync:
+                properties:
+                  branch:
+                    default: main
+                    description: |-
+                      The branch to clone; defaults to `main`.
+
+                      Since git-sync v4.x.x this field is mapped to the flag `--ref`.
+                    type: string
+                  credentialsSecret:
+                    description: |-
+                      The name of the Secret used to access the repository if it is not public.
+
+                      The referenced Secret must include two fields: `user` and `password`.
+                      The `password` field can either be an actual password (not recommended) or a GitHub token,
+                      as described in the git-sync [documentation].
+                      This cannot be provided if `ssh_secret` is also provided.
+
+                      [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
+                    nullable: true
+                    type: string
+                  depth:
+                    default: 1
+                    description: The depth of syncing, i.e. the number of commits to clone; defaults to 1.
+                    format: uint32
+                    minimum: 0.0
+                    type: integer
+                  gitFolder:
+                    default: /
+                    description: |-
+                      Location in the Git repository containing the resource; defaults to the root folder.
+
+                      It can optionally start with `/`, however, no trailing slash is recommended.
+                      An empty string (``) or slash (`/`) corresponds to the root folder in Git.
+                    type: string
+                  gitSyncConf:
+                    additionalProperties:
+                      type: string
+                    default: {}
+                    description: |-
+                      A map of optional configuration settings that are listed in the git-sync [documentation].
+
+                      Also read the git-sync [example] in our documentation. These settings are not verified.
+
+                      [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
+                      [example]: https://docs.stackable.tech/home/nightly/airflow/usage-guide/mounting-dags#_example
+                    type: object
+                  repo:
+                    description: 'The git repository URL that will be cloned, for example: `https://github.com/stackabletech/airflow-operator` or `ssh://git@github.com:stackable-airflow/dags.git`.'
+                    format: uri
+                    type: string
+                  sshSecret:
+                    description: |-
+                      The name of the Secret used for SSH access to the repository.
+
+                      The referenced Secret must include two fields: `key` and `knownHosts`.
+                      This cannot be provided if `credentials_secret` is also provided.
+
+                      [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
+                    nullable: true
+                    type: string
+                  wait:
+                    default: 20s
+                    description: |-
+                      The synchronization interval, e.g. `20s` or `5m`; defaults to `20s`.
+
+                      Since git-sync v4.x.x this field is mapped to the flag `--period`.
+                    type: string
+                required:
+                - repo
+                type: object
               hostName:
                 type: string
               kerberosRealmName:
@@ -1402,6 +1473,7 @@ spec:
             - clientAuthenticationDetails
             - clusterOperation
             - domainName
+            - gitSync
             - hostName
             - kerberosRealmName
             - opaConfig
