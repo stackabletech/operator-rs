@@ -76,6 +76,11 @@ spec:
                 description: A validated domain name type conforming to RFC 1123, so e.g. not an IP address
                 type: string
               gitSync:
+                anyOf:
+                - required:
+                  - credentialsSecret
+                - required:
+                  - sshSecret
                 properties:
                   branch:
                     default: main
@@ -91,10 +96,8 @@ spec:
                       The referenced Secret must include two fields: `user` and `password`.
                       The `password` field can either be an actual password (not recommended) or a GitHub token,
                       as described in the git-sync [documentation].
-                      This cannot be provided if `ssh_secret` is also provided.
 
                       [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
-                    nullable: true
                     type: string
                   depth:
                     default: 1
@@ -131,10 +134,8 @@ spec:
                       The name of the Secret used for SSH access to the repository.
 
                       The referenced Secret must include two fields: `key` and `knownHosts`.
-                      This cannot be provided if `credentials_secret` is also provided.
 
                       [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
-                    nullable: true
                     type: string
                   wait:
                     default: 20s

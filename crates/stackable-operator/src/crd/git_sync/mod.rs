@@ -46,16 +46,6 @@ pub mod versioned {
         #[serde(default = "GitSync::default_wait")]
         pub wait: Duration,
 
-        /// The name of the Secret used to access the repository if it is not public.
-        ///
-        /// The referenced Secret must include two fields: `user` and `password`.
-        /// The `password` field can either be an actual password (not recommended) or a GitHub token,
-        /// as described in the git-sync [documentation].
-        /// This cannot be provided if `ssh_secret` is also provided.
-        ///
-        /// [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
-        pub credentials_secret: Option<String>,
-
         /// A map of optional configuration settings that are listed in the git-sync [documentation].
         ///
         /// Also read the git-sync [example] in our documentation. These settings are not verified.
@@ -65,12 +55,36 @@ pub mod versioned {
         #[serde(default)]
         pub git_sync_conf: BTreeMap<String, String>,
 
-        /// The name of the Secret used for SSH access to the repository.
-        ///
-        /// The referenced Secret must include two fields: `key` and `knownHosts`.
-        /// This cannot be provided if `credentials_secret` is also provided.
-        ///
-        /// [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
-        pub ssh_secret: Option<String>,
+        #[serde(flatten)]
+        pub access_secret: Option<AccessSecret>,
+    }
+
+    #[derive(strum::Display, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(untagged)]
+    #[serde(rename_all = "camelCase")]
+    #[schemars(rename_all = "camelCase")]
+    pub enum AccessSecret {
+        Credentials {
+            /// The name of the Secret used to access the repository if it is not public.
+            ///
+            /// The referenced Secret must include two fields: `user` and `password`.
+            /// The `password` field can either be an actual password (not recommended) or a GitHub token,
+            /// as described in the git-sync [documentation].
+            ///
+            /// [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
+            #[serde(rename = "credentialsSecret")]
+            #[schemars(rename = "credentialsSecret")]
+            credentials_secret: String,
+        },
+        Ssh {
+            /// The name of the Secret used for SSH access to the repository.
+            ///
+            /// The referenced Secret must include two fields: `key` and `knownHosts`.
+            ///
+            /// [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
+            #[serde(rename = "sshSecret")]
+            #[schemars(rename = "sshSecret")]
+            ssh_secret: String,
+        },
     }
 }
