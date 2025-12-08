@@ -15,6 +15,7 @@ pub mod config;
 pub mod constants;
 pub mod cpu;
 pub mod crd;
+pub mod deep_merger;
 pub mod eos;
 pub mod helm;
 pub mod iter;
