@@ -13,12 +13,15 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: `ClusterResources` now requires the objects added to implement `DeepMerge`.
   This is very likely a stackable-operator internal change, but technically breaking ([#1118]).
+- Depend on the patched version of kube-rs available at <https://github.com/stackabletech/kube-rs>,
+  ensuring the operators automatically benefit from the fixes ([#1124]).
 
 ### Removed
 
 - BREAKING: `ClusterResources` no longer derives `Eq` ([#1118]).
 
 [#1118]: https://github.com/stackabletech/operator-rs/pull/1118
+[#1124]: https://github.com/stackabletech/operator-rs/pull/1124
 
 ## [0.100.3] - 2025-10-31
 
