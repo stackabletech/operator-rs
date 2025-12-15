@@ -1,5 +1,5 @@
 use darling::{Error, FromField, FromMeta, Result, util::Flag};
-use syn::{Attribute, Ident};
+use syn::{Attribute, Ident, spanned::Spanned};
 
 use crate::{
     attrs::item::CommonItemAttributes,
@@ -58,11 +58,12 @@ impl FieldAttributes {
     ///
     /// Internally, it calls out to other specialized validation functions.
     fn validate(self) -> Result<Self> {
-        let ident = self
-            .ident
-            .as_ref()
-            .expect("internal error: field must have an ident")
-            .clone();
+        let field_span = self.ident.span();
+
+        let ident = self.ident.clone().ok_or_else(|| {
+            darling::Error::custom("internal error: field must have an ident")
+                .with_span(&field_span)
+        })?;
 
         self.common
             .validate(FieldIdents::from(ident), &self.attrs)?;

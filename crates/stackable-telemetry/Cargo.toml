@@ -34,6 +34,9 @@ tracing-opentelemetry.workspace = true
 rstest.workspace = true
 stackable-webhook = { path = "../stackable-webhook" }
 
+[lints]
+workspace = true
+
 [package.metadata.cargo-udeps.ignore]
 # Required for doc tests in stackable-telemetry
 development = ["stackable-webhook"]
