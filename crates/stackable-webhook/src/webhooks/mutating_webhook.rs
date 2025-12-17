@@ -204,6 +204,8 @@ where
 
         let mwc_api: Api<MutatingWebhookConfiguration> = Api::all(self.client.clone());
         // Other than with the CRDs we don't need to force-apply the MutatingWebhookConfiguration
+        // This is because the operators are, have been (and likely will be) the only ones creating
+        // them.
         let patch = Patch::Apply(&mutating_webhook_configuration);
         let patch_params = PatchParams::apply(&self.field_manager);
 
