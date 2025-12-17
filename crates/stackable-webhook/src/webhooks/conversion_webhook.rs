@@ -59,16 +59,15 @@ impl<H> ConversionWebhook<H> {
     ) -> (Self, oneshot::Receiver<()>) {
         let (initial_reconcile_tx, initial_reconcile_rx) = oneshot::channel();
 
-        (
-            Self {
-                crds_and_handlers: crds_and_handlers.into_iter().collect(),
-                disable_crd_maintenance,
-                client,
-                field_manager,
-                initial_reconcile_tx: Some(initial_reconcile_tx),
-            },
-            initial_reconcile_rx,
-        )
+        let new = Self {
+            crds_and_handlers: crds_and_handlers.into_iter().collect(),
+            disable_crd_maintenance,
+            client,
+            field_manager,
+            initial_reconcile_tx: Some(initial_reconcile_tx),
+        };
+
+        (new, initial_reconcile_rx)
     }
 
     #[instrument(
