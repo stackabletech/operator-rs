@@ -170,6 +170,10 @@ where
         router
     }
 
+    fn ignore_certificate_rotation(&self) -> bool {
+        self.disable_crd_maintenance
+    }
+
     #[instrument(skip(self))]
     async fn handle_certificate_rotation(
         &mut self,
@@ -177,10 +181,6 @@ where
         new_ca_bundle: &ByteString,
         options: &WebhookServerOptions,
     ) -> Result<(), WebhookError> {
-        if self.disable_crd_maintenance {
-            return Ok(());
-        }
-
         let crd_api: Api<CustomResourceDefinition> = Api::all(self.client.clone());
         for (crd, _) in &self.crds_and_handlers {
             self.reconcile_crd(crd.clone(), &crd_api, new_ca_bundle, options)

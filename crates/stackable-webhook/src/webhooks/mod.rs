@@ -44,6 +44,9 @@ pub trait Webhook {
     /// resulting [`Router`].
     fn register_routes(&self, router: Router) -> Router;
 
+    /// Wether the [`Self::handle_certificate_rotation`] function should be called or not
+    fn ignore_certificate_rotation(&self) -> bool;
+
     /// The HTTPS server periodically rotates it's certificate.
     ///
     /// Typically, some caller of the webhook (e.g. Kubernetes) needs to know the certificate to be

@@ -217,6 +217,10 @@ impl WebhookServer {
                 let ca_bundle = ByteString(ca_bundle.as_bytes().to_vec());
 
                 for webhook in webhooks.iter_mut() {
+                    if webhook.ignore_certificate_rotation() {
+                        continue;
+                    }
+
                     webhook
                         .handle_certificate_rotation(&cert, &ca_bundle, &options)
                         .await

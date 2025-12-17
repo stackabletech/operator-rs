@@ -119,6 +119,10 @@ where
         router.route(&route, post(handler_fn))
     }
 
+    fn ignore_certificate_rotation(&self) -> bool {
+        self.disable_validating_webhook_configuration_maintenance
+    }
+
     #[instrument(skip(self))]
     async fn handle_certificate_rotation(
         &mut self,
@@ -126,10 +130,6 @@ where
         new_ca_bundle: &ByteString,
         options: &WebhookServerOptions,
     ) -> Result<(), WebhookError> {
-        if self.disable_validating_webhook_configuration_maintenance {
-            return Ok(());
-        }
-
         let mut validating_webhook_configuration = self.validating_webhook_configuration.clone();
         let vwc_name = validating_webhook_configuration.name_any();
         tracing::info!(
