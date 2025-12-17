@@ -59,7 +59,7 @@ pub trait Webhook {
 
 /// Returns the client config that can be used in admission webhooks.
 ///
-/// It is used to concat the correct HTTP endpoint, which is calculated from the given parameters.
+/// It is used to contact the correct HTTP endpoint, which is determined from the given parameters.
 /// (CRD conversions require a similar, but different, client config).
 fn get_webhook_client_config(
     options: &WebhookServerOptions,
