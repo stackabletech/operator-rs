@@ -57,13 +57,13 @@ pub enum MutatingWebhookError {
 /// // The context of the controller, e.g. contains a Kubernetes client
 /// let ctx = Arc::new(());
 /// // Read in from user input, e.g. CLI arguments
-/// let disable_restarter_mutating_webhook = false;
+/// let disable_mutating_webhook_configuration_maintenance = false;
 ///
 /// let mutating_webhook = Box::new(MutatingWebhook::new(
 ///     get_mutating_webhook_configuration(),
 ///     my_handler,
 ///     ctx,
-///     disable_restarter_mutating_webhook,
+///     disable_mutating_webhook_configuration_maintenance,
 ///     client,
 ///     "my-field-manager".to_owned(),
 /// ));
@@ -95,25 +95,37 @@ pub enum MutatingWebhookError {
 /// }
 /// ```
 pub struct MutatingWebhook<H, S, R> {
-    mutating_webhook_configuration: MutatingWebhookConfiguration,
-    handler: H,
-    handler_state: Arc<S>,
-    _resource: PhantomData<R>,
-
-    disable_mutating_webhook_configuration_maintenance: bool,
-    client: Client,
-
-    /// The field manager used when maintaining the MutatingWebhookConfigurations.
-    field_manager: String,
-}
-
-impl<H, S, R> MutatingWebhook<H, S, R> {
-    /// All webhooks need to set the admissionReviewVersions to `["v1"]`, as this mutating webhook
-    /// only supports that version! A failure to do so will result in a panic.
+    /// The [`MutatingWebhookConfiguration`] that is applied to the Kubernetes cluster.
     ///
     /// Your [`MutatingWebhookConfiguration`] can contain 0..n webhooks, but it is recommended to
     /// only have a single entry in there, as the clientConfig of all entries will be set to the
     /// same service, port and HTTP path.
+    ///
+    /// All webhooks need to set the `admissionReviewVersions` to `["v1"]`, as this mutating webhook
+    /// only supports that version! A failure to do so will result in a panic during the
+    /// [`MutatingWebhook`] creation.
+    mutating_webhook_configuration: MutatingWebhookConfiguration,
+
+    /// The async handler that get's a [`AdmissionRequest`] and returns an [`AdmissionResponse`]
+    handler: H,
+
+    /// The internal state of the webhook. You can define yourself what exactly this state is.
+    handler_state: Arc<S>,
+
+    /// This field is not needed, it only tracks the type of the Kubernetes resource we are mutating
+    _resource: PhantomData<R>,
+
+    /// Whether MutatingWebhookConfigurations should be maintained
+    disable_mutating_webhook_configuration_maintenance: bool,
+
+    /// The Kubernetes client used to maintain the MutatingWebhookConfigurations
+    client: Client,
+
+    /// The field manager used when maintaining the MutatingWebhookConfigurations
+    field_manager: String,
+}
+
+impl<H, S, R> MutatingWebhook<H, S, R> {
     pub fn new(
         mutating_webhook_configuration: MutatingWebhookConfiguration,
         handler: H,

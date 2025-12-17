@@ -35,12 +35,30 @@ pub enum ValidatingWebhookError {
 ///
 /// TODO
 pub struct ValidatingWebhook<H, S, R> {
+    /// The [`ValidatingWebhookConfiguration`] that is applied to the Kubernetes cluster.
+    ///
+    /// Your [`ValidatingWebhookConfiguration`] can contain 0..n webhooks, but it is recommended to
+    /// only have a single entry in there, as the clientConfig of all entries will be set to the
+    /// same service, port and HTTP path.
+    ///
+    /// All webhooks need to set the `admissionReviewVersions` to `["v1"]`, as this validating webhook
+    /// only supports that version! A failure to do so will result in a panic during the
+    /// [`ValidatingWebhook`] creation.
     validating_webhook_configuration: ValidatingWebhookConfiguration,
+
+    /// The async handler that get's a [`AdmissionRequest`] and returns an [`AdmissionResponse`]
     handler: H,
+
+    /// The internal state of the webhook. You can define yourself what exactly this state is.
     handler_state: Arc<S>,
+
+    /// This field is not needed, it only tracks the type of the Kubernetes resource we are mutating
     _resource: PhantomData<R>,
 
+    /// Whether ValidatingWebhookConfigurations should be maintained
     disable_validating_webhook_configuration_maintenance: bool,
+
+    /// The Kubernetes client used to maintain the MutatingWebhookConfigurations
     client: Client,
 
     /// The field manager used when maintaining the ValidatingWebhookConfigurations.
@@ -48,12 +66,6 @@ pub struct ValidatingWebhook<H, S, R> {
 }
 
 impl<H, S, R> ValidatingWebhook<H, S, R> {
-    /// All webhooks need to set the admissionReviewVersions to `["v1"]`, as this validating webhook
-    /// only supports that version! A failure to do so will result in a panic.
-    ///
-    /// Your [`ValidatingWebhookConfiguration`] can contain 0..n webhooks, but it is recommended to
-    /// only have a single entry in there, as the clientConfig of all entries will be set to the
-    /// same service, port and HTTP path.
     pub fn new(
         validating_webhook_configuration: ValidatingWebhookConfiguration,
         handler: H,
@@ -149,6 +161,8 @@ where
 
         let vwc_api: Api<ValidatingWebhookConfiguration> = Api::all(self.client.clone());
         // Other than with the CRDs we don't need to force-apply the ValidatingWebhookConfiguration
+        // This is because the operators are, have been (and likely will be) the only ones creating
+        // them.
         let patch = Patch::Apply(&validating_webhook_configuration);
         let patch_params = PatchParams::apply(&self.field_manager);
 

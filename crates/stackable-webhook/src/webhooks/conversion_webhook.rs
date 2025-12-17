@@ -39,11 +39,18 @@ pub enum ConversionWebhookError {
 }
 
 pub struct ConversionWebhook<H> {
+    /// The list of CRDs and their according handlers, which take and return a [`ConversionReview`]
     crds_and_handlers: Vec<(CustomResourceDefinition, H)>,
+
+    /// Whether CRDs should be maintained
     disable_crd_maintenance: bool,
+
+    /// The Kubernetes client used to maintain the CRDs
     client: Client,
-    /// The field manager used when maintaining the CRDs.
+
+    /// The field manager used when maintaining the CRDs
     field_manager: String,
+
     // This channel can only be used exactly once. The sender's send method consumes self, and
     // as such, the sender is wrapped in an Option to be able to call take to consume the inner
     // value.
