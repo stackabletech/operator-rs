@@ -155,7 +155,8 @@ where
     H: FnOnce(ConversionReview) -> ConversionReview + Clone + Send + Sync + 'static,
 {
     fn register_routes(&self, mut router: Router) -> Router {
-        for (crd, handler) in self.crds_and_handlers.clone() {
+        for (crd, handler) in &self.crds_and_handlers {
+            let handler = handler.clone();
             let crd_name = crd.name_any();
             let handler_fn = |Json(review): Json<ConversionReview>| async {
                 let review = handler(review);
