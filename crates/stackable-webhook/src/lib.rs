@@ -209,20 +209,18 @@ impl WebhookServer {
             .map_err(|err| WebhookServerError::RunTlsServer { source: err });
 
         let cert_update_loop = async {
-            loop {
-                while let Some(cert) = cert_rx.recv().await {
-                    // The caBundle needs to be provided as a base64-encoded PEM envelope.
-                    let ca_bundle = cert
-                        .to_pem(LineEnding::LF)
-                        .context(EncodeCertificateAuthorityAsPemSnafu)?;
-                    let ca_bundle = ByteString(ca_bundle.as_bytes().to_vec());
+            while let Some(cert) = cert_rx.recv().await {
+                // The caBundle needs to be provided as a base64-encoded PEM envelope.
+                let ca_bundle = cert
+                    .to_pem(LineEnding::LF)
+                    .context(EncodeCertificateAuthorityAsPemSnafu)?;
+                let ca_bundle = ByteString(ca_bundle.as_bytes().to_vec());
 
-                    for webhook in webhooks.iter_mut() {
-                        webhook
-                            .handle_certificate_rotation(&cert, &ca_bundle, &options)
-                            .await
-                            .context(UpdateCertificateSnafu)?;
-                    }
+                for webhook in webhooks.iter_mut() {
+                    webhook
+                        .handle_certificate_rotation(&cert, &ca_bundle, &options)
+                        .await
+                        .context(UpdateCertificateSnafu)?;
                 }
             }
 
