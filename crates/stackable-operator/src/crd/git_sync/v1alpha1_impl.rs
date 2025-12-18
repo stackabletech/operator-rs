@@ -44,9 +44,6 @@ pub enum Error {
     AddVolumeMount {
         source: crate::builder::pod::container::Error,
     },
-
-    #[snafu(display("failed to declare unique credentials"))]
-    MultipleCredentials,
 }
 
 impl GitSync {
