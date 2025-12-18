@@ -116,9 +116,8 @@ impl GitSyncResources {
         for (i, git_sync) in git_syncs.iter().enumerate() {
             let mut env_vars = vec![];
 
-            if let Some(Credentials::BasicAuth {
-                basic_auth_secret_name,
-            }) = &git_sync.credentials
+            if let Some(Credentials::BasicAuthSecretName(basic_auth_secret_name)) =
+                &git_sync.credentials
             {
                 env_vars.push(GitSyncResources::env_var_from_secret(
                     "GITSYNC_USERNAME",
@@ -131,7 +130,7 @@ impl GitSyncResources {
                     "password",
                 ));
             }
-            if let Some(Credentials::Ssh { .. }) = git_sync.credentials {
+            if let Some(Credentials::SshPrivateKeySecretName { .. }) = git_sync.credentials {
                 env_vars.push(EnvVar {
                     name: "GITSYNC_SSH_KEY_FILE".to_owned(),
                     value: Some(format!("{SSH_MOUNT_PATH_PREFIX}-{i}/key").to_owned()),
@@ -166,7 +165,7 @@ impl GitSyncResources {
 
             git_sync_container_volume_mounts.extend_from_slice(extra_volume_mounts);
 
-            if matches!(git_sync.credentials, Some(Credentials::Ssh { .. })) {
+            if let Some(Credentials::SshPrivateKeySecretName(_)) = git_sync.credentials {
                 let ssh_mount_path = format!("{SSH_MOUNT_PATH_PREFIX}-{i}");
                 let ssh_volume_name = format!("{SSH_VOLUME_NAME_PREFIX}-{i}");
 
@@ -221,9 +220,8 @@ impl GitSyncResources {
                 .push(git_content_volume_mount);
             resources.git_content_folders.push(git_content_folder);
 
-            if let Some(Credentials::Ssh {
-                ssh_private_key_secret_name,
-            }) = &git_sync.credentials
+            if let Some(Credentials::SshPrivateKeySecretName(ssh_private_key_secret_name)) =
+                &git_sync.credentials
             {
                 let ssh_volume_name = format!("{SSH_VOLUME_NAME_PREFIX}-{i}");
 

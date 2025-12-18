@@ -63,27 +63,19 @@ pub mod versioned {
     #[serde(rename_all = "camelCase")]
     #[schemars(rename_all = "camelCase")]
     pub enum Credentials {
-        BasicAuth {
-            /// The name of the Secret used to access the repository via Basic Authentication if it is not public.
-            ///
-            /// The referenced Secret must include two fields: `user` and `password`.
-            /// The `password` field can either be an actual password (not recommended) or a GitHub token,
-            /// as described in the git-sync [documentation].
-            ///
-            /// [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
-            #[serde(rename = "basicAuthSecretName")]
-            #[schemars(rename = "basicAuthSecretName")]
-            basic_auth_secret_name: String,
-        },
-        Ssh {
-            /// The name of the Secret used for SSH access to the repository.
-            ///
-            /// The referenced Secret must include two fields: `key` and `knownHosts`.
-            ///
-            /// [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
-            #[serde(rename = "sshPrivateKeySecretName")]
-            #[schemars(rename = "sshPrivateKeySecretName")]
-            ssh_private_key_secret_name: String,
-        },
+        /// The name of the Secret used to access the repository via Basic Authentication if it is not public.
+        ///
+        /// The referenced Secret must include two fields: `user` and `password`.
+        /// The `password` field can either be an actual password (not recommended) or a GitHub token,
+        /// as described in the git-sync [documentation].
+        ///
+        /// [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
+        BasicAuthSecretName(String),
+        /// The name of the Secret used for SSH access to the repository.
+        ///
+        /// The referenced Secret must include two fields: `key` and `knownHosts`.
+        ///
+        /// [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
+        SshPrivateKeySecretName(String),
     }
 }

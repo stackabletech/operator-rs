@@ -89,38 +89,28 @@ spec:
                     nullable: true
                     oneOf:
                     - required:
-                      - basicAuth
+                      - basicAuthSecretName
                     - required:
-                      - ssh
+                      - sshPrivateKeySecretName
                     properties:
-                      basicAuth:
-                        properties:
-                          basicAuthSecretName:
-                            description: |-
-                              The name of the Secret used to access the repository via Basic Authentication if it is not public.
+                      basicAuthSecretName:
+                        description: |-
+                          The name of the Secret used to access the repository via Basic Authentication if it is not public.
 
-                              The referenced Secret must include two fields: `user` and `password`.
-                              The `password` field can either be an actual password (not recommended) or a GitHub token,
-                              as described in the git-sync [documentation].
+                          The referenced Secret must include two fields: `user` and `password`.
+                          The `password` field can either be an actual password (not recommended) or a GitHub token,
+                          as described in the git-sync [documentation].
 
-                              [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
-                            type: string
-                        required:
-                        - basicAuthSecretName
-                        type: object
-                      ssh:
-                        properties:
-                          sshPrivateKeySecretName:
-                            description: |-
-                              The name of the Secret used for SSH access to the repository.
+                          [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
+                        type: string
+                      sshPrivateKeySecretName:
+                        description: |-
+                          The name of the Secret used for SSH access to the repository.
 
-                              The referenced Secret must include two fields: `key` and `knownHosts`.
+                          The referenced Secret must include two fields: `key` and `knownHosts`.
 
-                              [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
-                            type: string
-                        required:
-                        - sshPrivateKeySecretName
-                        type: object
+                          [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
+                        type: string
                     type: object
                   depth:
                     default: 1
