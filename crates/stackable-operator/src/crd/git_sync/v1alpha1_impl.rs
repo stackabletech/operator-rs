@@ -131,7 +131,7 @@ impl GitSyncResources {
                     "password",
                 ));
             }
-            if matches!(git_sync.credentials, Some(Credentials::Ssh { .. })) {
+            if let Some(Credentials::Ssh { .. }) = git_sync.credentials {
                 env_vars.push(EnvVar {
                     name: "GITSYNC_SSH_KEY_FILE".to_owned(),
                     value: Some(format!("{SSH_MOUNT_PATH_PREFIX}-{i}/key").to_owned()),
