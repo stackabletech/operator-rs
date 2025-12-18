@@ -14,7 +14,7 @@ use crate::{
         volume::{VolumeBuilder, VolumeMountBuilder},
     },
     commons::product_image_selection::ResolvedProductImage,
-    crd::git_sync::v1alpha1::{AccessSecret, GitSync},
+    crd::git_sync::v1alpha1::{Credentials, GitSync},
     product_config_utils::insert_or_update_env_vars,
     product_logging::{
         framework::capture_shell_output,
@@ -119,20 +119,22 @@ impl GitSyncResources {
         for (i, git_sync) in git_syncs.iter().enumerate() {
             let mut env_vars = vec![];
 
-            if let Some(AccessSecret::Credentials { credentials_secret }) = &git_sync.access_secret
+            if let Some(Credentials::BasicAuth {
+                basic_auth_secret_name,
+            }) = &git_sync.credentials
             {
                 env_vars.push(GitSyncResources::env_var_from_secret(
                     "GITSYNC_USERNAME",
-                    credentials_secret,
+                    basic_auth_secret_name,
                     "user",
                 ));
                 env_vars.push(GitSyncResources::env_var_from_secret(
                     "GITSYNC_PASSWORD",
-                    credentials_secret,
+                    basic_auth_secret_name,
                     "password",
                 ));
             }
-            if matches!(git_sync.access_secret, Some(AccessSecret::Ssh { .. })) {
+            if matches!(git_sync.credentials, Some(Credentials::Ssh { .. })) {
                 env_vars.push(EnvVar {
                     name: "GITSYNC_SSH_KEY_FILE".to_owned(),
                     value: Some(format!("{SSH_MOUNT_PATH_PREFIX}-{i}/key").to_owned()),
@@ -167,7 +169,7 @@ impl GitSyncResources {
 
             git_sync_container_volume_mounts.extend_from_slice(extra_volume_mounts);
 
-            if matches!(git_sync.access_secret, Some(AccessSecret::Ssh { .. })) {
+            if matches!(git_sync.credentials, Some(Credentials::Ssh { .. })) {
                 let ssh_mount_path = format!("{SSH_MOUNT_PATH_PREFIX}-{i}");
                 let ssh_volume_name = format!("{SSH_VOLUME_NAME_PREFIX}-{i}");
 
@@ -222,11 +224,14 @@ impl GitSyncResources {
                 .push(git_content_volume_mount);
             resources.git_content_folders.push(git_content_folder);
 
-            if let Some(AccessSecret::Ssh { ssh_secret }) = &git_sync.access_secret {
+            if let Some(Credentials::Ssh {
+                ssh_private_key_secret_name,
+            }) = &git_sync.credentials
+            {
                 let ssh_volume_name = format!("{SSH_VOLUME_NAME_PREFIX}-{i}");
 
                 let ssh_secret_volume = VolumeBuilder::new(&ssh_volume_name)
-                    .with_secret(ssh_secret, false)
+                    .with_secret(ssh_private_key_secret_name, false)
                     .build();
                 resources.git_ssh_volumes.push(ssh_secret_volume);
             }
@@ -460,7 +465,8 @@ mod tests {
             gitFolder: ""
             depth: 3
             wait: 1m
-            credentialsSecret: git-credentials
+            credentials:
+              basicAuthSecretName: git-credentials
             gitSyncConf:
               --rev: HEAD
               --git-config: http.sslCAInfo:/tmp/ca-cert/ca.crt
@@ -930,7 +936,8 @@ name: content-from-git-2
             gitFolder: ""
             depth: 3
             wait: 1m
-            sshSecret: git-sync-ssh
+            credentials:
+              sshPrivateKeySecretName: git-sync-ssh
             gitSyncConf:
               --rev: HEAD
               --git-config: http.sslCAInfo:/tmp/ca-cert/ca.crt
