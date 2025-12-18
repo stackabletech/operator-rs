@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use stackable_operator::{
     commons::resources::{JvmHeapLimits, Resources},
     config::fragment::Fragment,
-    crd::git_sync::v1alpha1::GitSync,
+    crd::git_sync::v1alpha2::GitSync,
     deep_merger::ObjectOverrides,
     kube::CustomResource,
     role_utils::Role,
