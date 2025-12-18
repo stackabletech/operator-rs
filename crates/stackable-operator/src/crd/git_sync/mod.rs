@@ -60,7 +60,6 @@ pub mod versioned {
     }
 
     #[derive(strum::Display, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-    #[serde(untagged)]
     #[serde(rename_all = "camelCase")]
     #[schemars(rename_all = "camelCase")]
     pub enum Credentials {
