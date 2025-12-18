@@ -4,7 +4,7 @@ use darling::{FromField, Result, util::IdentString};
 use k8s_version::Version;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Attribute, Field, Ident, Path, Type};
+use syn::{Attribute, Field, Ident, Path, Type, spanned::Spanned};
 
 use crate::{
     attrs::item::{FieldAttributes, Hint},
@@ -36,9 +36,12 @@ impl VersionedField {
         field_attributes.validate_versions(versions)?;
         field_attributes.validate_nested_flag(experimental_conversion_tracking)?;
 
-        let ident = field
-            .ident
-            .expect("internal error: field must have an ident");
+        let field_span = field.span();
+
+        let ident = field.ident.ok_or_else(|| {
+            darling::Error::custom("internal error: field must have an ident")
+                .with_span(&field_span)
+        })?;
         let idents = FieldIdents::from(ident);
 
         let changes = field_attributes
@@ -89,7 +92,11 @@ impl VersionedField {
                 // then depends on the relation to other versions (with actions).
                 let field_type = &self.ty;
 
-                // NOTE (@Techassi): https://rust-lang.github.io/rust-clippy/master/index.html#/expect_fun_call
+                // NOTE (@Techassi): `unwrap_or_else` used instead of `expect`.
+                // See: https://rust-lang.github.io/rust-clippy/master/index.html#expect_fun_call
+                // We could use expect here, but we would lose the version in the panic message. We need to allow
+                // a lint in either case anyway.
+                #[allow(clippy::panic)]
                 match changes.get(&version.inner).unwrap_or_else(|| {
                     panic!(
                         "internal error: chain must contain container version {}",

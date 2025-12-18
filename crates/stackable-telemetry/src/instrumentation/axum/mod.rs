@@ -25,14 +25,8 @@ use opentelemetry::{
     Context,
     trace::{SpanKind, TraceContextExt},
 };
-use opentelemetry_semantic_conventions::{
-    attribute::{OTEL_STATUS_CODE, OTEL_STATUS_DESCRIPTION},
-    trace::{
-        CLIENT_ADDRESS, CLIENT_PORT, HTTP_REQUEST_HEADER, HTTP_REQUEST_METHOD,
-        HTTP_RESPONSE_STATUS_CODE, HTTP_ROUTE, SERVER_ADDRESS, SERVER_PORT, URL_PATH, URL_QUERY,
-        URL_SCHEME, USER_AGENT_ORIGINAL,
-    },
-};
+use opentelemetry_semantic_conventions as semconv;
+use opentelemetry_semantic_conventions::trace::HTTP_REQUEST_HEADER;
 use pin_project::pin_project;
 use snafu::{ResultExt, Snafu};
 use tower::{Layer, Service};
@@ -416,21 +410,21 @@ impl SpanExt for Span {
             "HTTP request",
             { OTEL_NAME } = span_name,
             { OTEL_KIND } = ?SpanKind::Server,
-            { OTEL_STATUS_CODE } = Empty,
+            { semconv::attribute::OTEL_STATUS_CODE } = Empty,
             // The current tracing-opentelemetry version still uses the old semantic convention
             // See https://github.com/tokio-rs/tracing-opentelemetry/pull/209
-            { OTEL_STATUS_DESCRIPTION } = Empty,
-            { HTTP_REQUEST_METHOD } = http_method,
-            { HTTP_RESPONSE_STATUS_CODE } = Empty,
-            { HTTP_ROUTE } = Empty,
-            { URL_PATH } = url.path(),
-            { URL_QUERY } = url.query(),
-            { URL_SCHEME } = url.scheme_str().unwrap_or_default(),
-            { USER_AGENT_ORIGINAL } = Empty,
-            { SERVER_ADDRESS } = Empty,
-            { SERVER_PORT } = Empty,
-            { CLIENT_ADDRESS } = Empty,
-            { CLIENT_PORT } = Empty,
+            { semconv::attribute::OTEL_STATUS_DESCRIPTION } = Empty,
+            { semconv::trace::HTTP_REQUEST_METHOD } = http_method,
+            { semconv::trace::HTTP_RESPONSE_STATUS_CODE } = Empty,
+            { semconv::trace::HTTP_ROUTE } = Empty,
+            { semconv::trace::URL_PATH } = url.path(),
+            { semconv::trace::URL_QUERY } = url.query(),
+            { semconv::trace::URL_SCHEME } = url.scheme_str().unwrap_or_default(),
+            { semconv::trace::USER_AGENT_ORIGINAL } = Empty,
+            { semconv::trace::SERVER_ADDRESS } = Empty,
+            { semconv::trace::SERVER_PORT } = Empty,
+            { semconv::trace::CLIENT_ADDRESS } = Empty,
+            { semconv::trace::CLIENT_PORT } = Empty,
             // TODO (@Techassi): Add network.protocol.version
         );
 
@@ -475,7 +469,7 @@ impl SpanExt for Span {
         }
 
         if let Some(user_agent) = req.user_agent() {
-            span.record(USER_AGENT_ORIGINAL, user_agent);
+            span.record(semconv::trace::USER_AGENT_ORIGINAL, user_agent);
         }
 
         // Setting server.address and server.port
@@ -485,21 +479,27 @@ impl SpanExt for Span {
             // NOTE (@Techassi): We cast to i64, because otherwise the field
             // will NOT be recorded as a number but as a string. This is likely
             // an issue in the tracing-opentelemetry crate.
-            span.record(SERVER_ADDRESS, host)
-                .record(SERVER_PORT, port as i64);
+            span.record(semconv::trace::SERVER_ADDRESS, host)
+                .record(semconv::trace::SERVER_PORT, port as i64);
         }
 
         // Setting fields according to the HTTP server semantic conventions
         // See https://opentelemetry.io/docs/specs/semconv/http/http-spans/#http-server-semantic-conventions
 
         if let Some(client_socket_address) = req.client_socket_address() {
-            span.record(CLIENT_ADDRESS, client_socket_address.ip().to_string());
+            span.record(
+                semconv::trace::CLIENT_ADDRESS,
+                client_socket_address.ip().to_string(),
+            );
 
             if opt_in {
                 // NOTE (@Techassi): We cast to i64, because otherwise the field
                 // will NOT be recorded as a number but as a string. This is
                 // likely an issue in the tracing-opentelemetry crate.
-                span.record(CLIENT_PORT, client_socket_address.port() as i64);
+                span.record(
+                    semconv::trace::CLIENT_PORT,
+                    client_socket_address.port() as i64,
+                );
             }
         }
 
@@ -513,7 +513,7 @@ impl SpanExt for Span {
         // See: https://github.com/tokio-rs/tracing/issues/1343
 
         if let Some(http_route) = req.matched_path() {
-            span.record(HTTP_ROUTE, http_route.as_str());
+            span.record(semconv::trace::HTTP_ROUTE, http_route.as_str());
         }
 
         span
@@ -542,7 +542,10 @@ impl SpanExt for Span {
         // NOTE (@Techassi): We cast to i64, because otherwise the field will
         // NOT be recorded as a number but as a string. This is likely an issue
         // in the tracing-opentelemetry crate.
-        self.record(HTTP_RESPONSE_STATUS_CODE, status_code.as_u16() as i64);
+        self.record(
+            semconv::trace::HTTP_RESPONSE_STATUS_CODE,
+            status_code.as_u16() as i64,
+        );
 
         // Only set the span status to "Error" when we encountered an server
         // error. See:
@@ -550,7 +553,7 @@ impl SpanExt for Span {
         // - https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
         // - https://github.com/open-telemetry/opentelemetry-specification/blob/v1.26.0/specification/trace/api.md#set-status
         if status_code.is_server_error() {
-            self.record(OTEL_STATUS_CODE, "Error");
+            self.record(semconv::attribute::OTEL_STATUS_CODE, "Error");
             // NOTE (@Techassi): Can we add a status_description here as well?
         }
 
@@ -564,8 +567,11 @@ impl SpanExt for Span {
     {
         // NOTE (@Techassi): This field might get renamed: https://github.com/tokio-rs/tracing-opentelemetry/issues/115
         // NOTE (@Techassi): It got renamed, a fixed version of tracing-opentelemetry is not available yet
-        self.record(OTEL_STATUS_CODE, "Error")
-            .record(OTEL_STATUS_DESCRIPTION, error.to_string());
+        self.record(semconv::attribute::OTEL_STATUS_CODE, "Error")
+            .record(
+                semconv::attribute::OTEL_STATUS_DESCRIPTION,
+                error.to_string(),
+            );
     }
 }
 

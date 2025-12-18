@@ -472,7 +472,7 @@ mod test {
     #[case("15d2m2s1000ms", 1296123)]
     #[case("213503982334d", 18446744073657600)]
     fn parse_as_secs(#[case] input: &str, #[case] output: u64) {
-        let dur: Duration = input.parse().unwrap();
+        let dur: Duration = input.parse().expect("valid duration input must parse");
         assert_eq!(dur.as_secs(), output);
     }
 
@@ -484,7 +484,7 @@ mod test {
     #[case("", DurationParseError::EmptyInput)]
     #[case("213503982335d", DurationParseError::Overflow { input: "213503982335d".to_string(), value: 213503982335_u128, unit: DurationUnit::Days })]
     fn parse_invalid(#[case] input: &str, #[case] expected_err: DurationParseError) {
-        let err = Duration::from_str(input).unwrap_err();
+        let err = Duration::from_str(input).expect_err("invalid duration input must not parse");
         assert_eq!(err, expected_err)
     }
 
@@ -495,7 +495,7 @@ mod test {
         #[case] input: &str,
         #[case] expected_err: DurationParseError,
     ) {
-        let err = Duration::from_str(input).unwrap_err();
+        let err = Duration::from_str(input).expect_err("invalid duration input must produce error");
         assert_eq!(err, expected_err)
     }
 
@@ -506,7 +506,7 @@ mod test {
     #[case("1m", None)]
     #[case("1s", None)]
     fn to_string(#[case] input: &str, #[case] expected: Option<&str>) {
-        let dur: Duration = input.parse().unwrap();
+        let dur: Duration = input.parse().expect("valid duration input must parse");
         match expected {
             Some(e) => assert_eq!(dur.to_string(), e),
             None => assert_eq!(dur.to_string(), input),
@@ -520,7 +520,7 @@ mod test {
             dur: Duration,
         }
 
-        let s: S = serde_yaml::from_str("dur: 15d2m2s").unwrap();
+        let s: S = serde_yaml::from_str("dur: 15d2m2s").expect("valid duration must deserialize");
         assert_eq!(s.dur.as_secs(), 1296122);
     }
 
@@ -532,14 +532,20 @@ mod test {
         }
 
         let s = S {
-            dur: "15d2m2s".parse().unwrap(),
+            dur: "15d2m2s"
+                .parse()
+                .expect("static string must be valid duration"),
         };
-        assert_eq!(serde_yaml::to_string(&s).unwrap(), "dur: 15d2m2s\n");
+
+        assert_eq!(
+            serde_yaml::to_string(&s).expect("valid duration must serialize"),
+            "dur: 15d2m2s\n"
+        );
     }
 
     #[test]
     fn add_ops() {
-        let mut dur1 = Duration::from_str("20s").unwrap();
+        let mut dur1 = Duration::from_str("20s").expect("static string must be valid duration");
         let dur2 = Duration::from_secs(10);
 
         let dur = dur1 + dur2;
@@ -551,7 +557,7 @@ mod test {
 
     #[test]
     fn sub_ops() {
-        let mut dur1 = Duration::from_str("20s").unwrap();
+        let mut dur1 = Duration::from_str("20s").expect("static string must be valid duration");
         let dur2 = Duration::from_secs(10);
 
         let dur = dur1 - dur2;

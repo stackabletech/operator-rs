@@ -34,8 +34,10 @@ x509-cert.workspace = true
 [dev-dependencies]
 # Only needed for doc tests
 stackable-operator = { path = "../stackable-operator" }
-
 clap.workspace = true
+
+[lints]
+workspace = true
 
 # Only needed for tests, this is a false positive of "cargo udeps"
 [package.metadata.cargo-udeps.ignore]
