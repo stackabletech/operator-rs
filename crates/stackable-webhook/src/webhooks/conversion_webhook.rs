@@ -230,7 +230,8 @@ where
 
             let route = format!("/convert/{crd_name}");
             tracing::debug!(
-                crd.name = crd_name,
+                k8s.crd.kind = &crd.spec.names.kind,
+                k8s.crd.name = crd_name,
                 route,
                 "Registering route for conversion webhook"
             );
