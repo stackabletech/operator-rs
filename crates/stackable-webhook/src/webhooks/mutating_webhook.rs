@@ -114,11 +114,11 @@ pub struct MutatingWebhook<H, S, R> {
     /// The internal state of the webhook. You can define yourself what exactly this state is.
     handler_state: Arc<S>,
 
-    /// This field is not needed, it only tracks the type of the Kubernetes resource we are mutating
-    _resource: PhantomData<R>,
-
     /// The Kubernetes client used to maintain the MutatingWebhookConfigurations
     client: Client,
+
+    /// This field is not needed, it only tracks the type of the Kubernetes resource we are mutating
+    _resource: PhantomData<R>,
 }
 
 /// Configuration of a [`MutatingWebhook`], which is passed to [`MutatingWebhook::new`]
