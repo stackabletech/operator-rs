@@ -11,7 +11,6 @@ use kube::{
 use serde::{Serialize, de::DeserializeOwned};
 use snafu::{ResultExt, Snafu};
 use tracing::instrument;
-use x509_cert::Certificate;
 
 use super::{Webhook, WebhookError};
 use crate::{WebhookServerOptions, webhooks::get_webhook_client_config};
@@ -47,7 +46,7 @@ pub enum MutatingWebhookError {
 /// use stackable_operator::kube::Client;
 /// use stackable_operator::kube::core::admission::{AdmissionRequest, AdmissionResponse};
 /// use stackable_webhook::WebhookServer;
-/// use stackable_webhook::webhooks::MutatingWebhook;
+/// use stackable_webhook::webhooks::{MutatingWebhook, MutatingWebhookOptions};
 ///
 /// # async fn docs() {
 /// // The Kubernetes client
@@ -55,19 +54,22 @@ pub enum MutatingWebhookError {
 /// // The context of the controller, e.g. contains a Kubernetes client
 /// let ctx = Arc::new(());
 /// // Read in from user input, e.g. CLI arguments
-/// let disable_mutating_webhook_configuration_maintenance = false;
+/// let disable_mwc_maintenance = false;
 ///
+/// let mutating_webhook_options = MutatingWebhookOptions{
+///     disable_mwc_maintenance,
+///     field_manager: "my-field-manager".to_owned(),
+/// };
 /// let mutating_webhook = Box::new(MutatingWebhook::new(
 ///     get_mutating_webhook_configuration(),
 ///     my_handler,
 ///     ctx,
-///     disable_mutating_webhook_configuration_maintenance,
 ///     client,
-///     "my-field-manager".to_owned(),
+///     mutating_webhook_options,
 /// ));
 ///
 /// let webhook_options = todo!();
-/// let webhook_server = WebhookServer::new(webhook_options, vec![mutating_webhook]).await.unwrap();
+/// let webhook_server = WebhookServer::new(vec![mutating_webhook], webhook_options).await.unwrap();
 /// webhook_server.run().await.unwrap();
 /// # }
 ///
@@ -93,6 +95,8 @@ pub enum MutatingWebhookError {
 /// }
 /// ```
 pub struct MutatingWebhook<H, S, R> {
+    options: MutatingWebhookOptions,
+
     /// The [`MutatingWebhookConfiguration`] that is applied to the Kubernetes cluster.
     ///
     /// Your [`MutatingWebhookConfiguration`] can contain 0..n webhooks, but it is recommended to
@@ -113,14 +117,16 @@ pub struct MutatingWebhook<H, S, R> {
     /// This field is not needed, it only tracks the type of the Kubernetes resource we are mutating
     _resource: PhantomData<R>,
 
-    /// Whether MutatingWebhookConfigurations should be maintained
-    disable_mutating_webhook_configuration_maintenance: bool,
-
     /// The Kubernetes client used to maintain the MutatingWebhookConfigurations
     client: Client,
+}
+
+pub struct MutatingWebhookOptions {
+    /// Whether MutatingWebhookConfigurations should be maintained
+    pub disable_mwc_maintenance: bool,
 
     /// The field manager used when maintaining the MutatingWebhookConfigurations
-    field_manager: String,
+    pub field_manager: String,
 }
 
 impl<H, S, R> MutatingWebhook<H, S, R> {
@@ -128,9 +134,8 @@ impl<H, S, R> MutatingWebhook<H, S, R> {
         mutating_webhook_configuration: MutatingWebhookConfiguration,
         handler: H,
         handler_state: Arc<S>,
-        disable_mutating_webhook_configuration_maintenance: bool,
         client: Client,
-        field_manager: String,
+        options: MutatingWebhookOptions,
     ) -> Self {
         for webhook in mutating_webhook_configuration.webhooks.iter().flatten() {
             assert_eq!(
@@ -141,13 +146,12 @@ impl<H, S, R> MutatingWebhook<H, S, R> {
         }
 
         Self {
+            options,
             mutating_webhook_configuration,
             handler,
             handler_state,
             _resource: PhantomData,
-            disable_mutating_webhook_configuration_maintenance,
             client,
-            field_manager,
         }
     }
 
@@ -185,21 +189,17 @@ where
         };
 
         let route = self.http_path();
-        tracing::debug!(
-            route,
-            "Registering route for mutating webhook"
-        );
+        tracing::debug!(route, "Registering route for mutating webhook");
         router.route(&route, post(handler_fn))
     }
 
     fn ignore_certificate_rotation(&self) -> bool {
-        self.disable_mutating_webhook_configuration_maintenance
+        self.options.disable_mwc_maintenance
     }
 
     #[instrument(skip(self))]
     async fn handle_certificate_rotation(
         &mut self,
-        _new_certificate: &Certificate,
         new_ca_bundle: &ByteString,
         options: &WebhookServerOptions,
     ) -> Result<(), WebhookError> {
@@ -221,7 +221,7 @@ where
         // This is because the operators are, have been (and likely will be) the only ones creating
         // them.
         let patch = Patch::Apply(&mutating_webhook_configuration);
-        let patch_params = PatchParams::apply(&self.field_manager);
+        let patch_params = PatchParams::apply(&self.options.field_manager);
 
         mwc_api
             .patch(&mwc_name, &patch_params, &patch)

@@ -70,7 +70,9 @@ pub enum WebhookServerError {
 ///     webhook_namespace: "my-namespace".to_owned(),
 ///     webhook_service_name: "my-operator".to_owned(),
 /// };
-/// let webhook_server = WebhookServer::new(webhook_options, webhooks).await.unwrap();
+/// let webhook_server = WebhookServer::new(webhooks, webhook_options).await.unwrap();
+///
+/// webhook_server.run().await.unwrap();
 /// # }
 /// ```
 pub struct WebhookServer {
@@ -110,8 +112,8 @@ impl WebhookServer {
     ///
     /// Please read their documentation for details.
     pub async fn new(
-        options: WebhookServerOptions,
         webhooks: Vec<Box<dyn Webhook>>,
+        options: WebhookServerOptions,
     ) -> Result<Self> {
         tracing::trace!("create new webhook server");
 
@@ -222,7 +224,7 @@ impl WebhookServer {
                     }
 
                     webhook
-                        .handle_certificate_rotation(&cert, &ca_bundle, &options)
+                        .handle_certificate_rotation(&ca_bundle, &options)
                         .await
                         .context(UpdateCertificateSnafu)?;
                 }

@@ -1,13 +1,14 @@
 use async_trait::async_trait;
 use axum::Router;
-pub use conversion_webhook::{ConversionReview, ConversionWebhook, ConversionWebhookError};
+pub use conversion_webhook::{
+    ConversionReview, ConversionWebhook, ConversionWebhookError, ConversionWebhookOptions,
+};
 use k8s_openapi::{
     ByteString,
     api::admissionregistration::v1::{ServiceReference, WebhookClientConfig},
 };
-pub use mutating_webhook::{MutatingWebhook, MutatingWebhookError};
+pub use mutating_webhook::{MutatingWebhook, MutatingWebhookError, MutatingWebhookOptions};
 use snafu::Snafu;
-use x509_cert::Certificate;
 
 use crate::WebhookServerOptions;
 
@@ -47,7 +48,6 @@ pub trait Webhook {
     /// Webhooks are informed about new certificates by this function and can react accordingly.
     async fn handle_certificate_rotation(
         &mut self,
-        new_certificate: &Certificate,
         new_ca_bundle: &ByteString,
         options: &WebhookServerOptions,
     ) -> Result<(), WebhookError>;

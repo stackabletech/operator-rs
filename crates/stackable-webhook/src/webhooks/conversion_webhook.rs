@@ -21,7 +21,6 @@ use kube::{
 use snafu::{ResultExt, Snafu, ensure};
 use tokio::sync::oneshot;
 use tracing::instrument;
-use x509_cert::Certificate;
 
 use super::{Webhook, WebhookError};
 use crate::WebhookServerOptions;
@@ -47,7 +46,7 @@ pub enum ConversionWebhookError {
 /// use stackable_operator::crd::s3::{S3Connection, S3ConnectionVersion};
 /// use stackable_operator::kube::{Client, core::admission::{AdmissionRequest, AdmissionResponse}};
 /// use stackable_webhook::WebhookServer;
-/// use stackable_webhook::webhooks::ConversionWebhook;
+/// use stackable_webhook::webhooks::{ConversionWebhook, ConversionWebhookOptions};
 ///
 /// # async fn docs() {
 /// // The Kubernetes client
@@ -63,35 +62,34 @@ pub enum ConversionWebhookError {
 ///     )
 /// ];
 ///
+/// let conversion_webhook_options = ConversionWebhookOptions{
+///     disable_crd_maintenance,
+///     field_manager: "my-field-manager".to_owned(),
+/// };
 /// let (conversion_webhook, initial_reconcile_rx) = ConversionWebhook::new(
 ///     crds_and_handlers,
-///     disable_crd_maintenance,
 ///     client,
-///     "my-field-manager".to_owned(),
+///     conversion_webhook_options,
 /// );
 ///
 /// let webhook_options = todo!();
 /// let webhook_server = WebhookServer::new(
+///     vec![Box::new(conversion_webhook)],
 ///     webhook_options,
-///     vec![Box::new(conversion_webhook)
-/// ]).await.unwrap();
+/// ).await.unwrap();
 /// webhook_server.run().await.unwrap();
 /// # }
 /// ```
 pub struct ConversionWebhook<H> {
+    options: ConversionWebhookOptions,
+
     /// The list of 2-tuple (pair) mapping a [`CustomResourceDefinition`] to a [`ConversionReview`]
     /// handler function. In most cases, the generated `CustomResource::try_merge` function should
     /// be used. It provides the expected `fn(ConversionReview) -> ConversionReview` signature.
     crds_and_handlers: Vec<(CustomResourceDefinition, H)>,
 
-    /// Whether CRDs should be maintained
-    disable_crd_maintenance: bool,
-
     /// The Kubernetes client used to maintain the CRDs
     client: Client,
-
-    /// The field manager used when maintaining the CRDs
-    field_manager: String,
 
     /// The values is send as soon as all CRDs have been applied to the cluster
     // This channel can only be used exactly once. The sender's send method consumes self, and
@@ -100,7 +98,18 @@ pub struct ConversionWebhook<H> {
     initial_reconcile_tx: Option<oneshot::Sender<()>>,
 }
 
+pub struct ConversionWebhookOptions {
+    /// Whether CRDs should be maintained
+    pub disable_crd_maintenance: bool,
+
+    /// The field manager used when maintaining the CRDs
+    pub field_manager: String,
+}
+
 impl<H> ConversionWebhook<H> {
+    /// Creates a new [`ConversionWebhook`] with the given list of CRDs and handlers converting
+    /// between different versions of them.
+    ///
     /// ## Return Values
     ///
     /// This function returns a 2-tuple (pair) of values:
@@ -110,18 +119,16 @@ impl<H> ConversionWebhook<H> {
     /// initially. This guarantees that the CRDs are now install on the Kubernetes cluster and the
     /// caller can apply CustomResources of that kind.
     pub fn new(
-        crds_and_handlers: impl IntoIterator<Item = (CustomResourceDefinition, H)>,
-        disable_crd_maintenance: bool,
+        crds_and_handlers: Vec<(CustomResourceDefinition, H)>,
         client: Client,
-        field_manager: String,
+        options: ConversionWebhookOptions,
     ) -> (Self, oneshot::Receiver<()>) {
         let (initial_reconcile_tx, initial_reconcile_rx) = oneshot::channel();
 
         let new = Self {
-            crds_and_handlers: crds_and_handlers.into_iter().collect(),
-            disable_crd_maintenance,
+            options,
+            crds_and_handlers,
             client,
-            field_manager,
             initial_reconcile_tx: Some(initial_reconcile_tx),
         };
 
@@ -196,7 +203,7 @@ impl<H> ConversionWebhook<H> {
         // field from all other managers' entries in managedFields.
         //
         // See https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
-        let patch_params = PatchParams::apply(&self.field_manager).force();
+        let patch_params = PatchParams::apply(&self.options.field_manager).force();
 
         crd_api
             .patch(&crd_name, &patch_params, &patch)
@@ -234,13 +241,12 @@ where
     }
 
     fn ignore_certificate_rotation(&self) -> bool {
-        self.disable_crd_maintenance
+        self.options.disable_crd_maintenance
     }
 
     #[instrument(skip(self))]
     async fn handle_certificate_rotation(
         &mut self,
-        _new_certificate: &Certificate,
         new_ca_bundle: &ByteString,
         options: &WebhookServerOptions,
     ) -> Result<(), WebhookError> {
