@@ -228,8 +228,6 @@ impl WebhookServer {
                 }
             }
 
-            // We need to hint the return type to the compiler
-            #[allow(unreachable_code)]
             Ok(())
         };
 
