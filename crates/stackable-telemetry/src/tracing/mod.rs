@@ -60,6 +60,7 @@ pub enum Error {
     },
 }
 
+#[rustfmt::skip]
 /// Easily initialize a set of pre-configured [`Subscriber`][1] layers.
 ///
 /// # Usage
@@ -83,11 +84,12 @@ pub enum Error {
 /// #[tokio::main]
 /// async fn main() -> Result<(), Error> {
 ///     let _tracing_guard = Tracing::builder() // < Scope starts here
-///         .service_name("test")
-///         .build()
-///         .init()?;
-///     tracing::info!("log a message");
-///     Ok(()) // < Scope ends here, guard is dropped
+///         .service_name("test")               // |
+///         .build()                            // |
+///         .init()?;                           // |
+///                                             // |
+///     tracing::info!("log a message");        // |
+///     Ok(())                                  // < Scope ends here, guard is dropped
 /// }
 /// ```
 ///
