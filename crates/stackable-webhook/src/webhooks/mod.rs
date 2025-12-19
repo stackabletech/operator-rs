@@ -57,7 +57,7 @@ pub trait Webhook {
 ///
 /// It is used to contact the correct HTTP endpoint, which is determined from the given parameters.
 /// (CRD conversions require a similar, but different, client config).
-fn get_webhook_client_config(
+fn create_webhook_client_config(
     options: &WebhookServerOptions,
     ca_bundle: ByteString,
     http_path: impl Into<String>,

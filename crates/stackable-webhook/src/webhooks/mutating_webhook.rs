@@ -13,7 +13,7 @@ use snafu::{ResultExt, Snafu};
 use tracing::instrument;
 
 use super::{Webhook, WebhookError};
-use crate::{WebhookServerOptions, webhooks::get_webhook_client_config};
+use crate::{WebhookServerOptions, webhooks::create_webhook_client_config};
 
 #[derive(Debug, Snafu)]
 pub enum MutatingWebhookError {
@@ -213,7 +213,7 @@ where
         for webhook in mutating_webhook_configuration.webhooks.iter_mut().flatten() {
             // We know how we can be called (and with what certificate), so we can always set that
             webhook.client_config =
-                get_webhook_client_config(options, new_ca_bundle.to_owned(), self.http_path());
+                create_webhook_client_config(options, new_ca_bundle.to_owned(), self.http_path());
         }
 
         let mwc_api: Api<MutatingWebhookConfiguration> = Api::all(self.client.clone());
