@@ -121,6 +121,7 @@ pub struct MutatingWebhook<H, S, R> {
     client: Client,
 }
 
+/// Configuration of a [`MutatingWebhook`], which is passed to [`MutatingWebhook::new`]
 pub struct MutatingWebhookOptions {
     /// Whether MutatingWebhookConfigurations should be maintained
     pub disable_mwc_maintenance: bool,

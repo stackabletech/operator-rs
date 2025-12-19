@@ -98,6 +98,7 @@ pub struct ConversionWebhook<H> {
     initial_reconcile_tx: Option<oneshot::Sender<()>>,
 }
 
+/// Configuration of a [`ConversionWebhook`], which is passed to [`ConversionWebhook::new`]
 pub struct ConversionWebhookOptions {
     /// Whether CRDs should be maintained
     pub disable_crd_maintenance: bool,

@@ -82,6 +82,7 @@ pub struct WebhookServer {
     cert_rx: mpsc::Receiver<Certificate>,
 }
 
+/// Configuration of a [`WebhookServer`], which is passed to [`WebhookServer::new`]
 #[derive(Clone, Debug)]
 pub struct WebhookServerOptions {
     /// The HTTPS socket address the [`TcpListener`][tokio::net::TcpListener] binds to.
