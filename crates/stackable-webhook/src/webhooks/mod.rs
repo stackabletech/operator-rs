@@ -7,14 +7,12 @@ use k8s_openapi::{
 };
 pub use mutating_webhook::{MutatingWebhook, MutatingWebhookError};
 use snafu::Snafu;
-pub use validating_webhook::{ValidatingWebhook, ValidatingWebhookError};
 use x509_cert::Certificate;
 
 use crate::WebhookServerOptions;
 
 mod conversion_webhook;
 mod mutating_webhook;
-mod validating_webhook;
 
 #[derive(Snafu, Debug)]
 pub enum WebhookError {
@@ -26,11 +24,6 @@ pub enum WebhookError {
     #[snafu(display("mutating webhook error"), context(false))]
     MutatingWebhookError {
         source: mutating_webhook::MutatingWebhookError,
-    },
-
-    #[snafu(display("validating webhook error"), context(false))]
-    ValidatingWebhookError {
-        source: validating_webhook::ValidatingWebhookError,
     },
 }
 
