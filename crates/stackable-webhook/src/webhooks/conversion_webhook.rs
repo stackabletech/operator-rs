@@ -116,8 +116,8 @@ impl<H> ConversionWebhook<H> {
     ///
     /// - The new [`ConversionWebhook`] itself
     /// - The [`oneshot::Receiver`] that informs the caller that the CRDs have been reconciled
-    /// initially. This guarantees that the CRDs are now install on the Kubernetes cluster and the
-    /// caller can apply CustomResources of that kind.
+    ///   initially. This guarantees that the CRDs are now install on the Kubernetes cluster and the
+    ///   caller can apply CustomResources of that kind.
     pub fn new(
         crds_and_handlers: Vec<(CustomResourceDefinition, H)>,
         client: Client,
