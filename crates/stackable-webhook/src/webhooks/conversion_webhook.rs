@@ -38,8 +38,50 @@ pub enum ConversionWebhookError {
     },
 }
 
+/// Conversion webhook, which converts between different versions of the same CRD.
+///
+/// ### Example usage
+/// ```
+/// use std::sync::Arc;
+///
+/// use stackable_operator::crd::s3::{S3Connection, S3ConnectionVersion};
+/// use stackable_operator::kube::{Client, core::admission::{AdmissionRequest, AdmissionResponse}};
+/// use stackable_webhook::WebhookServer;
+/// use stackable_webhook::webhooks::ConversionWebhook;
+///
+/// # async fn docs() {
+/// // The Kubernetes client
+/// let client = Client::try_default().await.unwrap();
+/// // Read in from user input, e.g. CLI arguments
+/// let disable_crd_maintenance = false;
+///
+/// let crds_and_handlers = vec![
+///     (
+///         S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1)
+///             .expect("the S3Connection CRD must be merged"),
+///         S3Connection::try_convert,
+///     )
+/// ];
+///
+/// let (conversion_webhook, initial_reconcile_rx) = ConversionWebhook::new(
+///     crds_and_handlers,
+///     disable_crd_maintenance,
+///     client,
+///     "my-field-manager".to_owned(),
+/// );
+///
+/// let webhook_options = todo!();
+/// let webhook_server = WebhookServer::new(
+///     webhook_options,
+///     vec![Box::new(conversion_webhook)
+/// ]).await.unwrap();
+/// webhook_server.run().await.unwrap();
+/// # }
+/// ```
 pub struct ConversionWebhook<H> {
-    /// The list of CRDs and their according handlers, which take and return a [`ConversionReview`]
+    /// The list of 2-tuple (pair) mapping a [`CustomResourceDefinition`] to a [`ConversionReview`]
+    /// handler function. In most cases, the generated `CustomResource::try_merge` function should
+    /// be used. It provides the expected `fn(ConversionReview) -> ConversionReview` signature.
     crds_and_handlers: Vec<(CustomResourceDefinition, H)>,
 
     /// Whether CRDs should be maintained
@@ -51,6 +93,7 @@ pub struct ConversionWebhook<H> {
     /// The field manager used when maintaining the CRDs
     field_manager: String,
 
+    /// The values is send as soon as all CRDs have been applied to the cluster
     // This channel can only be used exactly once. The sender's send method consumes self, and
     // as such, the sender is wrapped in an Option to be able to call take to consume the inner
     // value.
@@ -58,6 +101,14 @@ pub struct ConversionWebhook<H> {
 }
 
 impl<H> ConversionWebhook<H> {
+    /// ## Return Values
+    ///
+    /// This function returns a 2-tuple (pair) of values:
+    ///
+    /// - The new [`ConversionWebhook`] itself
+    /// - The [`oneshot::Receiver`] that informs the caller that the CRDs have been reconciled
+    /// initially. This guarantees that the CRDs are now install on the Kubernetes cluster and the
+    /// caller can apply CustomResources of that kind.
     pub fn new(
         crds_and_handlers: impl IntoIterator<Item = (CustomResourceDefinition, H)>,
         disable_crd_maintenance: bool,
