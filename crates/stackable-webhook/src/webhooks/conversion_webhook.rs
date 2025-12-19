@@ -171,6 +171,11 @@ where
             };
 
             let route = format!("/convert/{crd_name}");
+            tracing::debug!(
+                crd.name = crd_name,
+                route,
+                "Registering route for conversion webhook"
+            );
             router = router.route(&route, post(handler_fn));
         }
 

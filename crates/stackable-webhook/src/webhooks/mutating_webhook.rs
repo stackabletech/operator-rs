@@ -187,6 +187,10 @@ where
         };
 
         let route = self.http_path();
+        tracing::debug!(
+            route,
+            "Registering route for mutating webhook"
+        );
         router.route(&route, post(handler_fn))
     }
 
