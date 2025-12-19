@@ -466,24 +466,21 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
 ///
 /// let labels: Labels = Labels::try_from(BTreeMap::<String, String>::new()).unwrap();
 ///
-/// let volume_source =
-///     ListenerOperatorVolumeSourceBuilder::new(
-///         &ListenerReference::ListenerClass("nodeport".into()),
-///         &labels,
-///     )
-///     .build_ephemeral()
-///     .unwrap();
+/// let volume_source = ListenerOperatorVolumeSourceBuilder::new(
+///     &ListenerReference::ListenerClass("nodeport".into()),
+///     &labels,
+/// )
+/// .build_ephemeral()
+/// .unwrap();
 ///
-/// pod_builder
-///     .add_volume(Volume {
-///         name: "listener".to_string(),
-///         ephemeral: Some(volume_source),
-///         ..Volume::default()
-///     });
+/// pod_builder.add_volume(Volume {
+///     name: "listener".to_string(),
+///     ephemeral: Some(volume_source),
+///     ..Volume::default()
+/// });
 ///
 /// // There is also a shortcut for the code above:
-/// pod_builder
-///     .add_listener_volume_by_listener_class("listener", "nodeport", &labels);
+/// pod_builder.add_listener_volume_by_listener_class("listener", "nodeport", &labels);
 /// ```
 #[derive(Clone, Debug)]
 pub struct ListenerOperatorVolumeSourceBuilder {

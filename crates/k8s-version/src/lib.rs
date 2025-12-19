@@ -28,7 +28,7 @@
 //!
 //! ```
 //! # use std::str::FromStr;
-//! use k8s_version::{ApiVersion, Version, Level, Group};
+//! use k8s_version::{ApiVersion, Group, Level, Version};
 //!
 //! let version = Version::new(1, Some(Level::Beta(1)));
 //! let group = Group::from_str("extension").unwrap();
@@ -38,10 +38,7 @@
 //!
 //! // Or using ::try_new()
 //! let version = Version::new(1, Some(Level::Beta(1)));
-//! let api_version = ApiVersion::try_new(
-//!     Some("extension"),
-//!     version
-//! ).unwrap();
+//! let api_version = ApiVersion::try_new(Some("extension"), version).unwrap();
 //!
 //! assert_eq!(api_version.to_string(), "extension/v1beta1");
 //! ```

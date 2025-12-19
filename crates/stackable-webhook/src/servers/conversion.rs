@@ -109,19 +109,17 @@ impl ConversionWebhookServer {
     ///
     /// ```no_run
     /// # use tokio_rustls::rustls::crypto::{CryptoProvider, ring::default_provider};
-    /// use stackable_webhook::servers::{ConversionWebhookServer, ConversionWebhookOptions};
     /// use stackable_operator::crd::s3::{S3Connection, S3ConnectionVersion};
+    /// use stackable_webhook::servers::{ConversionWebhookOptions, ConversionWebhookServer};
     ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// # CryptoProvider::install_default(default_provider()).unwrap();
-    /// let crds_and_handlers = vec![
-    ///     (
-    ///         S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1)
-    ///             .expect("the S3Connection CRD must be merged"),
-    ///         S3Connection::try_convert,
-    ///     )
-    /// ];
+    /// let crds_and_handlers = vec![(
+    ///     S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1)
+    ///         .expect("the S3Connection CRD must be merged"),
+    ///     S3Connection::try_convert,
+    /// )];
     ///
     /// let options = ConversionWebhookOptions {
     ///     socket_addr: ConversionWebhookServer::DEFAULT_SOCKET_ADDRESS,
@@ -130,9 +128,9 @@ impl ConversionWebhookServer {
     /// };
     ///
     /// let (conversion_webhook_server, _certificate_rx) =
-    ///         ConversionWebhookServer::new(crds_and_handlers, options)
-    ///             .await
-    ///             .unwrap();
+    ///     ConversionWebhookServer::new(crds_and_handlers, options)
+    ///         .await
+    ///         .unwrap();
     ///
     /// conversion_webhook_server.run().await.unwrap();
     /// # }
@@ -220,21 +218,22 @@ impl ConversionWebhookServer {
     /// ```no_run
     /// # use futures_util::TryFutureExt;
     /// # use tokio_rustls::rustls::crypto::{CryptoProvider, ring::default_provider};
-    /// use stackable_webhook::servers::{ConversionWebhookServer, ConversionWebhookOptions};
-    /// use stackable_operator::{kube::Client, crd::s3::{S3Connection, S3ConnectionVersion}};
+    /// use stackable_operator::{
+    ///     crd::s3::{S3Connection, S3ConnectionVersion},
+    ///     kube::Client,
+    /// };
+    /// use stackable_webhook::servers::{ConversionWebhookOptions, ConversionWebhookServer};
     ///
     /// # #[tokio::main]
     /// # async fn main() {
     /// # CryptoProvider::install_default(default_provider()).unwrap();
     /// let client = Client::try_default().await.unwrap();
     ///
-    /// let crds_and_handlers = vec![
-    ///     (
-    ///         S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1)
-    ///             .expect("the S3Connection CRD must be merged"),
-    ///         S3Connection::try_convert,
-    ///     )
-    /// ];
+    /// let crds_and_handlers = vec![(
+    ///     S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1)
+    ///         .expect("the S3Connection CRD must be merged"),
+    ///     S3Connection::try_convert,
+    /// )];
     ///
     /// let (conversion_webhook_server, crd_maintainer, _initial_reconcile_rx) =
     ///     ConversionWebhookServer::with_maintainer(
@@ -252,9 +251,7 @@ impl ConversionWebhookServer {
     ///     .run()
     ///     .map_err(|err| err.to_string());
     ///
-    /// let crd_maintainer = crd_maintainer
-    ///     .run()
-    ///     .map_err(|err| err.to_string());
+    /// let crd_maintainer = crd_maintainer.run().map_err(|err| err.to_string());
     ///
     /// // Run both the conversion webhook server and crd_maintainer concurrently, eg. with
     /// // futures::try_join!.

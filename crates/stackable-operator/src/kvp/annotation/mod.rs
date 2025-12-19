@@ -175,7 +175,8 @@ impl Annotation {
 /// let labels = Annotations::try_from([
 ///     ("stackable.tech/managed-by", "stackablectl"),
 ///     ("stackable.tech/vendor", "Stäckable"),
-/// ]).unwrap();
+/// ])
+/// .unwrap();
 /// ```
 #[derive(Clone, Debug, Default)]
 pub struct Annotations(KeyValuePairs<AnnotationValue>);

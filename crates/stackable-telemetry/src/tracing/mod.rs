@@ -83,12 +83,11 @@ pub enum Error {
 /// #[tokio::main]
 /// async fn main() -> Result<(), Error> {
 ///     let _tracing_guard = Tracing::builder() // < Scope starts here
-///         .service_name("test")               // |
-///         .build()                            // |
-///         .init()?;                           // |
-///                                             // |
-///     tracing::info!("log a message");        // |
-///     Ok(())                                  // < Scope ends here, guard is dropped
+///         .service_name("test")
+///         .build()
+///         .init()?;
+///     tracing::info!("log a message");
+///     Ok(()) // < Scope ends here, guard is dropped
 /// }
 /// ```
 ///
@@ -101,19 +100,19 @@ pub enum Error {
 /// defaults used.
 ///
 /// ```
-/// use stackable_telemetry::tracing::{Tracing, TelemetryOptions, Error};
+/// use stackable_telemetry::tracing::{Error, TelemetryOptions, Tracing};
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Error> {
 ///     let options = TelemetryOptions {
-///          console_log_disabled: false,
-///          console_log_format: Default::default(),
-///          file_log_directory: None,
-///          file_log_rotation_period: None,
-///          file_log_max_files: Some(6),
-///          otel_trace_exporter_enabled: true,
-///          otel_log_exporter_enabled: true,
-///      };
+///         console_log_disabled: false,
+///         console_log_format: Default::default(),
+///         file_log_directory: None,
+///         file_log_rotation_period: None,
+///         file_log_max_files: Some(6),
+///         otel_trace_exporter_enabled: true,
+///         otel_log_exporter_enabled: true,
+///     };
 ///
 ///     let _tracing_guard = Tracing::pre_configured("test", options).init()?;
 ///
@@ -142,7 +141,7 @@ pub enum Error {
 /// variable and default level can be set.
 ///
 /// ```
-/// use stackable_telemetry::tracing::{Tracing, Error, settings::Settings};
+/// use stackable_telemetry::tracing::{Error, Tracing, settings::Settings};
 /// use tracing_subscriber::filter::LevelFilter;
 ///
 /// #[tokio::main]
@@ -189,14 +188,14 @@ pub enum Error {
 ///             Settings::builder()
 ///                 .with_environment_variable("CONSOLE_LOG")
 ///                 .with_default_level(LevelFilter::INFO)
-///                 .build()
+///                 .build(),
 ///         )
 ///         .with_file_output(
 ///             Settings::builder()
 ///                 .with_environment_variable("FILE_LOG")
 ///                 .with_default_level(LevelFilter::INFO)
 ///                 .file_log_settings_builder("/tmp/logs", "operator.log")
-///                 .build()
+///                 .build(),
 ///         )
 ///         .with_otlp_log_exporter(otlp_log_flag.then(|| {
 ///             Settings::builder()
@@ -208,7 +207,7 @@ pub enum Error {
 ///             Settings::builder()
 ///                 .with_environment_variable("OTLP_TRACE")
 ///                 .with_default_level(LevelFilter::TRACE)
-///                 .build()
+///                 .build(),
 ///         )
 ///         .build()
 ///         .init()?;
@@ -777,7 +776,6 @@ fn env_filter_builder(env_var: &str, default_directive: impl Into<Directive>) ->
 ///
 /// Additionally, this struct can be used as operator CLI arguments. This functionality is only
 /// available if the feature `clap` is enabled.
-///
 #[cfg_attr(
     feature = "clap",
     doc = r#"

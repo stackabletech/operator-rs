@@ -27,14 +27,10 @@ use crate::WebhookServer;
 ///     .build();
 ///
 /// // Set IP address only
-/// let options = WebhookOptions::builder()
-///     .bind_ip([0, 0, 0, 0])
-///     .build();
+/// let options = WebhookOptions::builder().bind_ip([0, 0, 0, 0]).build();
 ///
 /// // Set port only
-/// let options = WebhookOptions::builder()
-///     .bind_port(12345)
-///     .build();
+/// let options = WebhookOptions::builder().bind_port(12345).build();
 /// ```
 #[derive(Debug)]
 pub struct WebhookOptions {

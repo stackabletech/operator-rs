@@ -8,8 +8,8 @@
 //! routes and their handler functions.
 //!
 //! ```
-//! use stackable_webhook::{WebhookServer, WebhookOptions};
 //! use axum::Router;
+//! use stackable_webhook::{WebhookOptions, WebhookServer};
 //!
 //! # async fn test() {
 //! let router = Router::new();
@@ -112,8 +112,8 @@ impl WebhookServer {
     /// ### Basic Example
     ///
     /// ```
-    /// use stackable_webhook::{WebhookServer, WebhookOptions};
     /// use axum::Router;
+    /// use stackable_webhook::{WebhookOptions, WebhookServer};
     ///
     /// # async fn test() {
     /// let router = Router::new();
@@ -126,8 +126,8 @@ impl WebhookServer {
     /// ### Example with Custom Options
     ///
     /// ```
-    /// use stackable_webhook::{WebhookServer, WebhookOptions};
     /// use axum::Router;
+    /// use stackable_webhook::{WebhookOptions, WebhookServer};
     ///
     /// # async fn test() {
     /// let options = WebhookOptions::builder()

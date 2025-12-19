@@ -21,7 +21,10 @@ mod merge;
 /// # use stackable_operator::config::merge::Merge;
 /// #[derive(Merge)]
 /// #[merge(bound = "T: Merge")]
-/// struct Wrapper<T> where T: Clone {
+/// struct Wrapper<T>
+/// where
+///     T: Clone,
+/// {
 ///     inner: T,
 /// }
 /// ```
@@ -30,7 +33,10 @@ mod merge;
 ///
 /// ```
 /// # use stackable_operator::config::merge::Merge;
-/// struct Wrapper<T> where T: Clone {
+/// struct Wrapper<T>
+/// where
+///     T: Clone,
+/// {
 ///     inner: T,
 /// }
 /// impl<T> Merge for Wrapper<T>

@@ -337,10 +337,11 @@ impl PodBuilder {
     /// # };
     /// # use std::collections::BTreeMap;
     ///
-    /// let labels: Labels = Labels::try_from(
-    ///        BTreeMap::from([("app.kubernetes.io/component", "test-role"),
-    ///             ("app.kubernetes.io/instance", "test"),
-    ///             ("app.kubernetes.io/name", "test")]))
+    /// let labels: Labels = Labels::try_from(BTreeMap::from([
+    ///     ("app.kubernetes.io/component", "test-role"),
+    ///     ("app.kubernetes.io/instance", "test"),
+    ///     ("app.kubernetes.io/name", "test"),
+    /// ]))
     /// .unwrap();
     ///
     /// let pod = PodBuilder::new()
@@ -357,7 +358,8 @@ impl PodBuilder {
     ///     .build()
     ///     .unwrap();
     ///
-    /// assert_eq!("\
+    /// assert_eq!(
+    ///     "\
     /// apiVersion: v1
     /// kind: Pod
     /// metadata: {}
@@ -387,7 +389,9 @@ impl PodBuilder {
     ///               storage: '1'
     ///           storageClassName: listeners.stackable.tech
     ///     name: listener
-    /// ", serde_yaml::to_string(&pod).unwrap())
+    /// ",
+    ///     serde_yaml::to_string(&pod).unwrap()
+    /// )
     /// ```
     pub fn add_listener_volume_by_listener_class(
         &mut self,
@@ -423,10 +427,11 @@ impl PodBuilder {
     /// # };
     /// # use std::collections::BTreeMap;
     ///
-    /// let labels: Labels = Labels::try_from(
-    ///        BTreeMap::from([("app.kubernetes.io/component", "test-role"),
-    ///             ("app.kubernetes.io/instance", "test"),
-    ///             ("app.kubernetes.io/name", "test")]))
+    /// let labels: Labels = Labels::try_from(BTreeMap::from([
+    ///     ("app.kubernetes.io/component", "test-role"),
+    ///     ("app.kubernetes.io/instance", "test"),
+    ///     ("app.kubernetes.io/name", "test"),
+    /// ]))
     /// .unwrap();
     ///
     /// let pod = PodBuilder::new()
@@ -443,7 +448,8 @@ impl PodBuilder {
     ///     .build()
     ///     .unwrap();
     ///
-    /// assert_eq!("\
+    /// assert_eq!(
+    ///     "\
     /// apiVersion: v1
     /// kind: Pod
     /// metadata: {}
@@ -473,7 +479,9 @@ impl PodBuilder {
     ///               storage: '1'
     ///           storageClassName: listeners.stackable.tech
     ///     name: listener
-    /// ", serde_yaml::to_string(&pod).unwrap())
+    /// ",
+    ///     serde_yaml::to_string(&pod).unwrap()
+    /// )
     /// ```
     pub fn add_listener_volume_by_listener_name(
         &mut self,
