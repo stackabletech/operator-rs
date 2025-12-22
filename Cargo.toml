@@ -39,7 +39,7 @@ k8s-openapi = { version = "0.26.0", default-features = false, features = ["schem
 # We use rustls instead of openssl for easier portability, e.g. so that we can build stackablectl without the need to vendor (build from source) openssl
 # We use ring instead of aws-lc-rs, as this currently fails to build in "make run-dev"
 # We pin the kube version, as we use a patch for 2.0.1
-kube = { git = "https://github.com/stackabletech/kube-rs", branch = "2.0.1-fix-schema-hoisting", version = "=2.0.1", default-features = false, features = ["client", "jsonpatch", "runtime", "derive","admission", "rustls-tls", "ring"] }
+kube = { git = "https://github.com/stackabletech/kube-rs", branch = "2.0.1-fix-schema-hoisting", version = "=2.0.1", default-features = false, features = ["client", "jsonpatch", "runtime", "derive", "admission", "rustls-tls", "ring"] }
 opentelemetry = "0.31.0"
 opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
 opentelemetry-appender-tracing = "0.31.0"
