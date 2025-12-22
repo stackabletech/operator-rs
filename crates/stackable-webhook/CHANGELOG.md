@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add support for mutating webhooks ([#1119]).
+
+### Changed
+
+- BREAKING: Refactor the entire `WebhookServer` mechanism, so multiple webhooks can run in parallel.
+  Put individual webhooks (currently `ConversionWebhook` and `MutatingWebhook`) behind the `Webhook` trait ([#1119]).
+
+[#1119]: https://github.com/stackabletech/operator-rs/pull/1119
+
 ## [0.7.1] - 2025-10-31
 
 ### Fixed
