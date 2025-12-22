@@ -40,13 +40,17 @@ pub enum MutatingWebhookError {
 /// ```
 /// use std::sync::Arc;
 ///
-/// use k8s_openapi::api::admissionregistration::v1::MutatingWebhookConfiguration;
-/// use k8s_openapi::api::apps::v1::StatefulSet;
-///
-/// use stackable_operator::kube::Client;
-/// use stackable_operator::kube::core::admission::{AdmissionRequest, AdmissionResponse};
-/// use stackable_webhook::WebhookServer;
-/// use stackable_webhook::webhooks::{MutatingWebhook, MutatingWebhookOptions};
+/// use k8s_openapi::api::{
+///     admissionregistration::v1::MutatingWebhookConfiguration, apps::v1::StatefulSet,
+/// };
+/// use stackable_operator::kube::{
+///     Client,
+///     core::admission::{AdmissionRequest, AdmissionResponse},
+/// };
+/// use stackable_webhook::{
+///     WebhookServer,
+///     webhooks::{MutatingWebhook, MutatingWebhookOptions},
+/// };
 ///
 /// # async fn docs() {
 /// // The Kubernetes client
@@ -56,7 +60,7 @@ pub enum MutatingWebhookError {
 /// // Read in from user input, e.g. CLI arguments
 /// let disable_mwc_maintenance = false;
 ///
-/// let mutating_webhook_options = MutatingWebhookOptions{
+/// let mutating_webhook_options = MutatingWebhookOptions {
 ///     disable_mwc_maintenance,
 ///     field_manager: "my-field-manager".to_owned(),
 /// };
@@ -69,7 +73,9 @@ pub enum MutatingWebhookError {
 /// ));
 ///
 /// let webhook_options = todo!();
-/// let webhook_server = WebhookServer::new(vec![mutating_webhook], webhook_options).await.unwrap();
+/// let webhook_server = WebhookServer::new(vec![mutating_webhook], webhook_options)
+///     .await
+///     .unwrap();
 /// webhook_server.run().await.unwrap();
 /// # }
 ///
@@ -77,11 +83,13 @@ pub enum MutatingWebhookError {
 ///     let webhook_name = "pod-labeler.stackable.tech";
 ///
 ///     MutatingWebhookConfiguration {
-///         webhooks: Some(vec![k8s_openapi::api::admissionregistration::v1::MutatingWebhook {
-///             // This is checked by the stackable_webhook code
-///             admission_review_versions: vec!["v1".to_owned()],
-///             ..Default::default()
-///         }]),
+///         webhooks: Some(vec![
+///             k8s_openapi::api::admissionregistration::v1::MutatingWebhook {
+///                 // This is checked by the stackable_webhook code
+///                 admission_review_versions: vec!["v1".to_owned()],
+///                 ..Default::default()
+///             },
+///         ]),
 ///         ..Default::default()
 ///     }
 /// }

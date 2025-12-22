@@ -3,15 +3,9 @@
 //!
 //! Currently the following webhooks are supported:
 //!
-<<<<<<< HEAD
-//! ```
-//! use axum::Router;
-//! use stackable_webhook::{WebhookOptions, WebhookServer};
-=======
 //! * [webhooks::ConversionWebhook]
 //! * [webhooks::MutatingWebhook]
 //! * In the future validating webhooks wil be added
->>>>>>> origin/main
 //!
 //! This library is fully compatible with the  [`tracing`] crate and emits debug level tracing data.
 //!
@@ -64,9 +58,7 @@ pub enum WebhookServerError {
 /// ### Example usage
 ///
 /// ```
-/// use stackable_webhook::WebhookServer;
-/// use stackable_webhook::WebhookServerOptions;
-/// use stackable_webhook::webhooks::Webhook;
+/// use stackable_webhook::{WebhookServer, WebhookServerOptions, webhooks::Webhook};
 ///
 /// # async fn docs() {
 /// let mut webhooks: Vec<Box<dyn Webhook>> = vec![];

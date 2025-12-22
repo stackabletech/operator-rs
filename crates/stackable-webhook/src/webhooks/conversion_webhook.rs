@@ -43,10 +43,17 @@ pub enum ConversionWebhookError {
 /// ```
 /// use std::sync::Arc;
 ///
-/// use stackable_operator::crd::s3::{S3Connection, S3ConnectionVersion};
-/// use stackable_operator::kube::{Client, core::admission::{AdmissionRequest, AdmissionResponse}};
-/// use stackable_webhook::WebhookServer;
-/// use stackable_webhook::webhooks::{ConversionWebhook, ConversionWebhookOptions};
+/// use stackable_operator::{
+///     crd::s3::{S3Connection, S3ConnectionVersion},
+///     kube::{
+///         Client,
+///         core::admission::{AdmissionRequest, AdmissionResponse},
+///     },
+/// };
+/// use stackable_webhook::{
+///     WebhookServer,
+///     webhooks::{ConversionWebhook, ConversionWebhookOptions},
+/// };
 ///
 /// # async fn docs() {
 /// // The Kubernetes client
@@ -54,29 +61,23 @@ pub enum ConversionWebhookError {
 /// // Read in from user input, e.g. CLI arguments
 /// let disable_crd_maintenance = false;
 ///
-/// let crds_and_handlers = vec![
-///     (
-///         S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1)
-///             .expect("the S3Connection CRD must be merged"),
-///         S3Connection::try_convert,
-///     )
-/// ];
+/// let crds_and_handlers = vec![(
+///     S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1)
+///         .expect("the S3Connection CRD must be merged"),
+///     S3Connection::try_convert,
+/// )];
 ///
-/// let conversion_webhook_options = ConversionWebhookOptions{
+/// let conversion_webhook_options = ConversionWebhookOptions {
 ///     disable_crd_maintenance,
 ///     field_manager: "my-field-manager".to_owned(),
 /// };
-/// let (conversion_webhook, initial_reconcile_rx) = ConversionWebhook::new(
-///     crds_and_handlers,
-///     client,
-///     conversion_webhook_options,
-/// );
+/// let (conversion_webhook, initial_reconcile_rx) =
+///     ConversionWebhook::new(crds_and_handlers, client, conversion_webhook_options);
 ///
 /// let webhook_options = todo!();
-/// let webhook_server = WebhookServer::new(
-///     vec![Box::new(conversion_webhook)],
-///     webhook_options,
-/// ).await.unwrap();
+/// let webhook_server = WebhookServer::new(vec![Box::new(conversion_webhook)], webhook_options)
+///     .await
+///     .unwrap();
 /// webhook_server.run().await.unwrap();
 /// # }
 /// ```
