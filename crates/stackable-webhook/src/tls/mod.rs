@@ -31,7 +31,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 use x509_cert::Certificate;
 
 use crate::{
-    options::WebhookOptions,
+    WebhookServerOptions,
     tls::cert_resolver::{CertificateResolver, CertificateResolverError},
 };
 
@@ -86,14 +86,22 @@ impl TlsServer {
     #[instrument(name = "create_tls_server", skip(router))]
     pub async fn new(
         router: Router,
-        options: WebhookOptions,
+        options: &WebhookServerOptions,
     ) -> Result<(Self, mpsc::Receiver<Certificate>)> {
         let (certificate_tx, certificate_rx) = mpsc::channel(1);
 
-        let WebhookOptions {
+        let WebhookServerOptions {
             socket_addr,
-            subject_alterative_dns_names,
+            webhook_namespace,
+            webhook_service_name,
         } = options;
+
+        // This is how Kubernetes calls us, so it decides about the naming.
+        // AFAIK we can not influence this, so this is the only SAN entry needed.
+        // TODO (@Techassi): The cluster domain should be included here, so that (non Kubernetes)
+        // HTTP clients can use the FQDN of the service for testing or user use-cases.
+        let subject_alterative_dns_names =
+            vec![format!("{webhook_service_name}.{webhook_namespace}.svc")];
 
         let cert_resolver = CertificateResolver::new(subject_alterative_dns_names, certificate_tx)
             .await
@@ -113,11 +121,15 @@ impl TlsServer {
         let tls_server = Self {
             config,
             cert_resolver,
-            socket_addr,
+            socket_addr: *socket_addr,
             router,
         };
 
         Ok((tls_server, certificate_rx))
+    }
+
+    pub fn socket_addr(&self) -> &SocketAddr {
+        &self.socket_addr
     }
 
     /// Runs the TLS server by listening for incoming TCP connections on the
