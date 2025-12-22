@@ -230,12 +230,10 @@ mod utils;
 /// #[versioned(
 ///     version(name = "v1alpha1"),
 ///     version(name = "v1beta1"),
-///     
 ///     options(k8s(
 ///         // Highly experimental conversion tracking. Opting into this feature will
 ///         // introduce frequent breaking changes.
 ///         experimental_conversion_tracking,
-///     
 ///         // Enables instrumentation and log events via the tracing crate.
 ///         enable_tracing,
 ///     ))
@@ -329,28 +327,22 @@ mod utils;
 ///         // **Required.** Set the group of the CRD, usually the domain of the
 ///         // company, like `example.com`.
 ///         group = "example.com",
-///     
 ///         // Override the kind field of the CRD. This defaults to the struct
 ///         // name (without the `Spec` suffix). Overriding this value will also
 ///         // influence the names of other generated items, like the status
 ///         // struct (if used) or the version enum.
 ///         kind = "CustomKind",
-///     
 ///         // Set the singular name. Defaults to lowercased `kind` value.
 ///         singular = "...",
-///     
 ///         // Set the plural name. Defaults to inferring from singular.
 ///         plural = "...",
-///     
 ///         // Indicate that this is a namespaced scoped resource rather than a
 ///         // cluster scoped resource.
 ///         namespaced,
-///     
 ///         // Set the specified struct as the status subresource. If conversion
 ///         // tracking is enabled, this struct will be automatically merged into
 ///         // the generated tracking status struct.
 ///         status = "FooStatus",
-///     
 ///         // Set a shortname. This can be specified multiple times.
 ///         shortname = "..."
 ///     ))]
