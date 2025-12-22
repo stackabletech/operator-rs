@@ -645,6 +645,41 @@ mod utils;
 /// ```
 /// </details>
 ///
+/// ## Additional Arguments
+///
+/// In addition to the field actions, the following top-level field arguments
+/// are available:
+///
+/// ### Hinting Wrapper Types
+///
+/// With `#[versioned(hint(...))]` it is possible to give hints to the macro
+/// that the field contains a wrapped type. Currently, these following hints
+/// are supported:
+///
+/// - `hint(option)`: Indicates that the field contains an `Option<T>`.
+/// - `hint(vec)`: Indicates that the field contains a `Vec<T>`.
+///
+/// These hints are especially useful for generated conversion functions. With
+/// these hints in place, the types are correctly mapped using `Into::into`.
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// #[versioned(
+///     version(name = "v1alpha1"),
+///     version(name = "v1beta1")
+/// )]
+/// mod versioned {
+///     pub struct Foo {
+///         #[versioned(
+///             changed(since = "v1beta1", from_type = "Vec<usize>"),
+///             hint(vec)
+///         )]
+///         bar: Vec<usize>,
+///         baz: bool,
+///     }
+/// }
+/// ```
+///
 /// # Generated Helpers
 ///
 /// This macro generates a few different helpers to enable different operations
