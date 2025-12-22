@@ -158,7 +158,10 @@ impl WebhookServer {
 
     /// Runs the Webhook server and sets up signal handlers for shutting down.
     ///
-    /// This does not implement graceful shutdown of the underlying server.
+    /// This does not implement graceful shutdown of the underlying server. Additionally, the server
+    /// is never started in cases where no [`Webhook`] is registered. Callers of this function need
+    /// to ensure to choose the correct joining mechanism for their use-case to for example avoid
+    /// unexpected shutdowns of the whole Kubernetes controller.
     pub async fn run(self) -> Result<()> {
         let future_server = self.run_server();
         let future_signal = async {
@@ -207,6 +210,14 @@ impl WebhookServer {
             tls_server,
             mut cert_rx,
         } = self;
+
+        // If no webhooks are registered exit immediately without spanning the TLS server and the
+        // certificate rotation loop.
+        if webhooks.is_empty() {
+            tracing::debug!("no registered webhooks, returning without starting TLS server");
+            return Ok(());
+        }
+
         let tls_server = tls_server
             .run()
             .map_err(|err| WebhookServerError::RunTlsServer { source: err });
