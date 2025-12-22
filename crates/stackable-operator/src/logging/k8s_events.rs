@@ -1,6 +1,6 @@
 //! Utilities for publishing Kubernetes events
 
-use std::error::Error;
+use std::{error::Error, fmt::Write};
 
 use kube::runtime::{
     controller,
@@ -12,25 +12,20 @@ use super::controller::ReconcilerError;
 /// Converts an [`Error`] into a publishable Kubernetes [`Event`]
 fn error_to_event<E: ReconcilerError>(err: &E) -> Event {
     // Walk the whole error chain, so that we get all the full reason for the error
-    let mut full_msg = {
-        use std::fmt::Write;
-        let mut buf = err.to_string();
-        let mut err: &dyn Error = err;
-        loop {
-            err = match err.source() {
-                Some(err) => {
-                    write!(buf, ": {err}").unwrap();
-                    err
-                }
-                None => break buf,
-            }
-        }
-    };
-    message::truncate_with_ellipsis(&mut full_msg, 1024);
+    let mut error = err.to_string();
+    let mut source = err.source();
+
+    while let Some(err) = source {
+        write!(error, ": {err}").expect("must be able to concat errors");
+        source = err.source();
+    }
+
+    message::truncate_with_ellipsis(&mut error, 1024);
+
     Event {
         type_: EventType::Warning,
         reason: err.category().to_string(),
-        note: Some(full_msg),
+        note: Some(error),
         action: "Reconcile".to_string(),
         secondary: err.secondary_object().map(|secondary| secondary.into()),
     }
@@ -70,8 +65,7 @@ mod message {
     pub fn truncate_with_ellipsis(msg: &mut String, max_len: usize) {
         const ELLIPSIS: char = '…';
         const ELLIPSIS_LEN: usize = ELLIPSIS.len_utf8();
-        let len = msg.len();
-        if len > max_len {
+        if msg.len() > max_len {
             let start_of_trunc_char = find_start_of_char(msg, max_len.saturating_sub(ELLIPSIS_LEN));
             msg.truncate(start_of_trunc_char);
             if ELLIPSIS_LEN <= max_len {

@@ -29,3 +29,6 @@ tokio.workspace = true
 tracing.workspace = true
 x509-cert.workspace = true
 zeroize.workspace = true
+
+[lints]
+workspace = true

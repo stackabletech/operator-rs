@@ -28,3 +28,6 @@ time = { workspace = true, optional = true }
 [dev-dependencies]
 k8s-openapi.workspace = true
 rstest.workspace = true
+
+[lints]
+workspace = true

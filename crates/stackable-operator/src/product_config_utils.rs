@@ -218,11 +218,12 @@ pub fn validate_all_roles_and_groups_config(
     ignore_err: bool,
 ) -> Result<ValidatedRoleConfigByPropertyKind> {
     let mut result = HashMap::new();
+
     for (role, role_group) in role_config {
-        result.insert(role.to_string(), HashMap::new());
+        let role_entry = result.entry(role.to_string()).or_insert(HashMap::new());
 
         for (group, properties_by_kind) in role_group {
-            result.get_mut(role).unwrap().insert(
+            role_entry.insert(
                 group.clone(),
                 validate_role_and_group_config(
                     version,

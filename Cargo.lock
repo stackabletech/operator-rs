@@ -2868,6 +2868,7 @@ dependencies = [
  "futures",
  "http",
  "indexmap",
+ "indoc",
  "json-patch",
  "k8s-openapi",
  "kube",

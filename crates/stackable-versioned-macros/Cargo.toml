@@ -55,3 +55,6 @@ serde_yaml.workspace = true
 snafu.workspace = true
 tracing.workspace = true
 trybuild.workspace = true
+
+[lints]
+workspace = true

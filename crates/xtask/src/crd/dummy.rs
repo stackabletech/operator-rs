@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use stackable_operator::{
     commons::resources::{JvmHeapLimits, Resources},
     config::fragment::Fragment,
+    deep_merger::ObjectOverrides,
     kube::CustomResource,
     role_utils::Role,
     schemars::JsonSchema,
@@ -47,6 +48,9 @@ pub mod versioned {
         secret_class_volume: stackable_operator::commons::secret_class::SecretClassVolume,
         secret_reference: stackable_operator::shared::secret::SecretReference,
         tls_client_details: stackable_operator::commons::tls_verification::TlsClientDetails,
+
+        #[serde(default)]
+        pub object_overrides: ObjectOverrides,
 
         // Already versioned
         client_authentication_details:

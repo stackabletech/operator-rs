@@ -408,6 +408,16 @@ impl Tracing {
     /// Name the guard variable appropriately, do not just use <code>let _ =</code>, as that will drop
     /// immediately.
     /// </div>
+    //
+    // SAFETY: We purposefully allow the `clippy::unwrap_in_result` lint below in this function.
+    // We can use expect here, because the directives are defined as a constant value which must be
+    // able to be parsed.
+    //
+    // FIXME (@Techassi): This attribute can be used on individual unwrap and expect calls since
+    // Rust 1.91.0. We should move this attribute to not contaminate an unnecessarily large scope
+    // once we bump the toolchain to 1.91.0.
+    // See https://github.com/rust-lang/rust-clippy/pull/15445
+    #[allow(clippy::unwrap_in_result)]
     pub fn init(mut self) -> Result<Tracing> {
         let mut layers: Vec<Box<dyn Layer<Registry> + Sync + Send>> = Vec::new();
 
