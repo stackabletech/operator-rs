@@ -58,9 +58,7 @@ pub enum WebhookServerError {
 /// ### Example usage
 ///
 /// ```
-/// use stackable_webhook::WebhookServer;
-/// use stackable_webhook::WebhookServerOptions;
-/// use stackable_webhook::webhooks::Webhook;
+/// use stackable_webhook::{WebhookServer, WebhookServerOptions, webhooks::Webhook};
 ///
 /// # async fn docs() {
 /// let mut webhooks: Vec<Box<dyn Webhook>> = vec![];

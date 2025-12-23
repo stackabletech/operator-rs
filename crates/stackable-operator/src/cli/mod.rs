@@ -23,8 +23,8 @@ pub const AUTHOR: &str = "Stackable GmbH - info@stackable.tech";
 /// [`RunArguments`] is used, but a custom type can be used.
 ///
 /// ```rust
-/// use stackable_operator::cli::Command;
 /// use clap::Parser;
+/// use stackable_operator::cli::Command;
 ///
 /// #[derive(Parser)]
 /// struct Run {
@@ -39,8 +39,8 @@ pub const AUTHOR: &str = "Stackable GmbH - info@stackable.tech";
 /// enum.
 ///
 /// ```rust
-/// use stackable_operator::cli::Command;
 /// use clap::Parser;
+/// use stackable_operator::cli::Command;
 ///
 /// #[derive(Parser)]
 /// enum CustomCommand {
@@ -48,7 +48,7 @@ pub const AUTHOR: &str = "Stackable GmbH - info@stackable.tech";
 ///     Hello,
 ///
 ///     #[clap(flatten)]
-///     Framework(Command)
+///     Framework(Command),
 /// }
 /// ```
 #[derive(Debug, PartialEq, Eq, Parser)]
@@ -65,8 +65,8 @@ pub enum Command<Run: Args = RunArguments> {
 /// ### Embed into an extended argument set
 ///
 /// ```rust
-/// use stackable_operator::cli::RunArguments;
 /// use clap::Parser;
+/// use stackable_operator::cli::RunArguments;
 ///
 /// #[derive(clap::Parser, Debug, PartialEq, Eq)]
 /// struct Run {

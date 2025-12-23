@@ -68,14 +68,8 @@ pub enum LoggingError {
 ///
 /// ```
 /// use stackable_operator::{
-///     builder::{
-///         pod::PodBuilder,
-///         meta::ObjectMetaBuilder,
-///     },
-///     memory::{
-///         BinaryMultiple,
-///         MemoryQuantity,
-///     },
+///     builder::{meta::ObjectMetaBuilder, pod::PodBuilder},
+///     memory::{BinaryMultiple, MemoryQuantity},
 /// };
 /// # use stackable_operator::product_logging;
 ///
@@ -128,9 +122,7 @@ pub fn calculate_log_volume_size_limit(max_log_files_size: &[MemoryQuantity]) ->
 ///     builder::pod::container::ContainerBuilder,
 ///     config::fragment,
 ///     product_logging,
-///     product_logging::spec::{
-///         ContainerLogConfig, ContainerLogConfigChoice, Logging,
-///     },
+///     product_logging::spec::{ContainerLogConfig, ContainerLogConfigChoice, Logging},
 /// };
 /// # use stackable_operator::product_logging::spec::default_logging;
 /// # use strum::{Display, EnumIter};
@@ -239,15 +231,10 @@ pub fn capture_shell_output(
 ///
 /// ```
 /// use stackable_operator::{
-///     builder::{
-///         configmap::ConfigMapBuilder,
-///         meta::ObjectMetaBuilder,
-///     },
+///     builder::{configmap::ConfigMapBuilder, meta::ObjectMetaBuilder},
 ///     config::fragment,
 ///     product_logging,
-///     product_logging::spec::{
-///         ContainerLogConfig, ContainerLogConfigChoice, Logging,
-///     },
+///     product_logging::spec::{ContainerLogConfig, ContainerLogConfigChoice, Logging},
 /// };
 /// # use stackable_operator::product_logging::spec::default_logging;
 /// # use strum::{Display, EnumIter};
@@ -360,15 +347,10 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 ///
 /// ```
 /// use stackable_operator::{
-///     builder::{
-///         configmap::ConfigMapBuilder,
-///         meta::ObjectMetaBuilder,
-///     },
+///     builder::{configmap::ConfigMapBuilder, meta::ObjectMetaBuilder},
 ///     config::fragment,
 ///     product_logging,
-///     product_logging::spec::{
-///         ContainerLogConfig, ContainerLogConfigChoice, Logging,
-///     },
+///     product_logging::spec::{ContainerLogConfig, ContainerLogConfigChoice, Logging},
 /// };
 /// # use stackable_operator::product_logging::spec::default_logging;
 /// # use strum::{Display, EnumIter};
@@ -507,14 +489,9 @@ rootLogger.appenderRef.FILE.ref = FILE"#,
 ///
 /// ```
 /// use stackable_operator::{
-///     builder::{
-///         configmap::ConfigMapBuilder,
-///         meta::ObjectMetaBuilder,
-///     },
+///     builder::{configmap::ConfigMapBuilder, meta::ObjectMetaBuilder},
 ///     product_logging,
-///     product_logging::spec::{
-///         ContainerLogConfig, ContainerLogConfigChoice, Logging,
-///     },
+///     product_logging::spec::{ContainerLogConfig, ContainerLogConfigChoice, Logging},
 /// };
 /// # use stackable_operator::{
 /// #     config::fragment,
@@ -534,7 +511,8 @@ rootLogger.appenderRef.FILE.ref = FILE"#,
 /// const MY_PRODUCT_LOG_FILE: &str = "my-product.log4j.xml";
 /// const MAX_LOG_FILE_SIZE_IN_MIB: u32 = 10;
 /// const CONSOLE_CONVERSION_PATTERN: &str = "%d{ISO8601} %-5p %m%n";
-/// const ADDITIONAL_CONFIG: &str = "  <logger name=\"foo.logger\" level=\"INFO\" additivity=\"false\"></logger>";
+/// const ADDITIONAL_CONFIG: &str =
+///     "  <logger name=\"foo.logger\" level=\"INFO\" additivity=\"false\"></logger>";
 ///
 /// let mut cm_builder = ConfigMapBuilder::new();
 /// cm_builder.metadata(ObjectMetaBuilder::default().build());
@@ -551,7 +529,7 @@ rootLogger.appenderRef.FILE.ref = FILE"#,
 ///             MAX_LOG_FILE_SIZE_IN_MIB,
 ///             CONSOLE_CONVERSION_PATTERN,
 ///             log_config,
-///             Some(ADDITIONAL_CONFIG)
+///             Some(ADDITIONAL_CONFIG),
 ///         ),
 ///     );
 /// }
@@ -658,14 +636,9 @@ pub fn create_logback_config(
 ///
 /// ```
 /// use stackable_operator::{
-///     builder::{
-///         configmap::ConfigMapBuilder,
-///         meta::ObjectMetaBuilder,
-///     },
+///     builder::{configmap::ConfigMapBuilder, meta::ObjectMetaBuilder},
 ///     product_logging,
-///     product_logging::spec::{
-///         ContainerLogConfig, ContainerLogConfigChoice, Logging,
-///     },
+///     product_logging::spec::{ContainerLogConfig, ContainerLogConfigChoice, Logging},
 /// };
 /// # use stackable_operator::{
 /// #     config::fragment,
@@ -703,10 +676,7 @@ pub fn create_logback_config(
 /// if logging.enable_vector_agent {
 ///     cm_builder.add_data(
 ///         product_logging::framework::VECTOR_CONFIG_FILE,
-///         product_logging::framework::create_vector_config(
-///             &role_group,
-///             vector_log_config,
-///         ),
+///         product_logging::framework::create_vector_config(&role_group, vector_log_config),
 ///     );
 /// }
 ///
@@ -1496,10 +1466,7 @@ kill $vector_pid
 /// # Example
 ///
 /// ```
-/// use stackable_operator::{
-///     builder::pod::container::ContainerBuilder,
-///     product_logging,
-/// };
+/// use stackable_operator::{builder::pod::container::ContainerBuilder, product_logging};
 ///
 /// const STACKABLE_LOG_DIR: &str = "/stackable/log";
 ///

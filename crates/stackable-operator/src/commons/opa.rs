@@ -7,9 +7,11 @@
 //! # Example
 //! ```rust
 //! use serde::{Deserialize, Serialize};
-//! use stackable_operator::kube::CustomResource;
-//! use stackable_operator::commons::opa::{OpaApiVersion, OpaConfig};
-//! use stackable_operator::schemars::{self, JsonSchema};
+//! use stackable_operator::{
+//!     commons::opa::{OpaApiVersion, OpaConfig},
+//!     kube::CustomResource,
+//!     schemars::{self, JsonSchema},
+//! };
 //!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 //! #[kube(
@@ -18,11 +20,11 @@
 //!     kind = "TestCluster",
 //!     plural = "testclusters",
 //!     shortname = "test",
-//!     namespaced,
+//!     namespaced
 //! )]
 //! #[serde(rename_all = "camelCase")]
 //! pub struct TestClusterSpec {
-//!     opa: Option<OpaConfig>
+//!     opa: Option<OpaConfig>,
 //! }
 //!
 //! let cluster: TestCluster = serde_yaml::from_str(
@@ -36,12 +38,19 @@
 //!         configMapName: simple-opa
 //!         package: test
 //!     ",
-//!     ).unwrap();
+//! )
+//! .unwrap();
 //!
 //! let opa_config: &OpaConfig = cluster.spec.opa.as_ref().unwrap();
 //!
-//! assert_eq!(opa_config.document_url(&cluster, Some("allow"), OpaApiVersion::V1), "v1/data/test/allow".to_string());
-//! assert_eq!(opa_config.full_document_url(&cluster, "http://localhost:8081", None, OpaApiVersion::V1), "http://localhost:8081/v1/data/test".to_string());
+//! assert_eq!(
+//!     opa_config.document_url(&cluster, Some("allow"), OpaApiVersion::V1),
+//!     "v1/data/test/allow".to_string()
+//! );
+//! assert_eq!(
+//!     opa_config.full_document_url(&cluster, "http://localhost:8081", None, OpaApiVersion::V1),
+//!     "http://localhost:8081/v1/data/test".to_string()
+//! );
 //! ```
 use std::sync::LazyLock;
 
