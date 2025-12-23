@@ -21,12 +21,14 @@
 //! # Example
 //!
 //! ```
-//! use stackable_operator::config::fragment::Fragment;
-//! use stackable_operator::role_utils::Role;
-//! use stackable_operator::commons::resources::{Resources, PvcConfig, JvmHeapLimits};
+//! use kube::CustomResource;
 //! use schemars::JsonSchema;
 //! use serde::{Deserialize, Serialize};
-//! use kube::CustomResource;
+//! use stackable_operator::{
+//!     commons::resources::{JvmHeapLimits, PvcConfig, Resources},
+//!     config::fragment::Fragment,
+//!     role_utils::Role,
+//! };
 //!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, Serialize)]
 //! #[kube(
@@ -50,7 +52,7 @@
 //! #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]
 //! #[fragment_attrs(
 //!     derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema),
-//!     serde(rename_all = "camelCase"),
+//!     serde(rename_all = "camelCase")
 //! )]
 //! pub struct ProductConfig {
 //!     resources: Resources<ProductStorageConfig, JvmHeapLimits>,
@@ -59,7 +61,7 @@
 //! #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]
 //! #[fragment_attrs(
 //!     derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema),
-//!     serde(rename_all = "camelCase"),
+//!     serde(rename_all = "camelCase")
 //! )]
 //! pub struct ProductStorageConfig {
 //!     data_storage: PvcConfig,

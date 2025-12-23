@@ -17,10 +17,7 @@ use crate::config::{
 ///
 /// ```
 /// use serde::{Deserialize, Serialize};
-/// use stackable_operator::{
-///     product_logging,
-///     schemars::JsonSchema,
-/// };
+/// use stackable_operator::{product_logging, schemars::JsonSchema};
 /// use strum::{Display, EnumIter};
 ///
 /// #[derive(

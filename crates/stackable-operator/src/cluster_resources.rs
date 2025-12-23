@@ -328,19 +328,26 @@ impl ClusterResource for Deployment {
 /// # Examples
 ///
 /// ```
-/// use k8s_openapi::api::apps::v1::StatefulSet;
-/// use k8s_openapi::api::core::v1::{ConfigMap, Service};
-/// use kube::CustomResource;
-/// use kube::core::{Resource, CustomResourceExt};
-/// use kube::runtime::controller::Action;
+/// use std::sync::Arc;
+///
+/// use k8s_openapi::api::{
+///     apps::v1::StatefulSet,
+///     core::v1::{ConfigMap, Service},
+/// };
+/// use kube::{
+///     CustomResource,
+///     core::{CustomResourceExt, Resource},
+///     runtime::controller::Action,
+/// };
 /// use schemars::JsonSchema;
 /// use serde::{Deserialize, Serialize};
-/// use stackable_operator::client::Client;
-/// use stackable_operator::cluster_resources::{self, ClusterResourceApplyStrategy, ClusterResources};
-/// use stackable_operator::deep_merger::ObjectOverrides;
-/// use stackable_operator::product_config_utils::ValidatedRoleConfigByPropertyKind;
-/// use stackable_operator::role_utils::Role;
-/// use std::sync::Arc;
+/// use stackable_operator::{
+///     client::Client,
+///     cluster_resources::{self, ClusterResourceApplyStrategy, ClusterResources},
+///     deep_merger::ObjectOverrides,
+///     product_config_utils::ValidatedRoleConfigByPropertyKind,
+///     role_utils::Role,
+/// };
 ///
 /// const APP_NAME: &str = "app";
 /// const OPERATOR_NAME: &str = "app.stackable.tech";
@@ -352,7 +359,7 @@ impl ClusterResource for Deployment {
 ///     version = "v1",
 ///     kind = "AppCluster",
 ///     plural = "AppClusters",
-///     namespaced,
+///     namespaced
 /// )]
 /// struct AppClusterSpec {
 ///     #[serde(default)]
@@ -360,15 +367,9 @@ impl ClusterResource for Deployment {
 /// }
 ///
 /// enum Error {
-///     CreateClusterResources {
-///         source: cluster_resources::Error,
-///     },
-///     AddClusterResource {
-///         source: cluster_resources::Error,
-///     },
-///     DeleteOrphanedClusterResources {
-///         source: cluster_resources::Error,
-///     },
+///     CreateClusterResources { source: cluster_resources::Error },
+///     AddClusterResource { source: cluster_resources::Error },
+///     DeleteOrphanedClusterResources { source: cluster_resources::Error },
 /// };
 ///
 /// async fn reconcile(app: Arc<AppCluster>, client: Arc<Client>) -> Result<Action, Error> {
@@ -380,40 +381,43 @@ impl ClusterResource for Deployment {
 ///         CONTROLLER_NAME,
 ///         &app.object_ref(&()),
 ///         ClusterResourceApplyStrategy::Default,
-///         app.spec.object_overrides.clone(),
+///         &app.spec.object_overrides,
 ///     )
 ///     .map_err(|source| Error::CreateClusterResources { source })?;
 ///
 ///     let role_service = Service::default();
-///     let patched_role_service =
-///         cluster_resources.add(&client, role_service)
-///             .await
-///             .map_err(|source| Error::AddClusterResource { source })?;
+///     let patched_role_service = cluster_resources
+///         .add(&client, role_service)
+///         .await
+///         .map_err(|source| Error::AddClusterResource { source })?;
 ///
 ///     for (role_name, group_config) in validated_config.iter() {
 ///         for (rolegroup_name, rolegroup_config) in group_config.iter() {
 ///             let rolegroup_service = Service::default();
-///             cluster_resources.add(&client, rolegroup_service)
+///             cluster_resources
+///                 .add(&client, rolegroup_service)
 ///                 .await
 ///                 .map_err(|source| Error::AddClusterResource { source })?;
 ///
 ///             let rolegroup_configmap = ConfigMap::default();
-///             cluster_resources.add(&client, rolegroup_configmap)
+///             cluster_resources
+///                 .add(&client, rolegroup_configmap)
 ///                 .await
 ///                 .map_err(|source| Error::AddClusterResource { source })?;
 ///
 ///             let rolegroup_statefulset = StatefulSet::default();
-///             cluster_resources.add(&client, rolegroup_statefulset)
+///             cluster_resources
+///                 .add(&client, rolegroup_statefulset)
 ///                 .await
 ///                 .map_err(|source| Error::AddClusterResource { source })?;
 ///         }
 ///     }
 ///
 ///     let discovery_configmap = ConfigMap::default();
-///     let patched_discovery_configmap =
-///         cluster_resources.add(&client, discovery_configmap)
-///             .await
-///             .map_err(|source| Error::AddClusterResource { source })?;
+///     let patched_discovery_configmap = cluster_resources
+///         .add(&client, discovery_configmap)
+///         .await
+///         .map_err(|source| Error::AddClusterResource { source })?;
 ///
 ///     cluster_resources
 ///         .delete_orphaned_resources(&client)
@@ -424,7 +428,7 @@ impl ClusterResource for Deployment {
 /// }
 /// ```
 #[derive(Debug, PartialEq)]
-pub struct ClusterResources {
+pub struct ClusterResources<'a> {
     /// The namespace of the cluster
     namespace: String,
 
@@ -454,10 +458,10 @@ pub struct ClusterResources {
     apply_strategy: ClusterResourceApplyStrategy,
 
     /// Arbitrary Kubernetes object overrides specified by the user via the CRD.
-    object_overrides: ObjectOverrides,
+    object_overrides: &'a ObjectOverrides,
 }
 
-impl ClusterResources {
+impl<'a> ClusterResources<'a> {
     /// Constructs new `ClusterResources`.
     ///
     /// # Arguments
@@ -483,7 +487,7 @@ impl ClusterResources {
         controller_name: &str,
         cluster: &ObjectReference,
         apply_strategy: ClusterResourceApplyStrategy,
-        object_overrides: ObjectOverrides,
+        object_overrides: &'a ObjectOverrides,
     ) -> Result<Self> {
         let namespace = cluster
             .namespace
@@ -666,7 +670,6 @@ impl ClusterResources {
     /// # Arguments
     ///
     /// * `client` - The client which is used to access Kubernetes
-    ///
     pub async fn delete_orphaned_resources(self, client: &Client) -> Result<()> {
         tokio::try_join!(
             self.delete_orphaned_resources_of_kind::<Service>(client),

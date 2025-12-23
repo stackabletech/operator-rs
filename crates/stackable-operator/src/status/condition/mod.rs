@@ -34,13 +34,14 @@ pub trait ConditionBuilder {
 ///
 /// # Examples
 /// ```
-/// use stackable_operator::status::condition::daemonset::DaemonSetConditionBuilder;
-/// use stackable_operator::status::condition::statefulset::StatefulSetConditionBuilder;
 /// use k8s_openapi::api::apps::v1::{DaemonSet, StatefulSet};
-/// use stackable_operator::status::condition::{ClusterCondition, ConditionBuilder, HasStatusCondition, compute_conditions};
+/// use stackable_operator::status::condition::{
+///     ClusterCondition, ConditionBuilder, HasStatusCondition, compute_conditions,
+///     daemonset::DaemonSetConditionBuilder, statefulset::StatefulSetConditionBuilder,
+/// };
 ///
 /// struct ClusterStatus {
-///     conditions: Vec<ClusterCondition>
+///     conditions: Vec<ClusterCondition>,
 /// }
 ///
 /// impl HasStatusCondition for ClusterStatus {
@@ -55,19 +56,17 @@ pub trait ConditionBuilder {
 /// let mut statefulset_condition_builder = StatefulSetConditionBuilder::default();
 /// statefulset_condition_builder.add(StatefulSet::default());
 ///
-/// let old_status = ClusterStatus {
-///     conditions: vec![]
-/// };
+/// let old_status = ClusterStatus { conditions: vec![] };
 ///
 /// let new_status = ClusterStatus {
-///     conditions: compute_conditions(&old_status,
+///     conditions: compute_conditions(
+///         &old_status,
 ///         &[
 ///             &daemonset_condition_builder as &dyn ConditionBuilder,
-///             &statefulset_condition_builder as &dyn ConditionBuilder
-///         ]
-///     )
+///             &statefulset_condition_builder as &dyn ConditionBuilder,
+///         ],
+///     ),
 /// };
-///
 /// ```
 pub fn compute_conditions<T: HasStatusCondition>(
     resource: &T,

@@ -1,6 +1,6 @@
 [package]
 name = "stackable-webhook"
-version = "0.7.1"
+version = "0.8.0"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -12,6 +12,7 @@ stackable-shared = { path = "../stackable-shared" }
 stackable-telemetry = { path = "../stackable-telemetry" }
 
 arc-swap.workspace = true
+async-trait.workspace = true
 axum.workspace = true
 futures-util.workspace = true
 hyper-util.workspace = true
@@ -21,6 +22,7 @@ kube.workspace = true
 opentelemetry.workspace = true
 opentelemetry-semantic-conventions.workspace = true
 rand.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 snafu.workspace = true
 tokio-rustls.workspace = true
