@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.101.0] - 2025-12-23
+
 ### Added
 
 - Support `objectOverrides`, a list of generic Kubernetes objects, which are merged into the objects created by the operator.
@@ -11,6 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Bump stackable-webhook to 0.8.0, refer to its [changelog](../stackable-webhook/CHANGELOG.md) ([#1117]).
 - BREAKING: `ClusterResources` now requires the objects added to implement `DeepMerge`.
   This is very likely a stackable-operator internal change, but technically breaking ([#1118]).
 - Depend on the patched version of kube-rs available at <https://github.com/stackabletech/kube-rs>,

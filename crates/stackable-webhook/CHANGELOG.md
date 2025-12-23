@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.8.0] - 2025-12-32
+
 ### Added
 
 - Add support for mutating webhooks ([#1119]).
