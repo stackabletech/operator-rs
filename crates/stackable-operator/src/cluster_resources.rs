@@ -381,7 +381,7 @@ impl ClusterResource for Deployment {
 ///         CONTROLLER_NAME,
 ///         &app.object_ref(&()),
 ///         ClusterResourceApplyStrategy::Default,
-///         app.spec.object_overrides.clone(),
+///         &app.spec.object_overrides,
 ///     )
 ///     .map_err(|source| Error::CreateClusterResources { source })?;
 ///
@@ -428,7 +428,7 @@ impl ClusterResource for Deployment {
 /// }
 /// ```
 #[derive(Debug, PartialEq)]
-pub struct ClusterResources {
+pub struct ClusterResources<'a> {
     /// The namespace of the cluster
     namespace: String,
 
@@ -458,10 +458,10 @@ pub struct ClusterResources {
     apply_strategy: ClusterResourceApplyStrategy,
 
     /// Arbitrary Kubernetes object overrides specified by the user via the CRD.
-    object_overrides: ObjectOverrides,
+    object_overrides: &'a ObjectOverrides,
 }
 
-impl ClusterResources {
+impl<'a> ClusterResources<'a> {
     /// Constructs new `ClusterResources`.
     ///
     /// # Arguments
@@ -487,7 +487,7 @@ impl ClusterResources {
         controller_name: &str,
         cluster: &ObjectReference,
         apply_strategy: ClusterResourceApplyStrategy,
-        object_overrides: ObjectOverrides,
+        object_overrides: &'a ObjectOverrides,
     ) -> Result<Self> {
         let namespace = cluster
             .namespace
