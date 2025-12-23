@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.101.1] - 2025-12-23
+
+### Fixed
+
+- BREAKING: Only take `object_overrides` by reference in `ClusterResources::new` ([#1132]).
+
+[#1132]: https://github.com/stackabletech/operator-rs/pull/1132
+
 ## [0.101.0] - 2025-12-23
 
 ### Added
