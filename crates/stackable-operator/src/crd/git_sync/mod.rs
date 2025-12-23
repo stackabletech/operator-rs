@@ -95,6 +95,8 @@ pub fn credentials_to_secret(input: Option<Credentials>) -> Option<String> {
     if let Some(Credentials::BasicAuthSecretName(credentials_secret)) = input {
         Some(credentials_secret)
     } else {
+        // We cannot downgrade SshPrivateKeySecretName as it does not map onto
+        // anything in v1alpha1
         None
     }
 }
