@@ -660,7 +660,9 @@ mod utils;
 /// - `hint(vec)`: Indicates that the field contains a `Vec<T>`.
 ///
 /// These hints are especially useful for generated conversion functions. With
-/// these hints in place, the types are correctly mapped using `Into::into`.
+/// these hints in place, the types are correctly mapped using `Into::into`
+/// (assuming the necessary `From` trait methods are implemented on the target
+/// types for the conversion to be done correctly).
 ///
 /// ```
 /// # use stackable_versioned_macros::versioned;
