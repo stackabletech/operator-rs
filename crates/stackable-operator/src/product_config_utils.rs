@@ -587,7 +587,9 @@ pub fn env_vars_from_rolegroup_config(
 ///
 /// ```
 /// use k8s_openapi::api::core::v1::EnvVar;
-/// use stackable_operator::{product_config_utils::env_vars_from, role_utils::CommonConfiguration};
+/// use stackable_operator::{
+///     product_config_utils::env_vars_from, role_utils::CommonConfiguration,
+/// };
 ///
 /// let common_config = CommonConfiguration::<(), ()> {
 ///     env_overrides: [("VAR".to_string(), "value".to_string())]
@@ -601,7 +603,7 @@ pub fn env_vars_from_rolegroup_config(
 /// let expected_env_vars = vec![EnvVar {
 ///     name: "VAR".to_string(),
 ///     value: Some("value".to_string()),
-///     value_from: None
+///     value_from: None,
 /// }];
 ///
 /// assert_eq!(expected_env_vars, env_vars);
@@ -651,14 +653,8 @@ pub fn env_var_from_tuple(entry: (impl Into<String>, impl Into<String>)) -> EnvV
 /// ```
 /// use stackable_operator::product_config_utils::{env_vars_from, insert_or_update_env_vars};
 ///
-/// let env_vars = env_vars_from([
-///     ("VAR1", "original value 1"),
-///     ("VAR2", "original value 2")
-/// ]);
-/// let env_overrides = env_vars_from([
-///     ("VAR2", "overriden value 2"),
-///     ("VAR3", "new value 3")
-/// ]);
+/// let env_vars = env_vars_from([("VAR1", "original value 1"), ("VAR2", "original value 2")]);
+/// let env_overrides = env_vars_from([("VAR2", "overriden value 2"), ("VAR3", "new value 3")]);
 ///
 /// let combined_env_vars = insert_or_update_env_vars(&env_vars, &env_overrides);
 ///

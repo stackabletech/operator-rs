@@ -38,10 +38,13 @@ use stackable_shared::time::Duration;
 ///     bar: Some(1),
 ///     baz: Some(2),
 /// });
-/// assert_eq!(config, Foo {
-///     bar: Some(0), // Overridden by `bar: Some(0)` above
-///     baz: Some(2), // Fallback is used
-/// });
+/// assert_eq!(
+///     config,
+///     Foo {
+///         bar: Some(0), // Overridden by `bar: Some(0)` above
+///         baz: Some(2), // Fallback is used
+///     }
+/// );
 /// ```
 ///
 /// # Options

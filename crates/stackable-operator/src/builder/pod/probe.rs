@@ -7,10 +7,7 @@
 //! ### Usage example
 //!
 //! ```
-//! use stackable_operator::{
-//!     builder::pod::probe::ProbeBuilder,
-//!     shared::time::Duration,
-//! };
+//! use stackable_operator::{builder::pod::probe::ProbeBuilder, shared::time::Duration};
 //! # use k8s_openapi::api::core::v1::HTTPGetAction;
 //! # use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
 //!

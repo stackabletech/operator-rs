@@ -56,8 +56,8 @@ const OTEL_TRACE_ID_TO: &str = "opentelemetry.trace_id.to";
 /// ### Example with Axum
 ///
 /// ```
+/// use axum::{Router, routing::get};
 /// use stackable_telemetry::AxumTraceLayer;
-/// use axum::{routing::get, Router};
 ///
 /// let trace_layer = AxumTraceLayer::new();
 /// let router = Router::new()

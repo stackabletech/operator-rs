@@ -542,33 +542,32 @@ impl Client {
     ///
     /// ```no_run
     /// use std::time::Duration;
+    ///
     /// use clap::Parser;
-    /// use tokio::time::error::Elapsed;
-    /// use kube::runtime::watcher;
     /// use k8s_openapi::api::core::v1::Pod;
+    /// use kube::runtime::watcher;
     /// use stackable_operator::{
     ///     client::{Client, initialize_operator},
     ///     utils::cluster_info::KubernetesClusterInfoOptions,
     /// };
+    /// use tokio::time::error::Elapsed;
     ///
-    /// #[tokio::main]
-    /// async fn main() {
+    /// # async fn docs() {
     /// let cluster_info_options = KubernetesClusterInfoOptions::parse();
     /// let client = initialize_operator(None, &cluster_info_options)
     ///     .await
     ///     .expect("Unable to construct client.");
     /// let watcher_config: watcher::Config =
-    ///         watcher::Config::default().fields(&format!("metadata.name=nonexistent-pod"));
+    ///     watcher::Config::default().fields(&format!("metadata.name=nonexistent-pod"));
     ///
     /// // Will time out in 1 second unless the nonexistent-pod actually exists
-    ///  let wait_created_result: Result<(), Elapsed> = tokio::time::timeout(
-    ///          Duration::from_secs(1),
-    ///          client.wait_created::<Pod>(&client.default_namespace, watcher_config),
-    ///      )
-    ///      .await;
-    /// }
+    /// let wait_created_result: Result<(), Elapsed> = tokio::time::timeout(
+    ///     Duration::from_secs(1),
+    ///     client.wait_created::<Pod>(&client.default_namespace, watcher_config),
+    /// )
+    /// .await;
+    /// # }
     /// ```
-    ///
     pub async fn wait_created<T>(&self, namespace: &T::Namespace, watcher_config: watcher::Config)
     where
         T: Resource + GetApi + Clone + Debug + DeserializeOwned + Send + 'static,

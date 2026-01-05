@@ -114,6 +114,7 @@ impl Key {
     ///
     /// ```
     /// use std::str::FromStr;
+    ///
     /// use stackable_operator::kvp::{Key, KeyPrefix};
     ///
     /// let key = Key::from_str("stackable.tech/vendor").unwrap();
@@ -144,6 +145,7 @@ impl Key {
     ///
     /// ```
     /// use std::str::FromStr;
+    ///
     /// use stackable_operator::kvp::{Key, KeyName};
     ///
     /// let key = Key::from_str("stackable.tech/vendor").unwrap();

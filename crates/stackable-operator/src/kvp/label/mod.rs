@@ -249,7 +249,8 @@ impl Label {
 /// let labels = Labels::try_from([
 ///     ("stackable.tech/managed-by", "stackablectl"),
 ///     ("stackable.tech/vendor", "Stackable"),
-/// ]).unwrap();
+/// ])
+/// .unwrap();
 /// ```
 #[derive(Clone, Debug, Default)]
 pub struct Labels(KeyValuePairs<LabelValue>);
