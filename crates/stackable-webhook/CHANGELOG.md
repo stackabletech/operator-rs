@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Don't error in case the `initial_reconcile` Receiver is dropped ([#XXXX]).
+
 ## [0.8.0] - 2025-12-32
 
 ### Added
