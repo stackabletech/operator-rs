@@ -259,7 +259,8 @@ where
         // After the reconciliation of the CRDs, the initial reconcile heartbeat is sent out
         // via the oneshot channel.
         if let Some(initial_reconcile_tx) = self.initial_reconcile_tx.take() {
-            // TODO Some docs why we ignore errors
+            // This call will (only) error in case the receiver is dropped, so we need to ignore
+            // failures.
             let _ = initial_reconcile_tx.send(());
         }
 
