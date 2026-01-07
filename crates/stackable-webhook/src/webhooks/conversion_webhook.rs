@@ -18,7 +18,7 @@ use kube::{
     Api, Client, ResourceExt,
     api::{Patch, PatchParams},
 };
-use snafu::{ResultExt, Snafu, ensure};
+use snafu::{ResultExt, Snafu};
 use tokio::sync::oneshot;
 use tracing::instrument;
 
@@ -27,9 +27,6 @@ use crate::WebhookServerOptions;
 
 #[derive(Debug, Snafu)]
 pub enum ConversionWebhookError {
-    #[snafu(display("failed to send initial CRD reconcile heartbeat"))]
-    SendInitialReconcileHeartbeat,
-
     #[snafu(display("failed to patch CRD {crd_name:?}"))]
     PatchCrd {
         source: kube::Error,
@@ -262,10 +259,9 @@ where
         // After the reconciliation of the CRDs, the initial reconcile heartbeat is sent out
         // via the oneshot channel.
         if let Some(initial_reconcile_tx) = self.initial_reconcile_tx.take() {
-            ensure!(
-                initial_reconcile_tx.send(()).is_ok(),
-                SendInitialReconcileHeartbeatSnafu
-            );
+            // This call will (only) error in case the receiver is dropped, so we need to ignore
+            // failures.
+            let _ = initial_reconcile_tx.send(());
         }
 
         Ok(())

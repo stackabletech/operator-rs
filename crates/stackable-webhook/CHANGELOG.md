@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Don't error in case the `initial_reconcile` Receiver is dropped ([#1133]).
+
+[#1133]: https://github.com/stackabletech/operator-rs/pull/1133
+
 ## [0.8.0] - 2025-12-32
 
 ### Added
