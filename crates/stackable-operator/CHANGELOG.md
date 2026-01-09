@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Revert and pin k8s-openapi to 0.26.0 ([#1135]).
+
+[#1135]: https://github.com/stackabletech/operator-rs/pull/1135
+
 ## [0.101.2] - 2026-01-07
 
 ### Changed
