@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add `objectOverrides` field to `ListenerSpec` ([#1136]).
+- BREAKING: Add `objectOverrides` field to `ListenerSpec` ([#1136]).
 
 ### Changed
 
