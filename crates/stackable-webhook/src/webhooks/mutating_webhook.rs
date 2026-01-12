@@ -206,7 +206,7 @@ where
         self.options.disable_mwc_maintenance
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self, new_ca_bundle))]
     async fn handle_certificate_rotation(
         &mut self,
         new_ca_bundle: &ByteString,
