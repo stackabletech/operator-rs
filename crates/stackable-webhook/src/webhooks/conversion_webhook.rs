@@ -135,7 +135,7 @@ impl<H> ConversionWebhook<H> {
     }
 
     #[instrument(
-        skip(self, crd, crd_api),
+        skip(self, crd, crd_api, new_ca_bundle),
         fields(
             name = crd.name_any(),
             kind = &crd.spec.names.kind
@@ -244,7 +244,7 @@ where
         self.options.disable_crd_maintenance
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self, new_ca_bundle))]
     async fn handle_certificate_rotation(
         &mut self,
         new_ca_bundle: &ByteString,
