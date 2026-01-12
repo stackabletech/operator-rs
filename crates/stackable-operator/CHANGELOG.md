@@ -6,15 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add `objectOverrides` field to `ListenerSpec` ([#XXXX]).
+- Add `objectOverrides` field to `ListenerSpec` ([#1136]).
 
 ### Changed
 
 - Revert and pin k8s-openapi to 0.26.0 ([#1135]).
-- BREAKING: `ListenerSpec` now longer derives `Eq` ([#XXXX]).
+- BREAKING: `ListenerSpec` now longer derives `Eq` ([#1136]).
 
 [#1135]: https://github.com/stackabletech/operator-rs/pull/1135
-[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+[#1136]: https://github.com/stackabletech/operator-rs/pull/1136
 
 ## [0.101.2] - 2026-01-07
 
