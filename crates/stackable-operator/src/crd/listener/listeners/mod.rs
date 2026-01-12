@@ -34,7 +34,7 @@ use stackable_versioned::versioned;
 
 #[cfg(doc)]
 use crate::builder::pod::volume::ListenerOperatorVolumeSourceBuilder;
-use crate::crd::listener::core::v1alpha1 as core_v1alpha1;
+use crate::{crd::listener::core::v1alpha1 as core_v1alpha1, deep_merger::ObjectOverrides};
 
 mod v1alpha1_impl;
 
@@ -55,7 +55,7 @@ pub mod versioned {
         namespaced
     ))]
     #[derive(
-        CustomResource, Serialize, Deserialize, Default, Clone, Debug, JsonSchema, PartialEq, Eq,
+        CustomResource, Serialize, Deserialize, Default, Clone, Debug, JsonSchema, PartialEq,
     )]
     #[serde(rename_all = "camelCase")]
     pub struct ListenerSpec {
@@ -72,6 +72,10 @@ pub mod versioned {
         /// Whether incoming traffic should also be directed to Pods that are not `Ready`.
         #[serde(default = "ListenerSpec::default_publish_not_ready_addresses")]
         pub publish_not_ready_addresses: Option<bool>,
+
+        // Docs are provided by the ObjectOverrides struct
+        #[serde(default)]
+        pub object_overrides: ObjectOverrides,
     }
 
     /// Informs users about Listeners that are bound by a given Pod.
