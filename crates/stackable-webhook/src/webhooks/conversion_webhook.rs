@@ -135,7 +135,7 @@ impl<H> ConversionWebhook<H> {
     }
 
     #[instrument(
-        skip(self, crd, crd_api),
+        skip(self, crd, crd_api, new_ca_bundle),
         fields(
             name = crd.name_any(),
             kind = &crd.spec.names.kind
