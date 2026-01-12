@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Revert and pin k8s-openapi to 0.26.0 ([#1135]).
-- BREAKING: `ListenerSpec` now longer derives `Eq` ([#1136]).
+- BREAKING: `ListenerSpec` no longer derives `Eq` ([#1136]).
 
 [#1135]: https://github.com/stackabletech/operator-rs/pull/1135
 [#1136]: https://github.com/stackabletech/operator-rs/pull/1136
