@@ -22,7 +22,7 @@ use k8s_openapi::{
     },
     apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
 };
-use kube::{Resource, ResourceExt, core::ErrorResponse};
+use kube::{Resource, ResourceExt};
 use serde::{Serialize, de::DeserializeOwned};
 use snafu::{OptionExt, ResultExt, Snafu};
 use strum::Display;
@@ -744,8 +744,8 @@ impl<'a> ClusterResources<'a> {
                 Ok(())
             }
             Err(crate::client::Error::ListResources {
-                source: kube::Error::Api(ErrorResponse { code: 403, .. }),
-            }) => {
+                source: kube::Error::Api(s),
+            }) if s.is_forbidden() => {
                 debug!(
                     "Skipping deletion of orphaned {} because the operator is not allowed to list \
                       them and is therefore probably not in charge of them.",
