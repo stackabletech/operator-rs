@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - BREAKING: Add `objectOverrides` field to `ListenerSpec` ([#1136]).
-- Added `stackable_operator::constants::RESTART_CONTROLLER_ENABLED_LABEL`, which represents the `restarter.stackable.tech/enabled=true` label ([#XXXX]).
+- Added `stackable_operator::constants::RESTART_CONTROLLER_ENABLED_LABEL` constant, which represents the `restarter.stackable.tech/enabled=true` label ([#1139]).
 
 ### Changed
 
@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 
 [#1135]: https://github.com/stackabletech/operator-rs/pull/1135
 [#1136]: https://github.com/stackabletech/operator-rs/pull/1136
-[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+[#1139]: https://github.com/stackabletech/operator-rs/pull/1139
 
 ## [0.101.2] - 2026-01-07
 
