@@ -1,7 +1,7 @@
-use chrono::Utc;
 use k8s_openapi::{
     api::core::v1::{Event, EventSource, ObjectReference},
     apimachinery::pkg::apis::meta::v1::{MicroTime, ObjectMeta, Time},
+    jiff::Timestamp,
 };
 use kube::{Resource, ResourceExt};
 
@@ -91,7 +91,7 @@ impl EventBuilder {
     }
 
     pub fn build(&self) -> Event {
-        let time = Utc::now();
+        let time = Timestamp::now();
 
         let source = Some(EventSource {
             component: self.reporting_component.clone(),

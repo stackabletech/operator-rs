@@ -21,12 +21,11 @@ webhook = ["dep:stackable-webhook"]
 [dependencies]
 stackable-certs = { path = "../stackable-certs", optional = true }
 stackable-operator-derive = { path = "../stackable-operator-derive" }
-stackable-shared = { path = "../stackable-shared", features = ["chrono", "time"] }
+stackable-shared = { path = "../stackable-shared", features = ["time", "jiff"] }
 stackable-telemetry = { path = "../stackable-telemetry", optional = true, features = ["clap"] }
 stackable-versioned = { path = "../stackable-versioned", optional = true }
 stackable-webhook = { path = "../stackable-webhook", optional = true }
 
-chrono.workspace = true
 clap.workspace = true
 const_format.workspace = true
 delegate.workspace = true
@@ -36,6 +35,7 @@ educe.workspace = true
 futures.workspace = true
 http.workspace = true
 indexmap.workspace = true
+jiff.workspace = true
 json-patch.workspace = true
 k8s-openapi.workspace = true
 kube.workspace = true
