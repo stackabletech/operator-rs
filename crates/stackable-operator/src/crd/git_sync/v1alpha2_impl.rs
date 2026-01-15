@@ -4,7 +4,6 @@ use k8s_openapi::api::core::v1::{
     Container, EmptyDirVolumeSource, EnvVar, EnvVarSource, SecretKeySelector, Volume, VolumeMount,
 };
 use snafu::{ResultExt, Snafu};
-use stackable_shared::time::Duration;
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
@@ -44,24 +43,6 @@ pub enum Error {
     AddVolumeMount {
         source: crate::builder::pod::container::Error,
     },
-}
-
-impl GitSync {
-    pub(crate) fn default_branch() -> String {
-        "main".to_string()
-    }
-
-    pub(crate) fn default_git_folder() -> PathBuf {
-        PathBuf::from("/")
-    }
-
-    pub(crate) fn default_depth() -> u32 {
-        1
-    }
-
-    pub(crate) fn default_wait() -> Duration {
-        Duration::from_secs(20)
-    }
 }
 
 /// Kubernetes resources generated from `GitSync` specifications which should be added to the Pod.

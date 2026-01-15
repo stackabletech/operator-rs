@@ -30,24 +30,24 @@ pub mod versioned {
         /// The branch to clone; defaults to `main`.
         ///
         /// Since git-sync v4.x.x this field is mapped to the flag `--ref`.
-        #[serde(default = "v1alpha2::GitSync::default_branch")]
+        #[serde(default = "default_branch")]
         pub branch: String,
 
         /// Location in the Git repository containing the resource; defaults to the root folder.
         ///
         /// It can optionally start with `/`, however, no trailing slash is recommended.
         /// An empty string (``) or slash (`/`) corresponds to the root folder in Git.
-        #[serde(default = "v1alpha2::GitSync::default_git_folder")]
+        #[serde(default = "default_git_folder")]
         pub git_folder: PathBuf,
 
         /// The depth of syncing, i.e. the number of commits to clone; defaults to 1.
-        #[serde(default = "v1alpha2::GitSync::default_depth")]
+        #[serde(default = "default_depth")]
         pub depth: u32,
 
         /// The synchronization interval, e.g. `20s` or `5m`; defaults to `20s`.
         ///
         /// Since git-sync v4.x.x this field is mapped to the flag `--period`.
-        #[serde(default = "v1alpha2::GitSync::default_wait")]
+        #[serde(default = "default_wait")]
         pub wait: Duration,
 
         /// A map of optional configuration settings that are listed in the git-sync [documentation].
@@ -89,6 +89,22 @@ pub mod versioned {
         /// [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
         SshPrivateKeySecretName(String),
     }
+}
+
+pub(crate) fn default_branch() -> String {
+    "main".to_string()
+}
+
+pub(crate) fn default_git_folder() -> PathBuf {
+    PathBuf::from("/")
+}
+
+pub(crate) fn default_depth() -> u32 {
+    1
+}
+
+pub(crate) fn default_wait() -> Duration {
+    Duration::from_secs(20)
 }
 
 pub fn credentials_to_secret(input: Option<Credentials>) -> Option<String> {
