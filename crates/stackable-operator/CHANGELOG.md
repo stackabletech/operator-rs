@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Add support for the SSH protocol for pulling git content ([#1121]).
+  This is a user-facing breaking change and should also be highlighted by operators using this functionality.
+
+[#1121]: https://github.com/stackabletech/operator-rs/pull/1121
+
 ## [0.102.0] - 2026-01-14
 
 ### Added
