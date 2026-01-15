@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use stackable_operator::{
     commons::resources::{JvmHeapLimits, Resources},
     config::fragment::Fragment,
+    crd::git_sync::v1alpha2::GitSync,
     deep_merger::ObjectOverrides,
     kube::CustomResource,
     role_utils::Role,
@@ -48,6 +49,7 @@ pub mod versioned {
         secret_class_volume: stackable_operator::commons::secret_class::SecretClassVolume,
         secret_reference: stackable_operator::shared::secret::SecretReference,
         tls_client_details: stackable_operator::commons::tls_verification::TlsClientDetails,
+        git_sync: GitSync,
 
         #[serde(default)]
         pub object_overrides: ObjectOverrides,
