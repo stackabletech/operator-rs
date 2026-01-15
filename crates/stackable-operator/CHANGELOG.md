@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.102.0] - 2026-01-14
+
 ### Added
 
 - BREAKING: Add `objectOverrides` field to `ListenerSpec` ([#1136]).
