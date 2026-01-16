@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.103.0] - 2026-01-16
+
 ### Changed
 
 - BREAKING: Add support for the SSH protocol for pulling git content ([#1121]).
