@@ -164,9 +164,10 @@ impl FooBar {
         ) {
             ::std::result::Result::Ok(request) => request,
             ::std::result::Result::Err(err) => {
-                return ::kube::core::conversion::ConversionResponse::invalid(::kube::client::Status {
+                return ::kube::core::conversion::ConversionResponse::invalid(::kube::core::Status {
                         status: Some(::kube::core::response::StatusSummary::Failure),
                         message: err.to_string(),
+                        metadata: None,
                         reason: err.to_string(),
                         details: None,
                         code: 400,
@@ -180,7 +181,7 @@ impl FooBar {
         ) {
             ::std::result::Result::Ok(converted_objects) => {
                 ::kube::core::conversion::ConversionResponse {
-                    result: ::kube::client::Status::success(),
+                    result: ::kube::core::Status::success(),
                     types: request.types,
                     uid: request.uid,
                     converted_objects,
@@ -190,9 +191,10 @@ impl FooBar {
                 let code = err.http_status_code();
                 let message = err.join_errors();
                 ::kube::core::conversion::ConversionResponse {
-                    result: ::kube::client::Status {
+                    result: ::kube::core::Status {
                         status: Some(::kube::core::response::StatusSummary::Failure),
                         message: message.clone(),
+                        metadata: None,
                         reason: message,
                         details: None,
                         code,
