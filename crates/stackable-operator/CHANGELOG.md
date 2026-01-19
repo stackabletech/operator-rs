@@ -6,13 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add `serviceOverrides` field of type `ServiceSpec` to `ListenerClass.spec.serviceOverrides` ([#XXXX]).
+- Add `serviceOverrides` field of type `Service` to `ListenerClass.spec.serviceOverrides` ([#1142]).
 
 ### Changed
 
-- BREAKING: `ListenerClassSpec` now longer implements `Eq` ([#XXXX]).
+- BREAKING: `ListenerClassSpec` now longer implements `Eq` ([#1142]).
 
-[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+[#1142]: https://github.com/stackabletech/operator-rs/pull/1142
 
 ## [0.103.0] - 2026-01-16
 
