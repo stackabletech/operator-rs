@@ -89,6 +89,20 @@ spec:
                 - Local
                 nullable: true
                 type: string
+              serviceOverrides:
+                default:
+                  apiVersion: v1
+                  kind: Service
+                  metadata: {}
+                description: |-
+                  In the `serviceOverrides` property you can define a
+                  [Service](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.34/#service-v1-core)
+                  to override any property that can be set on a Kubernetes Service.
+
+                  This mechanism is similar to the `podOverrides`, which are documented in the
+                  [Pod overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#pod-overrides).
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
               serviceType:
                 description: The method used to access the services.
                 enum:

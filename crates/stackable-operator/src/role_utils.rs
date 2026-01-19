@@ -152,7 +152,7 @@ pub struct CommonConfiguration<T, ProductSpecificCommonConfig> {
     pub cli_overrides: BTreeMap<String, String>,
 
     /// In the `podOverrides` property you can define a
-    /// [PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core)
+    /// [PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.34/#podtemplatespec-v1-core)
     /// to override any property that can be set on a Kubernetes Pod.
     /// Read the
     /// [Pod overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#pod-overrides)
