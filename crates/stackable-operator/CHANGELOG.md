@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: `ListenerClassSpec` now longer implements `Eq` ([#1142]).
+- BREAKING: `ListenerClassSpec` no longer implements `Eq` ([#1142]).
 
 [#1142]: https://github.com/stackabletech/operator-rs/pull/1142
 
