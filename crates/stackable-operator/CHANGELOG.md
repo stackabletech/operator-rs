@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.104.0] - 2026-01-26
+
 ### Added
 
 - Add `serviceOverrides` field of type `Service` to `ListenerClass.spec.serviceOverrides` ([#1142]).
