@@ -51,6 +51,7 @@ pub enum ConversionWebhookError {
 ///     WebhookServer,
 ///     webhooks::{ConversionWebhook, ConversionWebhookOptions},
 /// };
+/// use tokio::time::{Duration, sleep};
 ///
 /// # async fn docs() {
 /// // The Kubernetes client
@@ -75,7 +76,9 @@ pub enum ConversionWebhookError {
 /// let webhook_server = WebhookServer::new(vec![Box::new(conversion_webhook)], webhook_options)
 ///     .await
 ///     .unwrap();
-/// webhook_server.run().await.unwrap();
+/// let shutdown_signal = sleep(Duration::from_millis(100));
+///
+/// webhook_server.run(shutdown_signal).await.unwrap();
 /// # }
 /// ```
 pub struct ConversionWebhook<H> {
