@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `SignalWatcher` which can be used to watch signals and multiply them to gracefully shutdown
+  multiple concurrent tasks/futures ([#1147]).
+
+[#1147]: https://github.com/stackabletech/operator-rs/pull/1147
+
 ## [0.104.0] - 2026-01-26
 
 ### Added
