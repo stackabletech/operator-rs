@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
+use futures::FutureExt;
 use snafu::{ResultExt, Snafu};
 use stackable_shared::time::Duration;
+use tokio::select;
 use tracing::{Level, instrument};
 
 /// Available options to configure a [`EndOfSupportChecker`].
@@ -114,33 +116,51 @@ impl EndOfSupportChecker {
     ///
     /// It is recommended to run the end-of-support checker via [`futures::try_join!`] or
     /// [`tokio::join`] alongside other futures (eg. for controllers).
-    pub async fn run(self) {
+    pub async fn run<F>(self, shutdown_signal: F)
+    where
+        F: Future<Output = ()>,
+    {
         // Immediately return if the end-of-support checker is disabled.
         if self.disabled {
             return;
         }
 
-        // Construct an interval which can be polled.
         let mut interval = tokio::time::interval(self.interval.into());
 
+        let shutdown_signal = shutdown_signal.fuse();
+        tokio::pin!(shutdown_signal);
+
         loop {
-            // TODO: Add way to stop from the outside
-            // The first tick ticks immediately.
-            interval.tick().await;
-            let now = Utc::now();
+            select! {
+                // We used a biased polling strategy to always check if a
+                // shutdown signal was received before polling the EoS check
+                // interval.
+                biased;
 
-            tracing::info_span!(
-                "checking end-of-support state",
-                eos.interval = self.interval.to_string(),
-                eos.now = now.to_rfc3339(),
-            );
+                _ = &mut shutdown_signal => {
+                    tracing::trace!("received shutdown signal");
+                    break;
+                }
 
-            // Continue the loop and wait for the next tick to run the check again.
-            if now <= self.eos_datetime {
-                continue;
+                // The first tick ticks immediately.
+                _ = interval.tick() => {
+                    let now = Utc::now();
+
+                    tracing::info_span!(
+                        "checking end-of-support state",
+                        eos.interval = self.interval.to_string(),
+                        eos.now = now.to_rfc3339(),
+                    );
+
+                    // Continue the loop and wait for the next tick to run the
+                    // check again.
+                    if now <= self.eos_datetime {
+                        continue;
+                    }
+
+                    self.emit_warning(now);
+                }
             }
-
-            self.emit_warning(now);
         }
     }
 
