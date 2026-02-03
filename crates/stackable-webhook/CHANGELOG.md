@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-02-03
+
 ### Added
 
 - BREAKING: Add support to gracefully shutdown `WebhookServer` and `TlsServer`.
