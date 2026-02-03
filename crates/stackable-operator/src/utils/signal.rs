@@ -5,7 +5,7 @@ use tokio::{
 };
 
 #[derive(Debug, Snafu)]
-#[snafu(display("failed to construct signal listener"))]
+#[snafu(display("failed to construct signal watcher"))]
 pub struct SignalError {
     source: std::io::Error,
 }
