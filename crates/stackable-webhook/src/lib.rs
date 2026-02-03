@@ -15,15 +15,11 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use ::x509_cert::Certificate;
 use axum::{Router, routing::get};
-use futures_util::{FutureExt as _, TryFutureExt, select};
+use futures_util::TryFutureExt;
 use k8s_openapi::ByteString;
 use snafu::{ResultExt, Snafu};
 use stackable_telemetry::AxumTraceLayer;
-use tokio::{
-    signal::unix::{SignalKind, signal},
-    sync::mpsc,
-    try_join,
-};
+use tokio::{sync::mpsc, try_join};
 use tower::ServiceBuilder;
 use webhooks::{Webhook, WebhookError};
 use x509_cert::der::{EncodePem, pem::LineEnding};
@@ -59,6 +55,7 @@ pub enum WebhookServerError {
 ///
 /// ```
 /// use stackable_webhook::{WebhookServer, WebhookServerOptions, webhooks::Webhook};
+/// use tokio::time::{Duration, sleep};
 ///
 /// # async fn docs() {
 /// let mut webhooks: Vec<Box<dyn Webhook>> = vec![];
@@ -69,8 +66,9 @@ pub enum WebhookServerError {
 ///     webhook_service_name: "my-operator".to_owned(),
 /// };
 /// let webhook_server = WebhookServer::new(webhooks, webhook_options).await.unwrap();
+/// let shutdown_signal = sleep(Duration::from_millis(100));
 ///
-/// webhook_server.run().await.unwrap();
+/// webhook_server.run(shutdown_signal).await.unwrap();
 /// # }
 /// ```
 pub struct WebhookServer {
@@ -154,52 +152,16 @@ impl WebhookServer {
         })
     }
 
-    /// Runs the Webhook server and sets up signal handlers for shutting down.
+    /// Runs the [`WebhookServer`] and handles underlying certificate rotations of the [`TlsServer`].
     ///
-    /// This does not implement graceful shutdown of the underlying server. Additionally, the server
-    /// is never started in cases where no [`Webhook`] is registered. Callers of this function need
-    /// to ensure to choose the correct joining mechanism for their use-case to for example avoid
-    /// unexpected shutdowns of the whole Kubernetes controller.
-    pub async fn run(self) -> Result<()> {
-        let future_server = self.run_server();
-        let future_signal = async {
-            let mut sigint = signal(SignalKind::interrupt()).expect("create SIGINT listener");
-            let mut sigterm = signal(SignalKind::terminate()).expect("create SIGTERM listener");
-
-            tracing::debug!("created unix signal handlers");
-
-            select! {
-                signal = sigint.recv().fuse() => {
-                    if signal.is_some() {
-                        tracing::debug!( "received SIGINT");
-                    }
-                },
-                signal = sigterm.recv().fuse() => {
-                    if signal.is_some() {
-                        tracing::debug!( "received SIGTERM");
-                    }
-                },
-            };
-        };
-
-        // select requires Future + Unpin
-        tokio::pin!(future_server);
-        tokio::pin!(future_signal);
-
-        tokio::select! {
-            res = &mut future_server => {
-                // If the server future errors, propagate the error
-                res?;
-            }
-            _ = &mut future_signal => {
-                tracing::info!("shutdown signal received, stopping webhook server");
-            }
-        }
-
-        Ok(())
-    }
-
-    async fn run_server(self) -> Result<()> {
+    /// It should be noted that the server is never started in cases where no [`Webhook`] is
+    /// registered. Callers of this function need to ensure to choose the correct joining mechanism
+    /// for their use-case to for example avoid unexpected shutdowns of the whole Kubernetes
+    /// controller.
+    pub async fn run<F>(self, shutdown_signal: F) -> Result<()>
+    where
+        F: Future<Output = ()>,
+    {
         tracing::debug!("run webhook server");
 
         let Self {
@@ -217,10 +179,14 @@ impl WebhookServer {
         }
 
         let tls_server = tls_server
-            .run()
+            .run(shutdown_signal)
             .map_err(|err| WebhookServerError::RunTlsServer { source: err });
 
         let cert_update_loop = async {
+            // Once the shutdown signal is triggered, the TlsServer above should be dropped as the
+            // run associated function consumes self. This in turn means that when the receiver is
+            // polled, it will return `Ok(Ready(None))`, which will cause this while loop to break
+            // and the future to complete.
             while let Some(cert) = cert_rx.recv().await {
                 // The caBundle needs to be provided as a base64-encoded PEM envelope.
                 let ca_bundle = cert
@@ -243,6 +209,8 @@ impl WebhookServer {
             Ok(())
         };
 
+        // This either returns if one of the two futures completes with Err(_) or when both complete
+        // with Ok(_). Both futures complete with Ok(_) when a shutdown signal is received.
         try_join!(cert_update_loop, tls_server).map(|_| ())
     }
 }
