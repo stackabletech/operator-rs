@@ -190,8 +190,9 @@ impl TlsServer {
                 // interval. This ensures, we always use a valid certificate for the TLS connection.
                 biased;
 
-                // As soon as this future because `Poll::Ready`, break out of the loop which cancels
-                // the certification rotation interval and stops accepting new TCP connections.
+                // Once a shutdown signal is received (this future becomes `Poll::Ready`), break out
+                // of the main loop which cancels the certification rotation interval and stops
+                // accepting new TCP connections.
                 _ = &mut shutdown_signal => {
                     tracing::trace!("received shutdown signal");
                     break;
