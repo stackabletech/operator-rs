@@ -12,7 +12,12 @@ All notable changes to this project will be documented in this file.
   Both `WebhookServer::run` and `TlsServer::run` now require passing a shutdown signal, which is any
   `Future<Output = ()>` ([#1144]).
 
+### Changed
+
+- Improve certificate rotation instrumentation ([#1145]).
+
 [#1144]: https://github.com/stackabletech/operator-rs/pull/1144
+[#1145]: https://github.com/stackabletech/operator-rs/pull/1145
 
 ## [0.8.1] - 2026-01-07
 

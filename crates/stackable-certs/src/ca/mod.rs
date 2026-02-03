@@ -247,7 +247,7 @@ where
         //
         // The root profile doesn't add the AuthorityKeyIdentifier extension.
         // We manually add it below by using the 160-bit SHA-1 hash of the
-        // subject pulic key. This conforms to one of the outlined methods for
+        // subject public key. This conforms to one of the outlined methods for
         // generating key identifiers outlined in RFC 5280, section 4.2.1.2.
         //
         // Prepare extensions so we can avoid clones.
