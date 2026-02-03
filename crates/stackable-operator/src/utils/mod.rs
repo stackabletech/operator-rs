@@ -3,6 +3,8 @@ pub mod cluster_info;
 pub mod crds;
 pub mod kubelet;
 pub mod logging;
+pub mod signal;
+
 mod option;
 mod url;
 
