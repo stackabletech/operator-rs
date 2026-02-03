@@ -132,7 +132,7 @@ impl EndOfSupportChecker {
 
         loop {
             select! {
-                // We used a biased polling strategy to always check if a
+                // We use a biased polling strategy to always check if a
                 // shutdown signal was received before polling the EoS check
                 // interval.
                 biased;
