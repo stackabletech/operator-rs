@@ -187,9 +187,21 @@ impl WebhookServer {
             // run associated function consumes self. This in turn means that when the receiver is
             // polled, it will return `Ok(Ready(None))`, which will cause this while loop to break
             // and the future to complete.
-            while let Some(cert) = cert_rx.recv().await {
+            while let Some(certificate) = cert_rx.recv().await {
+                // NOTE (@Techassi): There are currently NO semantic conventions for X509 certificates
+                // and as such, these are pretty much made up and potentially not ideal.
+                #[rustfmt::skip]
+                tracing::info!(
+                    x509.not_before = certificate.tbs_certificate.validity.not_before.to_string(),
+                    x509.not_after = certificate.tbs_certificate.validity.not_after.to_string(),
+                    x509.serial_number = certificate.tbs_certificate.serial_number.to_string(),
+                    x509.subject = certificate.tbs_certificate.subject.to_string(),
+                    x509.issuer = certificate.tbs_certificate.issuer.to_string(),
+                    "rotate certificate for registered webhooks"
+                );
+
                 // The caBundle needs to be provided as a base64-encoded PEM envelope.
-                let ca_bundle = cert
+                let ca_bundle = certificate
                     .to_pem(LineEnding::LF)
                     .context(EncodeCertificateAuthorityAsPemSnafu)?;
                 let ca_bundle = ByteString(ca_bundle.as_bytes().to_vec());
