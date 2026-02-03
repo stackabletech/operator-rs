@@ -6,9 +6,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- BREAKING: Add support to gracefully shutdown `EosChecker`.
+  `EosChecker::run` now requires passing a shutdown signal, which is any `Future<Output = ()>` ([#1146]).
 - Add `SignalWatcher` which can be used to watch signals and multiply them to gracefully shutdown
   multiple concurrent tasks/futures ([#1147]).
 
+[#1146]: https://github.com/stackabletech/operator-rs/pull/1146
 [#1147]: https://github.com/stackabletech/operator-rs/pull/1147
 
 ## [0.104.0] - 2026-01-26

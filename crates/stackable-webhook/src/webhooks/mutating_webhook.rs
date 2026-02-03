@@ -51,6 +51,7 @@ pub enum MutatingWebhookError {
 ///     WebhookServer,
 ///     webhooks::{MutatingWebhook, MutatingWebhookOptions},
 /// };
+/// use tokio::time::{Duration, sleep};
 ///
 /// # async fn docs() {
 /// // The Kubernetes client
@@ -76,7 +77,9 @@ pub enum MutatingWebhookError {
 /// let webhook_server = WebhookServer::new(vec![mutating_webhook], webhook_options)
 ///     .await
 ///     .unwrap();
-/// webhook_server.run().await.unwrap();
+/// let shutdown_signal = sleep(Duration::from_millis(100));
+///
+/// webhook_server.run(shutdown_signal).await.unwrap();
 /// # }
 ///
 /// fn get_mutating_webhook_configuration() -> MutatingWebhookConfiguration {
