@@ -209,7 +209,7 @@ impl WebhookServer {
             Ok(())
         };
 
-        // This either returns if one of the two futures complete with Err(_) or when both complete
+        // This either returns if one of the two futures completes with Err(_) or when both complete
         // with Ok(_). Both futures complete with Ok(_) when a shutdown signal is received.
         try_join!(cert_update_loop, tls_server).map(|_| ())
     }
