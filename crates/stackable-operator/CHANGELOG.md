@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Store the Vector state in the log directory to ensure it persists across container restarts ([#1149]).
+
+[#1149]: https://github.com/stackabletech/operator-rs/pull/1149
+
 ## [0.105.0] - 2026-02-03
 
 ### Added
