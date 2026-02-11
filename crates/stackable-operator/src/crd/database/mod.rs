@@ -8,8 +8,8 @@ mod tests;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(context(false), display("postgres error"))]
-    Postgres { source: server::postgres::Error },
+    #[snafu(context(false), display("postgresql error"))]
+    Postgresql { source: server::postgresql::Error },
 
     #[snafu(context(false), display("derby error"))]
     Derby { source: server::derby::Error },
