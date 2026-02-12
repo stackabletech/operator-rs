@@ -85,16 +85,13 @@ spec:
                       Since git-sync v4.x.x this field is mapped to the flag `--ref`.
                     type: string
                   credentials:
-                    anyOf:
-                    - oneOf:
-                      - required:
-                        - basicAuthSecretName
-                      - required:
-                        - sshPrivateKeySecretName
-                    - enum:
-                      - null
-                      nullable: true
                     description: An optional secret used for git access.
+                    nullable: true
+                    oneOf:
+                    - required:
+                      - basicAuthSecretName
+                    - required:
+                      - sshPrivateKeySecretName
                     properties:
                       basicAuthSecretName:
                         description: |-
