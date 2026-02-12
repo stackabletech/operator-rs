@@ -59,7 +59,9 @@ impl CeleryDatabaseConnection for RedisConnection {
         );
         CeleryDatabaseConnectionDetails {
             uri_template,
-            env_vars: vec![username_env, password_env],
+            username_env: Some(username_env),
+            password_env: Some(password_env),
+            generic_uri_var: None,
         }
     }
 }
@@ -87,16 +89,8 @@ mod tests {
             celery_connection_details.uri_template,
             "redis://${WORKER_QUEUE_DATABASE_USERNAME}:${WORKER_QUEUE_DATABASE_PASSWORD}@my-redis:42/13"
         );
-        assert_eq!(
-            celery_connection_details
-                .env_vars
-                .iter()
-                .map(|env| &env.name)
-                .collect::<Vec<_>>(),
-            vec![
-                "WORKER_QUEUE_DATABASE_USERNAME",
-                "WORKER_QUEUE_DATABASE_PASSWORD"
-            ]
-        );
+        assert!(celery_connection_details.username_env.is_some());
+        assert!(celery_connection_details.password_env.is_some());
+        assert!(celery_connection_details.generic_uri_var.is_none());
     }
 }

@@ -102,7 +102,9 @@ impl SQLAlchemyDatabaseConnection for PostgresqlConnection {
         );
         SQLAlchemyDatabaseConnectionDetails {
             uri_template,
-            env_vars: vec![username_env, password_env],
+            username_env: Some(username_env),
+            password_env: Some(password_env),
+            generic_uri_var: None,
         }
     }
 }
@@ -129,14 +131,9 @@ mod tests {
             sqlalchemy_connection_details.uri_template,
             "postgresql+psycopg2://${METADATA_DATABASE_USERNAME}:${METADATA_DATABASE_PASSWORD}@airflow-postgresql:5432/airflow"
         );
-        assert_eq!(
-            sqlalchemy_connection_details
-                .env_vars
-                .iter()
-                .map(|env| &env.name)
-                .collect::<Vec<_>>(),
-            vec!["METADATA_DATABASE_USERNAME", "METADATA_DATABASE_PASSWORD"]
-        );
+        assert!(sqlalchemy_connection_details.username_env.is_some());
+        assert!(sqlalchemy_connection_details.password_env.is_some());
+        assert!(sqlalchemy_connection_details.generic_uri_var.is_none());
 
         let jdbc_connection_details = postgres_connection
             .jdbc_connection_details(UNIQUE_DATABASE_NAME)

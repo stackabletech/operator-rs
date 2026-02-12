@@ -20,13 +20,29 @@ pub struct SQLAlchemyDatabaseConnectionDetails {
     /// `<generic URI from the user>`.
     pub uri_template: String,
 
-    /// The [`EnvVar`]s the operator needs to mount into the created Pods.
-    pub env_vars: Vec<EnvVar>,
+    /// The [`EnvVar`] that mounts the credentials Secret and provides the username.
+    pub username_env: Option<EnvVar>,
+
+    /// The [`EnvVar`] that mounts the credentials Secret and provides the password.
+    pub password_env: Option<EnvVar>,
+
+    /// The [`EnvVar`] that mounts the user-specified Secret and provides the generic URI.
+    pub generic_uri_var: Option<EnvVar>,
 }
 
 impl SQLAlchemyDatabaseConnectionDetails {
+    pub fn env_vars(&self) -> impl Iterator<Item = &EnvVar> {
+        [
+            &self.username_env,
+            &self.password_env,
+            &self.generic_uri_var,
+        ]
+        .into_iter()
+        .flatten()
+    }
+
     pub fn add_to_container(&self, cb: &mut ContainerBuilder) {
-        cb.add_env_vars(self.env_vars.iter());
+        cb.add_env_vars(self.env_vars());
     }
 }
 
@@ -51,7 +67,9 @@ impl SQLAlchemyDatabaseConnection for GenericSQLAlchemyDatabaseConnection {
 
         SQLAlchemyDatabaseConnectionDetails {
             uri_template: format!("${{{uri_env_name}}}"),
-            env_vars: vec![uri_env_var],
+            username_env: None,
+            password_env: None,
+            generic_uri_var: Some(uri_env_var),
         }
     }
 }
