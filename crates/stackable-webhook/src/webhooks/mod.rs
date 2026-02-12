@@ -48,7 +48,7 @@ pub trait Webhook {
     /// Webhooks are informed about new certificates by this function and can react accordingly.
     async fn handle_certificate_rotation(
         &mut self,
-        new_ca_bundle: &ByteString,
+        ca_bundle: &ByteString,
         options: &WebhookServerOptions,
     ) -> Result<(), WebhookError>;
 }

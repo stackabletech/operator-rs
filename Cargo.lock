@@ -2883,7 +2883,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.101.2"
+version = "0.105.0"
 dependencies = [
  "clap",
  "const_format",
@@ -3021,7 +3021,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-webhook"
-version = "0.8.1"
+version = "0.9.0"
 dependencies = [
  "arc-swap",
  "async-trait",

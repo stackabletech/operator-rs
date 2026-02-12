@@ -7,26 +7,26 @@
 
 use std::collections::BTreeMap;
 
-#[cfg(doc)]
 use k8s_openapi::api::core::v1::Service;
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use stackable_versioned::versioned;
 
-use crate::crd::listener::core::v1alpha1 as core_v1alpha1;
 #[cfg(doc)]
 use crate::crd::listener::listeners::v1alpha1::Listener;
+use crate::{crd::listener::core::v1alpha1 as core_v1alpha1, utils::crds::raw_object_schema};
 
 mod v1alpha1_impl;
 
 #[versioned(version(name = "v1alpha1"))]
 pub mod versioned {
+
     /// Defines a policy for how [Listeners](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listener) should be exposed.
     /// Read the [ListenerClass documentation](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listenerclass)
     /// for more information.
     #[versioned(crd(group = "listeners.stackable.tech"))]
-    #[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
+    #[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq)]
     #[serde(rename_all = "camelCase")]
     pub struct ListenerClassSpec {
         pub service_type: core_v1alpha1::ServiceType,
@@ -93,5 +93,15 @@ pub mod versioned {
         /// Because of this we don't enable pinning by default to support all environments.
         #[serde(default)]
         pub pinned_node_ports: bool,
+
+        /// In the `serviceOverrides` property you can define a
+        /// [Service](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.34/#service-v1-core)
+        /// to override any property that can be set on a Kubernetes Service.
+        ///
+        /// This mechanism is similar to the `podOverrides`, which are documented in the
+        /// [Pod overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#pod-overrides).
+        #[serde(default)]
+        #[schemars(schema_with = "raw_object_schema")]
+        pub service_overrides: Service,
     }
 }

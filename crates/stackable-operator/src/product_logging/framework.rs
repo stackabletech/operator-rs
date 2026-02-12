@@ -21,18 +21,26 @@ use crate::{
 
 /// Config directory used in the Vector log agent container
 const STACKABLE_CONFIG_DIR: &str = "/stackable/config";
+
 /// Directory in the Vector container which contains a subdirectory for every container which
 /// themselves contain the corresponding log files
 const STACKABLE_LOG_DIR: &str = "/stackable/log";
+
 /// Subdirectory of the log directory containing files to control the Vector instance
 const VECTOR_LOG_DIR: &str = "_vector";
+
+/// Subdirectory of the log directory containing the Vector state data
+const VECTOR_STATE_DIR: &str = "_vector-state";
+
 /// File to signal that Vector should be gracefully shut down
 const SHUTDOWN_FILE: &str = "shutdown";
 
 /// File name of the Vector config file
 pub const VECTOR_CONFIG_FILE: &str = "vector.yaml";
+
 /// Key in the discovery ConfigMap that holds the vector aggregator address
 const VECTOR_AGGREGATOR_CM_KEY: &str = "ADDRESS";
+
 /// Name of the env var in the vector container that holds the vector aggregator address
 const VECTOR_AGGREGATOR_ENV_NAME: &str = "VECTOR_AGGREGATOR_ADDRESS";
 
@@ -705,7 +713,7 @@ where
     };
 
     format!(
-        r#"data_dir: /stackable/vector/var
+        r#"data_dir: {STACKABLE_LOG_DIR}/{VECTOR_STATE_DIR}
 
 log_schema:
   host_key: pod
@@ -1436,6 +1444,7 @@ pub fn vector_container(
         // exec vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE}
         .args(vec![format!(
             "\
+mkdir --parents {STACKABLE_LOG_DIR}/{VECTOR_STATE_DIR}
 # Vector will ignore SIGTERM (as PID != 1) and must be shut down by writing a shutdown trigger file
 vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$!
 if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then

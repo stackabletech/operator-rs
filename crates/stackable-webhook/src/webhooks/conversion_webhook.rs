@@ -22,8 +22,7 @@ use snafu::{ResultExt, Snafu};
 use tokio::sync::oneshot;
 use tracing::instrument;
 
-use super::{Webhook, WebhookError};
-use crate::WebhookServerOptions;
+use crate::{Webhook, WebhookError, WebhookServerOptions};
 
 #[derive(Debug, Snafu)]
 pub enum ConversionWebhookError {
@@ -51,6 +50,7 @@ pub enum ConversionWebhookError {
 ///     WebhookServer,
 ///     webhooks::{ConversionWebhook, ConversionWebhookOptions},
 /// };
+/// use tokio::time::{Duration, sleep};
 ///
 /// # async fn docs() {
 /// // The Kubernetes client
@@ -75,7 +75,9 @@ pub enum ConversionWebhookError {
 /// let webhook_server = WebhookServer::new(vec![Box::new(conversion_webhook)], webhook_options)
 ///     .await
 ///     .unwrap();
-/// webhook_server.run().await.unwrap();
+/// let shutdown_signal = sleep(Duration::from_millis(100));
+///
+/// webhook_server.run(shutdown_signal).await.unwrap();
 /// # }
 /// ```
 pub struct ConversionWebhook<H> {
@@ -135,7 +137,7 @@ impl<H> ConversionWebhook<H> {
     }
 
     #[instrument(
-        skip(self, crd, crd_api, new_ca_bundle),
+        skip(self, crd, crd_api, ca_bundle),
         fields(
             name = crd.name_any(),
             kind = &crd.spec.names.kind
@@ -145,7 +147,7 @@ impl<H> ConversionWebhook<H> {
         &self,
         mut crd: CustomResourceDefinition,
         crd_api: &Api<CustomResourceDefinition>,
-        new_ca_bundle: &ByteString,
+        ca_bundle: ByteString,
         options: &WebhookServerOptions,
     ) -> Result<(), WebhookError> {
         let crd_kind = &crd.spec.names.kind;
@@ -175,7 +177,7 @@ impl<H> ConversionWebhook<H> {
                         port: Some(options.socket_addr.port().into()),
                     }),
                     // Here, ByteString takes care of encoding the provided content as base64.
-                    ca_bundle: Some(new_ca_bundle.to_owned()),
+                    ca_bundle: Some(ca_bundle),
                     url: None,
                 }),
             }),
@@ -244,15 +246,15 @@ where
         self.options.disable_crd_maintenance
     }
 
-    #[instrument(skip(self, new_ca_bundle))]
+    #[instrument(skip(self, ca_bundle))]
     async fn handle_certificate_rotation(
         &mut self,
-        new_ca_bundle: &ByteString,
+        ca_bundle: &ByteString,
         options: &WebhookServerOptions,
     ) -> Result<(), WebhookError> {
         let crd_api: Api<CustomResourceDefinition> = Api::all(self.client.clone());
         for (crd, _) in &self.crds_and_handlers {
-            self.reconcile_crd(crd.clone(), &crd_api, new_ca_bundle, options)
+            self.reconcile_crd(crd.clone(), &crd_api, ca_bundle.to_owned(), options)
                 .await?;
         }
 

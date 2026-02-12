@@ -12,8 +12,7 @@ use serde::{Serialize, de::DeserializeOwned};
 use snafu::{ResultExt, Snafu};
 use tracing::instrument;
 
-use super::{Webhook, WebhookError};
-use crate::{WebhookServerOptions, webhooks::create_webhook_client_config};
+use crate::{Webhook, WebhookError, WebhookServerOptions, webhooks::create_webhook_client_config};
 
 #[derive(Debug, Snafu)]
 pub enum MutatingWebhookError {
@@ -51,6 +50,7 @@ pub enum MutatingWebhookError {
 ///     WebhookServer,
 ///     webhooks::{MutatingWebhook, MutatingWebhookOptions},
 /// };
+/// use tokio::time::{Duration, sleep};
 ///
 /// # async fn docs() {
 /// // The Kubernetes client
@@ -76,7 +76,9 @@ pub enum MutatingWebhookError {
 /// let webhook_server = WebhookServer::new(vec![mutating_webhook], webhook_options)
 ///     .await
 ///     .unwrap();
-/// webhook_server.run().await.unwrap();
+/// let shutdown_signal = sleep(Duration::from_millis(100));
+///
+/// webhook_server.run(shutdown_signal).await.unwrap();
 /// # }
 ///
 /// fn get_mutating_webhook_configuration() -> MutatingWebhookConfiguration {
@@ -206,14 +208,15 @@ where
         self.options.disable_mwc_maintenance
     }
 
-    #[instrument(skip(self, new_ca_bundle))]
+    #[instrument(skip(self, ca_bundle))]
     async fn handle_certificate_rotation(
         &mut self,
-        new_ca_bundle: &ByteString,
+        ca_bundle: &ByteString,
         options: &WebhookServerOptions,
     ) -> Result<(), WebhookError> {
         let mut mutating_webhook_configuration = self.mutating_webhook_configuration.clone();
         let mwc_name = mutating_webhook_configuration.name_any();
+
         tracing::info!(
             k8s.mutatingwebhookconfiguration.name = mwc_name,
             "reconciling mutating webhook configurations"
@@ -222,7 +225,7 @@ where
         for webhook in mutating_webhook_configuration.webhooks.iter_mut().flatten() {
             // We know how we can be called (and with what certificate), so we can always set that
             webhook.client_config =
-                create_webhook_client_config(options, new_ca_bundle.to_owned(), self.http_path());
+                create_webhook_client_config(options, ca_bundle.to_owned(), self.http_path());
         }
 
         let mwc_api: Api<MutatingWebhookConfiguration> = Api::all(self.client.clone());

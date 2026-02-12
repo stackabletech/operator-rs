@@ -4,11 +4,60 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Store the Vector state in the log directory to ensure it persists across container restarts ([#1149]).
+
+[#1149]: https://github.com/stackabletech/operator-rs/pull/1149
+
+## [0.105.0] - 2026-02-03
+
+### Added
+
+- BREAKING: Add support to gracefully shutdown `EosChecker`.
+  `EosChecker::run` now requires passing a shutdown signal, which is any `Future<Output = ()>` ([#1146]).
+- Add `SignalWatcher` which can be used to watch signals and multiply them to gracefully shutdown
+  multiple concurrent tasks/futures ([#1147]).
+
+[#1146]: https://github.com/stackabletech/operator-rs/pull/1146
+[#1147]: https://github.com/stackabletech/operator-rs/pull/1147
+
+## [0.104.0] - 2026-01-26
+
+### Added
+
+- Add `serviceOverrides` field of type `Service` to `ListenerClass.spec.serviceOverrides` ([#1142]).
+
+### Changed
+
+- BREAKING: `ListenerClassSpec` no longer implements `Eq` ([#1142]).
+
+[#1142]: https://github.com/stackabletech/operator-rs/pull/1142
+
+## [0.103.0] - 2026-01-16
+
+### Changed
+
+- BREAKING: Add support for the SSH protocol for pulling git content ([#1121]).
+  This is a user-facing breaking change and should also be highlighted by operators using this functionality.
+
+[#1121]: https://github.com/stackabletech/operator-rs/pull/1121
+
+## [0.102.0] - 2026-01-14
+
+### Added
+
+- BREAKING: Add `objectOverrides` field to `ListenerSpec` ([#1136]).
+- Added `stackable_operator::constants::RESTART_CONTROLLER_ENABLED_LABEL` constant, which represents the `restarter.stackable.tech/enabled=true` label ([#1139]).
+
 ### Changed
 
 - Revert and pin k8s-openapi to 0.26.0 ([#1135]).
+- BREAKING: `ListenerSpec` no longer derives `Eq` ([#1136]).
 
 [#1135]: https://github.com/stackabletech/operator-rs/pull/1135
+[#1136]: https://github.com/stackabletech/operator-rs/pull/1136
+[#1139]: https://github.com/stackabletech/operator-rs/pull/1139
 
 ## [0.101.2] - 2026-01-07
 

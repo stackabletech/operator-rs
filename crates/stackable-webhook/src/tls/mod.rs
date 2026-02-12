@@ -7,9 +7,10 @@ use axum::{
     extract::{ConnectInfo, Request},
     middleware::AddExtension,
 };
+use futures_util::FutureExt as _;
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
-use opentelemetry::trace::{FutureExt, SpanKind};
+use opentelemetry::trace::{FutureExt as _, SpanKind};
 use opentelemetry_semantic_conventions as semconv;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_shared::time::Duration;
@@ -138,17 +139,27 @@ impl TlsServer {
     /// router.
     ///
     /// It also starts a background task to rotate the certificate as needed.
-    pub async fn run(self) -> Result<()> {
+    ///
+    /// The `shutdown_signal` can be used to notify the [`TlsServer`] to
+    /// gracefully shutdown.
+    pub async fn run<F>(self, shutdown_signal: F) -> Result<()>
+    where
+        F: Future<Output = ()>,
+    {
+        let Self {
+            cert_resolver,
+            socket_addr,
+            config,
+            router,
+        } = self;
+
         let start = tokio::time::Instant::now() + *WEBHOOK_CERTIFICATE_ROTATION_INTERVAL;
         let mut interval = tokio::time::interval_at(start, *WEBHOOK_CERTIFICATE_ROTATION_INTERVAL);
 
-        let tls_acceptor = TlsAcceptor::from(Arc::new(self.config));
-        let tcp_listener =
-            TcpListener::bind(self.socket_addr)
-                .await
-                .context(BindTcpListenerSnafu {
-                    socket_addr: self.socket_addr,
-                })?;
+        let tls_acceptor = TlsAcceptor::from(Arc::new(config));
+        let tcp_listener = TcpListener::bind(socket_addr)
+            .await
+            .context(BindTcpListenerSnafu { socket_addr })?;
 
         // To be able to extract the connect info from incoming requests, it is
         // required to turn the router into a Tower service which is capable of
@@ -161,24 +172,36 @@ impl TlsServer {
         // - https://github.com/tokio-rs/axum/discussions/2397
         // - https://github.com/tokio-rs/axum/blob/b02ce307371a973039018a13fa012af14775948c/examples/serve-with-hyper/src/main.rs#L98
 
-        let mut router = self
-            .router
-            .into_make_service_with_connect_info::<SocketAddr>();
+        let mut router = router.into_make_service_with_connect_info::<SocketAddr>();
+
+        // Fuse the future so that it only yields `Poll::Ready` once. The future
+        // additionally needs to be pinned to be able to be used in the select!
+        // macro below.
+        let shutdown_signal = shutdown_signal.fuse();
+        tokio::pin!(shutdown_signal);
 
         loop {
             let tls_acceptor = tls_acceptor.clone();
 
             // Wait for either a new TCP connection or the certificate rotation interval tick
             tokio::select! {
-                // We opt for a biased execution of arms to make sure we always check if the
-                // certificate needs rotation based on the interval. This ensures, we always use
-                // a valid certificate for the TLS connection.
+                // We opt for a biased execution of arms to make sure we always check if a
+                // shutdown signal was received or the certificate needs rotation based on the
+                // interval. This ensures, we always use a valid certificate for the TLS connection.
                 biased;
+
+                // Once a shutdown signal is received (this future becomes `Poll::Ready`), break out
+                // of the main loop which cancels the certification rotation interval and stops
+                // accepting new TCP connections.
+                _ = &mut shutdown_signal => {
+                    tracing::trace!("received shutdown signal");
+                    break;
+                }
 
                 // This is cancellation-safe. If this branch is cancelled, the tick is NOT consumed.
                 // As such, we will not miss rotating the certificate.
                 _ = interval.tick() => {
-                    self.cert_resolver
+                    cert_resolver
                         .rotate_certificate()
                         .await
                         .context(RotateCertificateSnafu)?
@@ -210,6 +233,8 @@ impl TlsServer {
                 }
             };
         }
+
+        Ok(())
     }
 
     async fn handle_request(
