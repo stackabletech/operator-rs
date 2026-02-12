@@ -30,17 +30,11 @@ impl JDBCDatabaseConnection for DerbyConnection {
         let connection_uri = format!("jdbc:derby:{location}",);
         let connection_uri = connection_uri.parse().context(ParseConnectionUrlSnafu)?;
 
-        // TODO: Think about different drivers (depending on version)
-        // see hive-operator:
-        // // The driver class changed for hive 4.2.0
-        // if ["3.1.3", "4.0.0", "4.0.1", "4.1.0"].contains(&product_version) {
-        //     "org.apache.derby.jdbc.EmbeddedDriver"
-        // } else {
-        //     "org.apache.derby.iapi.jdbc.AutoloadedDriver"
-        // }
-
         Ok(JDBCDatabaseConnectionDetails {
-            driver: "org.apache.derby.jdbc.ClientDriver".to_owned(),
+            // Sadly the Derby driver class name is a bit complicated, e.g. for HMS up to 4.1.x we used
+            // "org.apache.derby.jdbc.EmbeddedDriver",
+            // for HMS 4.2.x we used "org.apache.derby.iapi.jdbc.AutoloadedDriver".
+            driver: "org.apache.derby.jdbc.EmbeddedDriver".to_owned(),
             connection_uri,
             username_env: None,
             password_env: None,
