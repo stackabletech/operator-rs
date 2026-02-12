@@ -27,7 +27,7 @@ impl JDBCDatabaseConnection for DerbyConnection {
             .location
             .clone()
             .unwrap_or_else(|| format!("/tmp/derby/{unique_database_name}/derby.db"));
-        let connection_uri = format!("jdbc:derby:{location}",);
+        let connection_uri = format!("jdbc:derby:{location};create=true",);
         let connection_uri = connection_uri.parse().context(ParseConnectionUrlSnafu)?;
 
         Ok(JDBCDatabaseConnectionDetails {
