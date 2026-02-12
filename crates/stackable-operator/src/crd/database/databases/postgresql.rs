@@ -95,7 +95,7 @@ impl SQLAlchemyDatabaseConnection for PostgresqlConnection {
             username_and_password_envs(unique_database_name, credentials_secret);
 
         let uri_template = format!(
-            "postgresql+psycopg2://${{{username_env_name}}}:${{{password_env_name}}}@{host}:{port}/{database}{parameters}",
+            "postgresql+psycopg2://${{env:{username_env_name}}}:${{env:{password_env_name}}}@{host}:{port}/{database}{parameters}",
             username_env_name = username_env.name,
             password_env_name = password_env.name,
             parameters = connection_parameters_as_url_query_parameters(parameters)
@@ -129,7 +129,7 @@ mod tests {
             postgres_connection.sqlalchemy_connection_details(UNIQUE_DATABASE_NAME);
         assert_eq!(
             sqlalchemy_connection_details.uri_template,
-            "postgresql+psycopg2://${METADATA_DATABASE_USERNAME}:${METADATA_DATABASE_PASSWORD}@airflow-postgresql:5432/airflow"
+            "postgresql+psycopg2://${env:METADATA_DATABASE_USERNAME}:${env:METADATA_DATABASE_PASSWORD}@airflow-postgresql:5432/airflow"
         );
         assert!(sqlalchemy_connection_details.username_env.is_some());
         assert!(sqlalchemy_connection_details.password_env.is_some());
@@ -171,7 +171,7 @@ mod tests {
             postgres_connection.sqlalchemy_connection_details(UNIQUE_DATABASE_NAME);
         assert_eq!(
             sqlalchemy_connection_details.uri_template,
-            "postgresql+psycopg2://${METADATA_DATABASE_USERNAME}:${METADATA_DATABASE_PASSWORD}@my-airflow.default.svc.cluster.local:1234/my_database?createDatabaseIfNotExist=true&foo=bar"
+            "postgresql+psycopg2://${env:METADATA_DATABASE_USERNAME}:${env:METADATA_DATABASE_PASSWORD}@my-airflow.default.svc.cluster.local:1234/my_database?createDatabaseIfNotExist=true&foo=bar"
         );
 
         let jdbc_connection_details = postgres_connection

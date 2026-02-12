@@ -15,7 +15,7 @@ pub trait SQLAlchemyDatabaseConnection {
 
 pub struct SQLAlchemyDatabaseConnectionDetails {
     /// The connection URI, which can contain env variable templates, e.g.
-    /// `postgresql+psycopg2://${METADATA_DATABASE_USERNAME}:${METADATA_DATABASE_PASSWORD}@airflow-postgresql:5432/airflow`
+    /// `postgresql+psycopg2://${env:METADATA_DATABASE_USERNAME}:${env:METADATA_DATABASE_PASSWORD}@airflow-postgresql:5432/airflow`
     /// or
     /// `<generic URI from the user>`.
     pub uri_template: String,
@@ -66,7 +66,7 @@ impl SQLAlchemyDatabaseConnection for GenericSQLAlchemyDatabaseConnection {
         let uri_env_var = env_var_from_secret(&uri_env_name, &self.uri_secret, "uri");
 
         SQLAlchemyDatabaseConnectionDetails {
-            uri_template: format!("${{{uri_env_name}}}"),
+            uri_template: format!("${{env:{uri_env_name}}}"),
             username_env: None,
             password_env: None,
             generic_uri_var: Some(uri_env_var),

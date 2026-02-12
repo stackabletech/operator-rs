@@ -15,7 +15,7 @@ pub trait CeleryDatabaseConnection {
 
 pub struct CeleryDatabaseConnectionDetails {
     /// The connection URI, which can contain env variable templates, e.g.
-    /// `redis://:${METADATA_DATABASE_PASSWORD}@airflow-redis-master:6379/0`
+    /// `redis://:${env:METADATA_DATABASE_PASSWORD}@airflow-redis-master:6379/0`
     /// or
     /// `<generic URI from the user>`.
     pub uri_template: String,
@@ -66,7 +66,7 @@ impl CeleryDatabaseConnection for GenericCeleryDatabaseConnection {
         let uri_env_var = env_var_from_secret(&uri_env_name, &self.uri_secret, "uri");
 
         CeleryDatabaseConnectionDetails {
-            uri_template: format!("${{{uri_env_name}}}"),
+            uri_template: format!("${{env:{uri_env_name}}}"),
             username_env: None,
             password_env: None,
             generic_uri_var: Some(uri_env_var),

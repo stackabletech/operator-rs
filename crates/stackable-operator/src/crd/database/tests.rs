@@ -102,7 +102,7 @@ fn test_dummy_celery_database_usage() {
 
     assert_eq!(
         celery_connection_details.uri_template,
-        "${WORKER_QUEUE_DATABASE_URI}"
+        "${env:WORKER_QUEUE_DATABASE_URI}"
     );
     assert_eq!(
         container

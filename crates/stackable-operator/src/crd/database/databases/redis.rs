@@ -53,7 +53,7 @@ impl CeleryDatabaseConnection for RedisConnection {
             username_and_password_envs(unique_database_name, credentials_secret);
 
         let uri_template = format!(
-            "redis://${{{username_env_name}}}:${{{password_env_name}}}@{host}:{port}/{database_id}",
+            "redis://${{env:{username_env_name}}}:${{{password_env_name}}}@{host}:{port}/{database_id}",
             username_env_name = username_env.name,
             password_env_name = password_env.name,
         );
@@ -87,7 +87,7 @@ mod tests {
             redis_connection.celery_connection_details(UNIQUE_DATABASE_NAME);
         assert_eq!(
             celery_connection_details.uri_template,
-            "redis://${WORKER_QUEUE_DATABASE_USERNAME}:${WORKER_QUEUE_DATABASE_PASSWORD}@my-redis:42/13"
+            "redis://${env:WORKER_QUEUE_DATABASE_USERNAME}:${WORKER_QUEUE_DATABASE_PASSWORD}@my-redis:42/13"
         );
         assert!(celery_connection_details.username_env.is_some());
         assert!(celery_connection_details.password_env.is_some());
