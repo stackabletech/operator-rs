@@ -3,8 +3,7 @@ pub mod deployment;
 pub mod operations;
 pub mod statefulset;
 
-use chrono::Utc;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
+use k8s_openapi::{apimachinery::pkg::apis::meta::v1::Time, jiff::Timestamp};
 use schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
 use strum::EnumCount;
@@ -345,7 +344,7 @@ fn update_timestamps(
     // sanity check
     assert_eq!(old_condition.type_, new_condition.type_);
 
-    let now = Time(Utc::now());
+    let now = Time(Timestamp::now());
     // No change in status -> keep "last_transition_time"
     if old_condition.status == new_condition.status {
         ClusterCondition {

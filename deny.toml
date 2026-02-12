@@ -1,3 +1,8 @@
+# This file is the source of truth for all our repos!
+# This includes repos not templated by operator-templating, please copy/paste the file for this repos.
+
+# TIP: Use "cargo deny check" to check if everything is fine
+
 [graph]
 targets = [
     { triple = "x86_64-unknown-linux-gnu" },
@@ -13,11 +18,11 @@ ignore = [
     # https://rustsec.org/advisories/RUSTSEC-2023-0071
     # "rsa" crate: Marvin Attack: potential key recovery through timing sidechannel
     #
-    # No patch is yet available, however work is underway to migrate to a fully constant-time
-    # implementation. So we need to accept this, as of SDP 24.11 we are not using the rsa crate to
-    # create certificates used in production setups.
+    # No patch is yet available, however work is underway to migrate to a fully constant-time implementation
+    # So we need to accept this, as of SDP 25.3 we are not using the rsa crate to create certificates used in production
+    # setups.
     #
-    # TODO: Remove after https://github.com/RustCrypto/RSA/pull/394 is merged and v0.10.0 is released
+    # https://github.com/RustCrypto/RSA/issues/19 is the tracking issue
     "RUSTSEC-2023-0071",
 
     # https://rustsec.org/advisories/RUSTSEC-2024-0436
@@ -51,10 +56,7 @@ allow = [
     "LicenseRef-webpki",
     "MIT",
     "MPL-2.0",
-
-    # Needed for the ring and/or aws-lc-sys crate.
-    # See https://github.com/stackabletech/operator-templating/pull/464 for details.
-    "OpenSSL",
+    "OpenSSL", # Needed for the ring and/or aws-lc-sys crate. See https://github.com/stackabletech/operator-templating/pull/464 for details
     "Unicode-3.0",
     "Unicode-DFS-2016",
     "Zlib",
@@ -65,16 +67,23 @@ private = { ignore = true }
 [[licenses.clarify]]
 name = "ring"
 expression = "LicenseRef-ring"
-license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 },
+]
 
 [[licenses.clarify]]
 name = "webpki"
 expression = "LicenseRef-webpki"
-license-files = [{ path = "LICENSE", hash = 0x001c7e6c }]
+license-files = [
+    { path = "LICENSE", hash = 0x001c7e6c },
+]
 
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
+allow-git = [
+    "https://github.com/kube-rs/kube-rs",
+]
 
 [sources.allow-org]
 github = ["stackabletech"]
