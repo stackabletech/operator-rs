@@ -6,11 +6,11 @@ use serde::{Deserialize, Serialize};
 use crate::{
     builder::pod::container::ContainerBuilder,
     crd::database::{
-        client::{
+        databases::{postgresql::PostgresqlConnection, redis::RedisConnection},
+        drivers::{
             celery::{CeleryDatabaseConnection, GenericCeleryDatabaseConnection},
             jdbc::{GenericJDBCDatabaseConnection, JDBCDatabaseConnection},
         },
-        server::{postgresql::PostgresqlConnection, redis::RedisConnection},
     },
 };
 

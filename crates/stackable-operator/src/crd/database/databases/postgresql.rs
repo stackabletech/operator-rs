@@ -7,7 +7,7 @@ use snafu::{ResultExt, Snafu};
 use crate::{
     commons::networking::HostName,
     crd::database::{
-        client::{
+        drivers::{
             jdbc::{JDBCDatabaseConnection, JDBCDatabaseConnectionDetails},
             sqlalchemy::{SQLAlchemyDatabaseConnection, SQLAlchemyDatabaseConnectionDetails},
         },

@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 
-use crate::crd::database::client::jdbc::{JDBCDatabaseConnection, JDBCDatabaseConnectionDetails};
+use crate::crd::database::drivers::jdbc::{JDBCDatabaseConnection, JDBCDatabaseConnectionDetails};
 
 #[derive(Debug, Snafu)]
 pub enum Error {

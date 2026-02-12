@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     commons::networking::HostName,
     crd::database::{
-        client::celery::{CeleryDatabaseConnection, CeleryDatabaseConnectionDetails},
+        drivers::celery::{CeleryDatabaseConnection, CeleryDatabaseConnectionDetails},
         helpers::username_and_password_envs,
     },
 };

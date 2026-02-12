@@ -1,18 +1,20 @@
 use snafu::Snafu;
 
-pub mod client;
+pub mod databases;
+pub mod drivers;
 mod helpers;
-pub mod server;
 #[cfg(test)]
 mod tests;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(context(false), display("postgresql error"))]
-    Postgresql { source: server::postgresql::Error },
+    Postgresql {
+        source: databases::postgresql::Error,
+    },
 
     #[snafu(context(false), display("derby error"))]
-    Derby { source: server::derby::Error },
+    Derby { source: databases::derby::Error },
 }
 
 // /// TODO docs
