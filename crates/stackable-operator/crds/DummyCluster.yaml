@@ -186,7 +186,6 @@ spec:
                         description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
                         properties:
                           containers:
-                            additionalProperties: false
                             description: Log configuration per container.
                             properties:
                               bundle-builder:
@@ -799,7 +798,6 @@ spec:
                               description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
                               properties:
                                 containers:
-                                  additionalProperties: false
                                   description: Log configuration per container.
                                   properties:
                                     bundle-builder:
