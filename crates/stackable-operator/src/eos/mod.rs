@@ -174,10 +174,10 @@ impl EndOfSupportChecker {
 
         tracing::warn!(
             eos.built.datetime = built_datetime,
-            eos.build.age = %build_age,
+            eos.build.age = build_age,
             "This operator version was built on {built_datetime} ({build_age} ago) and may have reached end-of-support. \
-            Running unsupported versions may contain security vulnerabilities. \
-            Please upgrade to a supported version as soon as possible."
+Running unsupported versions may contain security vulnerabilities. \
+Please upgrade to a supported version as soon as possible."
         );
     }
 }
