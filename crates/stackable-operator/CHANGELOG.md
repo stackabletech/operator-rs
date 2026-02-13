@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: Upgrade to kube `3.0.1` and k8s-openapi `0.27.0` ([#1138]).
-- Bump stackable-shared to `0.0.4`, refer to its [changelog](../stackable-shared/CHANGELOG.md) ([#1151]).
+- Bump stackable-shared to `0.1.0`, refer to its [changelog](../stackable-shared/CHANGELOG.md) ([#1151]).
 
 ### Fixed
 
