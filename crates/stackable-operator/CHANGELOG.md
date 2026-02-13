@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: Upgrade to kube `3.0.1` and k8s-openapi `0.27.0` ([#1138]).
-- Bump stackable-shared to `0.0.4`, refer to its [changelog](../stackable-shared/CHANGELOG.md) ([#XXXX]).
+- Bump stackable-shared to `0.0.4`, refer to its [changelog](../stackable-shared/CHANGELOG.md) ([#1151]).
 
 ### Fixed
 
@@ -17,7 +17,7 @@ All notable changes to this project will be documented in this file.
 
 [#1138]: https://github.com/stackabletech/operator-rs/pull/1138
 [#1149]: https://github.com/stackabletech/operator-rs/pull/1149
-[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+[#1151]: https://github.com/stackabletech/operator-rs/pull/1151
 
 ## [0.105.0] - 2026-02-03
 
