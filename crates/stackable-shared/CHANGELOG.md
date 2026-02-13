@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.4] - 2025-10-06
+
+### Changed
+
+- BREAKING: Switch from `chrono` to `jiff` crate. This was done to follow the `kube` crate ([#1138]).
+
+[#1138]: https://github.com/stackabletech/operator-rs/pull/1138
+
 ## [0.0.3] - 2025-10-06
 
 ### Added

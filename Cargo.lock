@@ -2928,7 +2928,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.105.0"
+version = "0.106.0"
 dependencies = [
  "clap",
  "const_format",
@@ -2981,7 +2981,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-shared"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "jiff",
  "k8s-openapi",
