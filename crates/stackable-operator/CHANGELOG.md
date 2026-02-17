@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.106.1] - 2026-02-17
+
+### Fixed
+
+- Skip serializing traffic policy field of ListenerClass if `None` ([#1152]).
+
+[#1152]: https://github.com/stackabletech/operator-rs/pull/1152
+
 ## [0.106.0] - 2026-02-13
 
 ### Changed

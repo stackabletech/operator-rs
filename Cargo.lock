@@ -2928,7 +2928,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.106.0"
+version = "0.106.1"
 dependencies = [
  "clap",
  "const_format",
