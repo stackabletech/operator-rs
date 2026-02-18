@@ -68,6 +68,11 @@ pub mod versioned {
             downgrade_with = credentials_to_secret
         ))]
         pub credentials: Option<Credentials>,
+
+        /// An optional secret used for holding CA certificates that will be used to verify the git server's TLS certificate by passing it to the git config option `http.sslCAInfo` passed with the gitsync command. The secret must have a key named `ca.crt` whose value is the PEM-encoded certificate bundle.
+        /// If `http.sslCAInfo` is also set via `gitSyncConf` (the `--git-config` option) then a warning will logged and the explicit field value will take precendence.
+        #[versioned(added(since = "v1alpha2"))]
+        pub ca_cert_secret_name: Option<String>,
     }
 
     #[derive(strum::Display, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]

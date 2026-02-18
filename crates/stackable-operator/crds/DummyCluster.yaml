@@ -84,6 +84,12 @@ spec:
 
                       Since git-sync v4.x.x this field is mapped to the flag `--ref`.
                     type: string
+                  caCertSecretName:
+                    description: |-
+                      An optional secret used for holding CA certificates that will be used to verify the git server's TLS certificate by passing it to the git config option `http.sslCAInfo` passed with the gitsync command. The secret must have a key named `ca.crt` whose value is the PEM-encoded certificate bundle.
+                      If `http.sslCAInfo` is also set via `gitSyncConf` (the `--git-config` option) then a warning will logged and the explicit field value will take precendence.
+                    nullable: true
+                    type: string
                   credentials:
                     description: An optional secret used for git access.
                     nullable: true
