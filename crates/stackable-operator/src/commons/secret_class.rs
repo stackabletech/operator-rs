@@ -118,7 +118,7 @@ mod tests {
             }),
         }
         // Let's assume we need some form of private data (e.g. a certificate or S3 credentials)
-        .to_ephemeral_volume_source(SecretOperatorVolumeProvisionParts::Full)
+        .to_ephemeral_volume_source(SecretOperatorVolumeProvisionParts::All)
         .unwrap();
 
         let expected_volume_attributes = BTreeMap::from([

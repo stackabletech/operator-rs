@@ -444,7 +444,7 @@ pub enum SecretOperatorVolumeProvisionParts {
     /// Provision all parts, which includes all [`Public`](SecretOperatorVolumeProvisionParts::Public)
     /// ones as well as additional private parts, such as a TLS cert + private key, a keystore or a
     /// keytab.
-    Full,
+    All,
 }
 
 /// Reference to a listener class or listener name
