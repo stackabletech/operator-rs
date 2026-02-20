@@ -3,7 +3,11 @@ use snafu::{ResultExt as _, Snafu};
 use url::Url;
 
 use crate::{
-    builder::pod::{PodBuilder, container::ContainerBuilder, volume::VolumeMountBuilder},
+    builder::pod::{
+        PodBuilder,
+        container::ContainerBuilder,
+        volume::{SecretOperatorVolumeProvisionParts, VolumeMountBuilder},
+    },
     client::Client,
     commons::{secret_class::SecretClassVolumeError, tls_verification::TlsClientDetailsError},
     constants::secret::SECRET_BASE_PATH,
@@ -110,7 +114,8 @@ impl ConnectionSpec {
 
             volumes.push(
                 credentials
-                    .to_volume(&volume_name)
+                    // We need the private S3 credentials
+                    .to_volume(&volume_name, SecretOperatorVolumeProvisionParts::Full)
                     .context(AddS3CredentialVolumesSnafu)?,
             );
             mounts.push(

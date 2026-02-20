@@ -174,10 +174,16 @@ mod tests {
                 .unwrap()
                 .annotations
                 .unwrap(),
-            &BTreeMap::from([(
-                "secrets.stackable.tech/class".to_string(),
-                "ionos-s3-credentials".to_string()
-            )]),
+            &BTreeMap::from([
+                (
+                    "secrets.stackable.tech/class".to_string(),
+                    "ionos-s3-credentials".to_string()
+                ),
+                (
+                    "secrets.stackable.tech/provision-parts".to_string(),
+                    "full".to_string()
+                )
+            ]),
         );
 
         assert_eq!(mount.name, volume.name);

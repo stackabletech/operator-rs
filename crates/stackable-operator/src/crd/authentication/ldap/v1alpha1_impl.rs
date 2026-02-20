@@ -5,7 +5,11 @@ use url::Url;
 use crate::{
     builder::{
         self,
-        pod::{PodBuilder, container::ContainerBuilder, volume::VolumeMountBuilder},
+        pod::{
+            PodBuilder,
+            container::ContainerBuilder,
+            volume::{SecretOperatorVolumeProvisionParts, VolumeMountBuilder},
+        },
     },
     commons::{secret_class::SecretClassVolumeError, tls_verification::TlsClientDetailsError},
     constants::secret::SECRET_BASE_PATH,
@@ -94,7 +98,8 @@ impl AuthenticationProvider {
             let secret_class = &bind_credentials.secret_class;
             let volume_name = format!("{secret_class}-bind-credentials");
             let volume = bind_credentials
-                .to_volume(&volume_name)
+                // We need the private LDAP bind credentials
+                .to_volume(&volume_name, SecretOperatorVolumeProvisionParts::Full)
                 .context(BindCredentialsSnafu)?;
 
             volumes.push(volume);
@@ -234,7 +239,10 @@ mod tests {
                     secret_class: "ldap-ca-cert".to_string(),
                     scope: None,
                 }
-                .to_volume("ldap-ca-cert-ca-cert")
+                .to_volume(
+                    "ldap-ca-cert-ca-cert",
+                    SecretOperatorVolumeProvisionParts::Public
+                )
                 .unwrap()
             ]
         );
@@ -263,13 +271,19 @@ mod tests {
                     secret_class: "openldap-bind-credentials".to_string(),
                     scope: None,
                 }
-                .to_volume("openldap-bind-credentials-bind-credentials")
+                .to_volume(
+                    "openldap-bind-credentials-bind-credentials",
+                    SecretOperatorVolumeProvisionParts::Full
+                )
                 .unwrap(),
                 SecretClassVolume {
                     secret_class: "ldap-ca-cert".to_string(),
                     scope: None,
                 }
-                .to_volume("ldap-ca-cert-ca-cert")
+                .to_volume(
+                    "ldap-ca-cert-ca-cert",
+                    SecretOperatorVolumeProvisionParts::Public
+                )
                 .unwrap()
             ]
         );
