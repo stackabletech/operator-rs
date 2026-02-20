@@ -132,7 +132,7 @@ mod tests {
             ),
             (
                 "secrets.stackable.tech/provision-parts".to_string(),
-                "full".to_string(),
+                "all".to_string(),
             ),
         ]);
 
