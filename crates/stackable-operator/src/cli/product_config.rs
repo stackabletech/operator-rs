@@ -76,6 +76,12 @@ impl ProductConfigPath {
     }
 }
 
+// NOTE (@Techassi): This attribute should ideally be applied to the unit test function, but rstest
+// currently doesn't forward it correctly.
+#[allow(
+    clippy::unwrap_in_result,
+    reason = "We allow unwraps/expects in this function which returns Result, because the Result doesn't (and shouldn't) capture these errors."
+)]
 #[cfg(test)]
 mod tests {
     use std::fs::File;

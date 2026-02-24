@@ -337,10 +337,9 @@ impl Duration {
     /// not recommended to use the function to construct [`Duration`]s from user provided input.
     /// Instead, use [`Duration::from_str`] to parse human-readable duration strings.
     pub const fn from_minutes_unchecked(minutes: u64) -> Self {
-        let millis = match minutes.checked_mul(DurationUnit::Minutes.millis()) {
-            Some(millis) => millis,
-            None => panic!("overflow in Duration::from_minutes"),
-        };
+        let millis = minutes
+            .checked_mul(DurationUnit::Minutes.millis())
+            .expect("overflow in Duration::from_minutes");
         Self::from_millis(millis)
     }
 
@@ -352,10 +351,9 @@ impl Duration {
     /// not recommended to use the function to construct [`Duration`]s from user provided input.
     /// Instead, use [`Duration::from_str`] to parse human-readable duration strings.
     pub const fn from_hours_unchecked(hours: u64) -> Self {
-        let millis = match hours.checked_mul(DurationUnit::Hours.millis()) {
-            Some(millis) => millis,
-            None => panic!("overflow in Duration::from_hours"),
-        };
+        let millis = hours
+            .checked_mul(DurationUnit::Hours.millis())
+            .expect("overflow in Duration::from_hours");
         Self::from_millis(millis)
     }
 
@@ -367,10 +365,9 @@ impl Duration {
     /// not recommended to use the function to construct [`Duration`]s from user provided input.
     /// Instead, use [`Duration::from_str`] to parse human-readable duration strings.
     pub const fn from_days_unchecked(days: u64) -> Self {
-        let millis = match days.checked_mul(DurationUnit::Days.millis()) {
-            Some(millis) => millis,
-            None => panic!("overflow in Duration::from_days"),
-        };
+        let millis = days
+            .checked_mul(DurationUnit::Days.millis())
+            .expect("overflow in Duration::from_days");
         Self::from_millis(millis)
     }
 }
