@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.106.2] - 2026-02-26
+
+### Changed
+
+- Bump strum to 0.28.0 ([#1160]).
+
+[#1160]: https://github.com/stackabletech/operator-rs/pull/1160
+
 ## [0.106.1] - 2026-02-17
 
 ### Fixed
