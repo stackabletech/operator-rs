@@ -86,7 +86,6 @@ use k8s_openapi::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
-use strum::Display;
 
 use crate::{
     config::{
@@ -374,7 +373,7 @@ impl<T, K> Into<ResourceRequirements> for Resources<T, K> {
 /// [`ResourceRequirementsType`] describes the available resource requirement
 /// types. The user can set limits, requests and claims. This enum makes it
 /// possible to check if containers set one or more of these types.
-#[derive(Copy, Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, strum::Display)]
 #[strum(serialize_all = "lowercase")]
 pub enum ResourceRequirementsType {
     Requests,
@@ -386,7 +385,7 @@ pub enum ResourceRequirementsType {
     // Claims,
 }
 
-#[derive(Copy, Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, strum::Display)]
 #[strum(serialize_all = "lowercase")]
 pub enum ComputeResource {
     Cpu,
