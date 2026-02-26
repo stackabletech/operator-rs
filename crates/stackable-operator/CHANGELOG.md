@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.106.2] - 2026-02-17
+
+### Fixed
+
+- Use a [nightly](https://github.com/kube-rs/kube/commit/1320643f8ce7f8189e03496ff1329d678d76224c) version of `kube` to resolve the CRD generation bugs [#1934](https://github.com/kube-rs/kube/pull/1934) and [#1942](https://github.com/kube-rs/kube/pull/1942) ([#XXXX]).
+
+[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+
 ## [0.106.1] - 2026-02-17
 
 ### Fixed

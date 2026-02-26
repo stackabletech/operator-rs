@@ -1532,7 +1532,7 @@ dependencies = [
 [[package]]
 name = "kube"
 version = "3.0.1"
-source = "git+https://github.com/kube-rs/kube-rs?rev=fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5#fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5"
+source = "git+https://github.com/kube-rs/kube-rs?rev=1320643f8ce7f8189e03496ff1329d678d76224c#1320643f8ce7f8189e03496ff1329d678d76224c"
 dependencies = [
  "k8s-openapi",
  "kube-client",
@@ -1544,7 +1544,7 @@ dependencies = [
 [[package]]
 name = "kube-client"
 version = "3.0.1"
-source = "git+https://github.com/kube-rs/kube-rs?rev=fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5#fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5"
+source = "git+https://github.com/kube-rs/kube-rs?rev=1320643f8ce7f8189e03496ff1329d678d76224c#1320643f8ce7f8189e03496ff1329d678d76224c"
 dependencies = [
  "base64",
  "bytes",
@@ -1578,7 +1578,7 @@ dependencies = [
 [[package]]
 name = "kube-core"
 version = "3.0.1"
-source = "git+https://github.com/kube-rs/kube-rs?rev=fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5#fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5"
+source = "git+https://github.com/kube-rs/kube-rs?rev=1320643f8ce7f8189e03496ff1329d678d76224c#1320643f8ce7f8189e03496ff1329d678d76224c"
 dependencies = [
  "derive_more",
  "form_urlencoded",
@@ -1596,7 +1596,7 @@ dependencies = [
 [[package]]
 name = "kube-derive"
 version = "3.0.1"
-source = "git+https://github.com/kube-rs/kube-rs?rev=fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5#fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5"
+source = "git+https://github.com/kube-rs/kube-rs?rev=1320643f8ce7f8189e03496ff1329d678d76224c#1320643f8ce7f8189e03496ff1329d678d76224c"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -1609,7 +1609,7 @@ dependencies = [
 [[package]]
 name = "kube-runtime"
 version = "3.0.1"
-source = "git+https://github.com/kube-rs/kube-rs?rev=fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5#fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5"
+source = "git+https://github.com/kube-rs/kube-rs?rev=1320643f8ce7f8189e03496ff1329d678d76224c#1320643f8ce7f8189e03496ff1329d678d76224c"
 dependencies = [
  "ahash",
  "async-broadcast",
@@ -2928,7 +2928,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.106.1"
+version = "0.106.2"
 dependencies = [
  "clap",
  "const_format",
