@@ -10,7 +10,7 @@ use stackable_operator::{
     status::condition::ClusterCondition,
     versioned::versioned,
 };
-use strum::{Display, EnumIter};
+use strum::EnumIter;
 
 #[versioned(
     version(name = "v1alpha1"),
@@ -89,7 +89,6 @@ pub mod versioned {
         Clone,
         Debug,
         Deserialize,
-        Display,
         Eq,
         EnumIter,
         JsonSchema,
@@ -97,6 +96,7 @@ pub mod versioned {
         PartialEq,
         PartialOrd,
         Serialize,
+        strum::Display,
     )]
     #[serde(rename_all = "kebab-case")]
     #[strum(serialize_all = "kebab-case")]
