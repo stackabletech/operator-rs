@@ -42,9 +42,7 @@ pub use schemars;
 pub use stackable_certs as certs;
 pub use stackable_shared as shared;
 pub use stackable_shared::{crd::CustomResourceExt, yaml::YamlSchema};
-#[cfg(feature = "telemetry")]
 pub use stackable_telemetry as telemetry;
-#[cfg(feature = "versioned")]
 pub use stackable_versioned as versioned;
 #[cfg(feature = "webhook")]
 pub use stackable_webhook as webhook;
