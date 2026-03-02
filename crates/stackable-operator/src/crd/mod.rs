@@ -5,7 +5,6 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub mod authentication;
-pub mod database;
 pub mod git_sync;
 pub mod listener;
 pub mod s3;

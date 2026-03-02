@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 
-use crate::crd::database::drivers::jdbc::{JDBCDatabaseConnection, JDBCDatabaseConnectionDetails};
+use crate::databases::drivers::jdbc::{JDBCDatabaseConnection, JDBCDatabaseConnectionDetails};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -22,7 +22,7 @@ impl JDBCDatabaseConnection for DerbyConnection {
     fn jdbc_connection_details(
         &self,
         unique_database_name: &str,
-    ) -> Result<JDBCDatabaseConnectionDetails, crate::crd::database::Error> {
+    ) -> Result<JDBCDatabaseConnectionDetails, crate::databases::Error> {
         let location = self
             .location
             .clone()

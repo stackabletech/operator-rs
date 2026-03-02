@@ -30,6 +30,7 @@ pub mod role_utils;
 pub mod status;
 pub mod utils;
 pub mod validation;
+pub mod databases;
 
 // External re-exports
 pub use k8s_openapi;

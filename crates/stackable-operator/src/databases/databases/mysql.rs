@@ -6,7 +6,7 @@ use snafu::{ResultExt, Snafu};
 
 use crate::{
     commons::networking::HostName,
-    crd::database::{
+    databases::{
         drivers::jdbc::{JDBCDatabaseConnection, JDBCDatabaseConnectionDetails},
         helpers::{connection_parameters_as_url_query_parameters, username_and_password_envs},
     },
@@ -50,7 +50,7 @@ impl JDBCDatabaseConnection for MysqlConnection {
     fn jdbc_connection_details(
         &self,
         unique_database_name: &str,
-    ) -> Result<JDBCDatabaseConnectionDetails, crate::crd::database::Error> {
+    ) -> Result<JDBCDatabaseConnectionDetails, crate::databases::Error> {
         let Self {
             host,
             port,

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 use crate::{
-    builder::pod::container::ContainerBuilder, crd::database::helpers::username_and_password_envs,
+    builder::pod::container::ContainerBuilder, databases::helpers::username_and_password_envs,
 };
 
 /// TODO docs
@@ -13,7 +13,7 @@ pub trait JDBCDatabaseConnection {
     fn jdbc_connection_details(
         &self,
         unique_database_name: &str,
-    ) -> Result<JDBCDatabaseConnectionDetails, crate::crd::database::Error>;
+    ) -> Result<JDBCDatabaseConnectionDetails, crate::databases::Error>;
 }
 
 pub struct JDBCDatabaseConnectionDetails {
@@ -56,7 +56,7 @@ impl JDBCDatabaseConnection for GenericJDBCDatabaseConnection {
     fn jdbc_connection_details(
         &self,
         unique_database_name: &str,
-    ) -> Result<JDBCDatabaseConnectionDetails, crate::crd::database::Error> {
+    ) -> Result<JDBCDatabaseConnectionDetails, crate::databases::Error> {
         let (username_env, password_env) =
             username_and_password_envs(unique_database_name, &self.credentials_secret);
 

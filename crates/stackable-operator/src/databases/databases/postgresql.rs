@@ -6,7 +6,7 @@ use snafu::{ResultExt, Snafu};
 
 use crate::{
     commons::networking::HostName,
-    crd::database::{
+    databases::{
         drivers::{
             jdbc::{JDBCDatabaseConnection, JDBCDatabaseConnectionDetails},
             sqlalchemy::{SQLAlchemyDatabaseConnection, SQLAlchemyDatabaseConnectionDetails},
@@ -53,7 +53,7 @@ impl JDBCDatabaseConnection for PostgresqlConnection {
     fn jdbc_connection_details(
         &self,
         unique_database_name: &str,
-    ) -> Result<JDBCDatabaseConnectionDetails, crate::crd::database::Error> {
+    ) -> Result<JDBCDatabaseConnectionDetails, crate::databases::Error> {
         let Self {
             host,
             port,
