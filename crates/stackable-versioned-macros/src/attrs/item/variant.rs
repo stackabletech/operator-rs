@@ -1,4 +1,5 @@
-use convert_case::{Case, Casing};
+use convert_case::Case;
+use convert_case_extras::is_case;
 use darling::{Error, FromVariant, Result};
 use syn::{Attribute, Ident};
 
@@ -60,7 +61,7 @@ impl VariantAttributes {
         // Validate names of renames
         for change in &self.common.changes {
             if let Some(from_name) = &change.from_name
-                && !from_name.is_case(Case::Pascal)
+                && !is_case(from_name.as_str(), Case::Pascal)
             {
                 errors.push(
                     Error::custom("renamed variant must use PascalCase")

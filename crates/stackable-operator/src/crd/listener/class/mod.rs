@@ -69,6 +69,20 @@ pub mod versioned {
         // (which currently defaults to `Cluster`). This should be the most sensible option in most cases.
         // There is the possibility Kubernetes will automatically choose `Local` if support for it on the
         // LoadBalancer has been detected.
+        //
+        // We skip serialization if this is None to ensure that forwarding the selection of the policy to
+        // Kubernetes works as expected. We stumbled over the following unexpected behaviour:
+        //
+        // - If ListenerClass manifests (which don't set this field) are applied by a client (like kubectl or helm),
+        //   they are applied as expected - no errors.
+        // - If the same manifests are applied by Rust code, it fails. This field cannot be set to "null". Serde by
+        //   default serializes None to "null".
+        //
+        // We expected there to be a null variant in the schema, which would allow setting this field to null, but
+        // the schema only lists the two available variants. Additionally, ad-hoc testing showed that manifests would
+        // still be rejected after manually adjusting the schema in the CRD. This is something which should be
+        // investigated further.
+        #[serde(skip_serializing_if = "Option::is_none")]
         pub service_external_traffic_policy: Option<core_v1alpha1::KubernetesTrafficPolicy>,
 
         /// Whether addresses should prefer using the IP address (`IP`) or the hostname (`Hostname`).

@@ -4,11 +4,36 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.106.2] - 2026-02-26
+
+### Changed
+
+- Bump strum to 0.28.0 ([#1160]).
+
+[#1160]: https://github.com/stackabletech/operator-rs/pull/1160
+
+## [0.106.1] - 2026-02-17
+
+### Fixed
+
+- Skip serializing traffic policy field of ListenerClass if `None` ([#1152]).
+
+[#1152]: https://github.com/stackabletech/operator-rs/pull/1152
+
+## [0.106.0] - 2026-02-13
+
+### Changed
+
+- BREAKING: Upgrade to kube `3.0.1` and k8s-openapi `0.27.0` ([#1138]).
+- Bump stackable-shared to `0.1.0`, refer to its [changelog](../stackable-shared/CHANGELOG.md) ([#1151]).
+
 ### Fixed
 
 - Store the Vector state in the log directory to ensure it persists across container restarts ([#1149]).
 
+[#1138]: https://github.com/stackabletech/operator-rs/pull/1138
 [#1149]: https://github.com/stackabletech/operator-rs/pull/1149
+[#1151]: https://github.com/stackabletech/operator-rs/pull/1151
 
 ## [0.105.0] - 2026-02-03
 

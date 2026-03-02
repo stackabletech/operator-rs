@@ -31,6 +31,7 @@ proc-macro = true
 k8s-version = { path = "../k8s-version", features = ["darling"] }
 
 convert_case.workspace = true
+convert_case_extras.workspace = true
 darling.workspace = true
 indoc.workspace = true
 itertools.workspace = true

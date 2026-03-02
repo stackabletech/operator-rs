@@ -334,7 +334,6 @@ impl Struct {
         let version_enum_ident = &spec_gen_ctx.kubernetes_idents.version;
         let struct_ident = &spec_gen_ctx.kubernetes_idents.kind;
 
-        let kube_client_path = &*mod_gen_ctx.crates.kube_client;
         let serde_json_path = &*mod_gen_ctx.crates.serde_json;
         let kube_core_path = &*mod_gen_ctx.crates.kube_core;
         let versioned_path = &*mod_gen_ctx.crates.versioned;
@@ -381,9 +380,10 @@ impl Struct {
                         #invalid_conversion_review_event
 
                         return #kube_core_path::conversion::ConversionResponse::invalid(
-                            #kube_client_path::Status {
+                            #kube_core_path::Status {
                                 status: Some(#kube_core_path::response::StatusSummary::Failure),
                                 message: err.to_string(),
+                                metadata: None,
                                 reason: err.to_string(),
                                 details: None,
                                 code: 400,
@@ -405,7 +405,7 @@ impl Struct {
                         // the result to success and the converted objects to the provided list.
                         // The below code does the same thing.
                         #kube_core_path::conversion::ConversionResponse {
-                            result: #kube_client_path::Status::success(),
+                            result: #kube_core_path::Status::success(),
                             types: request.types,
                             uid: request.uid,
                             converted_objects,
@@ -416,9 +416,10 @@ impl Struct {
                         let message = err.join_errors();
 
                         #kube_core_path::conversion::ConversionResponse {
-                            result: #kube_client_path::Status {
+                            result: #kube_core_path::Status {
                                 status: Some(#kube_core_path::response::StatusSummary::Failure),
                                 message: message.clone(),
+                                metadata: None,
                                 reason: message,
                                 details: None,
                                 code,

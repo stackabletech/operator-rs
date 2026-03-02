@@ -1,5 +1,5 @@
-use chrono::{DateTime, Utc};
 use futures::FutureExt;
+use jiff::{self, Zoned};
 use snafu::{ResultExt, Snafu};
 use stackable_shared::time::Duration;
 use tokio::select;
@@ -65,12 +65,12 @@ pub enum EndOfSupportCheckMode {
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("failed to parse built-time"))]
-    ParseBuiltTime { source: chrono::ParseError },
+    ParseBuiltTime { source: k8s_openapi::jiff::Error },
 }
 
 pub struct EndOfSupportChecker {
-    built_datetime: DateTime<Utc>,
-    eos_datetime: DateTime<Utc>,
+    built_datetime: Zoned,
+    eos_datetime: Zoned,
     interval: Duration,
     disabled: bool,
 }
@@ -94,15 +94,13 @@ impl EndOfSupportChecker {
         // Parse the built-time from the RFC2822-encoded string when this is compiled as a release
         // build. If this is a debug/dev build, use the current datetime instead.
         let built_datetime = if cfg!(debug_assertions) {
-            Utc::now()
+            Zoned::now()
         } else {
-            DateTime::parse_from_rfc2822(built_time)
-                .context(ParseBuiltTimeSnafu)?
-                .to_utc()
+            jiff::fmt::rfc2822::parse(built_time).context(ParseBuiltTimeSnafu)?
         };
 
         // Add the support duration to the built date. This marks the end-of-support date.
-        let eos_datetime = built_datetime + *support_duration;
+        let eos_datetime = &built_datetime + *support_duration;
 
         Ok(Self {
             built_datetime,
@@ -144,12 +142,13 @@ impl EndOfSupportChecker {
 
                 // The first tick ticks immediately.
                 _ = interval.tick() => {
-                    let now = Utc::now();
+                    let now = Zoned::now();
 
                     tracing::info_span!(
                         "checking end-of-support state",
                         eos.interval = self.interval.to_string(),
-                        eos.now = now.to_rfc3339(),
+                        eos.now = jiff::fmt::rfc2822::to_string(&now)
+                            .expect("Zoned::now() can always be serialized using rfc2822::to_string"),
                     );
 
                     // Continue the loop and wait for the next tick to run the
@@ -166,9 +165,10 @@ impl EndOfSupportChecker {
 
     /// Emits the end-of-support warning.
     #[instrument(level = Level::DEBUG, skip(self))]
-    fn emit_warning(&self, now: DateTime<Utc>) {
-        let built_datetime = self.built_datetime.to_rfc3339();
-        let build_age = Duration::try_from(now - self.built_datetime)
+    fn emit_warning(&self, now: Zoned) {
+        let built_datetime = jiff::fmt::rfc2822::to_string(&self.built_datetime)
+            .expect("The build datetime can always be serialized using rfc2822::to_string");
+        let build_age = Duration::try_from(&now - &self.built_datetime)
             .expect("time delta of now and built datetime must not be less than 0")
             .to_string();
 

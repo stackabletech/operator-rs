@@ -22,10 +22,9 @@ use k8s_openapi::{
     },
     apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
 };
-use kube::{Resource, ResourceExt, core::ErrorResponse};
+use kube::{Resource, ResourceExt};
 use serde::{Serialize, de::DeserializeOwned};
 use snafu::{OptionExt, ResultExt, Snafu};
-use strum::Display;
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -124,7 +123,7 @@ pub trait ClusterResource:
 /// The [`ClusterResourceApplyStrategy`] defines how to handle resources applied by the operators.
 /// This can be default behavior (apply_patch), only retrieving resources (get) for cluster status
 /// purposes or doing nothing.
-#[derive(Debug, Display, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, strum::Display)]
 pub enum ClusterResourceApplyStrategy {
     /// Default strategy. Resources a applied via the [`Client::apply_patch`] client method.
     Default,
@@ -744,8 +743,8 @@ impl<'a> ClusterResources<'a> {
                 Ok(())
             }
             Err(crate::client::Error::ListResources {
-                source: kube::Error::Api(ErrorResponse { code: 403, .. }),
-            }) => {
+                source: kube::Error::Api(s),
+            }) if s.is_forbidden() => {
                 debug!(
                     "Skipping deletion of orphaned {} because the operator is not allowed to list \
                       them and is therefore probably not in charge of them.",
