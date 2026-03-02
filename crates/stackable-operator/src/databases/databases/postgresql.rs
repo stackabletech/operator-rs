@@ -8,6 +8,7 @@ use crate::{
     commons::networking::HostName,
     databases::{
         drivers::{
+            celery::{CeleryDatabaseConnection, CeleryDatabaseConnectionDetails},
             jdbc::{JDBCDatabaseConnection, JDBCDatabaseConnectionDetails},
             sqlalchemy::{SQLAlchemyDatabaseConnection, SQLAlchemyDatabaseConnectionDetails},
         },
@@ -109,6 +110,36 @@ impl SQLAlchemyDatabaseConnection for PostgresqlConnection {
     }
 }
 
+impl CeleryDatabaseConnection for PostgresqlConnection {
+    fn celery_connection_details(
+        &self,
+        unique_database_name: &str,
+    ) -> CeleryDatabaseConnectionDetails {
+        let Self {
+            host,
+            port,
+            database,
+            credentials_secret,
+            parameters,
+        } = self;
+        let (username_env, password_env) =
+            username_and_password_envs(unique_database_name, credentials_secret);
+
+        let uri_template = format!(
+            "db+postgresql://${{env:{username_env_name}}}:${{env:{password_env_name}}}@{host}:{port}/{database}{parameters}",
+            username_env_name = username_env.name,
+            password_env_name = password_env.name,
+            parameters = connection_parameters_as_url_query_parameters(parameters)
+        );
+        CeleryDatabaseConnectionDetails {
+            uri_template,
+            username_env: Some(username_env),
+            password_env: Some(password_env),
+            generic_uri_var: None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,6 +182,16 @@ mod tests {
             jdbc_connection_details.password_env.unwrap().name,
             "METADATA_DATABASE_PASSWORD"
         );
+
+        let celery_connection_details =
+            postgres_connection.celery_connection_details(UNIQUE_DATABASE_NAME);
+        assert_eq!(
+            celery_connection_details.uri_template,
+            "db+postgresql://${env:METADATA_DATABASE_USERNAME}:${env:METADATA_DATABASE_PASSWORD}@airflow-postgresql:5432/airflow"
+        );
+        assert!(celery_connection_details.username_env.is_some());
+        assert!(celery_connection_details.password_env.is_some());
+        assert!(celery_connection_details.generic_uri_var.is_none());
     }
 
     #[test]

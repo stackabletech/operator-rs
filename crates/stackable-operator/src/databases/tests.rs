@@ -34,6 +34,7 @@ impl DummyJDBCConnection {
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 enum DummyCeleryConnection {
+    Postgresql(PostgresqlConnection),
     Redis(RedisConnection),
     #[allow(unused)]
     Generic(GenericCeleryDatabaseConnection),
@@ -42,6 +43,7 @@ enum DummyCeleryConnection {
 impl DummyCeleryConnection {
     fn as_celery_database_connection(&self) -> &dyn CeleryDatabaseConnection {
         match self {
+            Self::Postgresql(p) => p,
             Self::Redis(r) => r,
             Self::Generic(g) => g,
         }
