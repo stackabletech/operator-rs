@@ -25,7 +25,6 @@ use k8s_openapi::{
 use kube::{Resource, ResourceExt};
 use serde::{Serialize, de::DeserializeOwned};
 use snafu::{OptionExt, ResultExt, Snafu};
-use strum::Display;
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -124,7 +123,7 @@ pub trait ClusterResource:
 /// The [`ClusterResourceApplyStrategy`] defines how to handle resources applied by the operators.
 /// This can be default behavior (apply_patch), only retrieving resources (get) for cluster status
 /// purposes or doing nothing.
-#[derive(Debug, Display, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, strum::Display)]
 pub enum ClusterResourceApplyStrategy {
     /// Default strategy. Resources a applied via the [`Client::apply_patch`] client method.
     Default,
