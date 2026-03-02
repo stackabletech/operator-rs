@@ -2,9 +2,10 @@
 //! running in a Kubernetes cluster.
 
 use clap::{Args, Parser};
-use stackable_telemetry::tracing::TelemetryOptions;
 
-use crate::{namespace::WatchNamespace, utils::cluster_info::KubernetesClusterInfoOptions};
+#[cfg(feature = "clap")]
+use crate::utils::cluster_info::KubernetesClusterInfoOptions;
+use crate::{namespace::WatchNamespace, telemetry::tracing::TelemetryOptions};
 
 mod environment;
 mod maintenance;
@@ -111,6 +112,7 @@ pub struct CommonOptions {
     #[command(flatten)]
     pub telemetry: TelemetryOptions,
 
+    #[cfg(feature = "clap")]
     #[command(flatten)]
     pub cluster_info: KubernetesClusterInfoOptions,
 }

@@ -14,6 +14,7 @@ pub mod commons;
 pub mod config;
 pub mod constants;
 pub mod cpu;
+#[cfg(feature = "crd")]
 pub mod crd;
 pub mod deep_merger;
 pub mod eos;
@@ -44,7 +45,7 @@ pub use stackable_shared as shared;
 pub use stackable_shared::{crd::CustomResourceExt, yaml::YamlSchema};
 #[cfg(feature = "telemetry")]
 pub use stackable_telemetry as telemetry;
-#[cfg(feature = "versioned")]
+#[cfg(feature = "crd")]
 pub use stackable_versioned as versioned;
 #[cfg(feature = "webhook")]
 pub use stackable_webhook as webhook;

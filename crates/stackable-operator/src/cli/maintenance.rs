@@ -1,5 +1,6 @@
 use clap::Args;
 
+#[cfg(feature = "clap")]
 use crate::eos::EndOfSupportOptions;
 
 #[derive(Debug, PartialEq, Eq, Args)]
@@ -18,6 +19,7 @@ pub struct MaintenanceOptions {
 
     // IMPORTANT: All (flattened) sub structs should be placed at the end to ensure the help
     // headings are correct.
+    #[cfg(feature = "clap")]
     #[command(flatten)]
     pub end_of_support: EndOfSupportOptions,
 }

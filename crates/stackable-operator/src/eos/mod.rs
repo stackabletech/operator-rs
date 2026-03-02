@@ -41,6 +41,8 @@ pub struct EndOfSupportOptions {
     pub support_duration: Duration,
 }
 
+// These default functions are only needed when this is used in CLIs.
+#[cfg(feature = "clap")]
 impl EndOfSupportOptions {
     fn default_interval() -> Duration {
         if cfg!(debug_assertions) {

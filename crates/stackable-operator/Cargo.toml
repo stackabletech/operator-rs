@@ -8,15 +8,23 @@ edition.workspace = true
 repository.workspace = true
 
 [features]
-full = ["certs", "telemetry", "versioned", "time", "webhook", "clap"]
-default = ["telemetry", "versioned", "clap"]
+# --- The section below defines features which are collections of other features ---
+# NOTE (@Techassi): These lists should be kept in the same order as features are defined below.
+full = ["clap", "crd", "telemetry", "webhook", "time", "certs"]
+default = ["clap", "crd", "telemetry"]
 
-clap = []
-certs = ["dep:stackable-certs"]
+# --- The section below defines features which toggle individual functionality ---
+
+# This feature enables support for clap on various structs and enums to be used in clap-based CLIs.
+clap = ["stackable-telemetry/clap"]
+
+# This feature enables various (versioned) CRD structs and enums to be exported.
+crd = ["dep:stackable-versioned"]
+
 telemetry = ["dep:stackable-telemetry"]
-time = ["stackable-shared/time"]
-versioned = ["dep:stackable-versioned"]
 webhook = ["dep:stackable-webhook"]
+time = ["stackable-shared/time"]
+certs = ["dep:stackable-certs"]
 
 [dependencies]
 stackable-certs = { path = "../stackable-certs", optional = true }

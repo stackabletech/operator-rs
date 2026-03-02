@@ -27,6 +27,8 @@ use serde::{Serialize, de::DeserializeOwned};
 use snafu::{OptionExt, ResultExt, Snafu};
 use tracing::{debug, info, warn};
 
+#[cfg(feature = "crd")]
+use crate::crd::listener;
 use crate::{
     client::{Client, GetApi},
     commons::{
@@ -36,7 +38,6 @@ use crate::{
             ResourceRequirementsExt, ResourceRequirementsType,
         },
     },
-    crd::listener,
     deep_merger::{self, ObjectOverrides},
     kvp::{
         Label, LabelError, Labels,
@@ -221,6 +222,7 @@ impl ClusterResource for Service {}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
 impl ClusterResource for PodDisruptionBudget {}
+#[cfg(feature = "crd")]
 impl ClusterResource for listener::v1alpha1::Listener {}
 
 impl ClusterResource for Job {
@@ -680,8 +682,11 @@ impl<'a> ClusterResources<'a> {
             self.delete_orphaned_resources_of_kind::<ServiceAccount>(client),
             self.delete_orphaned_resources_of_kind::<RoleBinding>(client),
             self.delete_orphaned_resources_of_kind::<PodDisruptionBudget>(client),
-            self.delete_orphaned_resources_of_kind::<listener::v1alpha1::Listener>(client),
         )?;
+
+        #[cfg(feature = "crd")]
+        self.delete_orphaned_resources_of_kind::<listener::v1alpha1::Listener>(client)
+            .await?;
 
         Ok(())
     }
