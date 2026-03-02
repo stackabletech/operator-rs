@@ -84,12 +84,6 @@ spec:
 
                       Since git-sync v4.x.x this field is mapped to the flag `--ref`.
                     type: string
-                  caCertSecretName:
-                    description: |-
-                      An optional secret used for holding CA certificates that will be used to verify the git server's TLS certificate by passing it to the git config option `http.sslCAInfo` passed with the gitsync command. The secret must have a key named `ca.crt` whose value is the PEM-encoded certificate bundle.
-                      If `http.sslCAInfo` is also set via `gitSyncConf` (the `--git-config` option) then a warning will be logged.
-                    nullable: true
-                    type: string
                   credentials:
                     description: An optional secret used for git access.
                     nullable: true
@@ -148,6 +142,51 @@ spec:
                     description: 'The git repository URL that will be cloned, for example: `https://github.com/stackabletech/airflow-operator` or `ssh://git@github.com:stackable-airflow/dags.git`.'
                     format: uri
                     type: string
+                  tls:
+                    description: Use a TLS connection. If not specified no TLS will be used.
+                    nullable: true
+                    properties:
+                      verification:
+                        description: The verification method used to verify the certificates of the server and/or the client.
+                        oneOf:
+                        - required:
+                          - none
+                        - required:
+                          - server
+                        properties:
+                          none:
+                            description: Use TLS but don't verify certificates.
+                            type: object
+                          server:
+                            description: Use TLS and a CA certificate to verify the server.
+                            properties:
+                              caCert:
+                                description: CA cert to verify the server.
+                                oneOf:
+                                - required:
+                                  - webPki
+                                - required:
+                                  - secretClass
+                                properties:
+                                  secretClass:
+                                    description: |-
+                                      Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate.
+                                      Note that a SecretClass does not need to have a key but can also work with just a CA certificate,
+                                      so if you got provided with a CA cert but don't have access to the key you can still use this method.
+                                    type: string
+                                  webPki:
+                                    description: |-
+                                      Use TLS and the CA certificates trusted by the common web browsers to verify the server.
+                                      This can be useful when you e.g. use public AWS S3 or other public available services.
+                                    type: object
+                                type: object
+                            required:
+                            - caCert
+                            type: object
+                        type: object
+                    required:
+                    - verification
+                    type: object
                   wait:
                     default: 20s
                     description: |-

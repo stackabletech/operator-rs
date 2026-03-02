@@ -12,7 +12,9 @@ use crate::{
         resources::ResourceRequirementsBuilder,
         volume::{VolumeBuilder, VolumeMountBuilder},
     },
-    commons::product_image_selection::ResolvedProductImage,
+    commons::{
+        self, product_image_selection::ResolvedProductImage, secret_class::SecretClassVolume,
+    },
     crd::git_sync::v1alpha2::{Credentials, GitSync},
     product_config_utils::insert_or_update_env_vars,
     product_logging::{
@@ -45,6 +47,11 @@ pub enum Error {
     #[snafu(display("failed to add needed volumeMount"))]
     AddVolumeMount {
         source: crate::builder::pod::container::Error,
+    },
+
+    #[snafu(display("failed to convert secret class volume into named Kubernetes volume"))]
+    SecretClassVolume {
+        source: commons::secret_class::SecretClassVolumeError,
     },
 }
 
@@ -161,7 +168,7 @@ impl GitSyncResources {
                 git_sync_container_volume_mounts.push(ssh_volume_mount);
             }
 
-            if git_sync.ca_cert_secret_name.is_some() {
+            if git_sync.tls.tls_ca_cert_secret_class().is_some() {
                 let ca_cert_secret_mount_path = format!("{CA_CERT_MOUNT_PATH_PREFIX}-{i}");
                 let ca_cert_secret_volume_name = format!("{CA_CERT_VOLUME_NAME_PREFIX}-{i}");
 
@@ -171,9 +178,9 @@ impl GitSyncResources {
                 git_sync_container_volume_mounts.push(ca_cert_volume_mount);
             }
 
-            let ca_cert_path: Option<String> = git_sync
-                .ca_cert_secret_name
-                .as_ref()
+            let ca_cert_path = git_sync
+                .tls
+                .tls_ca_cert_secret_class()
                 .map(|_| format!("{CA_CERT_MOUNT_PATH_PREFIX}-{i}/ca.crt"));
 
             let container = Self::create_git_sync_container(
@@ -235,11 +242,12 @@ impl GitSyncResources {
                 resources.git_ssh_volumes.push(ssh_secret_volume);
             }
 
-            if let Some(ca_cert_secret_name) = &git_sync.ca_cert_secret_name {
-                let ca_cert_secret_volume_name = format!("{CA_CERT_VOLUME_NAME_PREFIX}-{i}");
-                let ca_cert_secret_volume = VolumeBuilder::new(&ca_cert_secret_volume_name)
-                    .with_secret(ca_cert_secret_name, false)
-                    .build();
+            if let Some(secret_class) = git_sync.tls.tls_ca_cert_secret_class() {
+                let secret_class_volume = SecretClassVolume::new(secret_class.clone(), None);
+                let volume_name = format!("{CA_CERT_VOLUME_NAME_PREFIX}-{i}");
+                let ca_cert_secret_volume = secret_class_volume
+                    .to_volume(&volume_name)
+                    .context(SecretClassVolumeSnafu)?;
                 resources.git_ca_cert_volumes.push(ca_cert_secret_volume);
             }
         }
@@ -1157,7 +1165,11 @@ secret:
             gitFolder: ""
             depth: 3
             wait: 1m
-            caCertSecretName: git-ca-cert
+            tls:
+              verification:
+                server:
+                  caCert:
+                    secretClass: git-tls-ca
             gitSyncConf:
               --rev: HEAD
           "#;
@@ -1335,10 +1347,19 @@ name: content-from-git-0
         assert_eq!(1, git_sync_resources.git_ca_cert_volumes.len());
 
         assert_eq!(
-            "name: ca-cert-0
-secret:
-  optional: false
-  secretName: git-ca-cert
+            "ephemeral:
+  volumeClaimTemplate:
+    metadata:
+      annotations:
+        secrets.stackable.tech/class: git-tls-ca
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: '1'
+      storageClassName: secrets.stackable.tech
+name: ca-cert-0
 ",
             serde_yaml::to_string(&git_sync_resources.git_ca_cert_volumes.first()).unwrap()
         );
