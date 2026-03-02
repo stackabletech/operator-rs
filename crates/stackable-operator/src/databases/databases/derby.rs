@@ -2,7 +2,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 
-use crate::databases::drivers::jdbc::{JDBCDatabaseConnection, JDBCDatabaseConnectionDetails};
+use crate::databases::{
+    TemplatingMechanism,
+    drivers::jdbc::{JDBCDatabaseConnection, JDBCDatabaseConnectionDetails},
+};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -19,9 +22,10 @@ pub struct DerbyConnection {
 }
 
 impl JDBCDatabaseConnection for DerbyConnection {
-    fn jdbc_connection_details(
+    fn jdbc_connection_details_with_templating(
         &self,
         unique_database_name: &str,
+        _templating_mechanism: &TemplatingMechanism,
     ) -> Result<JDBCDatabaseConnectionDetails, crate::databases::Error> {
         let location = self
             .location

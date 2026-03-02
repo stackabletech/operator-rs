@@ -2,7 +2,10 @@ use k8s_openapi::api::core::v1::EnvVar;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::builder::pod::{container::ContainerBuilder, env::env_var_from_secret};
+use crate::{
+    builder::pod::{container::ContainerBuilder, env::env_var_from_secret},
+    databases::TemplatingMechanism,
+};
 
 /// TODO docs
 pub trait CeleryDatabaseConnection {
@@ -10,6 +13,17 @@ pub trait CeleryDatabaseConnection {
     fn celery_connection_details(
         &self,
         unique_database_name: &str,
+    ) -> CeleryDatabaseConnectionDetails {
+        self.celery_connection_details_with_templating(
+            unique_database_name,
+            &TemplatingMechanism::default(),
+        )
+    }
+
+    fn celery_connection_details_with_templating(
+        &self,
+        unique_database_name: &str,
+        templating_mechanism: &TemplatingMechanism,
     ) -> CeleryDatabaseConnectionDetails;
 }
 
@@ -55,18 +69,23 @@ pub struct GenericCeleryDatabaseConnection {
 }
 
 impl CeleryDatabaseConnection for GenericCeleryDatabaseConnection {
-    fn celery_connection_details(
+    fn celery_connection_details_with_templating(
         &self,
         unique_database_name: &str,
+        templating_mechanism: &TemplatingMechanism,
     ) -> CeleryDatabaseConnectionDetails {
         let uri_env_name = format!(
             "{upper}_DATABASE_URI",
             upper = unique_database_name.to_uppercase()
         );
         let uri_env_var = env_var_from_secret(&uri_env_name, &self.uri_secret, "uri");
+        let uri_template = match templating_mechanism {
+            TemplatingMechanism::ConfigUtils => format!("${{env:{uri_env_name}}}"),
+            TemplatingMechanism::BashEnvSubstitution => format!("${{{uri_env_name}}}"),
+        };
 
         CeleryDatabaseConnectionDetails {
-            uri_template: format!("${{env:{uri_env_name}}}"),
+            uri_template,
             username_env: None,
             password_env: None,
             generic_uri_var: Some(uri_env_var),

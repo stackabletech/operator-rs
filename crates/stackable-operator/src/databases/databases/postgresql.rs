@@ -7,6 +7,7 @@ use snafu::{ResultExt, Snafu};
 use crate::{
     commons::networking::HostName,
     databases::{
+        TemplatingMechanism,
         drivers::{
             celery::{CeleryDatabaseConnection, CeleryDatabaseConnectionDetails},
             jdbc::{JDBCDatabaseConnection, JDBCDatabaseConnectionDetails},
@@ -51,9 +52,10 @@ impl PostgresqlConnection {
 }
 
 impl JDBCDatabaseConnection for PostgresqlConnection {
-    fn jdbc_connection_details(
+    fn jdbc_connection_details_with_templating(
         &self,
         unique_database_name: &str,
+        _templating_mechanism: &TemplatingMechanism,
     ) -> Result<JDBCDatabaseConnectionDetails, crate::databases::Error> {
         let Self {
             host,
@@ -81,9 +83,10 @@ impl JDBCDatabaseConnection for PostgresqlConnection {
 }
 
 impl SQLAlchemyDatabaseConnection for PostgresqlConnection {
-    fn sqlalchemy_connection_details(
+    fn sqlalchemy_connection_details_with_templating(
         &self,
         unique_database_name: &str,
+        templating_mechanism: &TemplatingMechanism,
     ) -> SQLAlchemyDatabaseConnectionDetails {
         let Self {
             host,
@@ -94,13 +97,18 @@ impl SQLAlchemyDatabaseConnection for PostgresqlConnection {
         } = self;
         let (username_env, password_env) =
             username_and_password_envs(unique_database_name, credentials_secret);
+        let username_env_name = &username_env.name;
+        let password_env_name = &password_env.name;
+        let parameters = connection_parameters_as_url_query_parameters(parameters);
 
-        let uri_template = format!(
-            "postgresql+psycopg2://${{env:{username_env_name}}}:${{env:{password_env_name}}}@{host}:{port}/{database}{parameters}",
-            username_env_name = username_env.name,
-            password_env_name = password_env.name,
-            parameters = connection_parameters_as_url_query_parameters(parameters)
-        );
+        let uri_template = match templating_mechanism {
+            TemplatingMechanism::ConfigUtils => format!(
+                "postgresql+psycopg2://${{env:{username_env_name}}}:${{env:{password_env_name}}}@{host}:{port}/{database}{parameters}",
+            ),
+            TemplatingMechanism::BashEnvSubstitution => format!(
+                "postgresql+psycopg2://${{{username_env_name}}}:${{{password_env_name}}}@{host}:{port}/{database}{parameters}",
+            ),
+        };
         SQLAlchemyDatabaseConnectionDetails {
             uri_template,
             username_env: Some(username_env),
@@ -111,9 +119,10 @@ impl SQLAlchemyDatabaseConnection for PostgresqlConnection {
 }
 
 impl CeleryDatabaseConnection for PostgresqlConnection {
-    fn celery_connection_details(
+    fn celery_connection_details_with_templating(
         &self,
         unique_database_name: &str,
+        templating_mechanism: &TemplatingMechanism,
     ) -> CeleryDatabaseConnectionDetails {
         let Self {
             host,
@@ -124,13 +133,18 @@ impl CeleryDatabaseConnection for PostgresqlConnection {
         } = self;
         let (username_env, password_env) =
             username_and_password_envs(unique_database_name, credentials_secret);
+        let username_env_name = &username_env.name;
+        let password_env_name = &password_env.name;
+        let parameters = connection_parameters_as_url_query_parameters(parameters);
 
-        let uri_template = format!(
-            "db+postgresql://${{env:{username_env_name}}}:${{env:{password_env_name}}}@{host}:{port}/{database}{parameters}",
-            username_env_name = username_env.name,
-            password_env_name = password_env.name,
-            parameters = connection_parameters_as_url_query_parameters(parameters)
-        );
+        let uri_template = match templating_mechanism {
+            TemplatingMechanism::ConfigUtils => format!(
+                "db+postgresql://${{env:{username_env_name}}}:${{env:{password_env_name}}}@{host}:{port}/{database}{parameters}",
+            ),
+            TemplatingMechanism::BashEnvSubstitution => format!(
+                "db+postgresql://${{{username_env_name}}}:${{{password_env_name}}}@{host}:{port}/{database}{parameters}",
+            ),
+        };
         CeleryDatabaseConnectionDetails {
             uri_template,
             username_env: Some(username_env),

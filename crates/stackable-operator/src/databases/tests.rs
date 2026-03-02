@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     builder::pod::container::ContainerBuilder,
     databases::{
+        TemplatingMechanism,
         databases::{postgresql::PostgresqlConnection, redis::RedisConnection},
         drivers::{
             celery::{CeleryDatabaseConnection, GenericCeleryDatabaseConnection},
@@ -97,14 +98,17 @@ fn test_dummy_celery_database_usage() {
     // Apply actual config
     let celery_connection_details = dummy_celery_connection
         .as_celery_database_connection()
-        .celery_connection_details("worker_queue");
+        .celery_connection_details_with_templating(
+            "worker_queue",
+            &TemplatingMechanism::BashEnvSubstitution,
+        );
     let mut container_builder = ContainerBuilder::new("my-container").unwrap();
     celery_connection_details.add_to_container(&mut container_builder);
     let container = container_builder.build();
 
     assert_eq!(
         celery_connection_details.uri_template,
-        "${env:WORKER_QUEUE_DATABASE_URI}"
+        "${WORKER_QUEUE_DATABASE_URI}"
     );
     assert_eq!(
         container

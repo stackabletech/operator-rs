@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     commons::networking::HostName,
     databases::{
+        TemplatingMechanism,
         drivers::celery::{CeleryDatabaseConnection, CeleryDatabaseConnectionDetails},
         helpers::username_and_password_envs,
     },
@@ -39,9 +40,10 @@ impl RedisConnection {
 }
 
 impl CeleryDatabaseConnection for RedisConnection {
-    fn celery_connection_details(
+    fn celery_connection_details_with_templating(
         &self,
         unique_database_name: &str,
+        templating_mechanism: &TemplatingMechanism,
     ) -> CeleryDatabaseConnectionDetails {
         let Self {
             host,
@@ -51,12 +53,17 @@ impl CeleryDatabaseConnection for RedisConnection {
         } = self;
         let (username_env, password_env) =
             username_and_password_envs(unique_database_name, credentials_secret);
+        let username_env_name = &username_env.name;
+        let password_env_name = &password_env.name;
 
-        let uri_template = format!(
-            "redis://${{env:{username_env_name}}}:${{{password_env_name}}}@{host}:{port}/{database_id}",
-            username_env_name = username_env.name,
-            password_env_name = password_env.name,
-        );
+        let uri_template = match templating_mechanism {
+            TemplatingMechanism::ConfigUtils => format!(
+                "redis://${{env:{username_env_name}}}:${{env:{password_env_name}}}@{host}:{port}/{database_id}",
+            ),
+            TemplatingMechanism::BashEnvSubstitution => format!(
+                "redis://${{{username_env_name}}}:${{{password_env_name}}}@{host}:{port}/{database_id}",
+            ),
+        };
         CeleryDatabaseConnectionDetails {
             uri_template,
             username_env: Some(username_env),
@@ -87,7 +94,7 @@ mod tests {
             redis_connection.celery_connection_details(UNIQUE_DATABASE_NAME);
         assert_eq!(
             celery_connection_details.uri_template,
-            "redis://${env:WORKER_QUEUE_DATABASE_USERNAME}:${WORKER_QUEUE_DATABASE_PASSWORD}@my-redis:42/13"
+            "redis://${env:WORKER_QUEUE_DATABASE_USERNAME}:${env:WORKER_QUEUE_DATABASE_PASSWORD}@my-redis:42/13"
         );
         assert!(celery_connection_details.username_env.is_some());
         assert!(celery_connection_details.password_env.is_some());
