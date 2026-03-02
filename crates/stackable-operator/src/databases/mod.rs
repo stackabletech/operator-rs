@@ -1,5 +1,6 @@
 use snafu::Snafu;
 
+#[allow(clippy::module_inception)]
 pub mod databases;
 pub mod drivers;
 mod helpers;
