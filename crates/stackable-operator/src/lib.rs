@@ -15,6 +15,7 @@ pub mod config;
 pub mod constants;
 pub mod cpu;
 pub mod crd;
+pub mod databases;
 pub mod deep_merger;
 pub mod eos;
 pub mod helm;
@@ -30,7 +31,6 @@ pub mod role_utils;
 pub mod status;
 pub mod utils;
 pub mod validation;
-pub mod databases;
 
 // External re-exports
 pub use k8s_openapi;
