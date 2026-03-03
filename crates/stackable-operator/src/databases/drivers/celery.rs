@@ -81,7 +81,7 @@ impl CeleryDatabaseConnection for GenericCeleryDatabaseConnection {
         let uri_env_var = env_var_from_secret(&uri_env_name, &self.uri_secret, "uri");
         let uri_template = match templating_mechanism {
             TemplatingMechanism::ConfigUtils => format!("${{env:{uri_env_name}}}"),
-            TemplatingMechanism::BashEnvSubstitution => format!("${{{uri_env_name}}}"),
+            TemplatingMechanism::BashEnvSubstitution => format!("${uri_env_name}"),
         };
 
         CeleryDatabaseConnectionDetails {

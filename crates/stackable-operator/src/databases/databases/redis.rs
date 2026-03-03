@@ -61,7 +61,7 @@ impl CeleryDatabaseConnection for RedisConnection {
                 "redis://${{env:{username_env_name}}}:${{env:{password_env_name}}}@{host}:{port}/{database_id}",
             ),
             TemplatingMechanism::BashEnvSubstitution => format!(
-                "redis://${{{username_env_name}}}:${{{password_env_name}}}@{host}:{port}/{database_id}",
+                "redis://${username_env_name}:${password_env_name}@{host}:{port}/{database_id}",
             ),
         };
         CeleryDatabaseConnectionDetails {

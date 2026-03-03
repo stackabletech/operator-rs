@@ -106,7 +106,7 @@ impl SQLAlchemyDatabaseConnection for PostgresqlConnection {
                 "postgresql+psycopg2://${{env:{username_env_name}}}:${{env:{password_env_name}}}@{host}:{port}/{database}{parameters}",
             ),
             TemplatingMechanism::BashEnvSubstitution => format!(
-                "postgresql+psycopg2://${{{username_env_name}}}:${{{password_env_name}}}@{host}:{port}/{database}{parameters}",
+                "postgresql+psycopg2://${username_env_name}:${password_env_name}@{host}:{port}/{database}{parameters}",
             ),
         };
         SQLAlchemyDatabaseConnectionDetails {
@@ -142,7 +142,7 @@ impl CeleryDatabaseConnection for PostgresqlConnection {
                 "db+postgresql://${{env:{username_env_name}}}:${{env:{password_env_name}}}@{host}:{port}/{database}{parameters}",
             ),
             TemplatingMechanism::BashEnvSubstitution => format!(
-                "db+postgresql://${{{username_env_name}}}:${{{password_env_name}}}@{host}:{port}/{database}{parameters}",
+                "db+postgresql://${username_env_name}:${password_env_name}@{host}:{port}/{database}{parameters}",
             ),
         };
         CeleryDatabaseConnectionDetails {

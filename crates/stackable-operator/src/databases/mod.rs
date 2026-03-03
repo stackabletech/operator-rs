@@ -28,6 +28,9 @@ pub enum TemplatingMechanism {
     #[default]
     ConfigUtils,
 
-    /// Let `bash` substitute the env variable, e.g. `${EXAMPLE_USERNAME}`.
+    /// Let `bash` substitute the env variable, e.g. `$EXAMPLE_USERNAME`.
+    ///
+    /// Please note that we use `$VAR` over `${VAR}`, as for *some* reason Airflow correctly expands
+    /// the first while failing to expand the latter.
     BashEnvSubstitution,
 }
