@@ -143,7 +143,12 @@ spec:
                     format: uri
                     type: string
                   tls:
-                    description: Use a TLS connection. If not specified no TLS will be used.
+                    default:
+                      verification:
+                        server:
+                          caCert:
+                            webPki: {}
+                    description: Configure a TLS connection. If not specified it will default to webPki validation.
                     nullable: true
                     properties:
                       verification:

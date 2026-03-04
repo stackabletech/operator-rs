@@ -8,8 +8,8 @@ use stackable_shared::time::Duration;
 use url::Url;
 
 use crate::{
-    commons::tls_verification::TlsClientDetails, crd::git_sync::v1alpha2::Credentials,
-    versioned::versioned,
+    commons::tls_verification::TlsClientDetailsWithSecureDefaults,
+    crd::git_sync::v1alpha2::Credentials, versioned::versioned,
 };
 
 mod v1alpha1_impl;
@@ -77,7 +77,7 @@ pub mod versioned {
         /// If `http.sslCAInfo` is also set via `gitSyncConf` (the `--git-config` option) then a warning will be logged.
         /// If not specified no TLS will be used, defaulting to github/lab using commonly-recognised certificates.
         #[serde(flatten)]
-        pub tls: TlsClientDetails,
+        pub tls: TlsClientDetailsWithSecureDefaults,
     }
 
     #[derive(strum::Display, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
