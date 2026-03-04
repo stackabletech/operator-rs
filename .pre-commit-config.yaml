@@ -50,7 +50,7 @@ repos:
       - id: cargo-doc
         name: cargo-doc
         language: system
-        entry: cargo doc --document-private-items
+        entry: cargo doc --no-deps --document-private-items
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: \.rs$|Cargo\.(toml|lock)
