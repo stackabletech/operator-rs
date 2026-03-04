@@ -3,6 +3,16 @@ use stackable_operator::{
     commons::resources::{JvmHeapLimits, Resources},
     config::fragment::Fragment,
     crd::git_sync::v1alpha2::GitSync,
+    databases::{
+        databases::{
+            derby::DerbyConnection, mysql::MysqlConnection, postgresql::PostgresqlConnection,
+            redis::RedisConnection,
+        },
+        drivers::{
+            celery::GenericCeleryDatabaseConnection, jdbc::GenericJDBCDatabaseConnection,
+            sqlalchemy::GenericSQLAlchemyDatabaseConnection,
+        },
+    },
     deep_merger::ObjectOverrides,
     kube::CustomResource,
     role_utils::Role,
@@ -50,6 +60,7 @@ pub mod versioned {
         secret_reference: stackable_operator::shared::secret::SecretReference,
         tls_client_details: stackable_operator::commons::tls_verification::TlsClientDetails,
         git_sync: GitSync,
+        database_connection: DummyDatabaseConnection,
 
         #[serde(default)]
         pub object_overrides: ObjectOverrides,
@@ -108,6 +119,20 @@ pub mod versioned {
         Opa,
         UserInfoFetcher,
     }
+
+    #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[schemars(crate = "stackable_operator::schemars")]
+    pub enum DummyDatabaseConnection {
+        Postgresql(PostgresqlConnection),
+        Mysql(MysqlConnection),
+        Derby(DerbyConnection),
+        Redis(RedisConnection),
+        GenericJDBC(GenericJDBCDatabaseConnection),
+        GenericSQLAlchemy(GenericSQLAlchemyDatabaseConnection),
+        GenericCelery(GenericCeleryDatabaseConnection),
+    }
+
     #[derive(Clone, Default, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
     #[schemars(crate = "stackable_operator::schemars")]
     #[serde(rename_all = "camelCase")]

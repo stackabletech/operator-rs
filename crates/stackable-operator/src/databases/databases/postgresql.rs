@@ -23,24 +23,27 @@ pub enum Error {
     ParseConnectionUrl { source: url::ParseError },
 }
 
-/// TODO docs
+/// Connection settings for a [PostgreSQL](https://www.postgresql.org/) database.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PostgresqlConnection {
-    /// TODO docs
+    /// Hostname or IP address of the PostgreSQL server.
     pub host: HostName,
 
-    /// TODO docs
+    /// Port the PostgreSQL server is listening on. Defaults to `5432`.
     #[serde(default = "PostgresqlConnection::default_port")]
     pub port: u16,
 
-    /// TODO docs
+    /// Name of the database (schema) to connect to.
     pub database: String,
 
-    /// TODO docs
+    /// Name of a Secret containing the `username` and `password` keys used to authenticate
+    /// against the PostgreSQL server.
     pub credentials_secret: String,
 
-    /// TODO docs
+    /// Additional map of JDBC connection parameters to append to the connection URL. The given
+    /// `HashMap<String, String>` will be converted to query parameters in the form of
+    /// `?param1=value1&param2=value2`.
     #[serde(default)]
     pub parameters: BTreeMap<String, String>,
 }

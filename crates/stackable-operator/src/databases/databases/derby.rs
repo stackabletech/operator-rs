@@ -13,11 +13,20 @@ pub enum Error {
     ParseConnectionUrl { source: url::ParseError },
 }
 
-/// TODO docs
+/// Connection settings for an embedded [Apache Derby](https://db.apache.org/derby/) database.
+///
+/// Derby is an embedded, file-based Java database engine that requires no separate server process.
+/// It is typically used for development, testing, or as a lightweight metastore backend (e.g. for
+/// Apache Hive).
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DerbyConnection {
-    /// TODO docs, especially on default
+    /// Path on the filesystem where Derby stores its database files.
+    ///
+    /// If not specified, defaults to `/tmp/derby/{unique_database_name}/derby.db`.
+    /// The `{unique_database_name}` part is automatically handled by the operator and is added to
+    /// prevent clashing database files. The `create=true` flag is always appended to the JDBC URL,
+    /// so the database is created automatically if it does not yet exist at this location.
     pub location: Option<String>,
 }
 

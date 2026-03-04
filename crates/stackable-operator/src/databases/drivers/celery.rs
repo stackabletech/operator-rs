@@ -7,9 +7,18 @@ use crate::{
     databases::TemplatingMechanism,
 };
 
-/// TODO docs
+/// Implemented by database connection types that can serve as a
+/// [Celery](https://docs.celeryq.dev/) broker or result backend.
+///
+/// Provides a standardized way to obtain a Celery connection URI template together with the
+/// necessary credential env vars, regardless of the concrete database or message broker type.
 pub trait CeleryDatabaseConnection {
-    /// TODO docs, e.g. on what are valid characters for unique_database_name
+    /// Returns the Celery connection details for the given `unique_database_name` using the
+    /// default [`TemplatingMechanism`].
+    ///
+    /// `unique_database_name` identifies this particular database connection within the operator
+    /// and is used as a prefix when naming the injected environment variable. It must consist only
+    /// of uppercase ASCII letters and underscores.
     fn celery_connection_details(
         &self,
         unique_database_name: &str,
@@ -20,6 +29,9 @@ pub trait CeleryDatabaseConnection {
         )
     }
 
+    /// Like [`Self::celery_connection_details`], but allows specifying a [`TemplatingMechanism`]
+    /// explicitly. Use this when the calling context controls how configuration files are rendered,
+    /// e.g. when using bash env substitution instead of config-utils.
     fn celery_connection_details_with_templating(
         &self,
         unique_database_name: &str,
@@ -60,7 +72,12 @@ impl CeleryDatabaseConnectionDetails {
     }
 }
 
-/// TODO docs
+/// A generic Celery database connection for broker or result backend types not covered by a
+/// dedicated variant.
+///
+/// Use this when you need a Celery-compatible connection that does not have a first-class
+/// connection type. The complete connection URI is read from a Secret, giving the user full
+/// control over the connection string.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenericCeleryDatabaseConnection {

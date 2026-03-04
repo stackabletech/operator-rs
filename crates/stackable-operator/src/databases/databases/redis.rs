@@ -10,22 +10,28 @@ use crate::{
     },
 };
 
-/// TODO docs
+/// Connection settings for a [Redis](https://redis.io/) instance.
+///
+/// Redis is commonly used as a Celery message broker or result backend (e.g. for Apache Airflow).
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RedisConnection {
-    /// TODO docs
+    /// Hostname or IP address of the Redis server.
     pub host: HostName,
 
-    /// TODO docs
+    /// Port the Redis server is listening on. Defaults to `6379`.
     #[serde(default = "RedisConnection::default_port")]
     pub port: u16,
 
-    /// TODO docs
+    /// Numeric index of the Redis logical database to use. Defaults to `0`.
+    ///
+    /// Redis supports multiple logical databases within a single instance, identified by an
+    /// integer index. Database `0` is the default.
     #[serde(default = "RedisConnection::default_database_id")]
     pub database_id: u16,
 
-    /// TODO docs
+    /// Name of a Secret containing the `username` and `password` keys used to authenticate
+    /// against the Redis server.
     pub credentials_secret: String,
 }
 

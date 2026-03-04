@@ -19,24 +19,27 @@ pub enum Error {
     ParseConnectionUrl { source: url::ParseError },
 }
 
-/// TODO docs
+/// Connection settings for a [MySQL](https://www.mysql.com/) database.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MysqlConnection {
-    /// TODO docs
+    /// Hostname or IP address of the MySQL server.
     pub host: HostName,
 
-    /// TODO docs
+    /// Port the MySQL server is listening on. Defaults to `3306`.
     #[serde(default = "MysqlConnection::default_port")]
     pub port: u16,
 
-    /// TODO docs
+    /// Name of the database (schema) to connect to.
     pub database: String,
 
-    /// TODO docs
+    /// Name of a Secret containing the `username` and `password` keys used to authenticate
+    /// against the MySQL server.
     pub credentials_secret: String,
 
-    /// TODO docs
+    /// Additional map of JDBC connection parameters to append to the connection URL. The given
+    /// `HashMap<String, String>` will be converted to query parameters in the form of
+    /// `?param1=value1&param2=value2`.
     #[serde(default)]
     pub parameters: BTreeMap<String, String>,
 }

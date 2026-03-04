@@ -7,9 +7,18 @@ use crate::{
     databases::TemplatingMechanism,
 };
 
-/// TODO docs
+/// Implemented by database connection types that support
+/// [SQLAlchemy](https://www.sqlalchemy.org/) connection URLs.
+///
+/// Provides a standardized way to obtain a SQLAlchemy connection URI template together with the
+/// necessary credential env vars, regardless of the concrete database type.
 pub trait SQLAlchemyDatabaseConnection {
-    /// TODO docs, e.g. on what are valid characters for unique_database_name
+    /// Returns the SQLAlchemy connection details for the given `unique_database_name` using the
+    /// default [`TemplatingMechanism`].
+    ///
+    /// `unique_database_name` identifies this particular database connection within the operator
+    /// and is used as a prefix when naming the injected environment variable. It must consist only
+    /// of uppercase ASCII letters and underscores.
     fn sqlalchemy_connection_details(
         &self,
         unique_database_name: &str,
@@ -20,6 +29,9 @@ pub trait SQLAlchemyDatabaseConnection {
         )
     }
 
+    /// Like [`Self::sqlalchemy_connection_details`], but allows specifying a [`TemplatingMechanism`]
+    /// explicitly. Use this when the calling context controls how configuration files are rendered,
+    /// e.g. when using bash env substitution instead of config-utils.
     fn sqlalchemy_connection_details_with_templating(
         &self,
         unique_database_name: &str,
@@ -60,7 +72,11 @@ impl SQLAlchemyDatabaseConnectionDetails {
     }
 }
 
-/// TODO docs
+/// A generic SQLAlchemy database connection for database types not covered by a dedicated variant.
+///
+/// Use this when you need to connect to a SQLAlchemy-compatible database that does not have a
+/// first-class connection type. The complete connection URI is read from a Secret, giving the user
+/// full control over the connection string including any driver-specific options.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenericSQLAlchemyDatabaseConnection {
