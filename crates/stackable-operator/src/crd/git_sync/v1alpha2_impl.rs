@@ -35,6 +35,7 @@ pub const GIT_SYNC_LINK: &str = "current";
 pub const CA_CERT_VOLUME_NAME_PREFIX: &str = "ca-cert";
 pub const CA_CERT_MOUNT_PATH_PREFIX: &str = "/stackable/gitca";
 pub const GIT_SSL_CA_INFO_CONFIG_KEY: &str = "http.sslCAInfo";
+pub const GIT_SSL_VERIFY: &str = "http.sslverify";
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
@@ -325,6 +326,12 @@ impl GitSyncResources {
 
         if let Some(path) = ca_cert_path {
             internal_git_config.insert(GIT_SSL_CA_INFO_CONFIG_KEY.to_owned(), path.to_owned());
+        }
+
+        // Tls defaults to webPki but if the user has *explicitly* set this to
+        // null then we honour this by deactivating the ssl check.
+        if git_sync.tls.tls.is_none() {
+            internal_git_config.insert(GIT_SSL_VERIFY.to_owned(), "false".to_owned());
         }
 
         let mut git_sync_config = git_sync.git_sync_conf.clone();
