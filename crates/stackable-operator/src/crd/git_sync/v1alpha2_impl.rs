@@ -241,7 +241,7 @@ impl GitSyncResources {
                 one_time,
                 container_log_config,
             )])
-            .add_env_vars(env_vars.into())
+            .add_env_vars(env_vars)
             .add_volume_mounts(volume_mounts.to_vec())
             .context(AddVolumeMountSnafu)?
             .resources(
