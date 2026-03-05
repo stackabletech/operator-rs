@@ -181,8 +181,8 @@ impl GitSyncResources {
                 Some(tls) => {
                     match &tls.verification {
                         TlsVerification::None {} => {
-                            // "http.sslverify=false" will be set later in the shell script
-                            ensure!(scheme == "http", SchemeMismatchSnafu { scheme });
+                            // We can't check the scheme for http here as github redirects to https and any PAT-based credentials will require https.
+                            // "http.sslverify=false" will be set later in the shell script.
                             None
                         }
                         TlsVerification::Server(TlsServerVerification {
@@ -200,11 +200,7 @@ impl GitSyncResources {
                         }
                     }
                 }
-                None => {
-                    // Check the scheme but http.sslverify will *not* be set.
-                    ensure!(scheme == "http", SchemeMismatchSnafu { scheme });
-                    None
-                }
+                None => None,
             };
 
             if git_sync.tls.tls_ca_cert_secret_class().is_some() {
@@ -1408,9 +1404,9 @@ name: ca-cert-0
     }
 
     #[rstest]
-    // http with tls/null --> deactivate: Ok
+    // https with tls/null --> deactivate: Ok
     #[case(
-        "http://github.com/stackabletech/repo1",
+        "https://github.com/stackabletech/repo1",
         r#"
   tls: null
     "#,
@@ -1430,9 +1426,9 @@ name: ca-cert-0
     "#,
         false
     )]
-    // http with tls/None: Ok
+    // https with tls/None: Ok
     #[case(
-        "http://github.com/stackabletech/repo1",
+        "https://github.com/stackabletech/repo1",
         r#"
   tls:
     verification:
