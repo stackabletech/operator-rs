@@ -103,7 +103,7 @@ pub struct SecretClassVolumeScope {
 //
 // There intentionally isn't a global [`Default`] impl, as it's secret-ops concern what it chooses
 // as a default.
-#[derive(Clone, Debug, PartialEq, Eq, strum::AsRefStr)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, strum::AsRefStr)]
 #[strum(serialize_all = "kebab-case")]
 pub enum SecretClassVolumeProvisionParts {
     /// Only provision public parts, such as the CA certificate (either as PEM or truststore) or
