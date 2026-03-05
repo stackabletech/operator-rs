@@ -50,7 +50,7 @@ repos:
       - id: cargo-doc
         name: cargo-doc
         language: system
-        entry: cargo doc --document-private-items
+        entry: cargo doc --no-deps --document-private-items
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: \.rs$|Cargo\.(toml|lock)
@@ -75,7 +75,7 @@ repos:
         name: cargo-rustfmt
         language: system
         # Pinning to a specific rustc version, so that we get consistent formatting
-        entry: cargo +nightly-2025-10-23 fmt --all -- --check
+        entry: cargo +nightly-2026-02-24 fmt --all -- --check
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: \.rs$
