@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Add mandatory `provison_parts` argument to `SecretOperatorVolumeSourceBuilder::new` ([#1165]).
+  It now forces the caller to make an explicit choice if the public parts are sufficient or if private
+  (e.g. a certificate for the Pod) parts are needed as well. This is done to avoid accidentally requesting
+  too much parts. For details see [this issue](https://github.com/stackabletech/issues/issues/547).
+
+[#1165]: https://github.com/stackabletech/operator-rs/pull/1165
+
 ## [0.106.2] - 2026-02-26
 
 ### Changed
