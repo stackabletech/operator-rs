@@ -115,23 +115,18 @@ pub mod versioned {
         /// Authenticate using HTTP Basic authentication with client_id and client_secret.
         /// This is the default method according to the OIDC spec.
         #[default]
-        #[serde(rename = "client_secret_basic")]
         ClientSecretBasic,
 
         /// Send client_id and client_secret in the request body.
-        #[serde(rename = "client_secret_post")]
         ClientSecretPost,
 
         /// Authenticate using a JWT signed with an HMAC SHA algorithm using the client_secret.
-        #[serde(rename = "client_secret_jwt")]
         ClientSecretJwt,
 
         /// Authenticate using a JWT signed with the client's private key.
-        #[serde(rename = "private_key_jwt")]
         PrivateKeyJwt,
 
         /// No client authentication (for public clients or implicit flow).
-        #[serde(rename = "none")]
         None,
     }
 
