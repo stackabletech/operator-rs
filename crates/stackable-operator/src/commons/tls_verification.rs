@@ -8,7 +8,9 @@ use crate::{
         self,
         pod::{PodBuilder, container::ContainerBuilder, volume::VolumeMountBuilder},
     },
-    commons::secret_class::{SecretClassVolume, SecretClassVolumeError},
+    commons::secret_class::{
+        SecretClassVolume, SecretClassVolumeError, SecretClassVolumeProvisionParts,
+    },
     constants::secret::SECRET_BASE_PATH,
 };
 
@@ -72,7 +74,8 @@ impl TlsClientDetails {
             let volume_name = format!("{secret_class}-ca-cert");
             let secret_class_volume = SecretClassVolume::new(secret_class.clone(), None);
             let volume = secret_class_volume
-                .to_volume(&volume_name)
+                // We only need the public CA cert
+                .to_volume(&volume_name, SecretClassVolumeProvisionParts::Public)
                 .context(SecretClassVolumeSnafu)?;
 
             volumes.push(volume);
