@@ -38,9 +38,9 @@ fn set_example_envs(example_dir: &Path) {
     env::set_var("FILE_TEST_42_FILE_ENV_NAME", "FILE_TEST_42_FILE");
 }
 
-/// Returns the directoy where the files reside
+/// Returns the directory where the files reside
 fn create_example_files() -> PathBuf {
-    let dir = tempdir().expect("Failed to create temp dir").into_path();
+    let dir = tempdir().expect("Failed to create temp dir").keep();
 
     let mut file = File::create(dir.join("42")).unwrap();
     file.write_all(b"42").unwrap();

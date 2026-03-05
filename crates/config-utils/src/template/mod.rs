@@ -121,7 +121,7 @@ pub fn template(file_name: &PathBuf, file_type: Option<&FileType>, escape: bool)
                 tmp_file_name: tmp_file_name.clone(),
             })?;
         temp_file
-            .write_all(&[b'\n'])
+            .write_all(b"\n")
             .context(WriteToTemporaryFileSnafu {
                 tmp_file_name: tmp_file_name.clone(),
             })?;
