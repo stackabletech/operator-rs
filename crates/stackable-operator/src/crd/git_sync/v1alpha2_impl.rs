@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, path::PathBuf};
 use k8s_openapi::api::core::v1::{
     Container, EmptyDirVolumeSource, EnvVar, EnvVarSource, SecretKeySelector, Volume, VolumeMount,
 };
-use snafu::{ResultExt, Snafu};
+use snafu::{ResultExt, Snafu, ensure};
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
@@ -13,7 +13,10 @@ use crate::{
         volume::{VolumeBuilder, VolumeMountBuilder},
     },
     commons::{
-        self, product_image_selection::ResolvedProductImage, secret_class::SecretClassVolume,
+        self,
+        product_image_selection::ResolvedProductImage,
+        secret_class::SecretClassVolume,
+        tls_verification::{CaCert, TlsServerVerification, TlsVerification},
     },
     crd::git_sync::v1alpha2::{Credentials, GitSync},
     product_config_utils::insert_or_update_env_vars,
@@ -54,6 +57,9 @@ pub enum Error {
     SecretClassVolume {
         source: commons::secret_class::SecretClassVolumeError,
     },
+
+    #[snafu(display("scheme does not match tls setting"))]
+    SchemeMismatch { scheme: String },
 }
 
 /// Kubernetes resources generated from `GitSync` specifications which should be added to the Pod.
@@ -169,6 +175,40 @@ impl GitSyncResources {
                 git_sync_container_volume_mounts.push(ssh_volume_mount);
             }
 
+            // Check tls/scheme compatability early
+            let scheme = git_sync.repo.scheme();
+            println!("{}", scheme);
+            println!("{:#?}", &git_sync.tls.tls);
+            let ca_cert_path = match &git_sync.tls.tls {
+                Some(tls) => {
+                    match &tls.verification {
+                        TlsVerification::None {} => {
+                            // "http.sslverify=false" will be set later in the shell script
+                            ensure!(scheme == "http", SchemeMismatchSnafu { scheme });
+                            None
+                        }
+                        TlsVerification::Server(TlsServerVerification {
+                            ca_cert: CaCert::WebPki {},
+                        }) => {
+                            // This will default to github/gitlab using its standard certificates
+                            ensure!(scheme != "http", SchemeMismatchSnafu { scheme });
+                            None
+                        }
+                        TlsVerification::Server(TlsServerVerification {
+                            ca_cert: CaCert::SecretClass(_),
+                        }) => {
+                            ensure!(scheme != "http", SchemeMismatchSnafu { scheme });
+                            Some(format!("{CA_CERT_MOUNT_PATH_PREFIX}-{i}/ca.crt"))
+                        }
+                    }
+                }
+                None => {
+                    // Check the scheme but http.sslverify will *not* be set.
+                    ensure!(scheme == "http", SchemeMismatchSnafu { scheme });
+                    None
+                }
+            };
+
             if git_sync.tls.tls_ca_cert_secret_class().is_some() {
                 let ca_cert_secret_mount_path = format!("{CA_CERT_MOUNT_PATH_PREFIX}-{i}");
                 let ca_cert_secret_volume_name = format!("{CA_CERT_VOLUME_NAME_PREFIX}-{i}");
@@ -178,11 +218,6 @@ impl GitSyncResources {
                         .build();
                 git_sync_container_volume_mounts.push(ca_cert_volume_mount);
             }
-
-            let ca_cert_path = git_sync
-                .tls
-                .tls_ca_cert_secret_class()
-                .map(|_| format!("{CA_CERT_MOUNT_PATH_PREFIX}-{i}/ca.crt"));
 
             let container = Self::create_git_sync_container(
                 &format!("{CONTAINER_NAME_PREFIX}-{i}"),
@@ -329,8 +364,8 @@ impl GitSyncResources {
         }
 
         // Tls defaults to webPki but if the user has *explicitly* set this to
-        // null then we honour this by deactivating the ssl check.
-        if git_sync.tls.tls.is_none() {
+        // none then we honour this by deactivating the ssl check.
+        if let Some(TlsVerification::None {}) = git_sync.tls.tls.as_ref().map(|t| &t.verification) {
             internal_git_config.insert(GIT_SSL_VERIFY.to_owned(), "false".to_owned());
         }
 
@@ -441,6 +476,8 @@ wait_for_termination $!"
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
     use crate::{
         config::fragment::validate, product_config_utils::env_vars_from,
@@ -1370,5 +1407,141 @@ name: ca-cert-0
 ",
             serde_yaml::to_string(&git_sync_resources.git_ca_cert_volumes.first()).unwrap()
         );
+    }
+
+    #[rstest]
+    // http with tls/null --> deactivate: Ok
+    #[case(
+        "http://github.com/stackabletech/repo1",
+        r#"
+  tls: null
+    "#,
+        true
+    )]
+    // https with no tls --> defaults to webPki: Ok
+    #[case(
+        "https://github.com/stackabletech/repo1",
+        r#"
+    "#,
+        true
+    )]
+    // http with no tls --> defaults to webPki: Error
+    #[case(
+        "http://github.com/stackabletech/repo1",
+        r#"
+    "#,
+        false
+    )]
+    // http with tls/None: Ok
+    #[case(
+        "http://github.com/stackabletech/repo1",
+        r#"
+  tls:
+    verification:
+      none: {}
+    "#,
+        true
+    )]
+    // https with tls/None: Error
+    #[case(
+        "http://github.com/stackabletech/repo1",
+        r#"
+  tls:
+    "#,
+        true
+    )]
+    // ssh with tls/secret: Ok
+    #[case(
+        "ssh://git@github.com/stackabletech/repo.git",
+        r#"
+  tls:
+    verification:
+      server:
+        caCert:
+          secretClass: git-tls-ca
+    "#,
+        true
+    )]
+    // https with tls/secret: Ok
+    #[case(
+        "https://github.com/stackabletech/repo1",
+        r#"
+  tls:
+    verification:
+      server:
+        caCert:
+          secretClass: another-ca
+    "#,
+        true
+    )]
+    // https with tls/webPki: Ok
+    #[case(
+        "https://github.com/stackabletech/repo1",
+        r#"
+  tls:
+    verification:
+      server:
+        caCert:
+          webPki: {}
+    "#,
+        true
+    )]
+    // http with tls/webPki: Error
+    #[case(
+        "http://github.com/stackabletech/repo1",
+        r#"
+  tls:
+    verification:
+      server:
+        caCert:
+          webPki: {}
+    "#,
+        false
+    )]
+    // http with tls/secret: Error
+    #[case(
+        "http://github.com/stackabletech/repo1",
+        r#"
+  tls:
+    verification:
+      server:
+        caCert:
+          secretClass: http-ca
+    "#,
+        false
+    )]
+    fn test_git_sync_tls_scheme(#[case] repo: &str, #[case] tls: &str, #[case] expect_ok: bool) {
+        let git_sync_spec = format!(
+            r#"
+- repo: {repo}
+  {tls}
+          "#
+        );
+
+        let git_syncs: Vec<GitSync> = yaml_from_str_singleton_map(&git_sync_spec).unwrap();
+
+        let resolved_product_image = ResolvedProductImage {
+            image: "oci.stackable.tech/sdp/product:latest".to_string(),
+            app_version_label_value: "1.0.0-latest"
+                .parse()
+                .expect("static app version label is always valid"),
+            product_version: "1.0.0".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        };
+
+        let git_sync_resources = GitSyncResources::new(
+            &git_syncs,
+            &resolved_product_image,
+            &[],
+            &[],
+            "log-volume",
+            &validate(default_container_log_config()).unwrap(),
+        );
+        if expect_ok {
+            assert!(git_sync_resources.is_ok());
+        } else {
+            assert!(git_sync_resources.is_err());
+        }
     }
 }
