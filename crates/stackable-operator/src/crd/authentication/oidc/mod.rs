@@ -159,7 +159,7 @@ pub mod versioned {
         /// The OAuth2 client authentication method to use for token endpoint requests.
         /// Defaults to [`ClientAuthenticationMethod::ClientSecretBasic`].
         ///
-        /// The contents and format of the `clientCredentialsSecret` are dependent on the selected
+        /// The contents and format of the `clientCredentialsSecret` depend on the selected
         /// method. For example, [`ClientAuthenticationMethod::ClientSecretBasic`] and
         /// [`ClientAuthenticationMethod::ClientSecretPost`] require a client secret string, whereas
         /// [`ClientAuthenticationMethod::PrivateKeyJwt`] requires a private key.
