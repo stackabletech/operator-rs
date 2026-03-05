@@ -5,13 +5,12 @@ use url::Url;
 use crate::{
     builder::{
         self,
-        pod::{
-            PodBuilder,
-            container::ContainerBuilder,
-            volume::{SecretOperatorVolumeProvisionParts, VolumeMountBuilder},
-        },
+        pod::{PodBuilder, container::ContainerBuilder, volume::VolumeMountBuilder},
     },
-    commons::{secret_class::SecretClassVolumeError, tls_verification::TlsClientDetailsError},
+    commons::{
+        secret_class::{SecretClassVolumeError, SecretClassVolumeProvisionParts},
+        tls_verification::TlsClientDetailsError,
+    },
     constants::secret::SECRET_BASE_PATH,
     crd::authentication::ldap::v1alpha1::{AuthenticationProvider, FieldNames},
 };
@@ -99,7 +98,7 @@ impl AuthenticationProvider {
             let volume_name = format!("{secret_class}-bind-credentials");
             let volume = bind_credentials
                 // We need the private LDAP bind credentials
-                .to_volume(&volume_name, SecretOperatorVolumeProvisionParts::PublicPrivate)
+                .to_volume(&volume_name, SecretClassVolumeProvisionParts::PublicPrivate)
                 .context(BindCredentialsSnafu)?;
 
             volumes.push(volume);
@@ -241,7 +240,7 @@ mod tests {
                 }
                 .to_volume(
                     "ldap-ca-cert-ca-cert",
-                    SecretOperatorVolumeProvisionParts::Public
+                    SecretClassVolumeProvisionParts::Public
                 )
                 .unwrap()
             ]
@@ -273,7 +272,7 @@ mod tests {
                 }
                 .to_volume(
                     "openldap-bind-credentials-bind-credentials",
-                    SecretOperatorVolumeProvisionParts::PublicPrivate
+                    SecretClassVolumeProvisionParts::PublicPrivate
                 )
                 .unwrap(),
                 SecretClassVolume {
@@ -282,7 +281,7 @@ mod tests {
                 }
                 .to_volume(
                     "ldap-ca-cert-ca-cert",
-                    SecretOperatorVolumeProvisionParts::Public
+                    SecretClassVolumeProvisionParts::Public
                 )
                 .unwrap()
             ]

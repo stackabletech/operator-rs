@@ -4,8 +4,7 @@ use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 
 use crate::builder::pod::volume::{
-    SecretOperatorVolumeProvisionParts, SecretOperatorVolumeSourceBuilder,
-    SecretOperatorVolumeSourceBuilderError, VolumeBuilder,
+    SecretOperatorVolumeSourceBuilder, SecretOperatorVolumeSourceBuilderError, VolumeBuilder,
 };
 
 #[derive(Debug, PartialEq, Snafu)]
@@ -39,7 +38,7 @@ impl SecretClassVolume {
 
     pub fn to_ephemeral_volume_source(
         &self,
-        provision_parts: SecretOperatorVolumeProvisionParts,
+        provision_parts: SecretClassVolumeProvisionParts,
     ) -> Result<EphemeralVolumeSource, SecretClassVolumeError> {
         let mut secret_operator_volume_builder =
             SecretOperatorVolumeSourceBuilder::new(&self.secret_class, provision_parts);
@@ -67,7 +66,7 @@ impl SecretClassVolume {
     pub fn to_volume(
         &self,
         volume_name: &str,
-        provision_parts: SecretOperatorVolumeProvisionParts,
+        provision_parts: SecretClassVolumeProvisionParts,
     ) -> Result<Volume, SecretClassVolumeError> {
         let ephemeral = self.to_ephemeral_volume_source(provision_parts)?;
         Ok(VolumeBuilder::new(volume_name).ephemeral(ephemeral).build())
@@ -100,6 +99,22 @@ pub struct SecretClassVolumeScope {
     pub listener_volumes: Vec<String>,
 }
 
+/// What parts secret-operator should provision into the requested volume.
+//
+// There intentionally isn't a global [`Default`] impl, as it's secret-ops concern what it chooses
+// as a default.
+#[derive(Clone, Debug, PartialEq, Eq, strum::AsRefStr)]
+#[strum(serialize_all = "kebab-case")]
+pub enum SecretClassVolumeProvisionParts {
+    /// Only provision public parts, such as the CA certificate (either as PEM or truststore) or
+    /// `krb5.conf`.
+    Public,
+
+    /// Provision all parts, which includes all [`Public`](Self::Public) ones as well as additional
+    /// private parts, such as a TLS cert + private key, a keystore or a keytab.
+    PublicPrivate,
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -118,7 +133,7 @@ mod tests {
             }),
         }
         // Let's assume we need some form of private data (e.g. a certificate or S3 credentials)
-        .to_ephemeral_volume_source(SecretOperatorVolumeProvisionParts::PublicPrivate)
+        .to_ephemeral_volume_source(SecretClassVolumeProvisionParts::PublicPrivate)
         .unwrap();
 
         let expected_volume_attributes = BTreeMap::from([

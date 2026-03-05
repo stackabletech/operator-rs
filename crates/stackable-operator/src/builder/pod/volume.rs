@@ -14,6 +14,7 @@ use tracing::warn;
 
 use crate::{
     builder::meta::ObjectMetaBuilder,
+    commons::secret_class::SecretClassVolumeProvisionParts,
     kvp::{Annotation, AnnotationError, Annotations, LabelError, Labels},
 };
 
@@ -281,12 +282,12 @@ pub struct SecretOperatorVolumeSourceBuilder {
     kerberos_service_names: Vec<String>,
     tls_pkcs12_password: Option<String>,
     auto_tls_cert_lifetime: Option<Duration>,
-    provision_parts: SecretOperatorVolumeProvisionParts,
+    provision_parts: SecretClassVolumeProvisionParts,
 }
 
 impl SecretOperatorVolumeSourceBuilder {
     /// Creates a builder for a secret-operator volume that uses the specified SecretClass to
-    /// request the specified [`SecretOperatorVolumeProvisionParts`].
+    /// request the specified [`SecretClassVolumeProvisionParts`].
     ///
     /// This function forces the caller to make an explicit choice if the public parts are
     /// sufficient or if private (e.g. a certificate for the Pod) parts are needed as well.
@@ -294,7 +295,7 @@ impl SecretOperatorVolumeSourceBuilder {
     /// [this issue](https://github.com/stackabletech/issues/issues/547).
     pub fn new(
         secret_class: impl Into<String>,
-        provision_parts: SecretOperatorVolumeProvisionParts,
+        provision_parts: SecretClassVolumeProvisionParts,
     ) -> Self {
         Self {
             secret_class: secret_class.into(),
@@ -431,20 +432,6 @@ pub enum SecretOperatorVolumeScope {
     Pod,
     Service { name: String },
     ListenerVolume { name: String },
-}
-
-/// What parts secret-operator should provision into the requested volume.
-#[derive(Clone, Debug, PartialEq, Eq, strum::AsRefStr)]
-#[strum(serialize_all = "kebab-case")]
-pub enum SecretOperatorVolumeProvisionParts {
-    /// Only provision public parts, such as the CA certificate (either as PEM or truststore) or
-    /// `krb5.conf`.
-    Public,
-
-    /// Provision all parts, which includes all [`Public`](SecretOperatorVolumeProvisionParts::Public)
-    /// ones as well as additional private parts, such as a TLS cert + private key, a keystore or a
-    /// keytab.
-    PublicPrivate,
 }
 
 /// Reference to a listener class or listener name

@@ -6,13 +6,11 @@ use snafu::{ResultExt, Snafu};
 use crate::{
     builder::{
         self,
-        pod::{
-            PodBuilder,
-            container::ContainerBuilder,
-            volume::{SecretOperatorVolumeProvisionParts, VolumeMountBuilder},
-        },
+        pod::{PodBuilder, container::ContainerBuilder, volume::VolumeMountBuilder},
     },
-    commons::secret_class::{SecretClassVolume, SecretClassVolumeError},
+    commons::secret_class::{
+        SecretClassVolume, SecretClassVolumeError, SecretClassVolumeProvisionParts,
+    },
     constants::secret::SECRET_BASE_PATH,
 };
 
@@ -77,7 +75,7 @@ impl TlsClientDetails {
             let secret_class_volume = SecretClassVolume::new(secret_class.clone(), None);
             let volume = secret_class_volume
                 // We only need the public CA cert
-                .to_volume(&volume_name, SecretOperatorVolumeProvisionParts::Public)
+                .to_volume(&volume_name, SecretClassVolumeProvisionParts::Public)
                 .context(SecretClassVolumeSnafu)?;
 
             volumes.push(volume);

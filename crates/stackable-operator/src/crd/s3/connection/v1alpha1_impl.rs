@@ -3,13 +3,12 @@ use snafu::{ResultExt as _, Snafu};
 use url::Url;
 
 use crate::{
-    builder::pod::{
-        PodBuilder,
-        container::ContainerBuilder,
-        volume::{SecretOperatorVolumeProvisionParts, VolumeMountBuilder},
-    },
+    builder::pod::{PodBuilder, container::ContainerBuilder, volume::VolumeMountBuilder},
     client::Client,
-    commons::{secret_class::SecretClassVolumeError, tls_verification::TlsClientDetailsError},
+    commons::{
+        secret_class::{SecretClassVolumeError, SecretClassVolumeProvisionParts},
+        tls_verification::TlsClientDetailsError,
+    },
     constants::secret::SECRET_BASE_PATH,
     crd::s3::{
         connection::ResolvedConnection,
@@ -115,7 +114,7 @@ impl ConnectionSpec {
             volumes.push(
                 credentials
                     // We need the private S3 credentials
-                    .to_volume(&volume_name, SecretOperatorVolumeProvisionParts::PublicPrivate)
+                    .to_volume(&volume_name, SecretClassVolumeProvisionParts::PublicPrivate)
                     .context(AddS3CredentialVolumesSnafu)?,
             );
             mounts.push(
