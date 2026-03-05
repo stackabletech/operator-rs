@@ -177,8 +177,6 @@ impl GitSyncResources {
 
             // Check tls/scheme compatability early
             let scheme = git_sync.repo.scheme();
-            println!("{}", scheme);
-            println!("{:#?}", &git_sync.tls.tls);
             let ca_cert_path = match &git_sync.tls.tls {
                 Some(tls) => {
                     match &tls.verification {
