@@ -115,7 +115,7 @@ impl ConnectionSpec {
             volumes.push(
                 credentials
                     // We need the private S3 credentials
-                    .to_volume(&volume_name, SecretOperatorVolumeProvisionParts::All)
+                    .to_volume(&volume_name, SecretOperatorVolumeProvisionParts::PublicPrivate)
                     .context(AddS3CredentialVolumesSnafu)?,
             );
             mounts.push(

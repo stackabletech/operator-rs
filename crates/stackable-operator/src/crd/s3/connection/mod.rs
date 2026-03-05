@@ -181,7 +181,7 @@ mod tests {
                 ),
                 (
                     "secrets.stackable.tech/provision-parts".to_string(),
-                    "all".to_string()
+                    "public-private".to_string()
                 )
             ]),
         );

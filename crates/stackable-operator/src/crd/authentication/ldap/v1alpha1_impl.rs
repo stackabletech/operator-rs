@@ -99,7 +99,7 @@ impl AuthenticationProvider {
             let volume_name = format!("{secret_class}-bind-credentials");
             let volume = bind_credentials
                 // We need the private LDAP bind credentials
-                .to_volume(&volume_name, SecretOperatorVolumeProvisionParts::All)
+                .to_volume(&volume_name, SecretOperatorVolumeProvisionParts::PublicPrivate)
                 .context(BindCredentialsSnafu)?;
 
             volumes.push(volume);
@@ -273,7 +273,7 @@ mod tests {
                 }
                 .to_volume(
                     "openldap-bind-credentials-bind-credentials",
-                    SecretOperatorVolumeProvisionParts::All
+                    SecretOperatorVolumeProvisionParts::PublicPrivate
                 )
                 .unwrap(),
                 SecretClassVolume {
