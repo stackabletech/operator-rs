@@ -8,11 +8,12 @@ edition.workspace = true
 repository.workspace = true
 
 [features]
-full = ["certs", "time", "webhook"]
+full = ["certs", "time", "webhook", "kube-ws"]
 
 certs = ["dep:stackable-certs"]
 time = ["stackable-shared/time"]
 webhook = ["dep:stackable-webhook"]
+kube-ws = ["kube/ws"]
 
 [dependencies]
 stackable-certs = { path = "../stackable-certs", optional = true }
