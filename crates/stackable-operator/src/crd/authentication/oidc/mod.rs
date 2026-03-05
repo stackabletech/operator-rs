@@ -91,6 +91,7 @@ pub mod versioned {
     }
 
     /// OAuth2 client authentication methods as defined in the OpenID Connect Core spec.
+    ///
     /// These methods are used by clients to authenticate to the authorization server
     /// when using the token endpoint.
     ///
