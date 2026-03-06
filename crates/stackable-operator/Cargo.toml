@@ -9,7 +9,7 @@ repository.workspace = true
 
 [features]
 default = ["crds"]
-full = ["certs", "time", "webhook", "kube-ws"]
+full = ["crds", "certs", "time", "webhook", "kube-ws"]
 
 crds = ["dep:stackable-versioned"]
 certs = ["dep:stackable-certs"]
