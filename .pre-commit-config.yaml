@@ -71,13 +71,15 @@ repos:
         pass_filenames: false
         files: \.rs$|Cargo\.(toml|lock)
 
-      - id: cargo-test
-        name: cargo-test
-        language: system
-        entry: cargo test --workspace
-        stages: [pre-commit, pre-merge-commit]
-        pass_filenames: false
-        files: \.rs$|Cargo\.(toml|lock)
+      # As long as we run tests for every contained crate (to test turning off all features),
+      # we don't need to re-run them here
+      # - id: cargo-test
+      #   name: cargo-test
+      #   language: system
+      #   entry: cargo test --workspace
+      #   stages: [pre-commit, pre-merge-commit]
+      #   pass_filenames: false
+      #   files: \.rs$|Cargo\.(toml|lock)
 
       - id: cargo-test-no-default-features
         name: cargo-test-no-default-features
