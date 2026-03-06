@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- BREAKING: Fix compilation failures when not enabling default features ([#1162]).
+
+[#1162]: https://github.com/stackabletech/operator-rs/pull/1162
+
 ## [0.6.1] - 2025-07-10
 
 ### Changed
