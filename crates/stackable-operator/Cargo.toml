@@ -8,8 +8,10 @@ edition.workspace = true
 repository.workspace = true
 
 [features]
+default = ["crds"]
 full = ["certs", "time", "webhook", "kube-ws"]
 
+crds = ["dep:stackable-versioned"]
 certs = ["dep:stackable-certs"]
 time = ["stackable-shared/time"]
 webhook = ["dep:stackable-webhook"]
@@ -20,7 +22,7 @@ stackable-certs = { path = "../stackable-certs", optional = true }
 stackable-operator-derive = { path = "../stackable-operator-derive" }
 stackable-shared = { path = "../stackable-shared", features = ["jiff"] }
 stackable-telemetry = { path = "../stackable-telemetry", features = ["clap"] }
-stackable-versioned = { path = "../stackable-versioned" }
+stackable-versioned = { path = "../stackable-versioned", optional = true }
 stackable-webhook = { path = "../stackable-webhook", optional = true }
 
 clap.workspace = true

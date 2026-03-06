@@ -14,6 +14,7 @@ pub mod commons;
 pub mod config;
 pub mod constants;
 pub mod cpu;
+#[cfg(feature = "crds")]
 pub mod crd;
 pub mod deep_merger;
 pub mod eos;
@@ -43,6 +44,7 @@ pub use stackable_certs as certs;
 pub use stackable_shared as shared;
 pub use stackable_shared::{crd::CustomResourceExt, yaml::YamlSchema};
 pub use stackable_telemetry as telemetry;
+#[cfg(feature = "crds")]
 pub use stackable_versioned as versioned;
 #[cfg(feature = "webhook")]
 pub use stackable_webhook as webhook;

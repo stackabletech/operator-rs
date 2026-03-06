@@ -36,7 +36,6 @@ use crate::{
             ResourceRequirementsExt, ResourceRequirementsType,
         },
     },
-    crd::listener,
     deep_merger::{self, ObjectOverrides},
     kvp::{
         Label, LabelError, Labels,
@@ -221,7 +220,8 @@ impl ClusterResource for Service {}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
 impl ClusterResource for PodDisruptionBudget {}
-impl ClusterResource for listener::v1alpha1::Listener {}
+#[cfg(feature = "crds")]
+impl ClusterResource for crate::crd::listener::v1alpha1::Listener {}
 
 impl ClusterResource for Job {
     fn pod_spec(&self) -> Option<&PodSpec> {
@@ -670,6 +670,13 @@ impl<'a> ClusterResources<'a> {
     ///
     /// * `client` - The client which is used to access Kubernetes
     pub async fn delete_orphaned_resources(self, client: &Client) -> Result<()> {
+        // We can only delete Listeners in case the "crds" feature is enabled, otherwise it's a NOP.
+        #[cfg(feature = "crds")]
+        let delete_listeners = self
+            .delete_orphaned_resources_of_kind::<crate::crd::listener::v1alpha1::Listener>(client);
+        #[cfg(not(feature = "crds"))]
+        let delete_listeners = async { Ok(()) };
+
         tokio::try_join!(
             self.delete_orphaned_resources_of_kind::<Service>(client),
             self.delete_orphaned_resources_of_kind::<StatefulSet>(client),
@@ -680,7 +687,7 @@ impl<'a> ClusterResources<'a> {
             self.delete_orphaned_resources_of_kind::<ServiceAccount>(client),
             self.delete_orphaned_resources_of_kind::<RoleBinding>(client),
             self.delete_orphaned_resources_of_kind::<PodDisruptionBudget>(client),
-            self.delete_orphaned_resources_of_kind::<listener::v1alpha1::Listener>(client),
+            delete_listeners
         )?;
 
         Ok(())

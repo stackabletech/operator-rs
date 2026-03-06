@@ -35,7 +35,7 @@ x509-cert.workspace = true
 
 [dev-dependencies]
 # Only needed for doc tests
-stackable-operator = { path = "../stackable-operator" }
+stackable-operator = { path = "../stackable-operator", features = ["crds"] }
 clap.workspace = true
 
 [lints]
