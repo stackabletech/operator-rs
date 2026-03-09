@@ -4,8 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.107.0] - 2026-03-09
+
 ### Added
 
+- Add support for specifying a `clientAuthenticationMethod` for OIDC ([#1158]).
 - Added two new crate features: `crds` and `kube-ws` ([#1162]).
 
 ### Fixed
@@ -14,6 +17,7 @@ All notable changes to this project will be documented in this file.
   This is achieved by removing the `clap`, `telemetry` and `versioned` features, which were previously enabled by default.
   They have been removed as the stackable-operator code actually always requires them.
 
+[#1158]: https://github.com/stackabletech/operator-rs/pull/1158
 [#1162]: https://github.com/stackabletech/operator-rs/pull/1162
 
 ## [0.106.2] - 2026-02-26
