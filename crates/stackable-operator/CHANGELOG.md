@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Git sync: add support for CAs ([#1154]).
+
+[#1154]: https://github.com/stackabletech/operator-rs/pull/1154
+
 ## [0.106.2] - 2026-02-26
 
 ### Changed
