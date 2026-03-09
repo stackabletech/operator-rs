@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - BREAKING: Fix compilation failures when not enabling default features ([#1162]).
-  This is achieved by removing the `clap`, `telemetry` and `versioned` features, which where previously enabled by default.
+  This is achieved by removing the `clap`, `telemetry` and `versioned` features, which were previously enabled by default.
   They have been removed as the stackable-operator code actually always requires them.
 
 [#1162]: https://github.com/stackabletech/operator-rs/pull/1162
