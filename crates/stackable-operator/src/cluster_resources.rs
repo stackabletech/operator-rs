@@ -671,16 +671,11 @@ impl<'a> ClusterResources<'a> {
     /// * `client` - The client which is used to access Kubernetes
     pub async fn delete_orphaned_resources(self, client: &Client) -> Result<()> {
         // We can only delete Listeners in case the "crds" feature is enabled, otherwise it's a NOP.
-        let delete_listeners = async {
-            if cfg!(feature = "crds") {
-                self.delete_orphaned_resources_of_kind::<crate::crd::listener::v1alpha1::Listener>(
-                    client,
-                )
-                .await
-            } else {
-                Ok(())
-            }
-        };
+        #[cfg(feature = "crds")]
+        let delete_listeners = self
+            .delete_orphaned_resources_of_kind::<crate::crd::listener::v1alpha1::Listener>(client);
+        #[cfg(not(feature = "crds"))]
+        let delete_listeners = async { Ok(()) };
 
         tokio::try_join!(
             self.delete_orphaned_resources_of_kind::<Service>(client),
