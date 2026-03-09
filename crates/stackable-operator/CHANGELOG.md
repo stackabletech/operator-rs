@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added two new crate features: `crds` and `kube-ws` ([#1162]).
+
 ### Fixed
 
 - BREAKING: Fix compilation failures when not enabling default features ([#1162]).
