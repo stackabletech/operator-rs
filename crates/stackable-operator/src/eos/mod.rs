@@ -9,35 +9,34 @@ use tracing::{Level, instrument};
 ///
 /// Additionally, this struct can be used as operator CLI arguments. This functionality is only
 /// available if the feature `clap` is enabled.
-#[cfg_attr(feature = "clap", derive(clap::Args))]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, clap::Args)]
 pub struct EndOfSupportOptions {
     /// The end-of-support check mode. Currently, only "offline" is supported.
-    #[cfg_attr(feature = "clap", arg(
+    #[arg(
         long = "eos-check-mode",
         env = "EOS_CHECK_MODE",
         default_value_t = EndOfSupportCheckMode::default(),
         value_enum
-    ))]
+    )]
     pub check_mode: EndOfSupportCheckMode,
 
     /// The interval in which the end-of-support check should run.
-    #[cfg_attr(feature = "clap", arg(
+    #[arg(
         long = "eos-interval",
         env = "EOS_INTERVAL",
         default_value_t = Self::default_interval()
-    ))]
+    )]
     pub interval: Duration,
 
     /// If the end-of-support check should be disabled entirely.
-    #[cfg_attr(feature = "clap", arg(long = "eos-disabled", env = "EOS_DISABLED"))]
+    #[arg(long = "eos-disabled", env = "EOS_DISABLED")]
     pub disabled: bool,
 
     /// The support duration (how long the operator should be considered supported after
     /// it's built-date).
     ///
     /// This field is currently not exposed as a CLI argument or environment variable.
-    #[cfg_attr(feature = "clap", arg(skip = Self::default_support_duration()))]
+    #[arg(skip = Self::default_support_duration())]
     pub support_duration: Duration,
 }
 
@@ -55,8 +54,7 @@ impl EndOfSupportOptions {
     }
 }
 
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, clap::ValueEnum)]
 pub enum EndOfSupportCheckMode {
     #[default]
     Offline,
