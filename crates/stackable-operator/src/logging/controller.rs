@@ -61,23 +61,26 @@ pub async fn report_controller_reconciled<K, ReconcileErr, QueueErr>(
                 "Reconciled object"
             );
         }
-        Err(err) => report_controller_error(recorder, controller_name, err).await,
-    }
-}
+        Err(controller_error) => {
+            match controller_error {
+                // Errors raised from queued stuff we will mark as _warning_.
+                // We can't easily discriminate any further.
+                controller::Error::QueueError(queue_error) => tracing::warn!(
+                    controller.name = controller_name,
+                    error = queue_error as &dyn std::error::Error,
+                    "Queued reconcile resulted in an error"
+                ),
+                // Assume others are _error_ level.
+                // NOTE (@NickLarsenNZ): Keeping the same error message as before,
+                // but am not sure if it is correct
+                _ => tracing::error!(
+                    controller.name = controller_name,
+                    error = controller_error as &dyn std::error::Error,
+                    "Failed to reconcile object"
+                ),
+            };
 
-/// Reports an error to the operator administrator and, if relevant, the end user
-async fn report_controller_error<ReconcileErr, QueueErr>(
-    recorder: &Recorder,
-    controller_name: &str,
-    error: &controller::Error<ReconcileErr, QueueErr>,
-) where
-    ReconcileErr: ReconcilerError,
-    QueueErr: std::error::Error,
-{
-    tracing::error!(
-        controller.name = controller_name,
-        error = error as &dyn std::error::Error,
-        "Failed to reconcile object",
-    );
-    publish_controller_error_as_k8s_event(recorder, error).await;
+            publish_controller_error_as_k8s_event(recorder, controller_error).await;
+        }
+    }
 }
