@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add CRD established signal/helper ([#1167]).
+
+[#1167]: https://github.com/stackabletech/operator-rs/pull/1167
+
 ## [0.107.0] - 2026-03-09
 
 ### Added
