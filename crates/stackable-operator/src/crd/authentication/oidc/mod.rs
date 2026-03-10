@@ -90,46 +90,6 @@ pub mod versioned {
         Keycloak,
     }
 
-    /// OAuth2 client authentication methods as defined in the OpenID Connect Core spec.
-    ///
-    /// These methods are used by clients to authenticate to the authorization server
-    /// when using the token endpoint.
-    ///
-    /// See <https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication> for details.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        Default,
-        Deserialize,
-        Eq,
-        Hash,
-        JsonSchema,
-        Ord,
-        PartialEq,
-        PartialOrd,
-        Serialize,
-    )]
-    #[serde(rename_all = "snake_case")]
-    pub enum ClientAuthenticationMethod {
-        /// Authenticate using HTTP Basic authentication with client_id and client_secret.
-        /// This is the default method according to the OIDC spec.
-        #[default]
-        ClientSecretBasic,
-
-        /// Send client_id and client_secret in the request body.
-        ClientSecretPost,
-
-        /// Authenticate using a JWT signed with an HMAC SHA algorithm using the client_secret.
-        ClientSecretJwt,
-
-        /// Authenticate using a JWT signed with the client's private key.
-        PrivateKeyJwt,
-
-        /// No client authentication (for public clients or implicit flow).
-        None,
-    }
-
     /// OIDC specific config options. These are set on the product config level.
     #[derive(
         Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
@@ -150,25 +110,6 @@ pub mod versioned {
         )]
         #[serde(default)]
         pub extra_scopes: Vec<String>,
-
-        /// The OAuth2 client authentication method to use for token endpoint requests.
-        /// Defaults to [`ClientAuthenticationMethod::ClientSecretBasic`].
-        ///
-        /// The contents and format of the `clientCredentialsSecret` depend on the selected
-        /// method. For example, [`ClientAuthenticationMethod::ClientSecretBasic`] and
-        /// [`ClientAuthenticationMethod::ClientSecretPost`] require a client secret string, whereas
-        /// [`ClientAuthenticationMethod::PrivateKeyJwt`] requires a private key.
-        ///
-        /// See [`ClientAuthenticationMethod`] for available options.
-        #[schemars(
-            description = "The client authentication method used when communicating with the token \
-            endpoint. Defaults to `client_secret_basic`. The required contents of \
-            `clientCredentialsSecret` depend on the chosen method: secret-based methods \
-            (`client_secret_basic`, `client_secret_post`, `client_secret_jwt`) expect a client \
-            secret, while `private_key_jwt` expects a private key."
-        )]
-        #[serde(default)]
-        pub client_authentication_method: ClientAuthenticationMethod,
 
         // If desired, operators can add custom fields that are only needed for this specific product.
         // They need to create a struct holding them and pass that as `T`.
