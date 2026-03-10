@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## Changed
+
+- Demote `kube_runtime::controller::Error::QueueError` to warning ([#1168]).
+
+[#1168]: https://github.com/stackabletech/operator-rs/pull/1168
+
 ## [0.107.0] - 2026-03-09
 
 ### Added
