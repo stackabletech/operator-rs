@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.107.1] - 2026-03-10
+
 ### Added
 
 - Add CRD established signal/helper ([#1167]).
