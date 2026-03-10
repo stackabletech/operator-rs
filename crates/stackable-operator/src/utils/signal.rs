@@ -1,8 +1,13 @@
+use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
+use kube::runtime::wait;
 use snafu::{ResultExt, Snafu};
+use stackable_shared::time::Duration;
 use tokio::{
     signal::unix::{SignalKind, signal},
     sync::watch,
 };
+
+use crate::client::Client;
 
 #[derive(Debug, Snafu)]
 #[snafu(display("failed to construct signal watcher"))]
@@ -70,4 +75,47 @@ impl SignalWatcher<()> {
 
         Ok(Self { watch_rx })
     }
+}
+
+pub const DEFAULT_CRD_ESTABLISHED_TIMEOUT: Duration = Duration::from_secs(5);
+
+#[derive(Debug, Snafu)]
+pub enum CrdEstablishedError {
+    #[snafu(display("failed to meet CRD established condition before the timeout elapsed"))]
+    TimeoutElapsed { source: tokio::time::error::Elapsed },
+
+    #[snafu(display("failed to await CRD established condition due to api error"))]
+    Api { source: kube::runtime::wait::Error },
+}
+
+/// Waits for a CRD named `crd_name` to be established before `timeout_duration` (or by default
+/// [`DEFAULT_CRD_ESTABLISHED_TIMEOUT`]) is elapsed.
+///
+/// The same caveats from [`conditions::is_crd_established`](wait::conditions::is_crd_established)
+/// apply here as well.
+///
+/// ### Errors
+///
+/// This function returns errors either if the timeout elapsed without the condition being met or
+/// when the underlying API returned errors (CRD is unknown to the Kubernetes API server or due to
+/// missing permissions).
+pub async fn crd_established(
+    client: Client,
+    crd_name: &str,
+    timeout_duration: impl Into<Option<Duration>>,
+) -> Result<(), CrdEstablishedError> {
+    let api: kube::Api<CustomResourceDefinition> = client.get_api(&());
+    let crd_established =
+        wait::await_condition(api, crd_name, wait::conditions::is_crd_established());
+    let _ = tokio::time::timeout(
+        *timeout_duration
+            .into()
+            .unwrap_or(DEFAULT_CRD_ESTABLISHED_TIMEOUT),
+        crd_established,
+    )
+    .await
+    .context(TimeoutElapsedSnafu)?
+    .context(ApiSnafu)?;
+
+    Ok(())
 }
