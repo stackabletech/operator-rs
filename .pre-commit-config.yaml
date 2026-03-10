@@ -58,7 +58,7 @@ repos:
       - id: cargo-doc-no-default-features
         name: cargo-doc-no-default-features
         language: system
-        entry: cargo doc --no-default-features --document-private-items
+        entry: cargo doc --no-deps --no-default-features --document-private-items
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: \.rs$|Cargo\.(toml|lock)
@@ -66,7 +66,7 @@ repos:
       - id: cargo-doc-all-features
         name: cargo-doc-all-features
         language: system
-        entry: cargo doc --all-features --document-private-items
+        entry: cargo doc --no-deps --all-features --document-private-items
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: \.rs$|Cargo\.(toml|lock)
