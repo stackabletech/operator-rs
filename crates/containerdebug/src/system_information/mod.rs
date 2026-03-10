@@ -59,7 +59,7 @@ impl SystemInformation {
 
     /// Collects and reports
     #[tracing::instrument(name = "SystemInformation::collect", skip(ctx))]
-    pub fn collect(ctx: &mut CollectContext) -> Self {
+    pub async fn collect(ctx: &mut CollectContext) -> Self {
         tracing::debug!("Starting data collection");
 
         let info = Self {
@@ -70,7 +70,7 @@ impl SystemInformation {
                 user::User::collect_current(&ctx.system),
             )),
             disks: Some(disk::Disk::collect_all()),
-            network: Some(network::SystemNetworkInfo::collect()),
+            network: Some(network::SystemNetworkInfo::collect().await),
             // ..Default::default()
         };
 

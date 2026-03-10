@@ -2,11 +2,10 @@ mod error;
 mod system_information;
 
 use clap::Parser;
-use stackable_operator::telemetry::Tracing;
+use stackable_telemetry::{Tracing, tracing::TelemetryOptions};
 use std::path::PathBuf;
 
 use crate::system_information::SystemInformation;
-use stackable_operator::telemetry::tracing::TelemetryOptions;
 use std::time::Instant;
 
 const APP_NAME: &str = "containerdebug";
@@ -22,7 +21,7 @@ struct Opts {
         num_args = 0..=1,
         require_equals = true,
     )]
-    loop_interval: Option<stackable_operator::time::Duration>,
+    loop_interval: Option<stackable_shared::time::Duration>,
 
     /// Write collected information to OUTPUT as JSON
     #[clap(long, short = 'o')]
@@ -36,7 +35,8 @@ mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let opts = Opts::parse();
 
     let _trace_guard = Tracing::pre_configured(APP_NAME, opts.telemetry_arguments)
@@ -70,7 +70,7 @@ fn main() {
         }
         std::thread::sleep(next_run_sleep);
 
-        let system_information = SystemInformation::collect(&mut collect_ctx);
+        let system_information = SystemInformation::collect(&mut collect_ctx).await;
 
         let serialized = serde_json::to_string_pretty(&system_information).unwrap();
         if let Some(output_path) = &opts.output {
