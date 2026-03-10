@@ -4,10 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add CRD established signal/helper ([#1167]).
+
 ## Changed
 
 - Demote `kube_runtime::controller::Error::QueueError` to warning ([#1168]).
 
+[#1167]: https://github.com/stackabletech/operator-rs/pull/1167
 [#1168]: https://github.com/stackabletech/operator-rs/pull/1168
 
 ## [0.107.0] - 2026-03-09
