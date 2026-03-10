@@ -100,7 +100,7 @@ pub enum CrdEstablishedError {
 /// when the underlying API returned errors (CRD is unknown to the Kubernetes API server or due to
 /// missing permissions).
 pub async fn crd_established(
-    client: Client,
+    client: &Client,
     crd_name: &str,
     timeout_duration: impl Into<Option<Duration>>,
 ) -> Result<(), CrdEstablishedError> {
