@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Removed
 
 - Reverted support for specifying a `clientAuthenticationMethod` for OIDC ([#1170]).
-  It can be added back afer the SDP release.
+  It can be added back afer the SDP 26.3.0 release.
 
 [#1170]: https://github.com/stackabletech/operator-rs/pull/1170
 
