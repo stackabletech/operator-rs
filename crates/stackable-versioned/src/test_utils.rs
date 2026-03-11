@@ -21,7 +21,7 @@ const TEST_CONVERSION_UUID: &str = "9980028f-816b-4b38-a521-5f087266f76c";
 /// You can provide test data e.g. as follows
 /// ```
 /// #[cfg(test)]
-/// impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::ListenerClassSpec {
+/// impl stackable_operator::versioned::test_utils::RoundtripTestData for v1alpha1::ListenerClassSpec {
 ///     fn roundtrip_test_data() -> Vec<Self> {
 ///         stackable_operator::utils::yaml_from_str_singleton_map(indoc::indoc! {"
 ///           - serviceType: ClusterIP
