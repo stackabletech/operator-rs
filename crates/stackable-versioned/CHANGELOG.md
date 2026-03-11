@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- BREAKING: The `versioned` macro now automatically generates tests to test roundtrip converts for
+  every versioned struct. This requires you to implement the `RoundtripTestData` trait for all
+  structs, which returns some test data to be used for the roundtrip tests.
+  Read on the `RoundtripTestData` documentation for details ([#XXX]).
+
+[#XXX]: https://github.com/stackabletech/operator-rs/pull/XXX
+
 ## [0.8.3] - 2025-10-23
 
 ### Fixed

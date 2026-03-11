@@ -87,6 +87,7 @@ impl Container {
 }
 
 /// A versioned struct.
+#[derive(Debug)]
 pub struct Struct {
     /// List of fields defined in the original struct. How, and if, an item
     /// should generate code, is decided by the currently generated version.
@@ -101,6 +102,7 @@ pub struct Struct {
     pub generics: Generics,
 }
 
+#[derive(Debug)]
 pub struct KubernetesData {
     pub kubernetes_arguments: StructCrdArguments,
     pub kubernetes_idents: KubernetesIdents,
@@ -164,11 +166,14 @@ impl Struct {
                 self.generate_entry_impl_block(versions, mod_gen_ctx, &spec_gen_ctx);
             let version_enum = self.generate_version_enum(mod_gen_ctx, &spec_gen_ctx);
             let status_struct = self.generate_status_struct(mod_gen_ctx, &spec_gen_ctx);
+            let conversion_roundtrip_test =
+                self.generate_conversion_roundtrip_test(versions, mod_gen_ctx, &spec_gen_ctx);
 
             container_tokens
                 .extend_outer(entry_enum)
                 .extend_outer(entry_enum_impl)
                 .extend_outer(version_enum)
+                .extend_outer(conversion_roundtrip_test)
                 .extend_outer(status_struct);
         }
 

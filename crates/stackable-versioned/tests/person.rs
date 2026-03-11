@@ -66,6 +66,8 @@ pub mod versioned {
 
         // We started out with a enum. As we *need* to provide a default, we have a Unknown variant.
         // Afterwards we figured let's be more flexible and accept any arbitrary String.
+
+        // FIXME: The roundtrips are currently broken, see the `roundtrip_test_data` below.
         #[versioned(added(since = "v2"), changed(since = "v3", from_type = "Gender"))]
         gender: String,
 
@@ -79,6 +81,68 @@ pub mod versioned {
 
         #[versioned(added(since = "v1beta1"))]
         mastodon: String,
+    }
+}
+
+#[cfg(test)]
+impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::PersonSpec {
+    fn roundtrip_test_data() -> Vec<Self> {
+        vec![
+            Self {
+                username: "jdoe".to_string(),
+                socials: v1alpha1::Socials {
+                    email: "jdoe@example.com".to_owned(),
+                },
+            },
+            Self {
+                username: "".to_string(),
+                socials: v1alpha1::Socials {
+                    email: "".to_owned(),
+                },
+            },
+        ]
+    }
+}
+
+#[cfg(test)]
+impl stackable_versioned::test_utils::RoundtripTestData for v3::PersonSpec {
+    fn roundtrip_test_data() -> Vec<Self> {
+        vec![
+            Self {
+                username: "jdoe".to_owned(),
+                first_name: "John".to_owned(),
+                last_name: "Doe".to_owned(),
+                gender: "Unknown".to_owned(),
+                socials: v3::Socials {
+                    email: "jdoe@example.com".to_owned(),
+                    mastodon: "@jdoe@example.com".to_owned(),
+                },
+            },
+            Self {
+                username: "jdoe".to_owned(),
+                first_name: "John".to_owned(),
+                last_name: "Doe".to_owned(),
+                gender: "Male".to_owned(),
+                socials: v3::Socials {
+                    email: "jdoe@example.com".to_owned(),
+                    mastodon: "@jdoe@example.com".to_owned(),
+                },
+            },
+            // FIXME: The following test case fails.  See the docs on the `versioned` macro, as of
+            // writing it only supports tracking `added` fields.
+            // Hence, the firstName, lastName, socials.mastodon work, while gender is broken.
+            // Self {
+            //     username: "".to_owned(),
+            //     first_name: "".to_owned(),
+            //     last_name: "".to_owned(),
+            //     // FIXME: Currently, the roundtrip results in "Unknown", although it should be "It's complicated"
+            //     gender: "It's complicated".to_owned(),
+            //     socials: v3::Socials {
+            //         email: "".to_owned(),
+            //         mastodon: "".to_owned(),
+            //     },
+            // },
+        ]
     }
 }
 

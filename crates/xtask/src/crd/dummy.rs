@@ -115,3 +115,11 @@ pub mod versioned {
         pub conditions: Vec<ClusterCondition>,
     }
 }
+
+#[cfg(test)]
+impl stackable_operator::versioned::test_utils::RoundtripTestData for v1alpha1::DummyClusterSpec {
+    fn roundtrip_test_data() -> Vec<Self> {
+        // In the DummyCluster we only have v1alpha1, so there is no point in testing roundtrips.
+        vec![]
+    }
+}
