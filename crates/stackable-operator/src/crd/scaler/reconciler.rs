@@ -17,7 +17,8 @@ use crate::crd::scaler::hooks::{
     HookOutcome, ScalingCondition, ScalingContext, ScalingDirection, ScalingHooks, ScalingResult,
 };
 use crate::crd::scaler::{
-    FailedStage, ScalerStage, ScalerState, StackableScaler, StackableScalerStatus,
+    FailedStage, RETRY_ANNOTATION, ScalerStage, ScalerState, StackableScaler,
+    StackableScalerStatus,
 };
 
 /// Requeue interval when a hook returns [`HookOutcome::InProgress`].
@@ -31,6 +32,12 @@ pub enum Error {
     /// The Kubernetes status patch for the [`StackableScaler`] failed.
     #[snafu(display("failed to patch StackableScaler status"))]
     PatchStatus {
+        #[snafu(source(from(crate::client::Error, Box::new)))]
+        source: Box<crate::client::Error>,
+    },
+    /// Removing the retry annotation from the [`StackableScaler`] failed.
+    #[snafu(display("failed to remove retry annotation from StackableScaler"))]
+    RemoveRetryAnnotation {
         #[snafu(source(from(crate::client::Error, Box::new)))]
         source: Box<crate::client::Error>,
     },
@@ -144,14 +151,66 @@ where
         .as_deref()
         .context(ObjectHasNoNamespaceSnafu)?;
 
+    let scaler_name = scaler.metadata.name.as_deref().unwrap_or("<unknown>");
+
     debug!(
-        scaler = scaler.metadata.name.as_deref().unwrap_or("<unknown>"),
+        scaler = scaler_name,
         %current_stage,
         current_replicas,
         desired_replicas,
         statefulset_stable,
         "Reconciling StackableScaler"
     );
+
+    // Recovery from Failed: if the user has set the retry annotation, strip it
+    // and reset to Idle so the next reconcile starts a fresh scaling attempt.
+    if matches!(current_stage, ScalerStage::Failed { .. }) {
+        let has_retry = scaler
+            .metadata
+            .annotations
+            .as_ref()
+            .and_then(|a| a.get(RETRY_ANNOTATION))
+            .is_some_and(|v| v == "true");
+
+        if has_retry {
+            info!(
+                scaler = scaler_name,
+                "Retry annotation found on Failed scaler, resetting to Idle"
+            );
+
+            // Strip the annotation via merge patch (setting to null removes it)
+            client
+                .merge_patch(
+                    scaler,
+                    serde_json::json!({
+                        "metadata": {
+                            "annotations": {
+                                RETRY_ANNOTATION: null
+                            }
+                        }
+                    }),
+                )
+                .await
+                .context(RemoveRetryAnnotationSnafu)?;
+
+            // Reset status to Idle
+            let idle_status = make_status(
+                selector,
+                ScalerStage::Idle,
+                current_replicas,
+                None,
+                None,
+            );
+            patch_status(client, scaler, idle_status)
+                .await
+                .context(PatchStatusSnafu)?;
+
+            return Ok(ScalingResult {
+                action: Action::requeue(REQUEUE_SCALING),
+                scaling_condition: ScalingCondition::Healthy,
+            });
+        }
+    }
 
     // When a scaling operation is in progress, use the frozen previous_replicas
     // to derive direction. status.replicas is overwritten during the Scaling stage
@@ -223,7 +282,7 @@ where
     match next {
         NextStage::NoChange => {
             debug!(
-                scaler = scaler.metadata.name.as_deref().unwrap_or("<unknown>"),
+                scaler = scaler_name,
                 %current_stage,
                 "No stage change needed, awaiting external changes"
             );
@@ -239,7 +298,7 @@ where
                 REQUEUE_HOOK_IN_PROGRESS
             };
             debug!(
-                scaler = scaler.metadata.name.as_deref().unwrap_or("<unknown>"),
+                scaler = scaler_name,
                 %current_stage,
                 requeue_after_secs = interval.as_secs(),
                 "Requeuing, waiting for progress in current stage"
@@ -253,7 +312,7 @@ where
         }
         NextStage::Transition(new_stage) => {
             info!(
-                scaler = scaler.metadata.name.as_deref().unwrap_or("<unknown>"),
+                scaler = scaler_name,
                 %current_stage,
                 %new_stage,
                 current_replicas,

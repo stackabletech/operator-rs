@@ -28,6 +28,16 @@ pub mod hooks;
 pub mod job_tracker;
 pub mod reconciler;
 
+/// Annotation key that triggers recovery from the [`ScalerStage::Failed`] state.
+///
+/// When the operator sees this annotation with value `"true"` on a [`StackableScaler`],
+/// it strips the annotation and resets the stage to [`ScalerStage::Idle`].
+///
+/// ```bash
+/// kubectl annotate stackablescaler <name> autoscaling.stackable.tech/retry=true
+/// ```
+pub const RETRY_ANNOTATION: &str = "autoscaling.stackable.tech/retry";
+
 /// A type-erased cluster reference used in StackableScaler.
 /// Does not carry apiVersion — CRD versioning handles conversions.
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -63,7 +73,8 @@ pub enum ScalerStage {
     Scaling,
     /// Running the [`ScalingHooks::post_scale`] hook (e.g. cluster rebalance).
     PostScaling,
-    /// A hook returned an error. The scaler stays here until manually reset.
+    /// A hook returned an error. The scaler stays here until the user applies the
+    /// [`RETRY_ANNOTATION`] to trigger a reset to [`Idle`](Self::Idle).
     Failed {
         /// Which stage produced the error.
         #[serde(rename = "failedAt")]
