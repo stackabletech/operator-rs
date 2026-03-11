@@ -63,8 +63,6 @@ pub fn test_roundtrip<StartVersion: RoundtripTestData>(
     let downgraded = convert_fn(downgrade_conversion_review);
     let downgraded_objects = objects_from_conversion_review(downgraded);
 
-    dbg!(&downgraded_objects);
-
     // Upgrade to start version again
     let upgrade_conversion_review = conversion_review(downgraded_objects, start_version);
     let upgraded = convert_fn(upgrade_conversion_review);
