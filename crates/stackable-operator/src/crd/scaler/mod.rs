@@ -73,6 +73,17 @@ pub enum ScalerStage {
     },
 }
 
+impl ScalerStage {
+    /// Returns `true` when a scaling operation is actively running
+    /// (`PreScaling`, `Scaling`, or `PostScaling`).
+    ///
+    /// `Idle` and `Failed` are not considered active — the HPA is
+    /// free to write `spec.replicas` in those states.
+    pub fn is_scaling_in_progress(&self) -> bool {
+        matches!(self, Self::PreScaling | Self::Scaling | Self::PostScaling)
+    }
+}
+
 /// Formats the stage name for logging and status messages.
 ///
 /// The `Failed` variant only includes the failed stage, not the full reason string,
@@ -212,6 +223,25 @@ pub use reconciler::{Error as ReconcilerError, reconcile_scaler};
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn is_scaling_in_progress_true_for_active_stages() {
+        assert!(ScalerStage::PreScaling.is_scaling_in_progress());
+        assert!(ScalerStage::Scaling.is_scaling_in_progress());
+        assert!(ScalerStage::PostScaling.is_scaling_in_progress());
+    }
+
+    #[test]
+    fn is_scaling_in_progress_false_for_idle_and_failed() {
+        assert!(!ScalerStage::Idle.is_scaling_in_progress());
+        assert!(
+            !ScalerStage::Failed {
+                failed_at: FailedStage::PreScaling,
+                reason: "err".to_string(),
+            }
+            .is_scaling_in_progress()
+        );
+    }
 
     #[test]
     fn scaler_stage_idle_serializes() {
