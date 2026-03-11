@@ -95,7 +95,11 @@ pub struct ModuleSkipArguments {
 
 /// This struct contains crate overrides to be passed to `#[kube]`.
 #[derive(Clone, Debug, FromMeta)]
+#[darling(and_then = "CrateArguments::dynamic_default")]
 pub struct CrateArguments {
+    #[darling(default = default_kube)]
+    pub kube: Override<Path>,
+
     #[darling(default = default_kube_core)]
     pub kube_core: Override<Path>,
 
@@ -124,6 +128,7 @@ pub struct CrateArguments {
 impl Default for CrateArguments {
     fn default() -> Self {
         Self {
+            kube: default_kube(),
             kube_core: default_kube_core(),
             kube_client: default_kube_client(),
             k8s_openapi: default_k8s_openapi(),
@@ -134,6 +139,30 @@ impl Default for CrateArguments {
             versioned: default_versioned(),
         }
     }
+}
+
+impl CrateArguments {
+    fn dynamic_default(mut self) -> Result<Self> {
+        // Adjust the kube_core and kube_client paths automatically if only the kube path is
+        // overridden.
+        if let Override::Explicit(kube_path) = &self.kube {
+            if self.kube_core.is_explicit() || self.kube_client.is_explicit() {
+                return Err(
+                    Error::custom("the `kube` crate override is mutually exclusive with `kube_core` and `kube_client`")
+                        .with_span(&kube_path)
+                );
+            }
+
+            self.kube_core = Override::Explicit(parse_quote! { #kube_path::core });
+            self.kube_client = Override::Explicit(parse_quote! { #kube_path::client });
+        }
+
+        Ok(self)
+    }
+}
+
+fn default_kube() -> Override<Path> {
+    Override::Default(parse_quote! { ::kube })
 }
 
 fn default_kube_core() -> Override<Path> {
@@ -259,6 +288,15 @@ impl<T> Deref for Override<T> {
         match &self {
             Override::Default(inner) => inner,
             Override::Explicit(inner) => inner,
+        }
+    }
+}
+
+impl<T> Override<T> {
+    pub fn is_explicit(&self) -> bool {
+        match self {
+            Override::Default(_) => false,
+            Override::Explicit(_) => true,
         }
     }
 }

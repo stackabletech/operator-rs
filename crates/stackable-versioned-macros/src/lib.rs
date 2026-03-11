@@ -200,7 +200,7 @@ mod utils;
 /// the crates are brought into scope through re-exports. The following code
 /// block depicts supported overrides and their default values.
 ///
-/// ```
+/// ```ignore
 /// # use stackable_versioned_macros::versioned;
 /// #[versioned(
 ///     version(name = "v1alpha1"),
@@ -213,6 +213,8 @@ mod utils;
 ///         kube_core = "::kube::core",
 ///         schemars = "::schemars",
 ///         serde = "::serde",
+///         // Mutually exclusive with kube_core and kube_client
+///         kube = "::kube",
 ///     )
 /// )]
 /// mod versioned {
