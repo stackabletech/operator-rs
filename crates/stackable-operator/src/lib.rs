@@ -16,6 +16,7 @@ pub mod constants;
 pub mod cpu;
 #[cfg(feature = "crds")]
 pub mod crd;
+pub mod databases;
 pub mod deep_merger;
 pub mod eos;
 pub mod helm;
