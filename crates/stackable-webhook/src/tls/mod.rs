@@ -39,8 +39,25 @@ use crate::{
 mod cert_resolver;
 
 pub const WEBHOOK_CA_LIFETIME: Duration = Duration::from_hours_unchecked(24);
-pub const WEBHOOK_CERTIFICATE_LIFETIME: Duration = Duration::from_hours_unchecked(24);
-pub const WEBHOOK_CERTIFICATE_ROTATION_INTERVAL: Duration = Duration::from_hours_unchecked(20);
+
+/// The wall-clock lifetime of generated webhook certificates. If this is ever
+/// reduced, ensure it stays well above [`CERTIFICATE_ROTATION_CHECK_INTERVAL`]
+/// (currently 5 minutes), otherwise the certificate could expire between checks.
+const WEBHOOK_CERTIFICATE_LIFETIME_HOURS: u64 = 24;
+pub const WEBHOOK_CERTIFICATE_LIFETIME: Duration =
+    Duration::from_hours_unchecked(WEBHOOK_CERTIFICATE_LIFETIME_HOURS);
+
+/// How often to check whether the certificate needs rotation. This is
+/// intentionally independent of the certificate lifetime — it controls how
+/// quickly we detect wall-clock drift (from hibernation, VM migration, etc.),
+/// not how long the certificate lives.
+const CERTIFICATE_ROTATION_CHECK_INTERVAL: Duration = Duration::from_minutes_unchecked(5);
+
+/// Rotate the certificate when less than 1/6 of its lifetime remains
+/// (4 hours for the current 24h lifetime). Derived from
+/// [`WEBHOOK_CERTIFICATE_LIFETIME`] so it scales if the lifetime changes.
+const CERTIFICATE_EXPIRY_BUFFER: Duration =
+    Duration::from_minutes_unchecked(WEBHOOK_CERTIFICATE_LIFETIME_HOURS * 60 / 6);
 
 pub type Result<T, E = TlsServerError> = std::result::Result<T, E>;
 
@@ -153,8 +170,12 @@ impl TlsServer {
             router,
         } = self;
 
-        let start = tokio::time::Instant::now() + *WEBHOOK_CERTIFICATE_ROTATION_INTERVAL;
-        let mut interval = tokio::time::interval_at(start, *WEBHOOK_CERTIFICATE_ROTATION_INTERVAL);
+        // Periodically check whether the certificate needs rotation based on
+        // wall-clock time. This avoids the monotonic vs wall-clock drift problem
+        // that can occur during hibernation, VM migration, or cgroup freezing.
+        let check_start = tokio::time::Instant::now() + *CERTIFICATE_ROTATION_CHECK_INTERVAL;
+        let mut rotation_check =
+            tokio::time::interval_at(check_start, *CERTIFICATE_ROTATION_CHECK_INTERVAL);
 
         let tls_acceptor = TlsAcceptor::from(Arc::new(config));
         let tcp_listener = TcpListener::bind(socket_addr)
@@ -183,11 +204,10 @@ impl TlsServer {
         loop {
             let tls_acceptor = tls_acceptor.clone();
 
-            // Wait for either a new TCP connection or the certificate rotation interval tick
             tokio::select! {
                 // We opt for a biased execution of arms to make sure we always check if a
-                // shutdown signal was received or the certificate needs rotation based on the
-                // interval. This ensures, we always use a valid certificate for the TLS connection.
+                // shutdown signal was received or the certificate needs rotation before
+                // accepting new connections.
                 biased;
 
                 // Once a shutdown signal is received (this future becomes `Poll::Ready`), break out
@@ -198,13 +218,16 @@ impl TlsServer {
                     break;
                 }
 
-                // This is cancellation-safe. If this branch is cancelled, the tick is NOT consumed.
-                // As such, we will not miss rotating the certificate.
-                _ = interval.tick() => {
-                    cert_resolver
-                        .rotate_certificate()
-                        .await
-                        .context(RotateCertificateSnafu)?
+                // Check wall-clock time to decide if the certificate needs rotation.
+                // This is cancellation-safe: if cancelled, the tick is NOT consumed.
+                _ = rotation_check.tick() => {
+                    if cert_resolver.needs_rotation(*CERTIFICATE_EXPIRY_BUFFER) {
+                        tracing::info!("certificate approaching expiry, rotating");
+                        cert_resolver
+                            .rotate_certificate()
+                            .await
+                            .context(RotateCertificateSnafu)?;
+                    }
                 }
 
                 // This is cancellation-safe. If cancelled, no new connections are accepted.
