@@ -42,6 +42,14 @@ pub const WEBHOOK_CA_LIFETIME: Duration = Duration::from_hours_unchecked(24);
 pub const WEBHOOK_CERTIFICATE_LIFETIME: Duration = Duration::from_hours_unchecked(24);
 pub const WEBHOOK_CERTIFICATE_ROTATION_INTERVAL: Duration = Duration::from_hours_unchecked(20);
 
+/// How often to check wall-clock time for certificate expiry (5 minutes).
+/// This catches clock drift from system hibernation, VM migration, etc.
+const WALL_CLOCK_CHECK_INTERVAL: Duration = Duration::from_minutes_unchecked(5);
+
+/// Rotate the certificate when it is within this buffer of expiry according
+/// to wall-clock time (4 hours before the 24h certificate expires).
+const WALL_CLOCK_EXPIRY_BUFFER: Duration = Duration::from_hours_unchecked(4);
+
 pub type Result<T, E = TlsServerError> = std::result::Result<T, E>;
 
 #[derive(Debug, Snafu)]
@@ -156,6 +164,13 @@ impl TlsServer {
         let start = tokio::time::Instant::now() + *WEBHOOK_CERTIFICATE_ROTATION_INTERVAL;
         let mut interval = tokio::time::interval_at(start, *WEBHOOK_CERTIFICATE_ROTATION_INTERVAL);
 
+        // A separate, shorter interval to check wall-clock time against the
+        // certificate's not_after. This catches monotonic/wall-clock drift
+        // caused by hibernation, VM migration, cgroup freezing, etc.
+        let wall_clock_check_start = tokio::time::Instant::now() + *WALL_CLOCK_CHECK_INTERVAL;
+        let mut wall_clock_check =
+            tokio::time::interval_at(wall_clock_check_start, *WALL_CLOCK_CHECK_INTERVAL);
+
         let tls_acceptor = TlsAcceptor::from(Arc::new(config));
         let tcp_listener = TcpListener::bind(socket_addr)
             .await
@@ -205,6 +220,21 @@ impl TlsServer {
                         .rotate_certificate()
                         .await
                         .context(RotateCertificateSnafu)?
+                }
+
+                // Wall-clock check: detect if the certificate is near expiry
+                // even though the monotonic rotation interval hasn't fired yet.
+                // This handles clock drift from hibernation, VM migration, etc.
+                _ = wall_clock_check.tick() => {
+                    if cert_resolver.needs_rotation(*WALL_CLOCK_EXPIRY_BUFFER) {
+                        tracing::info!("wall-clock check detected certificate near expiry, rotating early");
+                        cert_resolver
+                            .rotate_certificate()
+                            .await
+                            .context(RotateCertificateSnafu)?;
+                        // Reset the monotonic interval so we don't double-rotate
+                        interval.reset();
+                    }
                 }
 
                 // This is cancellation-safe. If cancelled, no new connections are accepted.
