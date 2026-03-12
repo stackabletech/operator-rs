@@ -33,6 +33,24 @@ pub struct ContainerSkipArguments {
     pub try_convert: Flag,
 }
 
+/// Scale subresource configuration for a CRD.
+///
+/// Mirrors the fields of `k8s_openapi::CustomResourceSubresourceScale`. Passed through
+/// to the `#[kube(scale(...))]` attribute.
+///
+/// See the [Kubernetes documentation](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#scale-subresource)
+/// for details on the scale subresource.
+#[derive(Clone, Debug, FromMeta)]
+pub struct Scale {
+    /// JSON path to the replica count in the custom resource's spec (e.g. `.spec.replicas`).
+    pub spec_replicas_path: String,
+    /// JSON path to the replica count in the custom resource's status (e.g. `.status.replicas`).
+    pub status_replicas_path: String,
+    /// JSON path to the label selector in the custom resource's status (e.g. `.status.selector`).
+    #[darling(default)]
+    pub label_selector_path: Option<String>,
+}
+
 /// This struct contains supported CRD arguments.
 ///
 /// The arguments are passed through to the `#[kube]` attribute. More details can be found in the
@@ -50,6 +68,7 @@ pub struct ContainerSkipArguments {
 ///   cluster scoped resource.
 /// - `crates`: Override specific crates.
 /// - `status`: Set the specified struct as the status subresource.
+/// - `scale`: Configure the scale subresource for HPA integration.
 /// - `shortname`: Set a shortname for the CR object. This can be specified multiple
 ///   times.
 /// - `skip`: Controls skipping parts of the generation.
@@ -64,7 +83,7 @@ pub struct StructCrdArguments {
     pub status: Option<Path>,
     // derive
     // schema
-    // scale
+    pub scale: Option<Scale>,
     // printcolumn
     #[darling(multiple, rename = "shortname")]
     pub shortnames: Vec<String>,

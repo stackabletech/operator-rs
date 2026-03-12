@@ -17,8 +17,8 @@ use crate::crd::scaler::hooks::{
     HookOutcome, ScalingCondition, ScalingContext, ScalingDirection, ScalingHooks, ScalingResult,
 };
 use crate::crd::scaler::{
-    FailedStage, RETRY_ANNOTATION, ScalerStage, ScalerState, StackableScaler,
-    StackableScalerStatus,
+    FailedStage, RETRY_ANNOTATION, ScalerStage, ScalerState, StackableScalerStatus,
+    v1alpha1::StackableScaler,
 };
 
 /// Requeue interval when a hook returns [`HookOutcome::InProgress`].
@@ -194,13 +194,8 @@ where
                 .context(RemoveRetryAnnotationSnafu)?;
 
             // Reset status to Idle
-            let idle_status = make_status(
-                selector,
-                ScalerStage::Idle,
-                current_replicas,
-                None,
-                None,
-            );
+            let idle_status =
+                make_status(selector, ScalerStage::Idle, current_replicas, None, None);
             patch_status(client, scaler, idle_status)
                 .await
                 .context(PatchStatusSnafu)?;
@@ -413,9 +408,7 @@ async fn handle_hook_failure<H: ScalingHooks>(
     // Run cleanup hook. If it fails, update the status reason so the failure is
     // visible via `kubectl describe` / the cluster CR condition.
     let final_reason = if let Err(on_failure_err) = hooks.on_failure(ctx, &failed_stage).await {
-        let reason_with_cleanup = format!(
-            "{hook_reason} (cleanup also failed: {on_failure_err})"
-        );
+        let reason_with_cleanup = format!("{hook_reason} (cleanup also failed: {on_failure_err})");
         warn!(
             scaler = scaler_name,
             error = %on_failure_err,

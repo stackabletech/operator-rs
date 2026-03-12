@@ -24,6 +24,8 @@ use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::versioned::versioned;
+
 pub mod hooks;
 pub mod job_tracker;
 pub mod reconciler;
@@ -37,17 +39,6 @@ pub mod reconciler;
 /// kubectl annotate stackablescaler <name> autoscaling.stackable.tech/retry=true
 /// ```
 pub const RETRY_ANNOTATION: &str = "autoscaling.stackable.tech/retry";
-
-/// A type-erased cluster reference used in StackableScaler.
-/// Does not carry apiVersion — CRD versioning handles conversions.
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UnknownClusterRef {
-    /// The Kubernetes kind of the target cluster resource (e.g. "NifiCluster").
-    pub kind: String,
-    /// The name of the target cluster resource within the same namespace.
-    pub name: String,
-}
 
 /// Which stage of a scaling operation failed.
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -172,31 +163,56 @@ pub struct StackableScalerStatus {
     pub current_state: Option<ScalerState>,
 }
 
-/// A StackableScaler exposes a /scale subresource so that a Kubernetes
-/// HorizontalPodAutoscaler can target it instead of a StatefulSet directly.
-#[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[kube(
-    group = "autoscaling.stackable.tech",
-    version = "v1alpha1",
-    kind = "StackableScaler",
-    namespaced,
-    status = "StackableScalerStatus",
-    scale = r#"{"specReplicasPath":".spec.replicas","statusReplicasPath":".status.replicas","labelSelectorPath":".status.selector"}"#
-)]
+/// A type-erased cluster reference used in StackableScaler.
+/// Does not carry apiVersion — CRD versioning handles conversions.
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct StackableScalerSpec {
-    /// Desired replica count. Written by the HPA via the /scale subresource.
-    /// Only takes effect when the referenced roleGroup has `replicas: 0`.
-    pub replicas: i32,
-    /// Reference to the Stackable cluster resource this scaler manages.
-    pub cluster_ref: UnknownClusterRef,
-    /// The role within the cluster (e.g. `nodes`).
-    pub role: String,
-    /// The role group within the role (e.g. `default`).
-    pub role_group: String,
+pub struct UnknownClusterRef {
+    /// The Kubernetes kind of the target cluster resource (e.g. "NifiCluster").
+    pub kind: String,
+    /// The name of the target cluster resource within the same namespace.
+    pub name: String,
 }
 
-/// Resolve the replica count for a StatefulSet, taking an optional [`StackableScaler`] into account.
+#[versioned(
+    version(name = "v1alpha1"),
+    crates(
+        kube_core = "kube::core",
+        k8s_openapi = "k8s_openapi",
+        schemars = "schemars",
+    )
+)]
+pub mod versioned {
+    /// A StackableScaler exposes a /scale subresource so that a Kubernetes
+    /// HorizontalPodAutoscaler can target it instead of a StatefulSet directly.
+    #[versioned(crd(
+        group = "autoscaling.stackable.tech",
+        kind = "StackableScaler",
+        namespaced,
+        status = "StackableScalerStatus",
+        scale(
+            spec_replicas_path = ".spec.replicas",
+            status_replicas_path = ".status.replicas",
+            label_selector_path = ".status.selector"
+        )
+    ))]
+    #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct StackableScalerSpec {
+        /// Desired replica count. Written by the HPA via the /scale subresource.
+        /// Only takes effect when the referenced roleGroup has `replicas: 0`.
+        pub replicas: i32,
+        /// Reference to the Stackable cluster resource this scaler manages.
+        pub cluster_ref: UnknownClusterRef,
+        /// The role within the cluster (e.g. `nodes`).
+        pub role: String,
+        /// The role group within the role (e.g. `default`).
+        pub role_group: String,
+    }
+}
+
+/// Resolve the replica count for a StatefulSet, taking an optional
+/// [`v1alpha1::StackableScaler`] into account.
 ///
 /// A scaler is only effective when `role_group_replicas` is `Some(0)` — this is the platform
 /// convention that signals "externally managed replicas". In all other cases the role group
@@ -209,7 +225,7 @@ pub struct StackableScalerSpec {
 ///
 /// - `role_group_replicas`: The replica count from the role group config. `Some(0)` signals
 ///   externally-managed replicas (the scaler's value is used). Any other value is returned unchanged.
-/// - `scaler`: The [`StackableScaler`] for this role group, if one exists. Only consulted
+/// - `scaler`: The [`v1alpha1::StackableScaler`] for this role group, if one exists. Only consulted
 ///   when `role_group_replicas` is `Some(0)`.
 ///
 /// # Returns
@@ -217,7 +233,7 @@ pub struct StackableScalerSpec {
 /// The effective replica count, or `None` if the scaler has no status yet.
 pub fn resolve_replicas(
     role_group_replicas: Option<i32>,
-    scaler: Option<&StackableScaler>,
+    scaler: Option<&v1alpha1::StackableScaler>,
 ) -> Option<i32> {
     match (role_group_replicas, scaler) {
         (Some(0), Some(s)) => s.status.as_ref().map(|st| st.replicas),
@@ -275,7 +291,7 @@ mod tests {
 
     #[test]
     fn spec_round_trips() {
-        let spec = StackableScalerSpec {
+        let spec = v1alpha1::StackableScalerSpec {
             replicas: 3,
             cluster_ref: UnknownClusterRef {
                 kind: "NifiCluster".to_string(),
@@ -285,7 +301,7 @@ mod tests {
             role_group: "default".to_string(),
         };
         let json = serde_json::to_string(&spec).unwrap();
-        let back: StackableScalerSpec = serde_json::from_str(&json).unwrap();
+        let back: v1alpha1::StackableScalerSpec = serde_json::from_str(&json).unwrap();
         assert_eq!(spec, back);
     }
 
@@ -301,9 +317,9 @@ mod tests {
 
     #[test]
     fn resolve_replicas_zero_with_scaler_uses_status() {
-        let mut scaler = StackableScaler::new(
+        let mut scaler = v1alpha1::StackableScaler::new(
             "test",
-            StackableScalerSpec {
+            v1alpha1::StackableScalerSpec {
                 replicas: 5,
                 cluster_ref: UnknownClusterRef {
                     kind: "NifiCluster".into(),
@@ -324,9 +340,9 @@ mod tests {
     fn resolve_replicas_nonzero_with_scaler_ignores_scaler() {
         // role_group.replicas != 0 → scaler is not active (validation webhook should prevent this,
         // but we defensively fall back to the role group value)
-        let mut scaler = StackableScaler::new(
+        let mut scaler = v1alpha1::StackableScaler::new(
             "test",
-            StackableScalerSpec {
+            v1alpha1::StackableScalerSpec {
                 replicas: 5,
                 cluster_ref: UnknownClusterRef {
                     kind: "NifiCluster".into(),
@@ -346,9 +362,9 @@ mod tests {
     #[test]
     fn resolve_replicas_zero_scaler_no_status_returns_none() {
         // Scaler exists but has no status yet (just created) → return None (don't set replicas)
-        let scaler = StackableScaler::new(
+        let scaler = v1alpha1::StackableScaler::new(
             "test",
-            StackableScalerSpec {
+            v1alpha1::StackableScalerSpec {
                 replicas: 5,
                 cluster_ref: UnknownClusterRef {
                     kind: "NifiCluster".into(),
