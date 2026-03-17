@@ -38,26 +38,30 @@ use crate::{
 
 mod cert_resolver;
 
-pub const WEBHOOK_CA_LIFETIME: Duration = Duration::from_hours_unchecked(24);
-
-/// The wall-clock lifetime of generated webhook certificates. If this is ever
-/// reduced, ensure it stays well above [`CERTIFICATE_ROTATION_CHECK_INTERVAL`]
+/// All certificates (CAs and leaf certificates) are valid for this amount of time in hours. If this
+/// is ever reduced, ensure it stays well above [`CERTIFICATE_ROTATION_CHECK_INTERVAL`]
 /// (currently 5 minutes), otherwise the certificate could expire between checks.
-const WEBHOOK_CERTIFICATE_LIFETIME_HOURS: u64 = 24;
+const CERTIFICATE_LIFETIME_HOURS: u64 = 24;
+
+/// The CA lifetime as a human-readable [`Duration`].
+pub const WEBHOOK_CA_LIFETIME: Duration =
+    Duration::from_hours_unchecked(CERTIFICATE_LIFETIME_HOURS);
+
+/// The leaf certificate lifetime as a human-readable [`Duration`].
 pub const WEBHOOK_CERTIFICATE_LIFETIME: Duration =
-    Duration::from_hours_unchecked(WEBHOOK_CERTIFICATE_LIFETIME_HOURS);
+    Duration::from_hours_unchecked(CERTIFICATE_LIFETIME_HOURS);
 
-/// How often to check whether the certificate needs rotation. This is
-/// intentionally independent of the certificate lifetime — it controls how
-/// quickly we detect wall-clock drift (from hibernation, VM migration, etc.),
-/// not how long the certificate lives.
-const CERTIFICATE_ROTATION_CHECK_INTERVAL: Duration = Duration::from_minutes_unchecked(5);
+/// Rotate the certificate when less than 1/6 of its lifetime remains (4 hours for the current 24h
+/// lifetime). Derived from [`CERTIFICATE_LIFETIME_HOURS`] so it scales if the lifetime changes.
+const CERTIFICATE_EXPIRY_BUFFER_HOURS: u64 = CERTIFICATE_LIFETIME_HOURS * 60 / 6;
 
-/// Rotate the certificate when less than 1/6 of its lifetime remains
-/// (4 hours for the current 24h lifetime). Derived from
-/// [`WEBHOOK_CERTIFICATE_LIFETIME`] so it scales if the lifetime changes.
 const CERTIFICATE_EXPIRY_BUFFER: Duration =
-    Duration::from_minutes_unchecked(WEBHOOK_CERTIFICATE_LIFETIME_HOURS * 60 / 6);
+    Duration::from_minutes_unchecked(CERTIFICATE_EXPIRY_BUFFER_HOURS);
+
+/// How often to check whether the certificate needs rotation. This is intentionally independent of
+/// the certificate lifetime - it controls how quickly we detect wall-clock drift (from hibernation,
+/// VM migration, etc.), not how long the certificate lives.
+const CERTIFICATE_ROTATION_CHECK_INTERVAL: Duration = Duration::from_minutes_unchecked(5);
 
 pub type Result<T, E = TlsServerError> = std::result::Result<T, E>;
 
@@ -170,12 +174,9 @@ impl TlsServer {
             router,
         } = self;
 
-        // Periodically check whether the certificate needs rotation based on
-        // wall-clock time. This avoids the monotonic vs wall-clock drift problem
-        // that can occur during hibernation, VM migration, or cgroup freezing.
-        let check_start = tokio::time::Instant::now() + *CERTIFICATE_ROTATION_CHECK_INTERVAL;
-        let mut rotation_check =
-            tokio::time::interval_at(check_start, *CERTIFICATE_ROTATION_CHECK_INTERVAL);
+        let start = tokio::time::Instant::now() + *CERTIFICATE_ROTATION_CHECK_INTERVAL;
+        let mut rotation_check_interval =
+            tokio::time::interval_at(start, *CERTIFICATE_ROTATION_CHECK_INTERVAL);
 
         let tls_acceptor = TlsAcceptor::from(Arc::new(config));
         let tcp_listener = TcpListener::bind(socket_addr)
@@ -220,7 +221,7 @@ impl TlsServer {
 
                 // Check wall-clock time to decide if the certificate needs rotation.
                 // This is cancellation-safe: if cancelled, the tick is NOT consumed.
-                _ = rotation_check.tick() => {
+                _ = rotation_check_interval.tick() => {
                     if cert_resolver.needs_rotation(*CERTIFICATE_EXPIRY_BUFFER) {
                         tracing::info!("certificate approaching expiry, rotating");
                         cert_resolver

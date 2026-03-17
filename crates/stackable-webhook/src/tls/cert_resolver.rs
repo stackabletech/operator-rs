@@ -57,9 +57,11 @@ pub struct CertificateResolver {
     /// Using a [`ArcSwap`] (over e.g. [`tokio::sync::RwLock`]), so that we can easily
     /// (and performant) bridge between async write and sync read.
     current_certified_key: ArcSwap<CertifiedKey>,
+
     /// The wall-clock expiry time (`not_after`) of the current certificate.
     /// Used to detect clock drift between monotonic and wall-clock time.
     current_not_after: ArcSwap<SystemTime>,
+
     subject_alterative_dns_names: Arc<Vec<String>>,
 
     certificate_tx: mpsc::Sender<Certificate>,
@@ -109,11 +111,12 @@ impl CertificateResolver {
             .unwrap_or(SystemTime::UNIX_EPOCH);
 
         tracing::debug!(
-            subject_alterative_dns_names = ?self.subject_alterative_dns_names,
-            not_after = %humantime::format_rfc3339(not_after),
+            x509.subject_alterative_names = ?self.subject_alterative_dns_names,
+            x509.not_after = %humantime::format_rfc3339(not_after),
             deadline = %humantime::format_rfc3339(deadline),
             "checking if certificate needs rotation"
         );
+
         SystemTime::now() >= deadline
     }
 
@@ -123,7 +126,7 @@ impl CertificateResolver {
             .await
     }
 
-    /// Creates a new certificate and returns the certified key.
+    /// Creates a new certificate and returns the certified key as well as `notAfter` timestamp.
     ///
     /// The certificate is send to the passed `cert_tx`.
     ///
