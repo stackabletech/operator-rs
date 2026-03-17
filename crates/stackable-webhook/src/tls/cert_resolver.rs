@@ -107,6 +107,13 @@ impl CertificateResolver {
         let deadline = not_after
             .checked_sub(buffer)
             .unwrap_or(SystemTime::UNIX_EPOCH);
+
+        tracing::debug!(
+            subject_alterative_dns_names = ?self.subject_alterative_dns_names,
+            not_after = %humantime::format_rfc3339(not_after),
+            deadline = %humantime::format_rfc3339(deadline),
+            "checking if certificate needs rotation"
+        );
         SystemTime::now() >= deadline
     }
 
