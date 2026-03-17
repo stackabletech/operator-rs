@@ -7,7 +7,10 @@ use serde::Serialize;
 use snafu::{ResultExt, Snafu};
 use tracing::{debug, error, warn};
 
-use crate::role_utils::{CommonConfiguration, Role};
+use crate::{
+    config_overrides::KeyValueOverridesProvider,
+    role_utils::{CommonConfiguration, Role},
+};
 
 pub const CONFIG_OVERRIDE_FILE_HEADER_KEY: &str = "EXPERIMENTAL_FILE_HEADER";
 pub const CONFIG_OVERRIDE_FILE_FOOTER_KEY: &str = "EXPERIMENTAL_FILE_FOOTER";
@@ -171,13 +174,13 @@ pub fn config_for_role_and_group<'a>(
 /// - `roles`: A map keyed by role names. The value is a tuple of a vector of `PropertyNameKind`
 ///   like (Cli, Env or Files) and [`crate::role_utils::Role`] with a boxed [`Configuration`].
 #[allow(clippy::type_complexity)]
-pub fn transform_all_roles_to_config<T, U, ProductSpecificCommonConfig>(
+pub fn transform_all_roles_to_config<T, U, ProductSpecificCommonConfig, ConfigOverrides>(
     resource: &T::Configurable,
     roles: HashMap<
         String,
         (
             Vec<PropertyNameKind>,
-            Role<T, U, ProductSpecificCommonConfig>,
+            Role<T, U, ProductSpecificCommonConfig, ConfigOverrides>,
         ),
     >,
 ) -> Result<RoleConfigByPropertyKind>
@@ -185,6 +188,7 @@ where
     T: Configuration,
     U: Default + JsonSchema + Serialize,
     ProductSpecificCommonConfig: Default + JsonSchema + Serialize,
+    ConfigOverrides: Default + JsonSchema + Serialize + KeyValueOverridesProvider,
 {
     let mut result = HashMap::new();
 
@@ -380,16 +384,17 @@ fn process_validation_result(
 /// - `role_name`      - The name of the role.
 /// - `role`           - The role for which to transform the configuration parameters.
 /// - `property_kinds` - Used as "buckets" to partition the configuration properties by.
-fn transform_role_to_config<T, U, ProductSpecificCommonConfig>(
+fn transform_role_to_config<T, U, ProductSpecificCommonConfig, ConfigOverrides>(
     resource: &T::Configurable,
     role_name: &str,
-    role: &Role<T, U, ProductSpecificCommonConfig>,
+    role: &Role<T, U, ProductSpecificCommonConfig, ConfigOverrides>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<RoleGroupConfigByPropertyKind>
 where
     T: Configuration,
     U: Default + JsonSchema + Serialize,
     ProductSpecificCommonConfig: Default + JsonSchema + Serialize,
+    ConfigOverrides: Default + JsonSchema + Serialize + KeyValueOverridesProvider,
 {
     let mut result = HashMap::new();
 
@@ -444,10 +449,10 @@ where
 /// - `role_name`      - Not used directly but passed on to the `Configuration::compute_*` calls.
 /// - `config`         - The configuration properties to partition.
 /// - `property_kinds` - The "buckets" used to partition the configuration properties.
-fn parse_role_config<T, ProductSpecificCommonConfig>(
+fn parse_role_config<T, ProductSpecificCommonConfig, ConfigOverrides>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &CommonConfiguration<T, ProductSpecificCommonConfig>,
+    config: &CommonConfiguration<T, ProductSpecificCommonConfig, ConfigOverrides>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
@@ -474,12 +479,13 @@ where
     Ok(result)
 }
 
-fn parse_role_overrides<T, ProductSpecificCommonConfig>(
-    config: &CommonConfiguration<T, ProductSpecificCommonConfig>,
+fn parse_role_overrides<T, ProductSpecificCommonConfig, ConfigOverrides>(
+    config: &CommonConfiguration<T, ProductSpecificCommonConfig, ConfigOverrides>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
     T: Configuration,
+    ConfigOverrides: KeyValueOverridesProvider,
 {
     let mut result = HashMap::new();
     for property_kind in property_kinds {
@@ -511,23 +517,15 @@ where
     Ok(result)
 }
 
-fn parse_file_overrides<T, ProductSpecificCommonConfig>(
-    config: &CommonConfiguration<T, ProductSpecificCommonConfig>,
+fn parse_file_overrides<T, ProductSpecificCommonConfig, ConfigOverrides>(
+    config: &CommonConfiguration<T, ProductSpecificCommonConfig, ConfigOverrides>,
     file: &str,
 ) -> Result<BTreeMap<String, Option<String>>>
 where
     T: Configuration,
+    ConfigOverrides: KeyValueOverridesProvider,
 {
-    let mut final_overrides: BTreeMap<String, Option<String>> = BTreeMap::new();
-
-    // For Conf files only process overrides that match our file name
-    if let Some(config) = config.config_overrides.get(file) {
-        for (key, value) in config {
-            final_overrides.insert(key.clone(), Some(value.clone()));
-        }
-    }
-
-    Ok(final_overrides)
+    Ok(config.config_overrides.get_key_value_overrides(file))
 }
 
 /// Extract the environment variables of a rolegroup config into a vector of EnvVars.
