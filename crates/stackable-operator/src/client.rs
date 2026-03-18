@@ -581,7 +581,7 @@ impl Client {
                 tracing::debug!(
                     allowed = allowed,
                     namespace = namespace,
-                    resource = std::any::type_name::<T>(),
+                    type_name = std::any::type_name::<T>(),
                     "object list permission from cache",
                 );
 
@@ -616,7 +616,7 @@ impl Client {
             Err(err) => {
                 tracing::error!(
                     namespace = namespace,
-                    resource = std::any::type_name::<T>(),
+                    type_name = std::any::type_name::<T>(),
                     error = ?err,
                     "failed to perform SelfSubjectAccessReview, assuming list is allowed",
                 );
@@ -627,7 +627,7 @@ impl Client {
         tracing::debug!(
             allowed = allowed,
             namespace = namespace,
-            resource = std::any::type_name::<T>(),
+            type_name = std::any::type_name::<T>(),
             "object list permissions",
         );
         Ok(allowed)

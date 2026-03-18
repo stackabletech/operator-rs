@@ -25,7 +25,7 @@ use k8s_openapi::{
 use kube::{Resource, ResourceExt};
 use serde::{Serialize, de::DeserializeOwned};
 use snafu::{OptionExt, ResultExt, Snafu};
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 
 use crate::{
     client::{Client, GetApi},
@@ -714,9 +714,9 @@ impl<'a> ClusterResources<'a> {
         client: &Client,
     ) -> Result<()> {
         if !self.apply_strategy.delete_orphans() {
-            debug!(
-                "Skip deleting orphaned resources because of [{}] strategy.",
-                self.apply_strategy
+            tracing::debug!(
+                apply_strategy = ?self.apply_strategy,
+                "skip deleting orphaned resources because of strategy.",
             );
             return Ok(());
         }
@@ -726,10 +726,9 @@ impl<'a> ClusterResources<'a> {
             .await
             .context(ListClusterResourcesSnafu)?
         {
-            debug!(
-                "Skipping deletion of orphaned {} because the operator is not allowed to list \
-                  them and is therefore probably not in charge of them.",
-                T::plural(&())
+            tracing::debug!(
+                type_name = std::any::type_name::<T>(),
+                "skipping deletion of orphans of this type because the operator is not allowed to list them",
             );
             return Ok(());
         }
@@ -751,10 +750,10 @@ impl<'a> ClusterResources<'a> {
         }
 
         if !orphaned_resources.is_empty() {
-            info!(
-                "Deleting orphaned {}: {}",
-                T::plural(&()),
-                ClusterResources::print_resources(&orphaned_resources),
+            tracing::info!(
+                type_name = std::any::type_name::<T>(),
+                orphans = ClusterResources::print_resources(&orphaned_resources),
+                "deleting orphans",
             );
             for resource in orphaned_resources.iter() {
                 client
