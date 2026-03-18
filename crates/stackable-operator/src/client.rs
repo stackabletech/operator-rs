@@ -618,7 +618,7 @@ impl Client {
                     namespace = namespace,
                     resource = std::any::type_name::<T>(),
                     error = ?err,
-                    "Failed to perform SelfSubjectAccessReview, assuming list is allowed",
+                    "failed to perform SelfSubjectAccessReview, assuming list is allowed",
                 );
                 true
             }
