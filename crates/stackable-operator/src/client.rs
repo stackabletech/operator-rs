@@ -1,12 +1,20 @@
 use std::{
+    any::TypeId,
+    collections::HashMap,
     convert::TryFrom,
     fmt::{Debug, Display},
+    sync::{Arc, RwLock},
+    time::{Duration, Instant},
 };
 
 use either::Either;
 use futures::StreamExt;
 use k8s_openapi::{
-    ClusterResourceScope, NamespaceResourceScope, apimachinery::pkg::apis::meta::v1::LabelSelector,
+    ClusterResourceScope, NamespaceResourceScope,
+    api::authorization::v1::{
+        ResourceAttributes, SelfSubjectAccessReview, SelfSubjectAccessReviewSpec,
+    },
+    apimachinery::pkg::apis::meta::v1::LabelSelector,
 };
 use kube::{
     Api, Config,
@@ -103,7 +111,16 @@ pub struct Client {
     pub default_namespace: String,
 
     pub kubernetes_cluster_info: KubernetesClusterInfo,
+
+    /// Cache of `SelfSubjectAccessReview` results keyed by (resource type, namespace).
+    list_permissions: Arc<RwLock<HashMap<(TypeId, String), (bool, Instant)>>>,
 }
+
+/// How long a cached `SelfSubjectAccessReview` result is considered valid.
+/// A TTL is used rather than caching indefinitely because RBAC rules can change at runtime
+/// (e.g. an admin updates a `ClusterRole`), and we want to pick up such changes eventually
+/// without requiring an operator restart.
+const LIST_PERMISSION_TTL: Duration = Duration::from_secs(300);
 
 impl Client {
     pub fn new(
@@ -125,6 +142,7 @@ impl Client {
             delete_params: DeleteParams::default(),
             default_namespace,
             kubernetes_cluster_info,
+            list_permissions: Arc::default(),
         }
     }
 
@@ -518,6 +536,67 @@ impl Client {
         <T as Resource>::DynamicType: Default,
     {
         Api::all(self.client.clone())
+    }
+
+    /// Returns whether the current service account is allowed to `list` resources of type `T`
+    /// in the given `namespace`, by performing a [`SelfSubjectAccessReview`].
+    ///
+    /// Results are cached per (resource type, namespace) pair to avoid a SAR API call on every
+    /// reconciliation. The cache has a TTL of [`LIST_PERMISSION_TTL`] so that RBAC changes made
+    /// at runtime are eventually picked up without requiring an operator restart.
+    ///
+    /// If the review request itself fails (e.g. due to a network error), this returns `true` so
+    /// that callers fall back to attempting the operation and handling any resulting error.
+    /// Failures are intentionally not cached: a transient error should not suppress deletion
+    /// for the full TTL duration.
+    pub async fn can_list<T>(&self, namespace: &str) -> bool
+    where
+        T: Resource<DynamicType = ()> + 'static,
+    {
+        let key = (TypeId::of::<T>(), namespace.to_string());
+
+        {
+            let cache = self.list_permissions.read().unwrap();
+            if let Some(&(allowed, cached_at)) = cache.get(&key) {
+                if cached_at.elapsed() < LIST_PERMISSION_TTL {
+                    return allowed;
+                }
+            }
+        }
+
+        let sar = SelfSubjectAccessReview {
+            spec: SelfSubjectAccessReviewSpec {
+                resource_attributes: Some(ResourceAttributes {
+                    namespace: Some(namespace.to_string()),
+                    verb: Some("list".to_string()),
+                    group: Some(T::group(&()).to_string()),
+                    resource: Some(T::plural(&()).to_string()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let api: Api<SelfSubjectAccessReview> = Api::all(self.client.clone());
+        match api.create(&PostParams::default(), &sar).await {
+            Ok(response) => {
+                let allowed = response.status.map(|s| s.allowed).unwrap_or(false);
+                self.list_permissions
+                    .write()
+                    .unwrap()
+                    .insert(key, (allowed, Instant::now()));
+                allowed
+            }
+            Err(err) => {
+                trace!(
+                    ?err,
+                    "Failed to perform SelfSubjectAccessReview for {}, assuming list is allowed",
+                    T::plural(&())
+                );
+                true
+            }
+        }
     }
 
     #[deprecated(note = "Use Api::get_api instead", since = "0.26.0")]

@@ -105,6 +105,7 @@ pub trait ClusterResource:
     + Resource<DynamicType = (), Scope = NamespaceResourceScope>
     + GetApi<Namespace = str>
     + Serialize
+    + 'static
 {
     /// This must be implemented for any [`ClusterResources`] that should be adapted before
     /// applying depending on the chosen [`ClusterResourceApplyStrategy`].
@@ -720,47 +721,46 @@ impl<'a> ClusterResources<'a> {
             return Ok(());
         }
 
-        match self.list_deployed_cluster_resources::<T>(client).await {
-            Ok(deployed_cluster_resources) => {
-                let mut orphaned_resources = Vec::new();
-
-                for resource in deployed_cluster_resources {
-                    let resource_id = resource.uid().context(MissingObjectKeySnafu {
-                        key: "metadata/uid",
-                    })?;
-                    if !self.resource_ids.contains(&resource_id) {
-                        orphaned_resources.push(resource);
-                    }
-                }
-
-                if !orphaned_resources.is_empty() {
-                    info!(
-                        "Deleting orphaned {}: {}",
-                        T::plural(&()),
-                        ClusterResources::print_resources(&orphaned_resources),
-                    );
-                    for resource in orphaned_resources.iter() {
-                        client
-                            .delete(resource)
-                            .await
-                            .context(DeleteOrphanedResourceSnafu)?;
-                    }
-                }
-
-                Ok(())
-            }
-            Err(crate::client::Error::ListResources {
-                source: kube::Error::Api(s),
-            }) if s.is_forbidden() => {
-                debug!(
-                    "Skipping deletion of orphaned {} because the operator is not allowed to list \
-                      them and is therefore probably not in charge of them.",
-                    T::plural(&())
-                );
-                Ok(())
-            }
-            Err(error) => Err(error).context(ListClusterResourcesSnafu),
+        if !client.can_list::<T>(&self.namespace).await {
+            debug!(
+                "Skipping deletion of orphaned {} because the operator is not allowed to list \
+                  them and is therefore probably not in charge of them.",
+                T::plural(&())
+            );
+            return Ok(());
         }
+
+        let deployed_cluster_resources = self
+            .list_deployed_cluster_resources::<T>(client)
+            .await
+            .context(ListClusterResourcesSnafu)?;
+
+        let mut orphaned_resources = Vec::new();
+
+        for resource in deployed_cluster_resources {
+            let resource_id = resource.uid().context(MissingObjectKeySnafu {
+                key: "metadata/uid",
+            })?;
+            if !self.resource_ids.contains(&resource_id) {
+                orphaned_resources.push(resource);
+            }
+        }
+
+        if !orphaned_resources.is_empty() {
+            info!(
+                "Deleting orphaned {}: {}",
+                T::plural(&()),
+                ClusterResources::print_resources(&orphaned_resources),
+            );
+            for resource in orphaned_resources.iter() {
+                client
+                    .delete(resource)
+                    .await
+                    .context(DeleteOrphanedResourceSnafu)?;
+            }
+        }
+
+        Ok(())
     }
 
     /// Creates a string containing the names and if present namespaces of the given resources
