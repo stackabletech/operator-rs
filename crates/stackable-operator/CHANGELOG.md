@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## Changed
+
+- Check self RBAC permissions before attempting to list types when garbage collecting possible orphans ([#1179]).
+  This clears up an error message that was logged when operators tried to list types when they had no permission to do so.
+
+[#1179]: https://github.com/stackabletech/operator-rs/pull/1179
+
 ## [0.108.0] - 2026-03-10
 
 ### Removed
