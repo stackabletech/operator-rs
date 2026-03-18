@@ -23,7 +23,7 @@
 //!
 //! ### Constructing
 //!
-//! Alternatively, they can be constructed programatically using the
+//! Alternatively, they can be constructed programmatically using the
 //! [`ApiVersion::new()`] and [`ApiVersion::try_new()`] functions.
 //!
 //! ```

@@ -43,7 +43,7 @@ pub enum CertificatePairError<E>
 where
     E: std::error::Error + 'static,
 {
-    #[snafu(display("failed to seralize certificate as {key_encoding}"))]
+    #[snafu(display("failed to serialize certificate as {key_encoding}"))]
     SerializeCertificate {
         source: x509_cert::der::Error,
         key_encoding: KeyEncoding,

@@ -590,7 +590,7 @@ impl Client {
 pub trait GetApi: Resource + Sized {
     /// The namespace type for `Self`'s scope.
     ///
-    /// This will be [`str`] for namespaced resource, and [`()`] for cluster-scoped resources.
+    /// This will be [`str`] for namespaced resource, and `()` for cluster-scoped resources.
     type Namespace: ?Sized;
     /// Get a [`kube::Api`] for `Self`'s native scope..
     fn get_api(client: kube::Client, ns: &Self::Namespace) -> kube::Api<Self>

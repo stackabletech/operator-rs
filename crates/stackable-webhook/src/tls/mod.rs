@@ -102,7 +102,7 @@ impl TlsServer {
     /// Create a new [`TlsServer`].
     ///
     /// This internally creates a `CertificateResolver` with the provided
-    /// `subject_alterative_dns_names`, which takes care of the certificate rotation. Afterwards it
+    /// `subject_alternative_dns_names`, which takes care of the certificate rotation. Afterwards it
     /// creates the [`ServerConfig`], which let's the `CertificateResolver` provide the needed
     /// certificates.
     #[instrument(name = "create_tls_server", skip(router))]
@@ -122,10 +122,10 @@ impl TlsServer {
         // AFAIK we can not influence this, so this is the only SAN entry needed.
         // TODO (@Techassi): The cluster domain should be included here, so that (non Kubernetes)
         // HTTP clients can use the FQDN of the service for testing or user use-cases.
-        let subject_alterative_dns_names =
+        let subject_alternative_dns_names =
             vec![format!("{webhook_service_name}.{webhook_namespace}.svc")];
 
-        let cert_resolver = CertificateResolver::new(subject_alterative_dns_names, certificate_tx)
+        let cert_resolver = CertificateResolver::new(subject_alternative_dns_names, certificate_tx)
             .await
             .context(CreateCertificateResolverSnafu)?;
         let cert_resolver = Arc::new(cert_resolver);
