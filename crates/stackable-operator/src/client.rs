@@ -36,6 +36,15 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
+    // The following two variants cannot have a `source` field,
+    // because that would require a leak of the `self` reference outside of can_list() function
+    // which would not compile.
+    #[snafu(display("unable to write cache of object list permissions"))]
+    ListCachePermissionsWrite,
+
+    #[snafu(display("unable to read cache of object list permissions"))]
+    ListCachePermissionsRead,
+
     #[snafu(display("unable to get resource {resource_name:?}"))]
     GetResource {
         source: kube::Error,
@@ -99,6 +108,10 @@ pub enum Error {
     },
 }
 
+// Type that maps (resource type, namespace) to (can list, cached at).
+// This type is needed to silence clippy warnings about type complexity of the `list_permissions` field in `Client`.
+type ListableResourceMap = HashMap<(TypeId, String), (bool, Instant)>;
+
 /// This `Client` can be used to access Kubernetes.
 /// It wraps an underlying [kube::client::Client] and provides some common functionality.
 #[derive(Clone)]
@@ -113,7 +126,7 @@ pub struct Client {
     pub kubernetes_cluster_info: KubernetesClusterInfo,
 
     /// Cache of `SelfSubjectAccessReview` results keyed by (resource type, namespace).
-    list_permissions: Arc<RwLock<HashMap<(TypeId, String), (bool, Instant)>>>,
+    list_permissions: Arc<RwLock<ListableResourceMap>>,
 }
 
 /// How long a cached `SelfSubjectAccessReview` result is considered valid.
@@ -549,18 +562,30 @@ impl Client {
     /// that callers fall back to attempting the operation and handling any resulting error.
     /// Failures are intentionally not cached: a transient error should not suppress deletion
     /// for the full TTL duration.
-    pub async fn can_list<T>(&self, namespace: &str) -> bool
+    pub async fn can_list<T>(&self, namespace: &str) -> Result<bool, Error>
     where
         T: Resource<DynamicType = ()> + 'static,
     {
         let key = (TypeId::of::<T>(), namespace.to_string());
 
+        // This nested block is necessary to ensure the cache lock is dropped before the write() call below to avoid deadlocks.
+        // Alternatively a drop(cache) call could be used but this is more idiomatic.
         {
-            let cache = self.list_permissions.read().unwrap();
-            if let Some(&(allowed, cached_at)) = cache.get(&key) {
-                if cached_at.elapsed() < LIST_PERMISSION_TTL {
-                    return allowed;
-                }
+            let cache = self
+                .list_permissions
+                .read()
+                .map_err(|_| Error::ListCachePermissionsRead)?;
+            if let Some(&(allowed, cached_at)) = cache.get(&key)
+                && cached_at.elapsed() < LIST_PERMISSION_TTL
+            {
+                tracing::debug!(
+                    allowed = allowed,
+                    namespace = namespace,
+                    resource = std::any::type_name::<T>(),
+                    "object list permission from cache",
+                );
+
+                return Ok(allowed);
             }
         }
 
@@ -579,24 +604,33 @@ impl Client {
         };
 
         let api: Api<SelfSubjectAccessReview> = Api::all(self.client.clone());
-        match api.create(&PostParams::default(), &sar).await {
+        let allowed = match api.create(&PostParams::default(), &sar).await {
             Ok(response) => {
                 let allowed = response.status.map(|s| s.allowed).unwrap_or(false);
                 self.list_permissions
                     .write()
-                    .unwrap()
+                    .map_err(|_| Error::ListCachePermissionsWrite)?
                     .insert(key, (allowed, Instant::now()));
                 allowed
             }
             Err(err) => {
-                trace!(
-                    ?err,
-                    "Failed to perform SelfSubjectAccessReview for {}, assuming list is allowed",
-                    T::plural(&())
+                tracing::error!(
+                    namespace = namespace,
+                    resource = std::any::type_name::<T>(),
+                    error = ?err,
+                    "Failed to perform SelfSubjectAccessReview, assuming list is allowed",
                 );
                 true
             }
-        }
+        };
+
+        tracing::debug!(
+            allowed = allowed,
+            namespace = namespace,
+            resource = std::any::type_name::<T>(),
+            "object list permissions",
+        );
+        Ok(allowed)
     }
 
     #[deprecated(note = "Use Api::get_api instead", since = "0.26.0")]

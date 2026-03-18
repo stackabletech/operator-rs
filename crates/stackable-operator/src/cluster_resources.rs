@@ -721,7 +721,11 @@ impl<'a> ClusterResources<'a> {
             return Ok(());
         }
 
-        if !client.can_list::<T>(&self.namespace).await {
+        if !client
+            .can_list::<T>(&self.namespace)
+            .await
+            .context(ListClusterResourcesSnafu)?
+        {
             debug!(
                 "Skipping deletion of orphaned {} because the operator is not allowed to list \
                   them and is therefore probably not in charge of them.",
