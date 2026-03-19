@@ -14,8 +14,9 @@ use crate::{
 
 use super::v1alpha1::{StackableScaler, StackableScalerSpec};
 
-/// Error returned by [`build_scaler`].
+/// Error returned by [`build_scaler`] and [`build_hpa_from_user_spec`](super::build_hpa_from_user_spec).
 #[derive(Debug, Snafu)]
+#[snafu(visibility(pub(super)))]
 pub enum BuildScalerError {
     /// A label value failed validation.
     #[snafu(display("failed to construct label for scaler"))]
