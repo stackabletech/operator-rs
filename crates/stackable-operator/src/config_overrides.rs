@@ -7,31 +7,11 @@
 
 use std::collections::{BTreeMap, HashMap};
 
-use schemars::{JsonSchema, Schema, json_schema};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 
-/// Generates a JSON schema that accepts any JSON value.
-///
-/// Kubernetes CRDs do not support the `true` schema shorthand that
-/// `serde_json::Value` generates by default. Instead we emit a schema
-/// with `x-kubernetes-preserve-unknown-fields: true` which tells the
-/// API server to store the value as-is.
-fn arbitrary_json_value(_gen: &mut schemars::generate::SchemaGenerator) -> Schema {
-    json_schema!({
-        "x-kubernetes-preserve-unknown-fields": true,
-    })
-}
-
-/// Generates a JSON schema for a list of JSON patch operation strings (RFC 6902).
-fn json_patch_string_list(_gen: &mut schemars::generate::SchemaGenerator) -> Schema {
-    json_schema!({
-        "type": "array",
-        "items": {
-            "type": "string",
-        },
-    })
-}
+use crate::utils::crds::raw_object_schema;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -107,7 +87,7 @@ impl KeyValueConfigOverrides {
 pub enum JsonConfigOverrides {
     /// Can be set to arbitrary YAML content, which is converted to JSON and used as
     /// [RFC 7396](https://datatracker.ietf.org/doc/html/rfc7396) JSON merge patch.
-    #[schemars(schema_with = "arbitrary_json_value")]
+    #[schemars(schema_with = "raw_object_schema")]
     JsonMergePatch(serde_json::Value),
 
     /// List of [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON patches.
@@ -122,7 +102,6 @@ pub enum JsonConfigOverrides {
     /// or
     ///
     /// `{"op": "add", "path": "/0/happy", "value": true}`
-    #[schemars(schema_with = "json_patch_string_list")]
     JsonPatches(Vec<String>),
 
     /// Override the entire config file with the specified String.

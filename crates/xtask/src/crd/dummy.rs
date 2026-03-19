@@ -54,6 +54,10 @@ pub mod versioned {
         #[serde(default)]
         pub object_overrides: ObjectOverrides,
 
+        json_config_overrides: Option<stackable_operator::config_overrides::JsonConfigOverrides>,
+        key_value_config_overrides:
+            Option<stackable_operator::config_overrides::KeyValueConfigOverrides>,
+
         // Already versioned
         client_authentication_details:
             stackable_operator::crd::authentication::core::v1alpha1::ClientAuthenticationDetails,

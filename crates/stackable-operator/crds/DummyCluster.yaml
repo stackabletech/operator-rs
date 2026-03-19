@@ -164,9 +164,56 @@ spec:
                 type: object
               hostName:
                 type: string
+              jsonConfigOverrides:
+                nullable: true
+                oneOf:
+                - required:
+                  - jsonMergePatch
+                - required:
+                  - jsonPatches
+                - required:
+                  - userProvided
+                properties:
+                  jsonMergePatch:
+                    description: |-
+                      Can be set to arbitrary YAML content, which is converted to JSON and used as
+                      [RFC 7396](https://datatracker.ietf.org/doc/html/rfc7396) JSON merge patch.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  jsonPatches:
+                    description: |-
+                      List of [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON patches.
+
+                      Can be used when more flexibility is needed, e.g. to only modify elements
+                      in a list based on a condition.
+
+                      A patch looks something like
+
+                      `{"op": "test", "path": "/0/name", "value": "Andrew"}`
+
+                      or
+
+                      `{"op": "add", "path": "/0/happy", "value": true}`
+                    items:
+                      type: string
+                    type: array
+                  userProvided:
+                    description: Override the entire config file with the specified String.
+                    type: string
+                type: object
               kerberosRealmName:
                 description: A validated kerberos realm name type, for use in CRDs.
                 type: string
+              keyValueConfigOverrides:
+                additionalProperties:
+                  type: string
+                description: |-
+                  Flat key-value overrides for `*.properties`, Hadoop XML, etc.
+
+                  This is backwards-compatible with the existing flat key-value YAML format
+                  used by `HashMap<String, String>`.
+                nullable: true
+                type: object
               nodes:
                 description: |-
                   This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a key-value-map containing
