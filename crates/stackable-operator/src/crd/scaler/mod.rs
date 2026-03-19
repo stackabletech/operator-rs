@@ -26,6 +26,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::versioned::versioned;
 
+mod cluster_resource_impl;
 pub mod hooks;
 pub mod job_tracker;
 pub mod reconciler;

@@ -13,6 +13,7 @@ use k8s_openapi::{
         apps::v1::{
             DaemonSet, DaemonSetSpec, Deployment, DeploymentSpec, StatefulSet, StatefulSetSpec,
         },
+        autoscaling::v2::HorizontalPodAutoscaler,
         batch::v1::Job,
         core::v1::{
             ConfigMap, ObjectReference, PodSpec, PodTemplateSpec, Secret, Service, ServiceAccount,
@@ -221,7 +222,9 @@ impl ClusterResource for Service {}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
 impl ClusterResource for PodDisruptionBudget {}
+impl ClusterResource for HorizontalPodAutoscaler {}
 impl ClusterResource for listener::v1alpha1::Listener {}
+impl ClusterResource for crate::crd::scaler::v1alpha1::StackableScaler {}
 
 impl ClusterResource for Job {
     fn pod_spec(&self) -> Option<&PodSpec> {
@@ -681,6 +684,8 @@ impl<'a> ClusterResources<'a> {
             self.delete_orphaned_resources_of_kind::<RoleBinding>(client),
             self.delete_orphaned_resources_of_kind::<PodDisruptionBudget>(client),
             self.delete_orphaned_resources_of_kind::<listener::v1alpha1::Listener>(client),
+            self.delete_orphaned_resources_of_kind::<crate::crd::scaler::v1alpha1::StackableScaler>(client),
+            self.delete_orphaned_resources_of_kind::<HorizontalPodAutoscaler>(client),
         )?;
 
         Ok(())
