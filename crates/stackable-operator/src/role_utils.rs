@@ -121,7 +121,9 @@ pub enum Error {
         deserialize = "T: Default + Deserialize<'de>, ProductSpecificCommonConfig: Default + Deserialize<'de>, ConfigOverrides: Default + Deserialize<'de>"
     )
 )]
-#[schemars(bound = "T: JsonSchema, ProductSpecificCommonConfig: JsonSchema, ConfigOverrides: Default + JsonSchema")]
+#[schemars(
+    bound = "T: JsonSchema, ProductSpecificCommonConfig: JsonSchema, ConfigOverrides: Default + JsonSchema"
+)]
 pub struct CommonConfiguration<
     T,
     ProductSpecificCommonConfig,
@@ -329,8 +331,7 @@ pub struct Role<
     #[serde(default)]
     pub role_config: U,
 
-    pub role_groups:
-        HashMap<String, RoleGroup<T, ProductSpecificCommonConfig, ConfigOverrides>>,
+    pub role_groups: HashMap<String, RoleGroup<T, ProductSpecificCommonConfig, ConfigOverrides>>,
 }
 
 impl<T, U, ProductSpecificCommonConfig, ConfigOverrides>
@@ -451,7 +452,9 @@ pub struct EmptyRoleConfig {}
         deserialize = "T: Default + Deserialize<'de>, ProductSpecificCommonConfig: Default + Deserialize<'de>, ConfigOverrides: Default + Deserialize<'de>"
     )
 )]
-#[schemars(bound = "T: JsonSchema, ProductSpecificCommonConfig: JsonSchema, ConfigOverrides: Default + JsonSchema")]
+#[schemars(
+    bound = "T: JsonSchema, ProductSpecificCommonConfig: JsonSchema, ConfigOverrides: Default + JsonSchema"
+)]
 pub struct RoleGroup<
     T,
     ProductSpecificCommonConfig,

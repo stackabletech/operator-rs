@@ -64,9 +64,7 @@ pub trait KeyValueOverridesProvider {
     }
 }
 
-impl KeyValueOverridesProvider
-    for HashMap<String, HashMap<String, String>>
-{
+impl KeyValueOverridesProvider for HashMap<String, HashMap<String, String>> {
     fn get_key_value_overrides(&self, file: &str) -> BTreeMap<String, Option<String>> {
         self.get(file)
             .map(|entries| {
@@ -154,9 +152,8 @@ impl JsonConfigOverrides {
                     .iter()
                     .enumerate()
                     .map(|(index, patch_str)| {
-                        serde_json::from_str(patch_str).context(
-                            DeserializeJsonPatchOperationSnafu { index },
-                        )
+                        serde_json::from_str(patch_str)
+                            .context(DeserializeJsonPatchOperationSnafu { index })
                     })
                     .collect::<Result<Vec<_>, _>>()?;
                 json_patch::patch(&mut doc, &operations).context(ApplyJsonPatchSnafu)?;
@@ -204,12 +201,15 @@ mod tests {
 
         let result = overrides.apply(&base).expect("merge patch should succeed");
 
-        assert_eq!(result["bundles"]["authz"]["polling"]["min_delay_seconds"], 3);
-        assert_eq!(result["bundles"]["authz"]["polling"]["max_delay_seconds"], 5);
         assert_eq!(
-            result["default_decision"],
-            "/http/example/authz/allow"
+            result["bundles"]["authz"]["polling"]["min_delay_seconds"],
+            3
         );
+        assert_eq!(
+            result["bundles"]["authz"]["polling"]["max_delay_seconds"],
+            5
+        );
+        assert_eq!(result["default_decision"], "/http/example/authz/allow");
     }
 
     #[test]
@@ -265,9 +265,7 @@ mod tests {
     fn json_patch_invalid_operation_returns_error() {
         let base = json!({"foo": "bar"});
 
-        let overrides = JsonConfigOverrides::JsonPatches(vec![
-            r#"{"not_an_op": true}"#.to_owned(),
-        ]);
+        let overrides = JsonConfigOverrides::JsonPatches(vec![r#"{"not_an_op": true}"#.to_owned()]);
 
         let result = overrides.apply(&base);
         assert!(
@@ -283,7 +281,9 @@ mod tests {
 
         let overrides = JsonConfigOverrides::UserProvided(content.to_owned());
 
-        let result = overrides.apply(&base).expect("user provided should succeed");
+        let result = overrides
+            .apply(&base)
+            .expect("user provided should succeed");
         assert_eq!(result, json!({"custom": true}));
     }
 
@@ -313,8 +313,7 @@ mod tests {
 
     #[test]
     fn key_value_overrides_provider_for_hashmap() {
-        let mut config_overrides =
-            HashMap::<String, HashMap<String, String>>::new();
+        let mut config_overrides = HashMap::<String, HashMap<String, String>>::new();
         let mut file_overrides = HashMap::new();
         file_overrides.insert("key1".to_owned(), "value1".to_owned());
         file_overrides.insert("key2".to_owned(), "value2".to_owned());
