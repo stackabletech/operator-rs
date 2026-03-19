@@ -26,6 +26,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::versioned::versioned;
 
+mod builder;
 mod cluster_resource_impl;
 pub mod hooks;
 pub mod job_tracker;
@@ -226,6 +227,7 @@ pub fn resolve_replicas(
     }
 }
 
+pub use builder::{BuildScalerError, build_scaler};
 pub use hooks::{
     HookOutcome, ScalingCondition, ScalingContext, ScalingDirection, ScalingHooks, ScalingResult,
 };

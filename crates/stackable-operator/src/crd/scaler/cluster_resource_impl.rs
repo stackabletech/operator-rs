@@ -1,6 +1,6 @@
 use k8s_openapi::DeepMerge;
 
-use super::{ScalerState, ScalerStage, StackableScalerStatus, v1alpha1::StackableScaler};
+use super::{ScalerStage, ScalerState, StackableScalerStatus, v1alpha1::StackableScaler};
 
 impl DeepMerge for StackableScaler {
     fn merge_from(&mut self, other: Self) {
