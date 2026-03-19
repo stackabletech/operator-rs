@@ -1,28 +1,27 @@
 [package]
 name = "stackable-operator"
 description = "Stackable Operator Framework"
-version = "0.106.2"
+version = "0.108.0"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
 repository.workspace = true
 
 [features]
-full = ["certs", "telemetry", "versioned", "time", "webhook", "clap"]
-default = ["telemetry", "versioned", "clap"]
+default = ["crds"]
+full = ["crds", "certs", "time", "webhook", "kube-ws"]
 
-clap = []
+crds = ["dep:stackable-versioned"]
 certs = ["dep:stackable-certs"]
-telemetry = ["dep:stackable-telemetry"]
 time = ["stackable-shared/time"]
-versioned = ["dep:stackable-versioned"]
 webhook = ["dep:stackable-webhook"]
+kube-ws = ["kube/ws"]
 
 [dependencies]
 stackable-certs = { path = "../stackable-certs", optional = true }
 stackable-operator-derive = { path = "../stackable-operator-derive" }
-stackable-shared = { path = "../stackable-shared", features = ["time", "jiff"] }
-stackable-telemetry = { path = "../stackable-telemetry", optional = true, features = ["clap"] }
+stackable-shared = { path = "../stackable-shared", features = ["jiff"] }
+stackable-telemetry = { path = "../stackable-telemetry", features = ["clap"] }
 stackable-versioned = { path = "../stackable-versioned", optional = true }
 stackable-webhook = { path = "../stackable-webhook", optional = true }
 

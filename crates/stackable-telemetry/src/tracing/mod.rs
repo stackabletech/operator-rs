@@ -8,8 +8,6 @@
 
 use std::{ops::Not, path::PathBuf};
 
-#[cfg_attr(feature = "clap", cfg(doc))]
-use clap;
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_otlp::{ExporterBuildError, LogExporter, SpanExporter};
@@ -125,7 +123,7 @@ pub enum Error {
 /// ```
 ///
 /// Also see the documentation for [`TelemetryOptions`] which details how it can be used as CLI
-/// arguments via [`clap`]. Additionally see [this section](#environment-variables-and-cli-arguments)
+/// arguments via `clap`. Additionally see [this section](#environment-variables-and-cli-arguments)
 /// in the docs for a full list of environment variables and CLI arguments used by the pre-configured
 /// instance.
 ///
@@ -148,7 +146,7 @@ pub enum Error {
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Error> {
-///     // This can come from a Clap argument for example. The enabled builder
+///     // This can come from a `clap` argument for example. The enabled builder
 ///     // function below allows enabling/disabling certain subscribers during
 ///     // runtime.
 ///     let otlp_log_flag = false;

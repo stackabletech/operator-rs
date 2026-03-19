@@ -4,6 +4,51 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add support for specifying a `clientAuthenticationMethod` for OIDC ([#1178]).
+  This was originally done in [#1158] and had been reverted in [#1170].
+
+[#1178]: https://github.com/stackabletech/operator-rs/pull/1178
+
+## [0.108.0] - 2026-03-10
+
+### Removed
+
+- Reverted support for specifying a `clientAuthenticationMethod` for OIDC ([#1170]).
+  It can be added back after the SDP 26.3.0 release.
+
+[#1170]: https://github.com/stackabletech/operator-rs/pull/1170
+
+## [0.107.1] - 2026-03-10
+
+### Added
+
+- Add CRD established signal/helper ([#1167]).
+
+## Changed
+
+- Demote `kube_runtime::controller::Error::QueueError` to warning ([#1168]).
+
+[#1167]: https://github.com/stackabletech/operator-rs/pull/1167
+[#1168]: https://github.com/stackabletech/operator-rs/pull/1168
+
+## [0.107.0] - 2026-03-09
+
+### Added
+
+- Add support for specifying a `clientAuthenticationMethod` for OIDC ([#1158]).
+- Added two new crate features: `crds` and `kube-ws` ([#1162]).
+
+### Fixed
+
+- BREAKING: Fix compilation failures when not enabling default features ([#1162]).
+  This is achieved by removing the `clap`, `telemetry` and `versioned` features, which were previously enabled by default.
+  They have been removed as the stackable-operator code actually always requires them.
+
+[#1158]: https://github.com/stackabletech/operator-rs/pull/1158
+[#1162]: https://github.com/stackabletech/operator-rs/pull/1162
+
 ## [0.106.2] - 2026-02-26
 
 ### Changed

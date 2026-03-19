@@ -55,18 +55,115 @@ repos:
         pass_filenames: false
         files: \.rs$|Cargo\.(toml|lock)
 
-      - id: cargo-test-no-default-features
-        name: cargo-test-no-default-features
+      - id: cargo-doc-no-default-features
+        name: cargo-doc-no-default-features
         language: system
-        entry: cargo test --no-default-features --workspace
+        entry: cargo doc --no-deps --no-default-features --document-private-items
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: \.rs$|Cargo\.(toml|lock)
+
+      - id: cargo-doc-all-features
+        name: cargo-doc-all-features
+        language: system
+        entry: cargo doc --no-deps --all-features --document-private-items
+        stages: [pre-commit, pre-merge-commit]
+        pass_filenames: false
+        files: \.rs$|Cargo\.(toml|lock)
+
+      # As long as we run tests for every contained crate (to test turning off all features),
+      # we don't need to re-run them here
+      # - id: cargo-test
+      #   name: cargo-test
+      #   language: system
+      #   entry: cargo test --workspace
+      #   stages: [pre-commit, pre-merge-commit]
+      #   pass_filenames: false
+      #   files: \.rs$|Cargo\.(toml|lock)
+      # - id: cargo-test-no-default-features
+      #   name: cargo-test-no-default-features
+      #   language: system
+      #   entry: cargo test --no-default-features --workspace
+      #   stages: [pre-commit, pre-merge-commit]
+      #   pass_filenames: false
+      #   files: \.rs$|Cargo\.(toml|lock)
 
       - id: cargo-test-all-features
         name: cargo-test-all-features
         language: system
         entry: cargo test --all-features --workspace
+        stages: [pre-commit, pre-merge-commit]
+        pass_filenames: false
+        files: \.rs$|Cargo\.(toml|lock)
+
+      - id: cargo-test-k8s-version-no-default-features
+        name: cargo-test-k8s-version-no-default-features
+        language: system
+        entry: cargo test --no-default-features --package k8s-version
+        stages: [pre-commit, pre-merge-commit]
+        pass_filenames: false
+        files: \.rs$|Cargo\.(toml|lock)
+
+      - id: cargo-test-stackable-certs-no-default-features
+        name: cargo-test-stackable-certs-no-default-features
+        language: system
+        entry: cargo test --no-default-features --package stackable-certs
+        stages: [pre-commit, pre-merge-commit]
+        pass_filenames: false
+        files: \.rs$|Cargo\.(toml|lock)
+
+      - id: cargo-test-stackable-operator-no-default-features
+        name: cargo-test-stackable-operator-no-default-features
+        language: system
+        entry: cargo test --no-default-features --package stackable-operator
+        stages: [pre-commit, pre-merge-commit]
+        pass_filenames: false
+        files: \.rs$|Cargo\.(toml|lock)
+
+      - id: cargo-test-stackable-operator-derive-no-default-features
+        name: cargo-test-stackable-operator-derive-no-default-features
+        language: system
+        entry: cargo test --no-default-features --package stackable-operator-derive
+        stages: [pre-commit, pre-merge-commit]
+        pass_filenames: false
+        files: \.rs$|Cargo\.(toml|lock)
+
+      - id: cargo-test-stackable-shared-no-default-features
+        name: cargo-test-stackable-shared-no-default-features
+        language: system
+        entry: cargo test --no-default-features --package stackable-shared
+        stages: [pre-commit, pre-merge-commit]
+        pass_filenames: false
+        files: \.rs$|Cargo\.(toml|lock)
+
+      - id: cargo-test-stackable-telemetry-no-default-features
+        name: cargo-test-stackable-telemetry-no-default-features
+        language: system
+        entry: cargo test --no-default-features --package stackable-telemetry
+        stages: [pre-commit, pre-merge-commit]
+        pass_filenames: false
+        files: \.rs$|Cargo\.(toml|lock)
+
+      - id: cargo-test-stackable-versioned-no-default-features
+        name: cargo-test-stackable-versioned-no-default-features
+        language: system
+        entry: cargo test --no-default-features --package stackable-versioned
+        stages: [pre-commit, pre-merge-commit]
+        pass_filenames: false
+        files: \.rs$|Cargo\.(toml|lock)
+
+      - id: cargo-test-stackable-versioned-macros-no-default-features
+        name: cargo-test-stackable-versioned-macros-no-default-features
+        language: system
+        entry: cargo test --no-default-features --package stackable-versioned-macros
+        stages: [pre-commit, pre-merge-commit]
+        pass_filenames: false
+        files: \.rs$|Cargo\.(toml|lock)
+
+      - id: cargo-test-stackable-webhook-no-default-features
+        name: cargo-test-stackable-webhook-no-default-features
+        language: system
+        entry: cargo test --no-default-features --package stackable-webhook
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: \.rs$|Cargo\.(toml|lock)

@@ -15,6 +15,7 @@ arc-swap.workspace = true
 async-trait.workspace = true
 axum.workspace = true
 futures-util.workspace = true
+humantime.workspace = true
 hyper-util.workspace = true
 hyper.workspace = true
 k8s-openapi.workspace = true
@@ -35,7 +36,7 @@ x509-cert.workspace = true
 
 [dev-dependencies]
 # Only needed for doc tests
-stackable-operator = { path = "../stackable-operator" }
+stackable-operator = { path = "../stackable-operator", features = ["crds"] }
 clap.workspace = true
 
 [lints]
