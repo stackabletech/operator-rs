@@ -121,6 +121,8 @@ enum NextStage {
 /// - `selector`: Pod label selector string for this role group (e.g.
 ///   `"app=myproduct,roleGroup=default"`). Written into `status.selector` for HPA
 ///   pod counting. Must be stable across reconcile calls.
+/// - `role_group_name`: The name of the role group being scaled (e.g. `"default"`).
+///   Passed to hooks via [`ScalingContext`].
 ///
 /// # Errors
 ///
@@ -132,6 +134,7 @@ pub async fn reconcile_scaler<H>(
     client: &Client,
     statefulset_stable: bool,
     selector: &str,
+    role_group_name: &str,
 ) -> Result<ScalingResult, Error>
 where
     H: ScalingHooks,
@@ -214,7 +217,7 @@ where
     let ctx = ScalingContext {
         client,
         namespace,
-        role_group_name: &scaler.spec.role_group,
+        role_group_name,
         current_replicas: direction_base,
         desired_replicas,
         direction: ScalingDirection::from_replicas(direction_base, desired_replicas),

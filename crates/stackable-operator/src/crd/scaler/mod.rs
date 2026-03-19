@@ -164,17 +164,6 @@ pub struct StackableScalerStatus {
     pub current_state: Option<ScalerState>,
 }
 
-/// A type-erased cluster reference used in StackableScaler.
-/// Does not carry apiVersion — CRD versioning handles conversions.
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UnknownClusterRef {
-    /// The Kubernetes kind of the target cluster resource (e.g. "NifiCluster").
-    pub kind: String,
-    /// The name of the target cluster resource within the same namespace.
-    pub name: String,
-}
-
 #[versioned(
     version(name = "v1alpha1"),
     crates(
@@ -203,12 +192,6 @@ pub mod versioned {
         /// Desired replica count. Written by the HPA via the /scale subresource.
         /// Only takes effect when the referenced roleGroup has `replicas: 0`.
         pub replicas: i32,
-        /// Reference to the Stackable cluster resource this scaler manages.
-        pub cluster_ref: UnknownClusterRef,
-        /// The role within the cluster (e.g. `nodes`).
-        pub role: String,
-        /// The role group within the role (e.g. `default`).
-        pub role_group: String,
     }
 }
 
@@ -295,15 +278,7 @@ mod tests {
 
     #[test]
     fn spec_round_trips() {
-        let spec = v1alpha1::StackableScalerSpec {
-            replicas: 3,
-            cluster_ref: UnknownClusterRef {
-                kind: "NifiCluster".to_string(),
-                name: "my-nifi".to_string(),
-            },
-            role: "nodes".to_string(),
-            role_group: "default".to_string(),
-        };
+        let spec = v1alpha1::StackableScalerSpec { replicas: 3 };
         let json = serde_json::to_string(&spec).unwrap();
         let back: v1alpha1::StackableScalerSpec = serde_json::from_str(&json).unwrap();
         assert_eq!(spec, back);
@@ -321,18 +296,8 @@ mod tests {
 
     #[test]
     fn resolve_replicas_zero_with_scaler_uses_status() {
-        let mut scaler = v1alpha1::StackableScaler::new(
-            "test",
-            v1alpha1::StackableScalerSpec {
-                replicas: 5,
-                cluster_ref: UnknownClusterRef {
-                    kind: "NifiCluster".into(),
-                    name: "n".into(),
-                },
-                role: "nodes".into(),
-                role_group: "default".into(),
-            },
-        );
+        let mut scaler =
+            v1alpha1::StackableScaler::new("test", v1alpha1::StackableScalerSpec { replicas: 5 });
         scaler.status = Some(StackableScalerStatus {
             replicas: 3,
             ..Default::default()
@@ -344,18 +309,8 @@ mod tests {
     fn resolve_replicas_nonzero_with_scaler_ignores_scaler() {
         // role_group.replicas != 0 → scaler is not active (validation webhook should prevent this,
         // but we defensively fall back to the role group value)
-        let mut scaler = v1alpha1::StackableScaler::new(
-            "test",
-            v1alpha1::StackableScalerSpec {
-                replicas: 5,
-                cluster_ref: UnknownClusterRef {
-                    kind: "NifiCluster".into(),
-                    name: "n".into(),
-                },
-                role: "nodes".into(),
-                role_group: "default".into(),
-            },
-        );
+        let mut scaler =
+            v1alpha1::StackableScaler::new("test", v1alpha1::StackableScalerSpec { replicas: 5 });
         scaler.status = Some(StackableScalerStatus {
             replicas: 4,
             ..Default::default()
@@ -366,18 +321,8 @@ mod tests {
     #[test]
     fn resolve_replicas_zero_scaler_no_status_returns_none() {
         // Scaler exists but has no status yet (just created) → return None (don't set replicas)
-        let scaler = v1alpha1::StackableScaler::new(
-            "test",
-            v1alpha1::StackableScalerSpec {
-                replicas: 5,
-                cluster_ref: UnknownClusterRef {
-                    kind: "NifiCluster".into(),
-                    name: "n".into(),
-                },
-                role: "nodes".into(),
-                role_group: "default".into(),
-            },
-        );
+        let scaler =
+            v1alpha1::StackableScaler::new("test", v1alpha1::StackableScalerSpec { replicas: 5 });
         assert_eq!(resolve_replicas(Some(0), Some(&scaler)), None);
     }
 }
