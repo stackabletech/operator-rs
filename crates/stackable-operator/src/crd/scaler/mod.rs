@@ -29,6 +29,7 @@ use crate::versioned::versioned;
 pub mod hooks;
 pub mod job_tracker;
 pub mod reconciler;
+mod replicas_config;
 
 /// Annotation key that triggers recovery from the [`ScalerStage::Failed`] state.
 ///
@@ -246,6 +247,9 @@ pub use hooks::{
 };
 pub use job_tracker::{JobTracker, JobTrackerError, job_name};
 pub use reconciler::{Error as ReconcilerError, reconcile_scaler};
+pub use replicas_config::{
+    AutoConfig, HpaConfig, ReplicasConfig, ValidationError as ReplicasValidationError,
+};
 
 #[cfg(test)]
 mod tests {
