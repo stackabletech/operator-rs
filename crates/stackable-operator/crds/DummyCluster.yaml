@@ -82,6 +82,59 @@ spec:
                       and `stopped` will take no effect until `reconciliationPaused` is set to false or removed.
                     type: boolean
                 type: object
+              configOverrides:
+                default: {}
+                description: |-
+                  Typed config override strategies for Dummy config files.
+
+                  Demonstrates both JSON-formatted (`config.json`) and key-value-formatted
+                  (`dummy.properties`) config file overrides.
+                properties:
+                  config.json:
+                    description: Overrides for the `config.json` file.
+                    nullable: true
+                    oneOf:
+                    - required:
+                      - jsonMergePatch
+                    - required:
+                      - jsonPatches
+                    - required:
+                      - userProvided
+                    properties:
+                      jsonMergePatch:
+                        description: |-
+                          Can be set to arbitrary YAML content, which is converted to JSON and used as
+                          [RFC 7396](https://datatracker.ietf.org/doc/html/rfc7396) JSON merge patch.
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      jsonPatches:
+                        description: |-
+                          List of [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON patches.
+
+                          Can be used when more flexibility is needed, e.g. to only modify elements
+                          in a list based on a condition.
+
+                          A patch looks something like
+
+                          `{"op": "test", "path": "/0/name", "value": "Andrew"}`
+
+                          or
+
+                          `{"op": "add", "path": "/0/happy", "value": true}`
+                        items:
+                          type: string
+                        type: array
+                      userProvided:
+                        description: Override the entire config file with the specified String.
+                        type: string
+                    type: object
+                  dummy.properties:
+                    additionalProperties:
+                      type: string
+                    description: Overrides for the `dummy.properties` file.
+                    nullable: true
+                    type: object
+                type: object
               domainName:
                 description: A validated domain name type conforming to RFC 1123, so e.g. not an IP address
                 type: string
@@ -164,56 +217,9 @@ spec:
                 type: object
               hostName:
                 type: string
-              jsonConfigOverrides:
-                nullable: true
-                oneOf:
-                - required:
-                  - jsonMergePatch
-                - required:
-                  - jsonPatches
-                - required:
-                  - userProvided
-                properties:
-                  jsonMergePatch:
-                    description: |-
-                      Can be set to arbitrary YAML content, which is converted to JSON and used as
-                      [RFC 7396](https://datatracker.ietf.org/doc/html/rfc7396) JSON merge patch.
-                    type: object
-                    x-kubernetes-preserve-unknown-fields: true
-                  jsonPatches:
-                    description: |-
-                      List of [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON patches.
-
-                      Can be used when more flexibility is needed, e.g. to only modify elements
-                      in a list based on a condition.
-
-                      A patch looks something like
-
-                      `{"op": "test", "path": "/0/name", "value": "Andrew"}`
-
-                      or
-
-                      `{"op": "add", "path": "/0/happy", "value": true}`
-                    items:
-                      type: string
-                    type: array
-                  userProvided:
-                    description: Override the entire config file with the specified String.
-                    type: string
-                type: object
               kerberosRealmName:
                 description: A validated kerberos realm name type, for use in CRDs.
                 type: string
-              keyValueConfigOverrides:
-                additionalProperties:
-                  type: string
-                description: |-
-                  Flat key-value overrides for `*.properties`, Hadoop XML, etc.
-
-                  This is backwards-compatible with the existing flat key-value YAML format
-                  used by `HashMap<String, String>`.
-                nullable: true
-                type: object
               nodes:
                 description: |-
                   This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a key-value-map containing
@@ -760,16 +766,57 @@ spec:
                         type: object
                     type: object
                   configOverrides:
-                    additionalProperties:
-                      additionalProperties:
-                        type: string
-                      type: object
                     description: |-
                       The `configOverrides` can be used to configure properties in product config files
                       that are not exposed in the CRD. Read the
                       [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides)
                       and consult the operator specific usage guide documentation for details on the
                       available config files and settings for the specific product.
+                    properties:
+                      config.json:
+                        description: Overrides for the `config.json` file.
+                        nullable: true
+                        oneOf:
+                        - required:
+                          - jsonMergePatch
+                        - required:
+                          - jsonPatches
+                        - required:
+                          - userProvided
+                        properties:
+                          jsonMergePatch:
+                            description: |-
+                              Can be set to arbitrary YAML content, which is converted to JSON and used as
+                              [RFC 7396](https://datatracker.ietf.org/doc/html/rfc7396) JSON merge patch.
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                          jsonPatches:
+                            description: |-
+                              List of [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON patches.
+
+                              Can be used when more flexibility is needed, e.g. to only modify elements
+                              in a list based on a condition.
+
+                              A patch looks something like
+
+                              `{"op": "test", "path": "/0/name", "value": "Andrew"}`
+
+                              or
+
+                              `{"op": "add", "path": "/0/happy", "value": true}`
+                            items:
+                              type: string
+                            type: array
+                          userProvided:
+                            description: Override the entire config file with the specified String.
+                            type: string
+                        type: object
+                      dummy.properties:
+                        additionalProperties:
+                          type: string
+                        description: Overrides for the `dummy.properties` file.
+                        nullable: true
+                        type: object
                     type: object
                   envOverrides:
                     additionalProperties:
@@ -1371,16 +1418,57 @@ spec:
                               type: object
                           type: object
                         configOverrides:
-                          additionalProperties:
-                            additionalProperties:
-                              type: string
-                            type: object
                           description: |-
                             The `configOverrides` can be used to configure properties in product config files
                             that are not exposed in the CRD. Read the
                             [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides)
                             and consult the operator specific usage guide documentation for details on the
                             available config files and settings for the specific product.
+                          properties:
+                            config.json:
+                              description: Overrides for the `config.json` file.
+                              nullable: true
+                              oneOf:
+                              - required:
+                                - jsonMergePatch
+                              - required:
+                                - jsonPatches
+                              - required:
+                                - userProvided
+                              properties:
+                                jsonMergePatch:
+                                  description: |-
+                                    Can be set to arbitrary YAML content, which is converted to JSON and used as
+                                    [RFC 7396](https://datatracker.ietf.org/doc/html/rfc7396) JSON merge patch.
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                                jsonPatches:
+                                  description: |-
+                                    List of [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON patches.
+
+                                    Can be used when more flexibility is needed, e.g. to only modify elements
+                                    in a list based on a condition.
+
+                                    A patch looks something like
+
+                                    `{"op": "test", "path": "/0/name", "value": "Andrew"}`
+
+                                    or
+
+                                    `{"op": "add", "path": "/0/happy", "value": true}`
+                                  items:
+                                    type: string
+                                  type: array
+                                userProvided:
+                                  description: Override the entire config file with the specified String.
+                                  type: string
+                              type: object
+                            dummy.properties:
+                              additionalProperties:
+                                type: string
+                              description: Overrides for the `dummy.properties` file.
+                              nullable: true
+                              type: object
                           type: object
                         envOverrides:
                           additionalProperties:

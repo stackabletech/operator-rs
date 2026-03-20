@@ -5,7 +5,7 @@
 //! properties files). The types here are composed by each operator into its
 //! CRD-specific `configOverrides` struct.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -34,26 +34,11 @@ pub enum Error {
 /// Trait that allows the product config pipeline to extract flat key-value
 /// overrides from any `configOverrides` type.
 ///
-/// The default `HashMap<String, HashMap<String, String>>` implements this
-/// by looking up the file name and returning its entries. Typed override
-/// structs that have no key-value files can use the default implementation,
-/// which returns an empty map.
+/// Typed override structs that have no key-value files can use the default
+/// implementation, which returns an empty map.
 pub trait KeyValueOverridesProvider {
     fn get_key_value_overrides(&self, _file: &str) -> BTreeMap<String, Option<String>> {
         BTreeMap::new()
-    }
-}
-
-impl KeyValueOverridesProvider for HashMap<String, HashMap<String, String>> {
-    fn get_key_value_overrides(&self, file: &str) -> BTreeMap<String, Option<String>> {
-        self.get(file)
-            .map(|entries| {
-                entries
-                    .iter()
-                    .map(|(k, v)| (k.clone(), Some(v.clone())))
-                    .collect()
-            })
-            .unwrap_or_default()
     }
 }
 
@@ -147,8 +132,6 @@ impl JsonConfigOverrides {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use serde_json::json;
 
     use super::*;
@@ -290,20 +273,4 @@ mod tests {
         assert_eq!(result.get("key2"), Some(&Some("value2".to_owned())));
     }
 
-    #[test]
-    fn key_value_overrides_provider_for_hashmap() {
-        let mut config_overrides = HashMap::<String, HashMap<String, String>>::new();
-        let mut file_overrides = HashMap::new();
-        file_overrides.insert("key1".to_owned(), "value1".to_owned());
-        file_overrides.insert("key2".to_owned(), "value2".to_owned());
-        config_overrides.insert("myfile.properties".to_owned(), file_overrides);
-
-        let result = config_overrides.get_key_value_overrides("myfile.properties");
-        assert_eq!(result.len(), 2);
-        assert_eq!(result.get("key1"), Some(&Some("value1".to_owned())));
-        assert_eq!(result.get("key2"), Some(&Some("value2".to_owned())));
-
-        let empty = config_overrides.get_key_value_overrides("nonexistent.properties");
-        assert!(empty.is_empty());
-    }
 }

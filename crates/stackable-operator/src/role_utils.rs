@@ -124,11 +124,7 @@ pub enum Error {
 #[schemars(
     bound = "T: JsonSchema, ProductSpecificCommonConfig: JsonSchema, ConfigOverrides: Default + JsonSchema"
 )]
-pub struct CommonConfiguration<
-    T,
-    ProductSpecificCommonConfig,
-    ConfigOverrides = HashMap<String, HashMap<String, String>>,
-> {
+pub struct CommonConfiguration<T, ProductSpecificCommonConfig, ConfigOverrides> {
     #[serde(default)]
     // We can't depend on T being `Default`, since that trait is not object-safe
     // We only need to generate schemas for fully specified types, but schemars_derive
@@ -309,9 +305,9 @@ impl JvmArgumentOverrides {
 #[serde(rename_all = "camelCase")]
 pub struct Role<
     T,
+    ConfigOverrides,
     U = GenericRoleConfig,
     ProductSpecificCommonConfig = GenericProductSpecificCommonConfig,
-    ConfigOverrides = HashMap<String, HashMap<String, String>>,
 > where
     // Don't remove this trait bounds!!!
     // We don't know why, but if you remove either of them, the generated default value in the CRDs will
@@ -334,8 +330,8 @@ pub struct Role<
     pub role_groups: HashMap<String, RoleGroup<T, ProductSpecificCommonConfig, ConfigOverrides>>,
 }
 
-impl<T, U, ProductSpecificCommonConfig, ConfigOverrides>
-    Role<T, U, ProductSpecificCommonConfig, ConfigOverrides>
+impl<T, ConfigOverrides, U, ProductSpecificCommonConfig>
+    Role<T, ConfigOverrides, U, ProductSpecificCommonConfig>
 where
     T: Configuration + 'static,
     U: Default + JsonSchema + Serialize,
@@ -351,9 +347,9 @@ where
         self,
     ) -> Role<
         Box<dyn Configuration<Configurable = T::Configurable>>,
+        ConfigOverrides,
         U,
         ProductSpecificCommonConfig,
-        ConfigOverrides,
     > {
         Role {
             config: CommonConfiguration {
@@ -393,7 +389,7 @@ where
     }
 }
 
-impl<T, U, ConfigOverrides> Role<T, U, JavaCommonConfig, ConfigOverrides>
+impl<T, ConfigOverrides, U> Role<T, ConfigOverrides, U, JavaCommonConfig>
 where
     U: Default + JsonSchema + Serialize,
     ConfigOverrides: Default + JsonSchema + Serialize,
@@ -455,11 +451,7 @@ pub struct EmptyRoleConfig {}
 #[schemars(
     bound = "T: JsonSchema, ProductSpecificCommonConfig: JsonSchema, ConfigOverrides: Default + JsonSchema"
 )]
-pub struct RoleGroup<
-    T,
-    ProductSpecificCommonConfig,
-    ConfigOverrides = HashMap<String, HashMap<String, String>>,
-> {
+pub struct RoleGroup<T, ProductSpecificCommonConfig, ConfigOverrides> {
     #[serde(flatten)]
     pub config: CommonConfiguration<T, ProductSpecificCommonConfig, ConfigOverrides>,
     pub replicas: Option<u16>,
@@ -470,7 +462,7 @@ impl<T, ProductSpecificCommonConfig, ConfigOverrides>
 {
     pub fn validate_config<C, U>(
         &self,
-        role: &Role<T, U, ProductSpecificCommonConfig, ConfigOverrides>,
+        role: &Role<T, ConfigOverrides, U, ProductSpecificCommonConfig>,
         default_config: &T,
     ) -> Result<C, fragment::ValidationError>
     where
@@ -540,6 +532,9 @@ mod tests {
     use super::*;
     use crate::role_utils::JavaCommonConfig;
 
+    #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+    struct EmptyConfigOverrides {}
+
     #[test]
     fn test_merge_java_common_config() {
         // The operator generates some JVM arguments
@@ -556,7 +551,7 @@ mod tests {
             .into(),
         );
 
-        let entire_role: Role<(), GenericRoleConfig, JavaCommonConfig> =
+        let entire_role: Role<(), EmptyConfigOverrides, GenericRoleConfig, JavaCommonConfig> =
             serde_yaml::from_str("
                 # Let's say we want to set some additional HTTP Proxy and IPv4 settings
                 # And we don't like the garbage collector for some reason...
@@ -618,7 +613,7 @@ mod tests {
         let operator_generated =
             JvmArgumentOverrides::new_with_only_additions(["-Xms1m".to_owned()].into());
 
-        let entire_role: Role<(), GenericRoleConfig, JavaCommonConfig> = serde_yaml::from_str(
+        let entire_role: Role<(), EmptyConfigOverrides, GenericRoleConfig, JavaCommonConfig> = serde_yaml::from_str(
             "
                 jvmArgumentOverrides:
                   add:
