@@ -381,7 +381,7 @@ pub enum ResourceRequirementsType {
     // We currently don't use claims in our container builder and thus also
     // do not support setting and validating them. When we do support claims
     // in the future, we can just remove the comment to get support for it
-    // immediatly.
+    // immediately.
     // Claims,
 }
 
@@ -404,7 +404,7 @@ pub trait ResourceRequirementsExt {
         resource: &str,
     ) -> Result<()>;
 
-    /// Returns wether the implementor has a [`ResourceRequirementsType`] set
+    /// Returns whether the implementor has a [`ResourceRequirementsType`] set
     /// for a `resource`.
     fn has_resource_requirement(&self, rr_type: ResourceRequirementsType, resource: &str) -> bool {
         self.check_resource_requirement(rr_type, resource).is_ok()
@@ -424,7 +424,7 @@ pub trait ResourceRequirementsExt {
         Ok(())
     }
 
-    /// Returns wether the implementor has all [`ResourceRequirementsType`]s set
+    /// Returns whether the implementor has all [`ResourceRequirementsType`]s set
     /// for a `resource`.
     fn has_resource_requirements(
         &self,

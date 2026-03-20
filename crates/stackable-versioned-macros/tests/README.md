@@ -13,10 +13,10 @@ feature to be enabled. These tests can be run with `cargo test --all-features`.
 > [!NOTE]
 > Please have `rust-src` installed, e.g. using `rustup component add rust-src`.
 >
-> Also see the compile-fail tests, described [here](#compile-fail-testing).
+> Also see the [compile-fail tests](#compile-fail-testing).
 
-Snapshot testing is done using the [insta] crate. It provides a [CLI tool][insta-cli] calle
- `cargo-insta` and a [VS Code extension][insta-ext].
+Snapshot testing is done using the [insta] crate. It provides a [CLI tool][insta-cli] called
+`cargo-insta` and a [VS Code extension][insta-ext].
 
 Test inputs and snapshots of the expected output are located in the `inputs` and `snapshots` folder
 respectively. Each Rust attribute macro expects two inputs as a token stream:
@@ -81,13 +81,13 @@ accepted (ie: no `.new` files remaining), check in the files.
 ## Compile-Fail Testing
 
 > [!NOTE]
-> Also see the snapshot tests, described [here](#snapshot-testing).
+> Also see the [snapshot tests](#snapshot-testing).
 
 This type of testing is part of UI testing. These tests assert two things: First, some code should
 compile without errors and secondly other code should produce the expected rustc (compiler) error
 message. For this type of testing, we use the [`trybuild`][trybuild] crate.
 
-Further information about the workflow are described [here][workflow].
+Further information about the workflow is described in the [trybuild workflow docs][workflow].
 
 [rust-ref]: https://doc.rust-lang.org/reference/procedural-macros.html#attribute-macros
 [workflow]: https://docs.rs/trybuild/latest/trybuild/#workflow

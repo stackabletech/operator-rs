@@ -45,7 +45,7 @@ pub enum Error {
 pub struct PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, PodDisruptionBudgetConstraint> {
     metadata: ObjectMeta,
     selector: LabelSelector,
-    /// Tracks wether either `maxUnavailable` or `minAvailable` is set.
+    /// Tracks whether either `maxUnavailable` or `minAvailable` is set.
     constraint: Option<PodDisruptionBudgetConstraint>,
 }
 

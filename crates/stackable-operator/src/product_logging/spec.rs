@@ -69,7 +69,7 @@ pub struct Logging<T>
 where
     T: Clone + Display + Ord,
 {
-    /// Wether or not to deploy a container with the Vector log agent.
+    /// Whether or not to deploy a container with the Vector log agent.
     pub enable_vector_agent: bool,
 
     /// Log configuration per container.

@@ -62,25 +62,25 @@ pub struct CertificateResolver {
     /// Used to detect clock drift between monotonic and wall-clock time.
     current_not_after: ArcSwap<SystemTime>,
 
-    subject_alterative_dns_names: Arc<Vec<String>>,
+    subject_alternative_dns_names: Arc<Vec<String>>,
 
     certificate_tx: mpsc::Sender<Certificate>,
 }
 
 impl CertificateResolver {
     pub async fn new(
-        subject_alterative_dns_names: Vec<String>,
+        subject_alternative_dns_names: Vec<String>,
         certificate_tx: mpsc::Sender<Certificate>,
     ) -> Result<Self> {
-        let subject_alterative_dns_names = Arc::new(subject_alterative_dns_names);
+        let subject_alternative_dns_names = Arc::new(subject_alternative_dns_names);
         let (certified_key, not_after) = Self::generate_new_certificate_inner(
-            subject_alterative_dns_names.clone(),
+            subject_alternative_dns_names.clone(),
             &certificate_tx,
         )
         .await?;
 
         Ok(Self {
-            subject_alterative_dns_names,
+            subject_alternative_dns_names,
             current_certified_key: ArcSwap::new(certified_key),
             current_not_after: ArcSwap::new(Arc::new(not_after)),
             certificate_tx,
@@ -111,7 +111,7 @@ impl CertificateResolver {
             .unwrap_or(SystemTime::UNIX_EPOCH);
 
         tracing::debug!(
-            x509.subject_alterative_names = ?self.subject_alterative_dns_names,
+            x509.subject_alternative_names = ?self.subject_alternative_dns_names,
             x509.not_after = %humantime::format_rfc3339(not_after),
             deadline = %humantime::format_rfc3339(deadline),
             "checking if certificate needs rotation"
@@ -121,8 +121,8 @@ impl CertificateResolver {
     }
 
     async fn generate_new_certificate(&self) -> Result<(Arc<CertifiedKey>, SystemTime)> {
-        let subject_alterative_dns_names = self.subject_alterative_dns_names.clone();
-        Self::generate_new_certificate_inner(subject_alterative_dns_names, &self.certificate_tx)
+        let subject_alternative_dns_names = self.subject_alternative_dns_names.clone();
+        Self::generate_new_certificate_inner(subject_alternative_dns_names, &self.certificate_tx)
             .await
     }
 
@@ -134,7 +134,7 @@ impl CertificateResolver {
     /// This needs some changes in stackable-certs though.
     /// See [the relevant decision](https://github.com/stackabletech/decisions/issues/56)
     async fn generate_new_certificate_inner(
-        subject_alterative_dns_names: Arc<Vec<String>>,
+        subject_alternative_dns_names: Arc<Vec<String>>,
         certificate_tx: &mpsc::Sender<Certificate>,
     ) -> Result<(Arc<CertifiedKey>, SystemTime)> {
         // The certificate generations can take a while, so we use `spawn_blocking`
@@ -151,7 +151,7 @@ impl CertificateResolver {
                 .generate_ecdsa_leaf_certificate(
                     "Leaf",
                     "webhook",
-                    subject_alterative_dns_names.iter().map(|san| san.as_str()),
+                    subject_alternative_dns_names.iter().map(|san| san.as_str()),
                     WEBHOOK_CERTIFICATE_LIFETIME,
                 )
                 .context(GenerateLeafCertificateSnafu)?;

@@ -266,7 +266,7 @@ pub enum KeyNameError {
     #[snafu(display("name segment of key cannot be empty"))]
     NameEmpty,
 
-    /// Indicates that the key name sgement exceeds the maximum length of 63
+    /// Indicates that the key name segment exceeds the maximum length of 63
     /// ASCII characters. It additionally reports how many characters were
     /// encountered during parsing / validation.
     #[snafu(display(
@@ -285,7 +285,7 @@ pub enum KeyNameError {
     NameInvalid,
 }
 
-/// A validated name segement of a key. This part of the key is required.
+/// A validated name segment of a key. This part of the key is required.
 ///
 /// Instances of this struct are always valid. It also implements [`Deref`],
 /// which enables read-only access to the inner value (a [`String`]). It,

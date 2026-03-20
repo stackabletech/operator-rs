@@ -1501,7 +1501,7 @@ Only rust documentation was changed.
 - status::condition module to compute the cluster resource status ([#571]).
 - Helper function to build RBAC resources ([#572]).
 - Add `ClusterResourceApplyStrategy` to `ClusterResource` ([#573]).
-- Add `ClusterOperation` common struct with `reconcilation_paused` and `stopped` flags ([#573]).
+- Add `ClusterOperation` common struct with `reconciliation_paused` and `stopped` flags ([#573]).
 
 [#571]: https://github.com/stackabletech/operator-rs/pull/571
 [#572]: https://github.com/stackabletech/operator-rs/pull/572
@@ -1846,7 +1846,7 @@ This is a rerelease of 0.25.1 which some last-minute incompatible API changes to
 
 ### Changed
 
-- BREAKING: Removed `commons::s3::S3ConnectionImplementation`. `commons::s3::InlinedBucketSpec::endpoint()` doesn't take arguments since the protocol decision is now based on the existance of TLS configuration ([#390]).
+- BREAKING: Removed `commons::s3::S3ConnectionImplementation`. `commons::s3::InlinedBucketSpec::endpoint()` doesn't take arguments since the protocol decision is now based on the existence of TLS configuration ([#390]).
 - BREAKING: Changes to resource requirements structs to enable deep merging ([#392])
   - Changed fields in `Resources` to no longer be optional
   - Changed atomic fields in `MemoryLimits`, `JvmHeapLimits`, `CpuLimits` and `PvcConfig` to be optional
@@ -1882,7 +1882,7 @@ This is a rerelease of 0.25.1 which some last-minute incompatible API changes to
 ### Added
 
 - Export logs to Jaeger ([#360]).
-- Added common datastructures shared between all operators like `Tls` oder `AuthenticationClass` ([#366]).
+- Added common datastructures shared between all operators like `Tls` or `AuthenticationClass` ([#366]).
 - Added helpers for env variables from Secrets or ConfigMaps ([#370]).
 
 ### Changed
@@ -2096,7 +2096,7 @@ This is a rerelease of 0.25.1 which some last-minute incompatible API changes to
 ### Changed
 
 - BREAKING: In builder: `add_stackable_agent_tolerations` to `add_tolerations` ([#255]).
-- Generic `VALUE` paramters to `impl Into<_>` arguments for consistency ([#253]).
+- Generic `VALUE` parameters to `impl Into<_>` arguments for consistency ([#253]).
 
 ### Removed
 
