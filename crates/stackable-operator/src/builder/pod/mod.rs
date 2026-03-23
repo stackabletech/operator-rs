@@ -668,7 +668,7 @@ mod tests {
             .build()
     }
 
-    /// A [`PodBuilder`] that already contains the minum setup to build a Pod (name and container).
+    /// A [`PodBuilder`] that already contains the minimum setup to build a Pod (name and container).
     #[fixture]
     fn pod_builder_with_name_and_container(dummy_container: Container) -> PodBuilder {
         let mut builder = PodBuilder::new();

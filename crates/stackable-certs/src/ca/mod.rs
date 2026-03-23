@@ -163,7 +163,7 @@ where
 }
 
 /// A certificate authority (CA) which is used to generate and sign
-/// intermidiate or leaf certificates.
+/// intermediate or leaf certificates.
 #[derive(Debug)]
 pub struct CertificateAuthority<S>
 where
@@ -298,7 +298,7 @@ where
         key_pair: T,
         name: &str,
         scope: &str,
-        subject_alterative_dns_names: impl IntoIterator<Item = &'a str> + Debug,
+        subject_alternative_dns_names: impl IntoIterator<Item = &'a str> + Debug,
         validity: Duration,
     ) -> Result<CertificatePair<T>>
     where
@@ -353,7 +353,7 @@ where
             ]))
             .context(AddCertificateExtensionSnafu)?;
 
-        let sans = subject_alterative_dns_names
+        let sans = subject_alternative_dns_names
             .into_iter()
             .map(|dns_name| {
                 let ia5_dns_name =
@@ -385,11 +385,11 @@ where
         &mut self,
         name: &str,
         scope: &str,
-        subject_alterative_dns_names: impl IntoIterator<Item = &'a str> + Debug,
+        subject_alternative_dns_names: impl IntoIterator<Item = &'a str> + Debug,
         validity: Duration,
     ) -> Result<CertificatePair<rsa::SigningKey>> {
         let key = rsa::SigningKey::new().context(GenerateRsaSigningKeySnafu)?;
-        self.generate_leaf_certificate(key, name, scope, subject_alterative_dns_names, validity)
+        self.generate_leaf_certificate(key, name, scope, subject_alternative_dns_names, validity)
     }
 
     /// Generates an ECDSAasync -based leaf certificate which is signed by this CA.
@@ -401,11 +401,11 @@ where
         &mut self,
         name: &str,
         scope: &str,
-        subject_alterative_dns_names: impl IntoIterator<Item = &'a str> + Debug,
+        subject_alternative_dns_names: impl IntoIterator<Item = &'a str> + Debug,
         validity: Duration,
     ) -> Result<CertificatePair<ecdsa::SigningKey>> {
         let key = ecdsa::SigningKey::new().context(GenerateEcdsaSigningKeySnafu)?;
-        self.generate_leaf_certificate(key, name, scope, subject_alterative_dns_names, validity)
+        self.generate_leaf_certificate(key, name, scope, subject_alternative_dns_names, validity)
     }
 
     /// Create a [`CertificateAuthority`] from a Kubernetes [`Secret`].

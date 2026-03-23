@@ -222,8 +222,8 @@ mod test {
     #[case(4, (Some(&"test3"), None))]
     fn neighbors(#[case] key: i32, #[case] expected: (Option<&&str>, Option<&&str>)) {
         let map = BTreeMap::from([(1, "test1"), (3, "test3")]);
-        let neigbors = map.get_neighbors(&key);
+        let neighbors = map.get_neighbors(&key);
 
-        assert_eq!(neigbors, expected);
+        assert_eq!(neighbors, expected);
     }
 }

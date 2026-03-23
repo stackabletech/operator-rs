@@ -477,7 +477,7 @@ mod tests {
 
         let extra_env_vars = env_vars_from([
             ("VAR1", "value1"),
-            ("GITSYNC_USERNAME", "overriden-username"),
+            ("GITSYNC_USERNAME", "overridden-username"),
         ]);
 
         let extra_volume_mounts = [VolumeMount {
@@ -545,7 +545,7 @@ command:
 - -c
 env:
 - name: GITSYNC_USERNAME
-  value: overriden-username
+  value: overridden-username
 - name: VAR1
   value: value1
 image: oci.stackable.tech/sdp/product:latest
@@ -619,7 +619,7 @@ env:
       key: password
       name: git-credentials
 - name: GITSYNC_USERNAME
-  value: overriden-username
+  value: overridden-username
 - name: VAR1
   value: value1
 image: oci.stackable.tech/sdp/product:latest
@@ -688,7 +688,7 @@ command:
 - -c
 env:
 - name: GITSYNC_USERNAME
-  value: overriden-username
+  value: overridden-username
 - name: VAR1
   value: value1
 image: oci.stackable.tech/sdp/product:latest
@@ -727,7 +727,7 @@ command:
 - -c
 env:
 - name: GITSYNC_USERNAME
-  value: overriden-username
+  value: overridden-username
 - name: VAR1
   value: value1
 image: oci.stackable.tech/sdp/product:latest
@@ -769,7 +769,7 @@ env:
       key: password
       name: git-credentials
 - name: GITSYNC_USERNAME
-  value: overriden-username
+  value: overridden-username
 - name: VAR1
   value: value1
 image: oci.stackable.tech/sdp/product:latest
@@ -806,7 +806,7 @@ command:
 - -c
 env:
 - name: GITSYNC_USERNAME
-  value: overriden-username
+  value: overridden-username
 - name: VAR1
   value: value1
 image: oci.stackable.tech/sdp/product:latest

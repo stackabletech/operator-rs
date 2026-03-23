@@ -5,7 +5,7 @@
 //!
 //! * [webhooks::ConversionWebhook]
 //! * [webhooks::MutatingWebhook]
-//! * In the future validating webhooks wil be added
+//! * In the future validating webhooks will be added
 //!
 //! This library is fully compatible with the  [`tracing`] crate and emits debug level tracing data.
 //!
