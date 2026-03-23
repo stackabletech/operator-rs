@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::SystemTime};
 
 use arc_swap::ArcSwap;
 use snafu::{OptionExt, ResultExt, Snafu};
@@ -57,46 +57,76 @@ pub struct CertificateResolver {
     /// Using a [`ArcSwap`] (over e.g. [`tokio::sync::RwLock`]), so that we can easily
     /// (and performant) bridge between async write and sync read.
     current_certified_key: ArcSwap<CertifiedKey>,
-    subject_alterative_dns_names: Arc<Vec<String>>,
+
+    /// The wall-clock expiry time (`not_after`) of the current certificate.
+    /// Used to detect clock drift between monotonic and wall-clock time.
+    current_not_after: ArcSwap<SystemTime>,
+
+    subject_alternative_dns_names: Arc<Vec<String>>,
 
     certificate_tx: mpsc::Sender<Certificate>,
 }
 
 impl CertificateResolver {
     pub async fn new(
-        subject_alterative_dns_names: Vec<String>,
+        subject_alternative_dns_names: Vec<String>,
         certificate_tx: mpsc::Sender<Certificate>,
     ) -> Result<Self> {
-        let subject_alterative_dns_names = Arc::new(subject_alterative_dns_names);
-        let certified_key = Self::generate_new_certificate_inner(
-            subject_alterative_dns_names.clone(),
+        let subject_alternative_dns_names = Arc::new(subject_alternative_dns_names);
+        let (certified_key, not_after) = Self::generate_new_certificate_inner(
+            subject_alternative_dns_names.clone(),
             &certificate_tx,
         )
         .await?;
 
         Ok(Self {
-            subject_alterative_dns_names,
+            subject_alternative_dns_names,
             current_certified_key: ArcSwap::new(certified_key),
+            current_not_after: ArcSwap::new(Arc::new(not_after)),
             certificate_tx,
         })
     }
 
     pub async fn rotate_certificate(&self) -> Result<()> {
-        let certified_key = self.generate_new_certificate().await?;
+        let (certified_key, not_after) = self.generate_new_certificate().await?;
 
         // TODO: Sign the new cert somehow with the old cert. See https://github.com/stackabletech/decisions/issues/56
         self.current_certified_key.store(certified_key);
+        self.current_not_after.store(Arc::new(not_after));
 
         Ok(())
     }
 
-    async fn generate_new_certificate(&self) -> Result<Arc<CertifiedKey>> {
-        let subject_alterative_dns_names = self.subject_alterative_dns_names.clone();
-        Self::generate_new_certificate_inner(subject_alterative_dns_names, &self.certificate_tx)
+    /// Returns `true` if the current certificate is expired or will expire
+    /// within the given `buffer` duration according to wall-clock time.
+    ///
+    /// This catches cases where the monotonic timer (used by `tokio::time`)
+    /// has drifted from wall-clock time, e.g. due to system hibernation.
+    pub fn needs_rotation(&self, buffer: std::time::Duration) -> bool {
+        let not_after = **self.current_not_after.load();
+        // If subtraction underflows (buffer > time since epoch), fall back to
+        // UNIX_EPOCH so that the comparison always triggers rotation.
+        let deadline = not_after
+            .checked_sub(buffer)
+            .unwrap_or(SystemTime::UNIX_EPOCH);
+
+        tracing::debug!(
+            x509.subject_alternative_names = ?self.subject_alternative_dns_names,
+            x509.not_after = %humantime::format_rfc3339(not_after),
+            deadline = %humantime::format_rfc3339(deadline),
+            "checking if certificate needs rotation"
+        );
+
+        SystemTime::now() >= deadline
+    }
+
+    async fn generate_new_certificate(&self) -> Result<(Arc<CertifiedKey>, SystemTime)> {
+        let subject_alternative_dns_names = self.subject_alternative_dns_names.clone();
+        Self::generate_new_certificate_inner(subject_alternative_dns_names, &self.certificate_tx)
             .await
     }
 
-    /// Creates a new certificate and returns the certified key.
+    /// Creates a new certificate and returns the certified key as well as `notAfter` timestamp.
     ///
     /// The certificate is send to the passed `cert_tx`.
     ///
@@ -104,9 +134,9 @@ impl CertificateResolver {
     /// This needs some changes in stackable-certs though.
     /// See [the relevant decision](https://github.com/stackabletech/decisions/issues/56)
     async fn generate_new_certificate_inner(
-        subject_alterative_dns_names: Arc<Vec<String>>,
+        subject_alternative_dns_names: Arc<Vec<String>>,
         certificate_tx: &mpsc::Sender<Certificate>,
-    ) -> Result<Arc<CertifiedKey>> {
+    ) -> Result<(Arc<CertifiedKey>, SystemTime)> {
         // The certificate generations can take a while, so we use `spawn_blocking`
         let (cert, certified_key) = tokio::task::spawn_blocking(move || {
             let tls_provider =
@@ -121,7 +151,7 @@ impl CertificateResolver {
                 .generate_ecdsa_leaf_certificate(
                     "Leaf",
                     "webhook",
-                    subject_alterative_dns_names.iter().map(|san| san.as_str()),
+                    subject_alternative_dns_names.iter().map(|san| san.as_str()),
                     WEBHOOK_CERTIFICATE_LIFETIME,
                 )
                 .context(GenerateLeafCertificateSnafu)?;
@@ -144,12 +174,14 @@ impl CertificateResolver {
         .await
         .context(TokioSpawnBlockingSnafu)??;
 
+        let not_after = cert.tbs_certificate.validity.not_after.to_system_time();
+
         certificate_tx
             .send(cert)
             .await
             .map_err(|_err| CertificateResolverError::SendCertificateToChannel)?;
 
-        Ok(certified_key)
+        Ok((certified_key, not_after))
     }
 }
 

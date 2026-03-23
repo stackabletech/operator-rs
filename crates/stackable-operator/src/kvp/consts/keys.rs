@@ -20,7 +20,7 @@ pub const K8S_APP_INSTANCE_KEY: &str = concatcp!(K8S_APP_KEY_PREFIX, "instance")
 pub const K8S_APP_VERSION_KEY: &str = concatcp!(K8S_APP_KEY_PREFIX, "version");
 
 /// The well-known Kubernetes app component key `app.kubernetes.io/component`.
-/// It is used to specify the compoent within the architecture, e.g. `database`.
+/// It is used to specify the component within the architecture, e.g. `database`.
 pub const K8S_APP_COMPONENT_KEY: &str = concatcp!(K8S_APP_KEY_PREFIX, "component");
 
 /// The well-known Kubernetes app part-of key `app.kubernetes.io/part-of`. It is
@@ -33,7 +33,7 @@ pub const K8S_APP_PART_OF_KEY: &str = concatcp!(K8S_APP_KEY_PREFIX, "part-of");
 /// an application, e.g. `helm`.
 pub const K8S_APP_MANAGED_BY_KEY: &str = concatcp!(K8S_APP_KEY_PREFIX, "managed-by");
 
-/// The well-kown Kubernetes app role-group key `app.kubernetes.io/role-group`.
+/// The well-known Kubernetes app role-group key `app.kubernetes.io/role-group`.
 /// It is used to specify to which role group this application belongs to, e.g.
 /// `worker`.
 pub const K8S_APP_ROLE_GROUP_KEY: &str = concatcp!(K8S_APP_KEY_PREFIX, "role-group");

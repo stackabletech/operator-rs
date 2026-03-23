@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Check for certificate rotation every 5 minutes to prevent expiry due to monotonic and wall clock divergence ([#1175]).
+
+[#1175]: https://github.com/stackabletech/operator-rs/pull/1175
+
 ## [0.9.0] - 2026-02-03
 
 ### Added
@@ -148,7 +154,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Instrument `WebhookServer` with `AxumTraceLayer`, add static healthcheck without instrumentation ([#758]).
-- Add shutdown signal hander for the `WebhookServer` ([#767]).
+- Add shutdown signal handler for the `WebhookServer` ([#767]).
 
 ### Changed
 
