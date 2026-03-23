@@ -220,7 +220,11 @@ mod tests {
         ]);
 
         let result = overrides.apply(&base);
-        assert!(result.is_err(), "removing a nonexistent path should fail");
+        assert!(
+            matches!(result.unwrap_err(), Error::ApplyJsonPatch { source } if source.to_string()
+                    == "operation '/0' failed at path '/nonexistent': path is invalid"),
+            "removing a nonexistent path should fail"
+        );
     }
 
     #[test]
@@ -231,7 +235,8 @@ mod tests {
 
         let result = overrides.apply(&base);
         assert!(
-            result.is_err(),
+            matches!(result.unwrap_err(), Error::DeserializeJsonPatchOperation { source, index: 0 } if source.to_string()
+                    == "missing field `op` at line 1 column 19"),
             "invalid patch operation should return an error"
         );
     }
@@ -256,7 +261,11 @@ mod tests {
         let overrides = JsonConfigOverrides::UserProvided("not valid json".to_owned());
 
         let result = overrides.apply(&base);
-        assert!(result.is_err(), "invalid JSON should return an error");
+        assert!(
+            matches!(result.unwrap_err(), Error::ParseUserProvidedJson { source } if source.to_string()
+                    == "expected ident at line 1 column 2"),
+            "invalid JSON should return an error"
+        );
     }
 
     #[test]
