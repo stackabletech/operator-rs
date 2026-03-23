@@ -174,20 +174,20 @@ pub fn config_for_role_and_group<'a>(
 /// - `roles`: A map keyed by role names. The value is a tuple of a vector of `PropertyNameKind`
 ///   like (Cli, Env or Files) and [`crate::role_utils::Role`] with a boxed [`Configuration`].
 #[allow(clippy::type_complexity)]
-pub fn transform_all_roles_to_config<T, ConfigOverrides, U, ProductSpecificCommonConfig>(
+pub fn transform_all_roles_to_config<T, ConfigOverrides, U, CommonConfig>(
     resource: &T::Configurable,
     roles: HashMap<
         String,
         (
             Vec<PropertyNameKind>,
-            Role<T, ConfigOverrides, U, ProductSpecificCommonConfig>,
+            Role<T, ConfigOverrides, U, CommonConfig>,
         ),
     >,
 ) -> Result<RoleConfigByPropertyKind>
 where
     T: Configuration,
     U: Default + JsonSchema + Serialize,
-    ProductSpecificCommonConfig: Default + JsonSchema + Serialize,
+    CommonConfig: Default + JsonSchema + Serialize,
     ConfigOverrides: Default + JsonSchema + Serialize + KeyValueOverridesProvider,
 {
     let mut result = HashMap::new();
@@ -384,16 +384,16 @@ fn process_validation_result(
 /// - `role_name`      - The name of the role.
 /// - `role`           - The role for which to transform the configuration parameters.
 /// - `property_kinds` - Used as "buckets" to partition the configuration properties by.
-fn transform_role_to_config<T, ConfigOverrides, U, ProductSpecificCommonConfig>(
+fn transform_role_to_config<T, ConfigOverrides, U, CommonConfig>(
     resource: &T::Configurable,
     role_name: &str,
-    role: &Role<T, ConfigOverrides, U, ProductSpecificCommonConfig>,
+    role: &Role<T, ConfigOverrides, U, CommonConfig>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<RoleGroupConfigByPropertyKind>
 where
     T: Configuration,
     U: Default + JsonSchema + Serialize,
-    ProductSpecificCommonConfig: Default + JsonSchema + Serialize,
+    CommonConfig: Default + JsonSchema + Serialize,
     ConfigOverrides: Default + JsonSchema + Serialize + KeyValueOverridesProvider,
 {
     let mut result = HashMap::new();
@@ -449,10 +449,10 @@ where
 /// - `role_name`      - Not used directly but passed on to the `Configuration::compute_*` calls.
 /// - `config`         - The configuration properties to partition.
 /// - `property_kinds` - The "buckets" used to partition the configuration properties.
-fn parse_role_config<T, ProductSpecificCommonConfig, ConfigOverrides>(
+fn parse_role_config<T, CommonConfig, ConfigOverrides>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &CommonConfiguration<T, ProductSpecificCommonConfig, ConfigOverrides>,
+    config: &CommonConfiguration<T, CommonConfig, ConfigOverrides>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
@@ -479,8 +479,8 @@ where
     Ok(result)
 }
 
-fn parse_role_overrides<T, ProductSpecificCommonConfig, ConfigOverrides>(
-    config: &CommonConfiguration<T, ProductSpecificCommonConfig, ConfigOverrides>,
+fn parse_role_overrides<T, CommonConfig, ConfigOverrides>(
+    config: &CommonConfiguration<T, CommonConfig, ConfigOverrides>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
@@ -517,8 +517,8 @@ where
     Ok(result)
 }
 
-fn parse_file_overrides<T, ProductSpecificCommonConfig, ConfigOverrides>(
-    config: &CommonConfiguration<T, ProductSpecificCommonConfig, ConfigOverrides>,
+fn parse_file_overrides<T, CommonConfig, ConfigOverrides>(
+    config: &CommonConfiguration<T, CommonConfig, ConfigOverrides>,
     file: &str,
 ) -> Result<BTreeMap<String, Option<String>>>
 where
@@ -697,7 +697,7 @@ mod tests {
     use super::*;
     use crate::{
         config_overrides::{KeyValueConfigOverrides, KeyValueOverridesProvider},
-        role_utils::{GenericProductSpecificCommonConfig, Role, RoleGroup},
+        role_utils::{GenericCommonConfig, Role, RoleGroup},
     };
 
     /// Test-only config overrides type that wraps per-file key-value overrides.
@@ -798,7 +798,7 @@ mod tests {
         config_overrides: Option<TestConfigOverrides>,
         env_overrides: Option<HashMap<String, String>>,
         cli_overrides: Option<BTreeMap<String, String>>,
-    ) -> CommonConfiguration<Box<TestConfig>, GenericProductSpecificCommonConfig, TestConfigOverrides>
+    ) -> CommonConfiguration<Box<TestConfig>, GenericCommonConfig, TestConfigOverrides>
     {
         CommonConfiguration {
             config: test_config.unwrap_or_default(),
@@ -806,7 +806,7 @@ mod tests {
             env_overrides: env_overrides.unwrap_or_default(),
             cli_overrides: cli_overrides.unwrap_or_default(),
             pod_overrides: PodTemplateSpec::default(),
-            product_specific_common_config: GenericProductSpecificCommonConfig::default(),
+            product_specific_common_config: GenericCommonConfig::default(),
         }
     }
 
