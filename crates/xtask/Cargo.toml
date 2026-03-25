@@ -4,7 +4,7 @@ edition = "2024"
 publish = false
 
 [dependencies]
-stackable-operator = { path = "../stackable-operator" }
+stackable-operator = { path = "../stackable-operator", features = ["crds"] }
 
 clap.workspace = true
 paste.workspace = true
