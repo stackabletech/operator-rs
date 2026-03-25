@@ -353,12 +353,10 @@ impl SecretOperatorVolumeSourceBuilder {
     pub fn build(&self) -> Result<EphemeralVolumeSource, SecretOperatorVolumeSourceBuilderError> {
         let mut annotations = Annotations::new();
 
+        #[rustfmt::skip]
         annotations
-            .insert(Annotation::secret_class(&self.secret_class).context(ParseAnnotationSnafu)?);
-        annotations.insert(
-            Annotation::secret_provision_parts(&self.provision_parts)
-                .context(ParseAnnotationSnafu)?,
-        );
+            .insert(Annotation::secret_class(&self.secret_class).context(ParseAnnotationSnafu)?)
+            .insert(Annotation::secret_provision_parts(&self.provision_parts).context(ParseAnnotationSnafu)?);
 
         if !self.scopes.is_empty() {
             annotations
