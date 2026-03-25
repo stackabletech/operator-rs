@@ -99,10 +99,13 @@ pub struct SecretClassVolumeScope {
     pub listener_volumes: Vec<String>,
 }
 
-/// What parts secret-operator should provision into the requested volume.
+/// What parts of secret material should be provisioned into the requested volume.
 //
-// There intentionally isn't a global [`Default`] impl, as it's secret-ops concern what it chooses
-// as a default.
+// There intentionally isn't a global [`Default`] impl, as it is secret-operator's concern what it
+// chooses as a default.
+// TODO (@Techassi): This to me is a HUGE indicator this lives in the wrong place. All these secret
+// volume builders/helpers should be defined as part of a secret-operator library to be as close as
+// possible to secret-operator, which is the authoritative source of truth for all of this.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, strum::AsRefStr)]
 #[strum(serialize_all = "kebab-case")]
 pub enum SecretClassVolumeProvisionParts {
