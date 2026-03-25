@@ -125,7 +125,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn volume_to_csi_volume_source() {
+    fn volume_to_ephemeral_volume_source() {
         let secret_class_volume_source = SecretClassVolume {
             secret_class: "myclass".to_string(), // pragma: allowlist secret
             scope: Some(SecretClassVolumeScope {
