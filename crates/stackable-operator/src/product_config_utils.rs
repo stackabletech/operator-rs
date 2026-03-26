@@ -174,19 +174,19 @@ pub fn config_for_role_and_group<'a>(
 /// - `roles`: A map keyed by role names. The value is a tuple of a vector of `PropertyNameKind`
 ///   like (Cli, Env or Files) and [`crate::role_utils::Role`] with a boxed [`Configuration`].
 #[allow(clippy::type_complexity)]
-pub fn transform_all_roles_to_config<T, ConfigOverrides, U, CommonConfig>(
-    resource: &T::Configurable,
+pub fn transform_all_roles_to_config<Config, ConfigOverrides, RoleConfig, CommonConfig>(
+    resource: &Config::Configurable,
     roles: HashMap<
         String,
         (
             Vec<PropertyNameKind>,
-            Role<T, ConfigOverrides, U, CommonConfig>,
+            Role<Config, ConfigOverrides, RoleConfig, CommonConfig>,
         ),
     >,
 ) -> Result<RoleConfigByPropertyKind>
 where
-    T: Configuration,
-    U: Default + JsonSchema + Serialize,
+    Config: Configuration,
+    RoleConfig: Default + JsonSchema + Serialize,
     CommonConfig: Default + JsonSchema + Serialize,
     ConfigOverrides: Default + JsonSchema + Serialize + KeyValueOverridesProvider,
 {
@@ -384,15 +384,15 @@ fn process_validation_result(
 /// - `role_name`      - The name of the role.
 /// - `role`           - The role for which to transform the configuration parameters.
 /// - `property_kinds` - Used as "buckets" to partition the configuration properties by.
-fn transform_role_to_config<T, ConfigOverrides, U, CommonConfig>(
-    resource: &T::Configurable,
+fn transform_role_to_config<Config, ConfigOverrides, RoleConfig, CommonConfig>(
+    resource: &Config::Configurable,
     role_name: &str,
-    role: &Role<T, ConfigOverrides, U, CommonConfig>,
+    role: &Role<Config, ConfigOverrides, RoleConfig, CommonConfig>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<RoleGroupConfigByPropertyKind>
 where
-    T: Configuration,
-    U: Default + JsonSchema + Serialize,
+    Config: Configuration,
+    RoleConfig: Default + JsonSchema + Serialize,
     CommonConfig: Default + JsonSchema + Serialize,
     ConfigOverrides: Default + JsonSchema + Serialize + KeyValueOverridesProvider,
 {
@@ -449,14 +449,14 @@ where
 /// - `role_name`      - Not used directly but passed on to the `Configuration::compute_*` calls.
 /// - `config`         - The configuration properties to partition.
 /// - `property_kinds` - The "buckets" used to partition the configuration properties.
-fn parse_role_config<T, CommonConfig, ConfigOverrides>(
-    resource: &<T as Configuration>::Configurable,
+fn parse_role_config<Config, CommonConfig, ConfigOverrides>(
+    resource: &<Config as Configuration>::Configurable,
     role_name: &str,
-    config: &CommonConfiguration<T, CommonConfig, ConfigOverrides>,
+    config: &CommonConfiguration<Config, CommonConfig, ConfigOverrides>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
-    T: Configuration,
+    Config: Configuration,
 {
     let mut result = HashMap::new();
     for property_kind in property_kinds {
@@ -479,12 +479,12 @@ where
     Ok(result)
 }
 
-fn parse_role_overrides<T, CommonConfig, ConfigOverrides>(
-    config: &CommonConfiguration<T, CommonConfig, ConfigOverrides>,
+fn parse_role_overrides<Config, CommonConfig, ConfigOverrides>(
+    config: &CommonConfiguration<Config, CommonConfig, ConfigOverrides>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
-    T: Configuration,
+    Config: Configuration,
     ConfigOverrides: KeyValueOverridesProvider,
 {
     let mut result = HashMap::new();
@@ -517,12 +517,12 @@ where
     Ok(result)
 }
 
-fn parse_file_overrides<T, CommonConfig, ConfigOverrides>(
-    config: &CommonConfiguration<T, CommonConfig, ConfigOverrides>,
+fn parse_file_overrides<Config, CommonConfig, ConfigOverrides>(
+    config: &CommonConfiguration<Config, CommonConfig, ConfigOverrides>,
     file: &str,
 ) -> Result<BTreeMap<String, Option<String>>>
 where
-    T: Configuration,
+    Config: Configuration,
     ConfigOverrides: KeyValueOverridesProvider,
 {
     Ok(config.config_overrides.get_key_value_overrides(file))
