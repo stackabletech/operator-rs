@@ -389,7 +389,8 @@ where
     }
 }
 
-impl<Config, ConfigOverrides, RoleConfig> Role<Config, ConfigOverrides, RoleConfig, JavaCommonConfig>
+impl<Config, ConfigOverrides, RoleConfig>
+    Role<Config, ConfigOverrides, RoleConfig, JavaCommonConfig>
 where
     RoleConfig: Default + JsonSchema + Serialize,
     ConfigOverrides: Default + JsonSchema + Serialize,
@@ -457,9 +458,7 @@ pub struct RoleGroup<Config, CommonConfig, ConfigOverrides> {
     pub replicas: Option<u16>,
 }
 
-impl<Config, CommonConfig, ConfigOverrides>
-    RoleGroup<Config, CommonConfig, ConfigOverrides>
-{
+impl<Config, CommonConfig, ConfigOverrides> RoleGroup<Config, CommonConfig, ConfigOverrides> {
     pub fn validate_config<C, RoleConfig>(
         &self,
         role: &Role<Config, ConfigOverrides, RoleConfig, CommonConfig>,
@@ -613,8 +612,9 @@ mod tests {
         let operator_generated =
             JvmArgumentOverrides::new_with_only_additions(["-Xms1m".to_owned()].into());
 
-        let entire_role: Role<(), EmptyConfigOverrides, GenericRoleConfig, JavaCommonConfig> = serde_yaml::from_str(
-            "
+        let entire_role: Role<(), EmptyConfigOverrides, GenericRoleConfig, JavaCommonConfig> =
+            serde_yaml::from_str(
+                "
                 jvmArgumentOverrides:
                   add:
                     - -Xms2m
@@ -624,8 +624,8 @@ mod tests {
                       add:
                         - -Xms3m
             ",
-        )
-        .expect("Failed to parse role");
+            )
+            .expect("Failed to parse role");
 
         let merged_jvm_argument_overrides = entire_role
             .get_merged_jvm_argument_overrides("default", &operator_generated)

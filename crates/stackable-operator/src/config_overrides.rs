@@ -281,5 +281,4 @@ mod tests {
         assert_eq!(result.get("key1"), Some(&Some("value1".to_owned())));
         assert_eq!(result.get("key2"), Some(&Some("value2".to_owned())));
     }
-
 }

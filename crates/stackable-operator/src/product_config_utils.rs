@@ -798,8 +798,7 @@ mod tests {
         config_overrides: Option<TestConfigOverrides>,
         env_overrides: Option<HashMap<String, String>>,
         cli_overrides: Option<BTreeMap<String, String>>,
-    ) -> CommonConfiguration<Box<TestConfig>, GenericCommonConfig, TestConfigOverrides>
-    {
+    ) -> CommonConfiguration<Box<TestConfig>, GenericCommonConfig, TestConfigOverrides> {
         CommonConfiguration {
             config: test_config.unwrap_or_default(),
             config_overrides: config_overrides.unwrap_or_default(),
@@ -1445,7 +1444,10 @@ mod tests {
         #[allow(clippy::type_complexity)]
         let roles: HashMap<
             String,
-            (Vec<PropertyNameKind>, Role<Box<TestConfig>, TestConfigOverrides, TestRoleConfig>),
+            (
+                Vec<PropertyNameKind>,
+                Role<Box<TestConfig>, TestConfigOverrides, TestRoleConfig>,
+            ),
         > = collection! {
             role_1.to_string() => (vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env], Role {
             config: build_common_config(
@@ -1542,7 +1544,10 @@ mod tests {
         #[allow(clippy::type_complexity)]
         let roles: HashMap<
             String,
-            (Vec<PropertyNameKind>, Role<Box<TestConfig>, TestConfigOverrides, TestRoleConfig>),
+            (
+                Vec<PropertyNameKind>,
+                Role<Box<TestConfig>, TestConfigOverrides, TestRoleConfig>,
+            ),
         > = collection! {
             role_1.to_string() => (vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env], Role {
                 config: CommonConfiguration::default(),

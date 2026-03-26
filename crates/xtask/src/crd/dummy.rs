@@ -24,7 +24,11 @@ use strum::EnumIter;
 #[serde(rename_all = "camelCase")]
 pub struct DummyConfigOverrides {
     /// Overrides for the `config.json` file.
-    #[serde(default, rename = "config.json", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "config.json",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub config_json: Option<JsonConfigOverrides>,
 
     /// Overrides for the `dummy.properties` file.
