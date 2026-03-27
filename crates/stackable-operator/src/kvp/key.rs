@@ -126,21 +126,6 @@ impl Key {
         self.prefix.as_ref()
     }
 
-    /// Adds or replaces the key prefix. This takes a parsed and validated
-    /// [`KeyPrefix`] as a parameter. If instead you want to use a raw value,
-    /// use the [`Key::try_add_prefix()`] function instead.
-    pub fn add_prefix(&mut self, prefix: KeyPrefix) {
-        self.prefix = Some(prefix)
-    }
-
-    /// Adds or replaces the key prefix by parsing and validation raw input. If
-    /// instead you already have a parsed and validated [`KeyPrefix`], use the
-    /// [`Key::add_prefix()`] function instead.
-    pub fn try_add_prefix(&mut self, prefix: impl AsRef<str>) -> Result<&mut Self, KeyError> {
-        self.prefix = Some(KeyPrefix::from_str(prefix.as_ref()).context(KeyPrefixSnafu)?);
-        Ok(self)
-    }
-
     /// Retrieves the key's name.
     ///
     /// ```
@@ -155,21 +140,6 @@ impl Key {
     /// ```
     pub fn name(&self) -> &KeyName {
         &self.name
-    }
-
-    /// Sets the key name. This takes a parsed and validated [`KeyName`] as a
-    /// parameter. If instead you want to use a raw value, use the
-    /// [`Key::try_set_name()`] function instead.
-    pub fn set_name(&mut self, name: KeyName) {
-        self.name = name
-    }
-
-    /// Sets the key name by parsing and validation raw input. If instead you
-    /// already have a parsed and validated [`KeyName`], use the
-    /// [`Key::set_name()`] function instead.
-    pub fn try_set_name(&mut self, name: impl AsRef<str>) -> Result<&mut Self, KeyError> {
-        self.name = KeyName::from_str(name.as_ref()).context(KeyNameSnafu)?;
-        Ok(self)
     }
 }
 
