@@ -58,6 +58,16 @@ pub enum KeyError {
 /// [k8s-labels]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Key {
+    /// A cached and formatted representation of a [`Key`] as a [`String`], which enables the
+    /// implementation of [`Deref`], instead of constructing a new [`String`] every time the string
+    /// representation of a key is needed.
+    ///
+    /// ### Safety
+    ///
+    /// This is safe to do (and cache it), because [`Key`] doesn't provide any **mutable** access
+    /// to the inner values.
+    string: String,
+
     prefix: Option<KeyPrefix>,
     name: KeyName,
 }
@@ -80,12 +90,22 @@ impl FromStr for Key {
             _ => return NestedPrefixSnafu.fail(),
         };
 
+        let prefix = prefix
+            .map(KeyPrefix::from_str)
+            .transpose()
+            .context(KeyPrefixSnafu)?;
+
+        let name = KeyName::from_str(name).context(KeyNameSnafu)?;
+
+        let string = match prefix {
+            Some(ref prefix) => format!("{prefix}/{name}"),
+            None => format!("{name}"),
+        };
+
         let key = Self {
-            prefix: prefix
-                .map(KeyPrefix::from_str)
-                .transpose()
-                .context(KeyPrefixSnafu)?,
-            name: KeyName::from_str(name).context(KeyNameSnafu)?,
+            string,
+            prefix,
+            name,
         };
 
         Ok(key)
@@ -102,10 +122,15 @@ impl TryFrom<&str> for Key {
 
 impl Display for Key {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.prefix {
-            Some(prefix) => write!(f, "{}/{}", prefix, self.name),
-            None => write!(f, "{}", self.name),
-        }
+        write!(f, "{key}", key = self.string)
+    }
+}
+
+impl Deref for Key {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        self.string.as_str()
     }
 }
 
