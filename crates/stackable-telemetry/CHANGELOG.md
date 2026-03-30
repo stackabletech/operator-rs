@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Only use ANSI escape sequences if stdout is a terminal/tty. Piping the output to a file will now
+  result in plain text log messages ([#1183]).
+
+[#1183]: https://github.com/stackabletech/operator-rs/pull/1183
+
 ## [0.6.2] - 2026-03-09
 
 ### Fixed
