@@ -15,7 +15,7 @@ pub struct SystemInformation {
     pub os: Option<os::OperatingSystem>,
     pub current_user: Option<ComponentResult<user::User>>,
     pub disks: Option<Vec<disk::Disk>>,
-    pub network: Option<network::SystemNetworkInfo>,
+    pub network: Option<ComponentResult<network::SystemNetworkInfo>>,
     // TODO:
     //  Current time
     //  SElinux/AppArmor
@@ -70,7 +70,10 @@ impl SystemInformation {
                 user::User::collect_current(&ctx.system),
             )),
             disks: Some(disk::Disk::collect_all()),
-            network: Some(network::SystemNetworkInfo::collect().await),
+            network: Some(ComponentResult::report_from_result(
+                "SystemNetworkInfo::collect",
+                network::SystemNetworkInfo::collect().await,
+            )),
             // ..Default::default()
         };
 

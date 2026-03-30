@@ -8,7 +8,7 @@ use crate::error::SysinfoError;
 pub enum Error {
     #[snafu(display("failed to get pid of the current process"))]
     GetCurrentPid { source: SysinfoError },
-    #[snafu(display("current pid {pid} could not be resolved to a proess"))]
+    #[snafu(display("current pid {pid} could not be resolved to a process"))]
     ResolveCurrentProcess { pid: Pid },
 }
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -53,7 +53,7 @@ impl User {
         tracing::info!(
             user.name,
             user.uid = user.uid.as_ref().map(|uid| format!("{uid:?}")),
-            user.gid = user.uid.as_ref().map(|gid| format!("{gid:?}")),
+            user.gid = user.gid.as_ref().map(|gid| format!("{gid:?}")),
             "current user"
         );
         Ok(user)

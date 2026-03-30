@@ -31,7 +31,6 @@ impl<T> ComponentResult<T> {
                     error = &err as &dyn std::error::Error,
                     "error reported by {component}, ignoring...",
                 );
-                err.source();
                 ComponentResult::Err {
                     inner: ComponentError {
                         message: err.to_string(),

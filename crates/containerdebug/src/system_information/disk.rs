@@ -12,10 +12,10 @@ impl Disk {
     #[tracing::instrument(name = "Disk::collect_all")]
     pub fn collect_all() -> Vec<Self> {
         let disks = sysinfo::Disks::new_with_refreshed_list();
-        if disks.into_iter().next().is_none() {
+        if disks.list().is_empty() {
             tracing::info!("no disks found");
         }
-        disks.into_iter().map(Self::from).collect()
+        disks.list().iter().map(Self::from).collect()
     }
 }
 

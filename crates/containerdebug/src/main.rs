@@ -68,13 +68,28 @@ async fn main() {
         if !next_run_sleep.is_zero() {
             tracing::info!(?next_run, "scheduling next run...");
         }
-        std::thread::sleep(next_run_sleep);
+        tokio::time::sleep(next_run_sleep).await;
 
         let system_information = SystemInformation::collect(&mut collect_ctx).await;
 
-        let serialized = serde_json::to_string_pretty(&system_information).unwrap();
-        if let Some(output_path) = &opts.output {
-            std::fs::write(output_path, &serialized).unwrap();
+        match serde_json::to_string_pretty(&system_information) {
+            Ok(serialized) => {
+                if let Some(output_path) = &opts.output
+                    && let Err(err) = std::fs::write(output_path, &serialized)
+                {
+                    tracing::error!(
+                        path = %output_path.display(),
+                        error = &err as &dyn std::error::Error,
+                        "failed to write JSON output file"
+                    );
+                }
+            }
+            Err(err) => {
+                tracing::error!(
+                    error = &err as &dyn std::error::Error,
+                    "failed to serialize system information"
+                );
+            }
         }
 
         match opts.loop_interval {
