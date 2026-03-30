@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-03-30
+
 ### Fixed
 
 - Only use ANSI escape sequences if stdout is a terminal/tty. Piping the output to a file will now
