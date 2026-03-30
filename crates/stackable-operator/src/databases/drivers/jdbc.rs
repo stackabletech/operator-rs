@@ -16,7 +16,7 @@ pub trait JDBCDatabaseConnection {
     /// Returns the JDBC connection details for the given `unique_database_name` using the
     /// default [`TemplatingMechanism`].
     ///
-    /// `unique_database_name` identifies this particular database connection within the operator
+    /// The `unique_database_name` identifies this particular database connection within the operator
     /// and is used as a prefix when naming the injected environment variables. It must consist only
     /// of uppercase ASCII letters and underscores.
     fn jdbc_connection_details(
@@ -43,7 +43,7 @@ pub struct JDBCDatabaseConnectionDetails {
     /// The Java class name of the driver, e.g. `org.postgresql.Driver`
     pub driver: String,
 
-    /// The connection URI (without user and  password), e.g.
+    /// The connection URI (without user and password), e.g.
     /// `jdbc:postgresql://airflow-postgresql:5432/airflow`
     pub connection_uri: Url,
 

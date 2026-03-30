@@ -16,7 +16,7 @@ pub trait CeleryDatabaseConnection {
     /// Returns the Celery connection details for the given `unique_database_name` using the
     /// default [`TemplatingMechanism`].
     ///
-    /// `unique_database_name` identifies this particular database connection within the operator
+    /// The `unique_database_name` identifies this particular database connection within the operator
     /// and is used as a prefix when naming the injected environment variables. It must consist only
     /// of uppercase ASCII letters and underscores.
     fn celery_connection_details(

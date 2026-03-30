@@ -11,12 +11,12 @@ use crate::{
 /// [SQLAlchemy](https://www.sqlalchemy.org/) connection URLs.
 ///
 /// Provides a standardized way to obtain a SQLAlchemy connection URI template together with the
-/// necessary credential env vars, regardless of the concrete database type.
+/// necessary credential environment variables, regardless of the concrete database type.
 pub trait SQLAlchemyDatabaseConnection {
     /// Returns the SQLAlchemy connection details for the given `unique_database_name` using the
     /// default [`TemplatingMechanism`].
     ///
-    /// `unique_database_name` identifies this particular database connection within the operator
+    /// The `unique_database_name` identifies this particular database connection within the operator
     /// and is used as a prefix when naming the injected environment variables. It must consist only
     /// of uppercase ASCII letters and underscores.
     fn sqlalchemy_connection_details(
