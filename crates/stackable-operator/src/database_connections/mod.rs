@@ -6,17 +6,21 @@ mod helpers;
 #[cfg(test)]
 mod tests;
 
+/// Aggregates errors from database-specific submodules.
+///
+/// All variants use `context(false)` to enable automatic [`From`] conversion,
+/// so callers can use `?` directly without needing `.context(SomeSnafu)`.
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(context(false), display("PostgreSQL error"))]
+    #[snafu(context(false), display("PostgreSQL database connection error"))]
     Postgresql {
         source: databases::postgresql::Error,
     },
 
-    #[snafu(context(false), display("MySQL error"))]
+    #[snafu(context(false), display("MySQL database connection error"))]
     Mysql { source: databases::mysql::Error },
 
-    #[snafu(context(false), display("Derby error"))]
+    #[snafu(context(false), display("Derby database connection error"))]
     Derby { source: databases::derby::Error },
 }
 
