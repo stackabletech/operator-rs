@@ -50,6 +50,7 @@ pub struct ContainerSkipArguments {
 ///   cluster scoped resource.
 /// - `crates`: Override specific crates.
 /// - `status`: Set the specified struct as the status subresource.
+/// - `scale`: Configure the scale subresource for horizontal pod autoscaling integration.
 /// - `shortname`: Set a shortname for the CR object. This can be specified multiple
 ///   times.
 /// - `skip`: Controls skipping parts of the generation.
@@ -64,7 +65,7 @@ pub struct StructCrdArguments {
     pub status: Option<Path>,
     // derive
     // schema
-    // scale
+    pub scale: Option<Scale>,
     // printcolumn
     #[darling(multiple, rename = "shortname")]
     pub shortnames: Vec<String>,
@@ -73,4 +74,22 @@ pub struct StructCrdArguments {
     // doc
     // annotation
     // label
+}
+
+/// Scale subresource configuration for a CRD.
+///
+/// Mirrors the fields of [`k8s_openapi::CustomResourceSubresourceScale`][1] and what is present in
+/// `kube_derive`.
+///
+/// [1]: k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceSubresourceScale
+//
+// TODO (@Techassi): This should eventually get replaced by directly using what `kube_derive` offers,
+// but that requires an upstream restructure I'm planning to do soon(ish).
+#[derive(Clone, Debug, FromMeta)]
+pub struct Scale {
+    pub spec_replicas_path: String,
+    pub status_replicas_path: String,
+
+    #[darling(default)]
+    pub label_selector_path: Option<String>,
 }

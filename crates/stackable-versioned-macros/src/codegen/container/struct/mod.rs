@@ -272,6 +272,21 @@ impl Struct {
             _ => None,
         };
 
+        let scale = spec_gen_ctx.kubernetes_arguments.scale.as_ref().map(|s| {
+            let spec_replicas_path = &s.spec_replicas_path;
+            let status_replicas_path = &s.status_replicas_path;
+            let label_selector_path = s
+                .label_selector_path
+                .as_ref()
+                .map(|p| quote! { , label_selector_path = #p });
+
+            quote! { , scale(
+                spec_replicas_path = #spec_replicas_path,
+                status_replicas_path = #status_replicas_path
+                #label_selector_path
+            )}
+        });
+
         let shortnames: TokenStream = spec_gen_ctx
             .kubernetes_arguments
             .shortnames
@@ -286,7 +301,7 @@ impl Struct {
                 // These must be comma separated (except the last) as they always exist:
                 group = #group, version = #version, kind = #kind
                 // These fields are optional, and therefore the token stream must prefix each with a comma:
-                #singular #plural #namespaced #crates #status #shortnames
+                #singular #plural #namespaced #crates #status #scale #shortnames
             )]
         })
     }
