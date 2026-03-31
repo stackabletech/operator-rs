@@ -14,8 +14,8 @@ sysinfo = { version = "0.38", features = ["serde"] }
 tokio = { version = "1.49", default-features = false, features = ["rt-multi-thread", "macros"] }
 tracing = "0.1"
 
-stackable-shared = {git = "https://github.com/stackabletech/operator-rs", tag = "stackable-operator-0.107.0", default-features = false }
-stackable-telemetry = {git = "https://github.com/stackabletech/operator-rs", tag = "stackable-operator-0.107.0", default-features = false, features = ["clap"] }
+stackable-shared = {git = "https://github.com/stackabletech/operator-rs", tag = "stackable-telemetry-0.6.3", default-features = false }
+stackable-telemetry = {git = "https://github.com/stackabletech/operator-rs", tag = "stackable-telemetry-0.6.3", default-features = false, features = ["clap"] }
 
 [build-dependencies]
 built = { version = "0.8", features = ["chrono", "git2"] }

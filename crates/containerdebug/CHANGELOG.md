@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Don't log ANSI escape sequences if stdout is a file ([#59]).
+
+[#59]: https://github.com/stackabletech/containerdebug/pull/59
+
 ## [0.3.0] - 2026-03-10
 
 ### Changed
