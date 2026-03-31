@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     commons::networking::HostName,
-    databases::{
+    database_connections::{
         TemplatingMechanism,
         drivers::celery::{CeleryDatabaseConnection, CeleryDatabaseConnectionDetails},
         helpers::username_and_password_envs,

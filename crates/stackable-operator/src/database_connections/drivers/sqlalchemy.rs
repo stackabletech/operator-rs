@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     builder::pod::{container::ContainerBuilder, env::env_var_from_secret},
-    databases::TemplatingMechanism,
+    database_connections::TemplatingMechanism,
 };
 
 /// Implemented by database connection types that support

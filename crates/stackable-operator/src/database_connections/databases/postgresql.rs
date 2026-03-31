@@ -6,7 +6,7 @@ use snafu::{ResultExt, Snafu};
 
 use crate::{
     commons::networking::HostName,
-    databases::{
+    database_connections::{
         TemplatingMechanism,
         drivers::{
             celery::{CeleryDatabaseConnection, CeleryDatabaseConnectionDetails},
@@ -61,7 +61,7 @@ impl JdbcDatabaseConnection for PostgresqlConnection {
         &self,
         unique_database_name: &str,
         _templating_mechanism: &TemplatingMechanism,
-    ) -> Result<JdbcDatabaseConnectionDetails, crate::databases::Error> {
+    ) -> Result<JdbcDatabaseConnectionDetails, crate::database_connections::Error> {
         let Self {
             host,
             port,

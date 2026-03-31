@@ -3,7 +3,7 @@ use stackable_operator::{
     commons::resources::{JvmHeapLimits, Resources},
     config::fragment::Fragment,
     crd::git_sync::v1alpha2::GitSync,
-    databases::{
+    database_connections::{
         databases::{
             derby::DerbyConnection, mysql::MysqlConnection, postgresql::PostgresqlConnection,
             redis::RedisConnection,

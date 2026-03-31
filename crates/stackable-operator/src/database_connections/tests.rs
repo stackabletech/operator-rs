@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     builder::pod::container::ContainerBuilder,
-    databases::{
+    database_connections::{
         TemplatingMechanism,
         databases::{
             postgresql::{POSTGRES_JDBC_DRIVER_CLASS, PostgresqlConnection},

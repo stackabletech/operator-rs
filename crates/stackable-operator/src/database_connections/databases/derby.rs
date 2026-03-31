@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
 
 use crate::{
-    databases::{
+    database_connections::{
         TemplatingMechanism,
         drivers::jdbc::{JdbcDatabaseConnection, JdbcDatabaseConnectionDetails},
     },
@@ -43,7 +43,7 @@ impl JdbcDatabaseConnection for DerbyConnection {
         &self,
         unique_database_name: &str,
         _templating_mechanism: &TemplatingMechanism,
-    ) -> Result<JdbcDatabaseConnectionDetails, crate::databases::Error> {
+    ) -> Result<JdbcDatabaseConnectionDetails, crate::database_connections::Error> {
         let location = self.location.as_ref_or_else(|| {
             PathBuf::from(format!("/tmp/derby/{unique_database_name}/derby.db"))
         });

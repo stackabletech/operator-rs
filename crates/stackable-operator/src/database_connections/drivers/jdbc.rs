@@ -5,7 +5,7 @@ use url::Url;
 
 use crate::{
     builder::pod::container::ContainerBuilder,
-    databases::{TemplatingMechanism, helpers::username_and_password_envs},
+    database_connections::{TemplatingMechanism, helpers::username_and_password_envs},
 };
 
 /// Implemented by database connection types that support JDBC.
@@ -22,7 +22,7 @@ pub trait JdbcDatabaseConnection {
     fn jdbc_connection_details(
         &self,
         unique_database_name: &str,
-    ) -> Result<JdbcDatabaseConnectionDetails, crate::databases::Error> {
+    ) -> Result<JdbcDatabaseConnectionDetails, crate::database_connections::Error> {
         self.jdbc_connection_details_with_templating(
             unique_database_name,
             &TemplatingMechanism::default(),
@@ -36,7 +36,7 @@ pub trait JdbcDatabaseConnection {
         &self,
         unique_database_name: &str,
         templating_mechanism: &TemplatingMechanism,
-    ) -> Result<JdbcDatabaseConnectionDetails, crate::databases::Error>;
+    ) -> Result<JdbcDatabaseConnectionDetails, crate::database_connections::Error>;
 }
 
 pub struct JdbcDatabaseConnectionDetails {
@@ -93,7 +93,7 @@ impl JdbcDatabaseConnection for GenericJdbcDatabaseConnection {
         &self,
         unique_database_name: &str,
         _templating_mechanism: &TemplatingMechanism,
-    ) -> Result<JdbcDatabaseConnectionDetails, crate::databases::Error> {
+    ) -> Result<JdbcDatabaseConnectionDetails, crate::database_connections::Error> {
         let (username_env, password_env) =
             username_and_password_envs(unique_database_name, &self.credentials_secret);
 
