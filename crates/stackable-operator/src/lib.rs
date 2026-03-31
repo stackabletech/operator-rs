@@ -1,3 +1,4 @@
+// Pedantic lints
 #![deny(clippy::pedantic)]
 #![expect(clippy::doc_markdown)]
 #![expect(clippy::missing_errors_doc)]
@@ -9,6 +10,9 @@
 #![expect(clippy::float_cmp)]
 #![expect(clippy::cast_sign_loss)]
 #![expect(clippy::cast_precision_loss)]
+// Nursery lints
+// #![deny(clippy::nursery)]
+#![deny(clippy::use_self)]
 
 //! ## Crate Features
 //!

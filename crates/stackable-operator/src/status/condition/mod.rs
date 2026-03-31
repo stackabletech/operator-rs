@@ -275,7 +275,7 @@ pub struct ClusterConditionSet {
 
 impl ClusterConditionSet {
     pub fn new() -> Self {
-        ClusterConditionSet {
+        Self {
             // We use this as a quasi "Set" where each ClusterConditionType has its fixed position
             // This ensures ordering, and in contrast to e.g. a
             // BTreeMap<ClusterConditionType, ClusterCondition>, prevents shenanigans like adding a
@@ -307,10 +307,10 @@ impl ClusterConditionSet {
     ///   timestamps correctly.
     fn merge(
         self,
-        other: ClusterConditionSet,
+        other: Self,
         condition_combiner: fn(ClusterCondition, ClusterCondition) -> ClusterCondition,
-    ) -> ClusterConditionSet {
-        let mut result = ClusterConditionSet::new();
+    ) -> Self {
+        let mut result = Self::new();
 
         // Combine the two condition vectors of old and new `ClusterConditionSet`.
         for (old_condition, new_condition) in self
@@ -400,7 +400,7 @@ impl From<ClusterConditionSet> for Vec<ClusterCondition> {
 
 impl From<Vec<ClusterCondition>> for ClusterConditionSet {
     fn from(value: Vec<ClusterCondition>) -> Self {
-        let mut result = ClusterConditionSet::new();
+        let mut result = Self::new();
         for c in value {
             result.put(c);
         }

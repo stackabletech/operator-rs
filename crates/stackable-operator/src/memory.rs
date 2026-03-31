@@ -60,12 +60,12 @@ pub enum BinaryMultiple {
 impl BinaryMultiple {
     pub fn to_java_memory_unit(&self) -> String {
         match self {
-            BinaryMultiple::Kibi => "k".to_string(),
-            BinaryMultiple::Mebi => "m".to_string(),
-            BinaryMultiple::Gibi => "g".to_string(),
-            BinaryMultiple::Tebi => "t".to_string(),
-            BinaryMultiple::Pebi => "p".to_string(),
-            BinaryMultiple::Exbi => "e".to_string(),
+            Self::Kibi => "k".to_string(),
+            Self::Mebi => "m".to_string(),
+            Self::Gibi => "g".to_string(),
+            Self::Tebi => "t".to_string(),
+            Self::Pebi => "p".to_string(),
+            Self::Exbi => "e".to_string(),
         }
     }
 
@@ -73,12 +73,12 @@ impl BinaryMultiple {
     /// to another one.
     const fn exponential_scale_factor(self) -> i32 {
         match self {
-            BinaryMultiple::Kibi => 1,
-            BinaryMultiple::Mebi => 2,
-            BinaryMultiple::Gibi => 3,
-            BinaryMultiple::Tebi => 4,
-            BinaryMultiple::Pebi => 5,
-            BinaryMultiple::Exbi => 6,
+            Self::Kibi => 1,
+            Self::Mebi => 2,
+            Self::Gibi => 3,
+            Self::Tebi => 4,
+            Self::Pebi => 5,
+            Self::Exbi => 6,
         }
     }
 
@@ -90,14 +90,14 @@ impl BinaryMultiple {
 impl FromStr for BinaryMultiple {
     type Err = Error;
 
-    fn from_str(q: &str) -> Result<BinaryMultiple> {
+    fn from_str(q: &str) -> Result<Self> {
         match q {
-            "Ki" => Ok(BinaryMultiple::Kibi),
-            "Mi" => Ok(BinaryMultiple::Mebi),
-            "Gi" => Ok(BinaryMultiple::Gibi),
-            "Ti" => Ok(BinaryMultiple::Tebi),
-            "Pi" => Ok(BinaryMultiple::Pebi),
-            "Ei" => Ok(BinaryMultiple::Exbi),
+            "Ki" => Ok(Self::Kibi),
+            "Mi" => Ok(Self::Mebi),
+            "Gi" => Ok(Self::Gibi),
+            "Ti" => Ok(Self::Tebi),
+            "Pi" => Ok(Self::Pebi),
+            "Ei" => Ok(Self::Exbi),
             _ => Err(Error::InvalidQuantityUnit {
                 value: q.to_string(),
             }),
@@ -108,12 +108,12 @@ impl FromStr for BinaryMultiple {
 impl Display for BinaryMultiple {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let out = match self {
-            BinaryMultiple::Kibi => "Ki",
-            BinaryMultiple::Mebi => "Mi",
-            BinaryMultiple::Gibi => "Gi",
-            BinaryMultiple::Tebi => "Ti",
-            BinaryMultiple::Pebi => "Pi",
-            BinaryMultiple::Exbi => "Ei",
+            Self::Kibi => "Ki",
+            Self::Mebi => "Mi",
+            Self::Gibi => "Gi",
+            Self::Tebi => "Ti",
+            Self::Pebi => "Pi",
+            Self::Exbi => "Ei",
         };
 
         out.fmt(f)
@@ -256,8 +256,8 @@ impl MemoryQuantity {
     /// This is done by picking smaller units until the fractional part is smaller than the tolerated
     /// rounding loss, and then rounding down.
     /// This can fail if the tolerated rounding loss is less than 1kB.
-    fn ensure_integer(self, tolerated_rounding_loss: MemoryQuantity) -> Result<Self> {
-        let fraction_memory = MemoryQuantity {
+    fn ensure_integer(self, tolerated_rounding_loss: Self) -> Result<Self> {
+        let fraction_memory = Self {
             value: self.value.fract(),
             unit: self.unit,
         };
@@ -278,7 +278,7 @@ impl MemoryQuantity {
         let m = self
             .scale_to_at_most_gb() // Java Heap only supports specifying kb, mb or gb
             .ensure_no_zero()? // We don't want 0.9 or 0.2
-            .ensure_integer(MemoryQuantity::from_mebi(20.))?; // Java only accepts integers not floats
+            .ensure_integer(Self::from_mebi(20.))?; // Java only accepts integers not floats
         Ok(format!("{}{}", m.value, m.unit.to_java_memory_unit()))
     }
 
@@ -307,7 +307,7 @@ impl MemoryQuantity {
             (norm_value, norm_unit)
         };
 
-        MemoryQuantity {
+        Self {
             value: scaled_value,
             unit: scaled_unit,
         }
@@ -321,7 +321,7 @@ impl MemoryQuantity {
 
         let exponent_diff = from_exponent - to_exponent;
 
-        MemoryQuantity {
+        Self {
             value: self.value * 1024f32.powi(exponent_diff),
             unit: binary_multiple,
         }
@@ -373,7 +373,7 @@ impl FromStr for MemoryQuantity {
                     value: q.to_owned(),
                 })?;
         let (value, unit) = q.split_at(start_of_unit);
-        Ok(MemoryQuantity {
+        Ok(Self {
             value: value.parse::<f32>().context(InvalidQuantitySnafu {
                 value: q.to_owned(),
             })?,
@@ -389,10 +389,10 @@ impl Display for MemoryQuantity {
 }
 
 impl Mul<f32> for MemoryQuantity {
-    type Output = MemoryQuantity;
+    type Output = Self;
 
     fn mul(self, factor: f32) -> Self {
-        MemoryQuantity {
+        Self {
             value: self.value * factor,
             unit: self.unit,
         }
@@ -407,38 +407,38 @@ impl Div<f32> for MemoryQuantity {
     }
 }
 
-impl Div<MemoryQuantity> for MemoryQuantity {
+impl Div<Self> for MemoryQuantity {
     type Output = f32;
 
-    fn div(self, rhs: MemoryQuantity) -> Self::Output {
+    fn div(self, rhs: Self) -> Self::Output {
         let rhs = rhs.scale_to(self.unit);
         self.value / rhs.value
     }
 }
 
-impl Sub<MemoryQuantity> for MemoryQuantity {
-    type Output = MemoryQuantity;
+impl Sub<Self> for MemoryQuantity {
+    type Output = Self;
 
-    fn sub(self, rhs: MemoryQuantity) -> Self::Output {
-        MemoryQuantity {
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
             value: self.value - rhs.scale_to(self.unit).value,
             unit: self.unit,
         }
     }
 }
 
-impl SubAssign<MemoryQuantity> for MemoryQuantity {
-    fn sub_assign(&mut self, rhs: MemoryQuantity) {
+impl SubAssign<Self> for MemoryQuantity {
+    fn sub_assign(&mut self, rhs: Self) {
         let rhs = rhs.scale_to(self.unit);
         self.value -= rhs.value;
     }
 }
 
-impl Add<MemoryQuantity> for MemoryQuantity {
-    type Output = MemoryQuantity;
+impl Add<Self> for MemoryQuantity {
+    type Output = Self;
 
-    fn add(self, rhs: MemoryQuantity) -> Self::Output {
-        MemoryQuantity {
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
             value: self.value + rhs.scale_to(self.unit).value,
             unit: self.unit,
         }
@@ -448,17 +448,17 @@ impl Add<MemoryQuantity> for MemoryQuantity {
 impl Sum for MemoryQuantity {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.fold(
-            MemoryQuantity {
+            Self {
                 value: 0.0,
                 unit: BinaryMultiple::Kibi,
             },
-            MemoryQuantity::add,
+            Self::add,
         )
     }
 }
 
-impl AddAssign<MemoryQuantity> for MemoryQuantity {
-    fn add_assign(&mut self, rhs: MemoryQuantity) {
+impl AddAssign<Self> for MemoryQuantity {
+    fn add_assign(&mut self, rhs: Self) {
         let rhs = rhs.scale_to(self.unit);
         self.value += rhs.value;
     }
@@ -506,7 +506,7 @@ impl From<MemoryQuantity> for Quantity {
 
 impl From<&MemoryQuantity> for Quantity {
     fn from(quantity: &MemoryQuantity) -> Self {
-        Quantity(format!("{quantity}"))
+        Self(format!("{quantity}"))
     }
 }
 

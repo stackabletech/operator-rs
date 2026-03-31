@@ -23,9 +23,9 @@ impl AuthenticationClass {
     pub async fn resolve(
         client: &Client,
         authentication_class_name: &str,
-    ) -> crate::client::Result<AuthenticationClass> {
+    ) -> crate::client::Result<Self> {
         client
-            .get::<AuthenticationClass>(authentication_class_name, &()) // AuthenticationClass has ClusterScope
+            .get::<Self>(authentication_class_name, &()) // AuthenticationClass has ClusterScope
             .await
     }
 }

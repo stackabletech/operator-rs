@@ -6,12 +6,12 @@ use crate::crd::listener::{
 impl PreferredAddressType {
     pub fn resolve(self, listener_class: &ListenerClassSpec) -> AddressType {
         match self {
-            PreferredAddressType::HostnameConservative => match listener_class.service_type {
+            Self::HostnameConservative => match listener_class.service_type {
                 ServiceType::NodePort => AddressType::Ip,
                 _ => AddressType::Hostname,
             },
-            PreferredAddressType::Hostname => AddressType::Hostname,
-            PreferredAddressType::Ip => AddressType::Ip,
+            Self::Hostname => AddressType::Hostname,
+            Self::Ip => AddressType::Ip,
         }
     }
 }

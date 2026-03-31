@@ -171,7 +171,7 @@ mod tests {
 
         fn secondary_object(&self) -> Option<ObjectRef<kube::core::DynamicObject>> {
             match self {
-                ErrorFoo::Bar {
+                Self::Bar {
                     source:
                         ErrorBar::Baz {
                             source: ErrorBaz::NoChocolate { descriptor },

@@ -67,9 +67,9 @@ pub struct ContainerBuilder {
 impl ContainerBuilder {
     pub fn new(name: &str) -> Result<Self> {
         Self::validate_container_name(name)?;
-        Ok(ContainerBuilder {
+        Ok(Self {
             name: name.to_string(),
-            ..ContainerBuilder::default()
+            ..Self::default()
         })
     }
 
@@ -371,9 +371,9 @@ pub struct ContainerPortBuilder {
 
 impl ContainerPortBuilder {
     pub fn new(container_port: i32) -> Self {
-        ContainerPortBuilder {
+        Self {
             container_port,
-            ..ContainerPortBuilder::default()
+            ..Self::default()
         }
     }
 
@@ -422,11 +422,11 @@ pub enum FieldPathEnvVar {
 impl fmt::Display for FieldPathEnvVar {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            FieldPathEnvVar::Name => write!(f, "metadata.name"),
-            FieldPathEnvVar::Namespace => write!(f, "metadata.namespace"),
-            FieldPathEnvVar::UID => write!(f, "metadata.uid"),
-            FieldPathEnvVar::Labels(name) => write!(f, "metadata.labels['{name}']"),
-            FieldPathEnvVar::Annotations(name) => write!(f, "metadata.annotations['{name}']"),
+            Self::Name => write!(f, "metadata.name"),
+            Self::Namespace => write!(f, "metadata.namespace"),
+            Self::UID => write!(f, "metadata.uid"),
+            Self::Labels(name) => write!(f, "metadata.labels['{name}']"),
+            Self::Annotations(name) => write!(f, "metadata.annotations['{name}']"),
         }
     }
 }

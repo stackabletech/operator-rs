@@ -13,9 +13,9 @@ pub enum WatchNamespace {
 impl From<&str> for WatchNamespace {
     fn from(s: &str) -> Self {
         if s.is_empty() {
-            WatchNamespace::All
+            Self::All
         } else {
-            WatchNamespace::One(s.to_string())
+            Self::One(s.to_string())
         }
     }
 }
@@ -28,8 +28,8 @@ impl WatchNamespace {
         T: Resource<DynamicType = (), Scope = NamespaceResourceScope>,
     {
         match self {
-            WatchNamespace::All => client.get_all_api(),
-            WatchNamespace::One(namespace) => client.get_api::<T>(namespace),
+            Self::All => client.get_all_api(),
+            Self::One(namespace) => client.get_api::<T>(namespace),
         }
     }
 }

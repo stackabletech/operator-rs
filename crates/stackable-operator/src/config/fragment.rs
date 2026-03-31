@@ -24,7 +24,7 @@ use crate::role_utils::{Role, RoleGroup};
 /// Constructed internally in [`validate`]
 pub struct Validator<'a> {
     ident: Option<&'a dyn Display>,
-    parent: Option<&'a Validator<'a>>,
+    parent: Option<&'a Self>,
 }
 
 impl Validator<'_> {
@@ -193,8 +193,8 @@ impl<T: FromFragment> FromFragment for Option<T> {
     }
 }
 impl FromFragment for PodTemplateSpec {
-    type Fragment = PodTemplateSpec;
-    type RequiredFragment = PodTemplateSpec;
+    type Fragment = Self;
+    type RequiredFragment = Self;
 
     fn from_fragment(
         fragment: Self::Fragment,

@@ -34,8 +34,8 @@ pub struct ObjectMetaBuilder {
 }
 
 impl ObjectMetaBuilder {
-    pub fn new() -> ObjectMetaBuilder {
-        ObjectMetaBuilder::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// This sets the name and namespace from a given resource
@@ -228,8 +228,8 @@ pub struct OwnerReferenceBuilder {
 }
 
 impl OwnerReferenceBuilder {
-    pub fn new() -> OwnerReferenceBuilder {
-        OwnerReferenceBuilder::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn api_version(&mut self, api_version: impl Into<String>) -> &mut Self {

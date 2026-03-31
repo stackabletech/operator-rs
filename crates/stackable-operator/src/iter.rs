@@ -144,7 +144,7 @@ mod tests {
 
             fn try_from_iter<I: IntoIterator<Item = usize>>(iter: I) -> Result<Self, Self::Error> {
                 let sum = iter.into_iter().sum();
-                Ok(Sum(sum))
+                Ok(Self(sum))
             }
         }
 

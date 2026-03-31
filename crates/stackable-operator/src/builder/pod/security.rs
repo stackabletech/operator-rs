@@ -18,8 +18,8 @@ impl SecurityContextBuilder {
         }
     }
 
-    pub fn new() -> SecurityContextBuilder {
-        SecurityContextBuilder::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn allow_privilege_escalation(&mut self, value: bool) -> &mut Self {
@@ -150,8 +150,8 @@ pub struct PodSecurityContextBuilder {
 }
 
 impl PodSecurityContextBuilder {
-    pub fn new() -> PodSecurityContextBuilder {
-        PodSecurityContextBuilder::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn build(&self) -> PodSecurityContext {

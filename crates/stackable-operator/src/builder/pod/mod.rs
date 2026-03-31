@@ -88,8 +88,8 @@ pub struct PodBuilder {
 }
 
 impl PodBuilder {
-    pub fn new() -> PodBuilder {
-        PodBuilder::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn service_account_name(&mut self, value: impl Into<String>) -> &mut Self {

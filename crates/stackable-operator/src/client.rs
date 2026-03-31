@@ -113,7 +113,7 @@ impl Client {
         default_namespace: String,
         kubernetes_cluster_info: KubernetesClusterInfo,
     ) -> Self {
-        Client {
+        Self {
             client,
             post_params: PostParams {
                 field_manager: field_manager.clone(),

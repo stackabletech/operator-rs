@@ -92,8 +92,8 @@ impl GitSyncResources {
         extra_volume_mounts: &[VolumeMount],
         log_volume_name: &str,
         container_log_config: &ContainerLogConfig,
-    ) -> Result<GitSyncResources, Error> {
-        let mut resources = GitSyncResources::default();
+    ) -> Result<Self, Error> {
+        let mut resources = Self::default();
 
         for (i, git_sync) in git_syncs.iter().enumerate() {
             let mut env_vars = vec![];
@@ -101,12 +101,12 @@ impl GitSyncResources {
             if let Some(Credentials::BasicAuthSecretName(basic_auth_secret_name)) =
                 &git_sync.credentials
             {
-                env_vars.push(GitSyncResources::env_var_from_secret(
+                env_vars.push(Self::env_var_from_secret(
                     "GITSYNC_USERNAME",
                     basic_auth_secret_name,
                     "user",
                 ));
-                env_vars.push(GitSyncResources::env_var_from_secret(
+                env_vars.push(Self::env_var_from_secret(
                     "GITSYNC_PASSWORD",
                     basic_auth_secret_name,
                     "password",

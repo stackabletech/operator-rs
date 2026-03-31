@@ -19,8 +19,8 @@ pub struct ConfigMapBuilder {
 }
 
 impl ConfigMapBuilder {
-    pub fn new() -> ConfigMapBuilder {
-        ConfigMapBuilder::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn metadata_default(&mut self) -> &mut Self {

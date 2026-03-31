@@ -59,7 +59,7 @@ pub enum PodDisruptionBudgetConstraint {
 
 impl PodDisruptionBudgetBuilder<(), (), ()> {
     pub fn new() -> Self {
-        PodDisruptionBudgetBuilder::default()
+        Self::default()
     }
 
     /// This method populates [`PodDisruptionBudget::metadata`] and

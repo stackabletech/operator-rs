@@ -48,10 +48,10 @@ impl Default for VolumeSource {
 }
 
 impl VolumeBuilder {
-    pub fn new(name: impl Into<String>) -> VolumeBuilder {
-        VolumeBuilder {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
             name: name.into(),
-            ..VolumeBuilder::default()
+            ..Self::default()
         }
     }
 
@@ -222,11 +222,11 @@ pub struct VolumeMountBuilder {
 }
 
 impl VolumeMountBuilder {
-    pub fn new(name: impl Into<String>, mount_path: impl Into<String>) -> VolumeMountBuilder {
-        VolumeMountBuilder {
+    pub fn new(name: impl Into<String>, mount_path: impl Into<String>) -> Self {
+        Self {
             mount_path: mount_path.into(),
             name: name.into(),
-            ..VolumeMountBuilder::default()
+            ..Self::default()
         }
     }
 
@@ -428,10 +428,10 @@ impl ListenerReference {
     /// Return the key and value for a Kubernetes object annotation
     fn to_annotation(&self) -> Result<Annotation, AnnotationError> {
         match self {
-            ListenerReference::ListenerClass(class) => {
+            Self::ListenerClass(class) => {
                 Annotation::try_from(("listeners.stackable.tech/listener-class", class.as_str()))
             }
-            ListenerReference::ListenerName(name) => {
+            Self::ListenerName(name) => {
                 Annotation::try_from(("listeners.stackable.tech/listener-name", name.as_str()))
             }
         }
@@ -493,7 +493,7 @@ impl ListenerOperatorVolumeSourceBuilder {
     pub fn new(
         listener_reference: &ListenerReference,
         labels: &Labels,
-    ) -> ListenerOperatorVolumeSourceBuilder {
+    ) -> Self {
         Self {
             listener_reference: listener_reference.to_owned(),
             labels: labels.to_owned(),

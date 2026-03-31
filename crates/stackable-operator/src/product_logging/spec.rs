@@ -334,12 +334,12 @@ impl LogLevel {
     /// Convert the log level to a string understood by Vector
     pub fn to_vector_literal(&self) -> String {
         match self {
-            LogLevel::TRACE => "trace",
-            LogLevel::DEBUG => "debug",
-            LogLevel::INFO => "info",
-            LogLevel::WARN => "warn",
-            LogLevel::ERROR | LogLevel::FATAL => "error",
-            LogLevel::NONE => "off",
+            Self::TRACE => "trace",
+            Self::DEBUG => "debug",
+            Self::INFO => "info",
+            Self::WARN => "warn",
+            Self::ERROR | Self::FATAL => "error",
+            Self::NONE => "off",
         }
         .into()
     }
@@ -347,12 +347,12 @@ impl LogLevel {
     /// Convert the log level to a string understood by logback
     pub fn to_logback_literal(&self) -> String {
         match self {
-            LogLevel::TRACE => "TRACE",
-            LogLevel::DEBUG => "DEBUG",
-            LogLevel::INFO => "INFO",
-            LogLevel::WARN => "WARN",
-            LogLevel::ERROR | LogLevel::FATAL => "ERROR",
-            LogLevel::NONE => "OFF",
+            Self::TRACE => "TRACE",
+            Self::DEBUG => "DEBUG",
+            Self::INFO => "INFO",
+            Self::WARN => "WARN",
+            Self::ERROR | Self::FATAL => "ERROR",
+            Self::NONE => "OFF",
         }
         .into()
     }
@@ -360,13 +360,13 @@ impl LogLevel {
     /// Convert the log level to a string understood by log4j
     pub fn to_log4j_literal(&self) -> String {
         match self {
-            LogLevel::TRACE => "TRACE",
-            LogLevel::DEBUG => "DEBUG",
-            LogLevel::INFO => "INFO",
-            LogLevel::WARN => "WARN",
-            LogLevel::ERROR => "ERROR",
-            LogLevel::FATAL => "FATAL",
-            LogLevel::NONE => "OFF",
+            Self::TRACE => "TRACE",
+            Self::DEBUG => "DEBUG",
+            Self::INFO => "INFO",
+            Self::WARN => "WARN",
+            Self::ERROR => "ERROR",
+            Self::FATAL => "FATAL",
+            Self::NONE => "OFF",
         }
         .into()
     }
@@ -380,9 +380,9 @@ impl LogLevel {
     // based on https://www.openpolicyagent.org/docs/latest/cli/#options-10 opa has only log levels {debug,info,error}
     pub fn to_opa_literal(&self) -> String {
         match self {
-            LogLevel::TRACE | LogLevel::DEBUG => "debug",
-            LogLevel::INFO => "info",
-            LogLevel::WARN | LogLevel::ERROR | LogLevel::FATAL | LogLevel::NONE => "error",
+            Self::TRACE | Self::DEBUG => "debug",
+            Self::INFO => "info",
+            Self::WARN | Self::ERROR | Self::FATAL | Self::NONE => "error",
         }
         .into()
     }
@@ -390,12 +390,12 @@ impl LogLevel {
     /// Convert the log level to a Python expression
     pub fn to_python_expression(&self) -> String {
         match self {
-            LogLevel::TRACE | LogLevel::DEBUG => "logging.DEBUG",
-            LogLevel::INFO => "logging.INFO",
-            LogLevel::WARN => "logging.WARNING",
-            LogLevel::ERROR => "logging.ERROR",
-            LogLevel::FATAL => "logging.CRITICAL",
-            LogLevel::NONE => "logging.CRITICAL + 1",
+            Self::TRACE | Self::DEBUG => "logging.DEBUG",
+            Self::INFO => "logging.INFO",
+            Self::WARN => "logging.WARNING",
+            Self::ERROR => "logging.ERROR",
+            Self::FATAL => "logging.CRITICAL",
+            Self::NONE => "logging.CRITICAL + 1",
         }
         .into()
     }

@@ -156,7 +156,7 @@ impl FieldNames {
 
 impl Default for FieldNames {
     fn default() -> Self {
-        FieldNames {
+        Self {
             uid: Self::default_uid(),
             group: Self::default_group(),
             given_name: Self::default_given_name(),

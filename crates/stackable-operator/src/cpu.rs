@@ -150,7 +150,7 @@ impl From<CpuQuantity> for Quantity {
 
 impl From<&CpuQuantity> for Quantity {
     fn from(quantity: &CpuQuantity) -> Self {
-        Quantity(format!("{}", quantity.as_cpu_count()))
+        Self(format!("{}", quantity.as_cpu_count()))
     }
 }
 
@@ -170,22 +170,22 @@ impl TryFrom<Quantity> for CpuQuantity {
     }
 }
 
-impl Add<CpuQuantity> for CpuQuantity {
-    type Output = CpuQuantity;
+impl Add<Self> for CpuQuantity {
+    type Output = Self;
 
-    fn add(self, rhs: CpuQuantity) -> Self::Output {
-        CpuQuantity::from_millis(self.millis + rhs.millis)
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::from_millis(self.millis + rhs.millis)
     }
 }
 
-impl AddAssign<CpuQuantity> for CpuQuantity {
-    fn add_assign(&mut self, rhs: CpuQuantity) {
+impl AddAssign<Self> for CpuQuantity {
+    fn add_assign(&mut self, rhs: Self) {
         self.millis += rhs.millis;
     }
 }
 
 impl Mul<usize> for CpuQuantity {
-    type Output = CpuQuantity;
+    type Output = Self;
 
     fn mul(self, rhs: usize) -> Self::Output {
         Self {
@@ -201,7 +201,7 @@ impl MulAssign<usize> for CpuQuantity {
 }
 
 impl Mul<f32> for CpuQuantity {
-    type Output = CpuQuantity;
+    type Output = Self;
 
     fn mul(self, rhs: f32) -> Self::Output {
         Self {
@@ -210,10 +210,10 @@ impl Mul<f32> for CpuQuantity {
     }
 }
 
-impl Div<CpuQuantity> for CpuQuantity {
+impl Div<Self> for CpuQuantity {
     type Output = f32;
 
-    fn div(self, rhs: CpuQuantity) -> Self::Output {
+    fn div(self, rhs: Self) -> Self::Output {
         self.millis as f32 / rhs.millis as f32
     }
 }
@@ -226,7 +226,7 @@ impl MulAssign<f32> for CpuQuantity {
 
 impl Sum for CpuQuantity {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.fold(CpuQuantity { millis: 0 }, CpuQuantity::add)
+        iter.fold(Self { millis: 0 }, Self::add)
     }
 }
 

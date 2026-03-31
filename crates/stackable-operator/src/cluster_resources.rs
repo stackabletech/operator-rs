@@ -144,11 +144,11 @@ pub enum ClusterResourceApplyStrategy {
 impl From<&ClusterOperation> for ClusterResourceApplyStrategy {
     fn from(commons_spec: &ClusterOperation) -> Self {
         if commons_spec.reconciliation_paused {
-            ClusterResourceApplyStrategy::ReconciliationPaused
+            Self::ReconciliationPaused
         } else if commons_spec.stopped {
-            ClusterResourceApplyStrategy::ClusterStopped
+            Self::ClusterStopped
         } else {
-            ClusterResourceApplyStrategy::Default
+            Self::Default
         }
     }
 }
@@ -205,10 +205,10 @@ impl ClusterResourceApplyStrategy {
     /// Indicates if orphaned resources should be deleted depending on the strategy.
     const fn delete_orphans(&self) -> bool {
         match self {
-            ClusterResourceApplyStrategy::NoApply
-            | ClusterResourceApplyStrategy::ReconciliationPaused => false,
-            ClusterResourceApplyStrategy::ClusterStopped
-            | ClusterResourceApplyStrategy::Default => true,
+            Self::NoApply
+            | Self::ReconciliationPaused => false,
+            Self::ClusterStopped
+            | Self::Default => true,
         }
     }
 }
@@ -234,7 +234,7 @@ impl ClusterResource for Job {
 impl ClusterResource for StatefulSet {
     fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
         match strategy {
-            ClusterResourceApplyStrategy::ClusterStopped => StatefulSet {
+            ClusterResourceApplyStrategy::ClusterStopped => Self {
                 spec: Some(StatefulSetSpec {
                     replicas: Some(0),
                     ..self.spec.unwrap_or_default()
@@ -257,7 +257,7 @@ impl ClusterResource for StatefulSet {
 impl ClusterResource for DaemonSet {
     fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
         match strategy {
-            ClusterResourceApplyStrategy::ClusterStopped => DaemonSet {
+            ClusterResourceApplyStrategy::ClusterStopped => Self {
                 spec: Some(DaemonSetSpec {
                     template: PodTemplateSpec {
                         spec: Some(PodSpec {
@@ -299,7 +299,7 @@ impl ClusterResource for DaemonSet {
 impl ClusterResource for Deployment {
     fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
         match strategy {
-            ClusterResourceApplyStrategy::ClusterStopped => Deployment {
+            ClusterResourceApplyStrategy::ClusterStopped => Self {
                 spec: Some(DeploymentSpec {
                     replicas: Some(0),
                     ..self.spec.unwrap_or_default()

@@ -24,7 +24,7 @@ pub struct ResourceRequirementsBuilder<CR, CL, MR, ML> {
 
 impl ResourceRequirementsBuilder<(), (), (), ()> {
     pub fn new() -> Self {
-        ResourceRequirementsBuilder::default()
+        Self::default()
     }
 }
 
