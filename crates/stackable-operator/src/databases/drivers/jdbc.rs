@@ -55,6 +55,11 @@ pub struct JdbcDatabaseConnectionDetails {
 }
 
 impl JdbcDatabaseConnectionDetails {
+    /// Adds all the needed elements (e.g. env vars or volume mounts) to the given
+    /// [`ContainerBuilder`].
+    ///
+    /// Currently, only (optionally) environment variables for the username and password are added.
+    /// In the future it e.g. might also add TLS ca certificate mounts.
     pub fn add_to_container(&self, cb: &mut ContainerBuilder) {
         let env_vars = self.username_env.iter().chain(self.password_env.iter());
         cb.add_env_vars(env_vars.cloned());

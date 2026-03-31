@@ -67,6 +67,11 @@ impl CeleryDatabaseConnectionDetails {
         .flatten()
     }
 
+    /// Adds all the needed elements (e.g. env vars or volume mounts) to the given
+    /// [`ContainerBuilder`].
+    ///
+    /// Currently, only environment variables are added. In the future it e.g. might also add TLS
+    /// ca certificate mounts.
     pub fn add_to_container(&self, cb: &mut ContainerBuilder) {
         cb.add_env_vars(self.env_vars().cloned());
     }
