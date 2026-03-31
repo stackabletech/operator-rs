@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    hash::BuildHasher,
+};
 
 use k8s_openapi::api::core::v1::EnvVar;
 use product_config::{ProductConfigManager, PropertyValidationResult, types::PropertyNameKind};
@@ -171,7 +174,7 @@ pub fn config_for_role_and_group<'a>(
 /// - `roles`: A map keyed by role names. The value is a tuple of a vector of `PropertyNameKind`
 ///   like (Cli, Env or Files) and [`crate::role_utils::Role`] with a boxed [`Configuration`].
 #[allow(clippy::type_complexity)]
-pub fn transform_all_roles_to_config<T, U, ProductSpecificCommonConfig>(
+pub fn transform_all_roles_to_config<T, U, ProductSpecificCommonConfig, S>(
     resource: &T::Configurable,
     roles: &HashMap<
         String,
@@ -179,12 +182,14 @@ pub fn transform_all_roles_to_config<T, U, ProductSpecificCommonConfig>(
             Vec<PropertyNameKind>,
             Role<T, U, ProductSpecificCommonConfig>,
         ),
+        S,
     >,
 ) -> Result<RoleConfigByPropertyKind>
 where
     T: Configuration,
     U: Default + JsonSchema + Serialize,
     ProductSpecificCommonConfig: Default + JsonSchema + Serialize,
+    S: BuildHasher,
 {
     let mut result = HashMap::new();
 
@@ -570,8 +575,8 @@ where
 ///     env_vars_from_rolegroup_config(&rolegroup_config)
 /// );
 /// ```
-pub fn env_vars_from_rolegroup_config(
-    rolegroup_config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+pub fn env_vars_from_rolegroup_config<S: BuildHasher>(
+    rolegroup_config: &HashMap<PropertyNameKind, BTreeMap<String, String>, S>,
 ) -> Vec<EnvVar> {
     env_vars_from(
         rolegroup_config

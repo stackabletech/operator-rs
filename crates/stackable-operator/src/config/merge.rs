@@ -2,7 +2,7 @@
 
 use std::{
     collections::{BTreeMap, HashMap, btree_map, hash_map},
-    hash::Hash,
+    hash::{BuildHasher, Hash},
 };
 
 use k8s_openapi::{
@@ -75,7 +75,7 @@ impl<K: Ord + Clone, V: Merge + Clone> Merge for BTreeMap<K, V> {
         }
     }
 }
-impl<K: Hash + Eq + Clone, V: Merge + Clone> Merge for HashMap<K, V> {
+impl<K: Hash + Eq + Clone, V: Merge + Clone, S: BuildHasher> Merge for HashMap<K, V, S> {
     fn merge(&mut self, defaults: &Self) {
         for (k, default_v) in defaults {
             match self.entry(k.clone()) {

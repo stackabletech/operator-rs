@@ -5,7 +5,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::{Display, Write},
-    hash::Hash,
+    hash::{BuildHasher, Hash},
 };
 
 use k8s_openapi::api::core::v1::PodTemplateSpec;
@@ -134,7 +134,7 @@ impl<T: Atomic> FromFragment for T {
         fragment.ok_or_else(|| validator.error_required())
     }
 }
-impl<K, V: FromFragment> FromFragment for HashMap<K, V>
+impl<K, V: FromFragment, S: BuildHasher + Default> FromFragment for HashMap<K, V, S>
 where
     K: Eq + Hash + Display,
 {

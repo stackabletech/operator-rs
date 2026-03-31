@@ -3,7 +3,6 @@
 #![expect(clippy::missing_errors_doc)]
 #![expect(clippy::must_use_candidate)]
 #![expect(clippy::return_self_not_must_use)]
-#![expect(clippy::implicit_hasher)]
 #![expect(clippy::doc_link_with_quotes)]
 #![expect(clippy::missing_panics_doc)]
 #![expect(clippy::explicit_deref_methods)]
