@@ -10,21 +10,21 @@ use crate::{
         databases::{postgresql::PostgresqlConnection, redis::RedisConnection},
         drivers::{
             celery::{CeleryDatabaseConnection, GenericCeleryDatabaseConnection},
-            jdbc::{GenericJDBCDatabaseConnection, JDBCDatabaseConnection},
+            jdbc::{GenericJdbcDatabaseConnection, JdbcDatabaseConnection},
         },
     },
 };
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-enum DummyJDBCConnection {
+enum DummyJdbcConnection {
     Postgresql(PostgresqlConnection),
     #[allow(unused)]
-    Generic(GenericJDBCDatabaseConnection),
+    Generic(GenericJdbcDatabaseConnection),
 }
 
-impl DummyJDBCConnection {
-    fn as_jdbc_database_connection(&self) -> &dyn JDBCDatabaseConnection {
+impl DummyJdbcConnection {
+    fn as_jdbc_database_connection(&self) -> &dyn JdbcDatabaseConnection {
         match self {
             Self::Postgresql(p) => p,
             Self::Generic(g) => g,
@@ -54,7 +54,7 @@ impl DummyCeleryConnection {
 #[test]
 fn test_dummy_jdbc_database_usage() {
     // Set up test data
-    let dummy_jdbc_connection = DummyJDBCConnection::Postgresql(PostgresqlConnection {
+    let dummy_jdbc_connection = DummyJdbcConnection::Postgresql(PostgresqlConnection {
         host: "my-database".parse().expect("static host is always valid"),
         port: 1234,
         database: "my_schema".to_owned(),

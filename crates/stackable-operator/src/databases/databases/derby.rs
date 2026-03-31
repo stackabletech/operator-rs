@@ -4,7 +4,7 @@ use snafu::{ResultExt, Snafu};
 
 use crate::databases::{
     TemplatingMechanism,
-    drivers::jdbc::{JDBCDatabaseConnection, JDBCDatabaseConnectionDetails},
+    drivers::jdbc::{JdbcDatabaseConnection, JdbcDatabaseConnectionDetails},
 };
 
 #[derive(Debug, Snafu)]
@@ -30,12 +30,12 @@ pub struct DerbyConnection {
     pub location: Option<String>,
 }
 
-impl JDBCDatabaseConnection for DerbyConnection {
+impl JdbcDatabaseConnection for DerbyConnection {
     fn jdbc_connection_details_with_templating(
         &self,
         unique_database_name: &str,
         _templating_mechanism: &TemplatingMechanism,
-    ) -> Result<JDBCDatabaseConnectionDetails, crate::databases::Error> {
+    ) -> Result<JdbcDatabaseConnectionDetails, crate::databases::Error> {
         let location = self
             .location
             .clone()
@@ -43,7 +43,7 @@ impl JDBCDatabaseConnection for DerbyConnection {
         let connection_uri = format!("jdbc:derby:{location};create=true",);
         let connection_uri = connection_uri.parse().context(ParseConnectionUrlSnafu)?;
 
-        Ok(JDBCDatabaseConnectionDetails {
+        Ok(JdbcDatabaseConnectionDetails {
             // Sadly the Derby driver class name is a bit complicated, e.g. for HMS up to 4.1.x we used
             // "org.apache.derby.jdbc.EmbeddedDriver",
             // for HMS 4.2.x we used "org.apache.derby.iapi.jdbc.AutoloadedDriver".

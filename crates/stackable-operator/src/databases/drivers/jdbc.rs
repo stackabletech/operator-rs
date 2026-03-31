@@ -12,7 +12,7 @@ use crate::{
 ///
 /// Provides a standardized way to obtain JDBC connection details (driver class, URI, and
 /// credential env vars) regardless of the concrete database type.
-pub trait JDBCDatabaseConnection {
+pub trait JdbcDatabaseConnection {
     /// Returns the JDBC connection details for the given `unique_database_name` using the
     /// default [`TemplatingMechanism`].
     ///
@@ -22,7 +22,7 @@ pub trait JDBCDatabaseConnection {
     fn jdbc_connection_details(
         &self,
         unique_database_name: &str,
-    ) -> Result<JDBCDatabaseConnectionDetails, crate::databases::Error> {
+    ) -> Result<JdbcDatabaseConnectionDetails, crate::databases::Error> {
         self.jdbc_connection_details_with_templating(
             unique_database_name,
             &TemplatingMechanism::default(),
@@ -36,10 +36,10 @@ pub trait JDBCDatabaseConnection {
         &self,
         unique_database_name: &str,
         templating_mechanism: &TemplatingMechanism,
-    ) -> Result<JDBCDatabaseConnectionDetails, crate::databases::Error>;
+    ) -> Result<JdbcDatabaseConnectionDetails, crate::databases::Error>;
 }
 
-pub struct JDBCDatabaseConnectionDetails {
+pub struct JdbcDatabaseConnectionDetails {
     /// The Java class name of the driver, e.g. `org.postgresql.Driver`
     pub driver: String,
 
@@ -54,7 +54,7 @@ pub struct JDBCDatabaseConnectionDetails {
     pub password_env: Option<EnvVar>,
 }
 
-impl JDBCDatabaseConnectionDetails {
+impl JdbcDatabaseConnectionDetails {
     pub fn add_to_container(&self, cb: &mut ContainerBuilder) {
         let env_vars = self.username_env.iter().chain(self.password_env.iter());
         cb.add_env_vars(env_vars.cloned());
@@ -68,7 +68,7 @@ impl JDBCDatabaseConnectionDetails {
 /// and a fully-formed JDBC URI as well as providing the needed classes on the Java classpath.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GenericJDBCDatabaseConnection {
+pub struct GenericJdbcDatabaseConnection {
     /// Fully-qualified Java class name of the JDBC driver, e.g. `org.postgresql.Driver` or
     /// `com.mysql.jdbc.Driver`. The driver JAR must be provided by you on the classpath.
     pub driver: String,
@@ -83,16 +83,16 @@ pub struct GenericJDBCDatabaseConnection {
     pub credentials_secret: String,
 }
 
-impl JDBCDatabaseConnection for GenericJDBCDatabaseConnection {
+impl JdbcDatabaseConnection for GenericJdbcDatabaseConnection {
     fn jdbc_connection_details_with_templating(
         &self,
         unique_database_name: &str,
         _templating_mechanism: &TemplatingMechanism,
-    ) -> Result<JDBCDatabaseConnectionDetails, crate::databases::Error> {
+    ) -> Result<JdbcDatabaseConnectionDetails, crate::databases::Error> {
         let (username_env, password_env) =
             username_and_password_envs(unique_database_name, &self.credentials_secret);
 
-        Ok(JDBCDatabaseConnectionDetails {
+        Ok(JdbcDatabaseConnectionDetails {
             driver: self.driver.clone(),
             connection_uri: self.uri.clone(),
             username_env: Some(username_env),

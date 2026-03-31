@@ -93,9 +93,9 @@ spec:
                 - required:
                   - redis
                 - required:
-                  - genericJDBC
+                  - genericJdbc
                 - required:
-                  - genericSQLAlchemy
+                  - genericSqlAlchemy
                 - required:
                   - genericCelery
                 properties:
@@ -133,7 +133,7 @@ spec:
                     required:
                     - uriSecret
                     type: object
-                  genericJDBC:
+                  genericJdbc:
                     description: |-
                       A generic JDBC database connection for database types not covered by a dedicated variant.
 
@@ -163,7 +163,7 @@ spec:
                     - driver
                     - uri
                     type: object
-                  genericSQLAlchemy:
+                  genericSqlAlchemy:
                     description: |-
                       A generic SQLAlchemy database connection for database types not covered by a dedicated variant.
 
@@ -196,7 +196,7 @@ spec:
                           type: string
                         default: {}
                         description: |-
-                          Additional map of JDBC connection parameters to append to the connection URL. The given
+                          Additional map of connection parameters to append to the connection URL. The given
                           `HashMap<String, String>` will be converted to query parameters in the form of
                           `?param1=value1&param2=value2`.
                         type: object

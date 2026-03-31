@@ -9,8 +9,8 @@ use stackable_operator::{
             redis::RedisConnection,
         },
         drivers::{
-            celery::GenericCeleryDatabaseConnection, jdbc::GenericJDBCDatabaseConnection,
-            sqlalchemy::GenericSQLAlchemyDatabaseConnection,
+            celery::GenericCeleryDatabaseConnection, jdbc::GenericJdbcDatabaseConnection,
+            sqlalchemy::GenericSqlAlchemyDatabaseConnection,
         },
     },
     deep_merger::ObjectOverrides,
@@ -128,8 +128,8 @@ pub mod versioned {
         Mysql(MysqlConnection),
         Derby(DerbyConnection),
         Redis(RedisConnection),
-        GenericJDBC(GenericJDBCDatabaseConnection),
-        GenericSQLAlchemy(GenericSQLAlchemyDatabaseConnection),
+        GenericJdbc(GenericJdbcDatabaseConnection),
+        GenericSqlAlchemy(GenericSqlAlchemyDatabaseConnection),
         GenericCelery(GenericCeleryDatabaseConnection),
     }
 

@@ -10,8 +10,8 @@ use crate::{
         TemplatingMechanism,
         drivers::{
             celery::{CeleryDatabaseConnection, CeleryDatabaseConnectionDetails},
-            jdbc::{JDBCDatabaseConnection, JDBCDatabaseConnectionDetails},
-            sqlalchemy::{SQLAlchemyDatabaseConnection, SQLAlchemyDatabaseConnectionDetails},
+            jdbc::{JdbcDatabaseConnection, JdbcDatabaseConnectionDetails},
+            sqlalchemy::{SqlAlchemyDatabaseConnection, SqlAlchemyDatabaseConnectionDetails},
         },
         helpers::{connection_parameters_as_url_query_parameters, username_and_password_envs},
     },
@@ -54,12 +54,12 @@ impl PostgresqlConnection {
     }
 }
 
-impl JDBCDatabaseConnection for PostgresqlConnection {
+impl JdbcDatabaseConnection for PostgresqlConnection {
     fn jdbc_connection_details_with_templating(
         &self,
         unique_database_name: &str,
         _templating_mechanism: &TemplatingMechanism,
-    ) -> Result<JDBCDatabaseConnectionDetails, crate::databases::Error> {
+    ) -> Result<JdbcDatabaseConnectionDetails, crate::databases::Error> {
         let Self {
             host,
             port,
@@ -76,7 +76,7 @@ impl JDBCDatabaseConnection for PostgresqlConnection {
         );
         let connection_uri = connection_uri.parse().context(ParseConnectionUrlSnafu)?;
 
-        Ok(JDBCDatabaseConnectionDetails {
+        Ok(JdbcDatabaseConnectionDetails {
             driver: "org.postgresql.Driver".to_owned(),
             connection_uri,
             username_env: Some(username_env),
@@ -85,12 +85,12 @@ impl JDBCDatabaseConnection for PostgresqlConnection {
     }
 }
 
-impl SQLAlchemyDatabaseConnection for PostgresqlConnection {
+impl SqlAlchemyDatabaseConnection for PostgresqlConnection {
     fn sqlalchemy_connection_details_with_templating(
         &self,
         unique_database_name: &str,
         templating_mechanism: &TemplatingMechanism,
-    ) -> SQLAlchemyDatabaseConnectionDetails {
+    ) -> SqlAlchemyDatabaseConnectionDetails {
         let Self {
             host,
             port,
@@ -112,7 +112,7 @@ impl SQLAlchemyDatabaseConnection for PostgresqlConnection {
                 "postgresql+psycopg2://${{{username_env_name}}}:${{{password_env_name}}}@{host}:{port}/{database}{parameters}",
             ),
         };
-        SQLAlchemyDatabaseConnectionDetails {
+        SqlAlchemyDatabaseConnectionDetails {
             uri_template,
             username_env: Some(username_env),
             password_env: Some(password_env),

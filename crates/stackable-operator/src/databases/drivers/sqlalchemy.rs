@@ -12,7 +12,7 @@ use crate::{
 ///
 /// Provides a standardized way to obtain a SQLAlchemy connection URI template together with the
 /// necessary credential environment variables, regardless of the concrete database type.
-pub trait SQLAlchemyDatabaseConnection {
+pub trait SqlAlchemyDatabaseConnection {
     /// Returns the SQLAlchemy connection details for the given `unique_database_name` using the
     /// default [`TemplatingMechanism`].
     ///
@@ -22,7 +22,7 @@ pub trait SQLAlchemyDatabaseConnection {
     fn sqlalchemy_connection_details(
         &self,
         unique_database_name: &str,
-    ) -> SQLAlchemyDatabaseConnectionDetails {
+    ) -> SqlAlchemyDatabaseConnectionDetails {
         self.sqlalchemy_connection_details_with_templating(
             unique_database_name,
             &TemplatingMechanism::default(),
@@ -36,10 +36,10 @@ pub trait SQLAlchemyDatabaseConnection {
         &self,
         unique_database_name: &str,
         templating_mechanism: &TemplatingMechanism,
-    ) -> SQLAlchemyDatabaseConnectionDetails;
+    ) -> SqlAlchemyDatabaseConnectionDetails;
 }
 
-pub struct SQLAlchemyDatabaseConnectionDetails {
+pub struct SqlAlchemyDatabaseConnectionDetails {
     /// The connection URI, which can contain env variable templates, e.g.
     /// `postgresql+psycopg2://${env:METADATA_DATABASE_USERNAME}:${env:METADATA_DATABASE_PASSWORD}@airflow-postgresql:5432/airflow`
     /// or
@@ -56,7 +56,7 @@ pub struct SQLAlchemyDatabaseConnectionDetails {
     pub generic_uri_var: Option<EnvVar>,
 }
 
-impl SQLAlchemyDatabaseConnectionDetails {
+impl SqlAlchemyDatabaseConnectionDetails {
     pub fn env_vars(&self) -> impl Iterator<Item = &EnvVar> {
         [
             &self.username_env,
@@ -79,17 +79,17 @@ impl SQLAlchemyDatabaseConnectionDetails {
 /// full control over the connection string including any driver-specific options.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GenericSQLAlchemyDatabaseConnection {
+pub struct GenericSqlAlchemyDatabaseConnection {
     /// The name of the Secret that contains an `uri` key with the complete SQLAlchemy URI.
     pub uri_secret: String,
 }
 
-impl SQLAlchemyDatabaseConnection for GenericSQLAlchemyDatabaseConnection {
+impl SqlAlchemyDatabaseConnection for GenericSqlAlchemyDatabaseConnection {
     fn sqlalchemy_connection_details_with_templating(
         &self,
         unique_database_name: &str,
         templating_mechanism: &TemplatingMechanism,
-    ) -> SQLAlchemyDatabaseConnectionDetails {
+    ) -> SqlAlchemyDatabaseConnectionDetails {
         let uri_env_name = format!(
             "{upper}_DATABASE_URI",
             upper = unique_database_name.to_uppercase()
@@ -100,7 +100,7 @@ impl SQLAlchemyDatabaseConnection for GenericSQLAlchemyDatabaseConnection {
             TemplatingMechanism::BashEnvSubstitution => format!("${{{uri_env_name}}}"),
         };
 
-        SQLAlchemyDatabaseConnectionDetails {
+        SqlAlchemyDatabaseConnectionDetails {
             uri_template,
             username_env: None,
             password_env: None,

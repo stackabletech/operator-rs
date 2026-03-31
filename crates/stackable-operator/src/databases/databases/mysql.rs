@@ -8,7 +8,7 @@ use crate::{
     commons::networking::HostName,
     databases::{
         TemplatingMechanism,
-        drivers::jdbc::{JDBCDatabaseConnection, JDBCDatabaseConnectionDetails},
+        drivers::jdbc::{JdbcDatabaseConnection, JdbcDatabaseConnectionDetails},
         helpers::{connection_parameters_as_url_query_parameters, username_and_password_envs},
     },
 };
@@ -50,12 +50,12 @@ impl MysqlConnection {
     }
 }
 
-impl JDBCDatabaseConnection for MysqlConnection {
+impl JdbcDatabaseConnection for MysqlConnection {
     fn jdbc_connection_details_with_templating(
         &self,
         unique_database_name: &str,
         _templating_mechanism: &TemplatingMechanism,
-    ) -> Result<JDBCDatabaseConnectionDetails, crate::databases::Error> {
+    ) -> Result<JdbcDatabaseConnectionDetails, crate::databases::Error> {
         let Self {
             host,
             port,
@@ -72,7 +72,7 @@ impl JDBCDatabaseConnection for MysqlConnection {
         );
         let connection_uri = connection_uri.parse().context(ParseConnectionUrlSnafu)?;
 
-        Ok(JDBCDatabaseConnectionDetails {
+        Ok(JdbcDatabaseConnectionDetails {
             driver: "com.mysql.jdbc.Driver".to_owned(),
             connection_uri,
             username_env: Some(username_env),
