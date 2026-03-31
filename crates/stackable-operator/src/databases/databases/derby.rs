@@ -1,19 +1,24 @@
+use std::path::PathBuf;
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 
 use crate::{
     databases::{
         TemplatingMechanism,
         drivers::jdbc::{JdbcDatabaseConnection, JdbcDatabaseConnectionDetails},
     },
-    utils::OptionExt,
+    utils::OptionExt as _,
 };
 
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("failed to parse connection URL"))]
     ParseConnectionUrl { source: url::ParseError },
+
+    #[snafu(display("invalid derby database location, likely as it contains non-utf8 characters"))]
+    NonUtf8Location { location: PathBuf },
 }
 
 /// Connection settings for an embedded [Apache Derby](https://db.apache.org/derby/) database.
@@ -30,7 +35,7 @@ pub struct DerbyConnection {
     /// The `{unique_database_name}` part is automatically handled by the operator and is added to
     /// prevent clashing database files. The `create=true` flag is always appended to the JDBC URL,
     /// so the database is created automatically if it does not yet exist at this location.
-    pub location: Option<String>,
+    pub location: Option<PathBuf>,
 }
 
 impl JdbcDatabaseConnection for DerbyConnection {
@@ -39,9 +44,12 @@ impl JdbcDatabaseConnection for DerbyConnection {
         unique_database_name: &str,
         _templating_mechanism: &TemplatingMechanism,
     ) -> Result<JdbcDatabaseConnectionDetails, crate::databases::Error> {
-        let location = self
-            .location
-            .as_ref_or_else(|| format!("/tmp/derby/{unique_database_name}/derby.db"));
+        let location = self.location.as_ref_or_else(|| {
+            PathBuf::from(format!("/tmp/derby/{unique_database_name}/derby.db"))
+        });
+        let location = location.to_str().with_context(|| NonUtf8LocationSnafu {
+            location: location.to_path_buf(),
+        })?;
         let connection_uri = format!("jdbc:derby:{location};create=true",);
         let connection_uri = connection_uri.parse().context(ParseConnectionUrlSnafu)?;
 
