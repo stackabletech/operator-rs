@@ -68,7 +68,7 @@ impl SQLAlchemyDatabaseConnectionDetails {
     }
 
     pub fn add_to_container(&self, cb: &mut ContainerBuilder) {
-        cb.add_env_vars(self.env_vars());
+        cb.add_env_vars(self.env_vars().cloned());
     }
 }
 

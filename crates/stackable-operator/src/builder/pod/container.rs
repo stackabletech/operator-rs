@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, fmt};
+use std::fmt;
 
 use indexmap::IndexMap;
 use k8s_openapi::api::core::v1::{
@@ -177,12 +177,9 @@ impl ContainerBuilder {
 
     pub fn add_env_vars<I>(&mut self, env_vars: I) -> &mut Self
     where
-        I: IntoIterator,
-        I::Item: std::borrow::Borrow<EnvVar>,
+        I: IntoIterator<Item = EnvVar>,
     {
-        self.env
-            .get_or_insert_with(Vec::new)
-            .extend(env_vars.into_iter().map(|e| e.borrow().clone()));
+        self.env.get_or_insert_with(Vec::new).extend(env_vars);
         self
     }
 

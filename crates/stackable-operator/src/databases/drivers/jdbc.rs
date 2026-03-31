@@ -57,7 +57,7 @@ pub struct JDBCDatabaseConnectionDetails {
 impl JDBCDatabaseConnectionDetails {
     pub fn add_to_container(&self, cb: &mut ContainerBuilder) {
         let env_vars = self.username_env.iter().chain(self.password_env.iter());
-        cb.add_env_vars(env_vars);
+        cb.add_env_vars(env_vars.cloned());
     }
 }
 
