@@ -37,7 +37,7 @@ pub struct MysqlConnection {
     /// against the MySQL server.
     pub credentials_secret: String,
 
-    /// Additional map of JDBC connection parameters to append to the connection URL. The given
+    /// Additional map of connection parameters to append to the connection URL. The given
     /// `HashMap<String, String>` will be converted to query parameters in the form of
     /// `?param1=value1&param2=value2`.
     #[serde(default)]
