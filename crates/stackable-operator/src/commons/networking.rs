@@ -143,7 +143,7 @@ impl HostName {
 }
 
 /// A validated kerberos realm name type, for use in CRDs.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(try_from = "String", into = "String")]
 pub struct KerberosRealmName(
     // Note: Starting with schemars 1.0 and kube 2.0, this pattern is missing in the CRD

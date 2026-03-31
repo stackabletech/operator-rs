@@ -23,7 +23,7 @@ pub use label::*;
 pub use value::*;
 
 /// The error type for key/value pair parsing/validating operations.
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum KeyValuePairError<E>
 where
     E: std::error::Error + 'static,
@@ -150,7 +150,7 @@ where
     }
 }
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum KeyValuePairsError {
     #[snafu(display("key already exists"))]
     KeyAlreadyExists,

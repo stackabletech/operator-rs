@@ -205,10 +205,8 @@ impl ClusterResourceApplyStrategy {
     /// Indicates if orphaned resources should be deleted depending on the strategy.
     const fn delete_orphans(&self) -> bool {
         match self {
-            Self::NoApply
-            | Self::ReconciliationPaused => false,
-            Self::ClusterStopped
-            | Self::Default => true,
+            Self::NoApply | Self::ReconciliationPaused => false,
+            Self::ClusterStopped | Self::Default => true,
         }
     }
 }
@@ -261,14 +259,10 @@ impl ClusterResource for DaemonSet {
                 spec: Some(DaemonSetSpec {
                     template: PodTemplateSpec {
                         spec: Some(PodSpec {
-                            node_selector: Some(
-                                [(
-                                    "stackable.tech/do-not-schedule".to_string(),
-                                    "cluster-stopped".to_string(),
-                                )]
-                                .into_iter()
-                                .collect::<BTreeMap<String, String>>(),
-                            ),
+                            node_selector: Some(BTreeMap::from([(
+                                "stackable.tech/do-not-schedule".to_string(),
+                                "cluster-stopped".to_string(),
+                            )])),
                             ..self
                                 .spec
                                 .clone()

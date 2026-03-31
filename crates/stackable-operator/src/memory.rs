@@ -21,7 +21,7 @@ use snafu::{OptionExt, ResultExt, Snafu};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum Error {
     #[snafu(display("cannot convert quantity {value:?} to Java heap"))]
     CannotConvertToJavaHeap { value: String },

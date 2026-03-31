@@ -3,7 +3,7 @@ use snafu::Snafu;
 
 type Result<T, E = SelectorError> = std::result::Result<T, E>;
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum SelectorError {
     #[snafu(display("label selector with binary operator {operator:?} must have values"))]
     LabelSelectorBinaryOperatorWithoutValues { operator: String },

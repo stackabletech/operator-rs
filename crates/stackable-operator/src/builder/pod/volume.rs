@@ -41,9 +41,7 @@ pub enum VolumeSource {
 
 impl Default for VolumeSource {
     fn default() -> Self {
-        Self::EmptyDir(EmptyDirVolumeSource {
-            ..EmptyDirVolumeSource::default()
-        })
+        Self::EmptyDir(EmptyDirVolumeSource::default())
     }
 }
 
@@ -267,7 +265,7 @@ impl VolumeMountBuilder {
     }
 }
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum SecretOperatorVolumeSourceBuilderError {
     #[snafu(display("failed to parse secret operator volume annotation"))]
     ParseAnnotation { source: AnnotationError },
@@ -440,7 +438,7 @@ impl ListenerReference {
 
 // NOTE (Techassi): We might want to think about these names and how long they
 // are getting.
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum ListenerOperatorVolumeSourceBuilderError {
     #[snafu(display("failed to convert listener reference into Kubernetes annotation"))]
     ListenerReferenceAnnotation { source: AnnotationError },
@@ -490,10 +488,7 @@ pub struct ListenerOperatorVolumeSourceBuilder {
 
 impl ListenerOperatorVolumeSourceBuilder {
     /// Create a builder for the given listener class or listener name
-    pub fn new(
-        listener_reference: &ListenerReference,
-        labels: &Labels,
-    ) -> Self {
+    pub fn new(listener_reference: &ListenerReference, labels: &Labels) -> Self {
         Self {
             listener_reference: listener_reference.to_owned(),
             labels: labels.to_owned(),

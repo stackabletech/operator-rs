@@ -15,7 +15,7 @@ use crate::{
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum Error {
     #[snafu(display("failed to create role selector labels"))]
     RoleSelectorLabels { source: crate::kvp::LabelError },

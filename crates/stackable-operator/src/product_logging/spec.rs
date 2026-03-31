@@ -102,6 +102,7 @@ where
         JsonSchema,
         Merge,
         PartialEq,
+        Eq,
         Serialize
     ),
     merge(path_overrides(merge = "crate::config::merge")),
@@ -127,7 +128,7 @@ pub enum ContainerLogConfigChoice {
     Automatic(AutomaticContainerLogConfig),
 }
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, Merge, PartialEq, Serialize, Educe)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, Merge, PartialEq, Eq, Serialize, Educe)]
 #[educe(Default)]
 #[merge(path_overrides(merge = "crate::config::merge"))]
 #[serde(untagged)]
@@ -171,6 +172,7 @@ impl FromFragment for ContainerLogConfigChoice {
         JsonSchema,
         Merge,
         PartialEq,
+        Eq,
         Serialize
     ),
     merge(path_overrides(merge = "crate::config::merge")),
@@ -192,6 +194,7 @@ pub struct CustomContainerLogConfig {
         JsonSchema,
         Merge,
         PartialEq,
+        Eq,
         Serialize
     ),
     merge(path_overrides(merge = "crate::config::merge")),
@@ -207,7 +210,16 @@ pub struct ConfigMapLogConfig {
 #[derive(Clone, Debug, Default, Eq, Fragment, JsonSchema, PartialEq)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
-    derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize),
+    derive(
+        Clone,
+        Debug,
+        Default,
+        Deserialize,
+        JsonSchema,
+        PartialEq,
+        Eq,
+        Serialize
+    ),
     serde(rename_all = "camelCase")
 )]
 pub struct AutomaticContainerLogConfig {
@@ -264,6 +276,7 @@ impl AutomaticContainerLogConfig {
         Deserialize,
         JsonSchema,
         PartialEq,
+        Eq,
         Merge,
         Serialize
     ),
@@ -288,6 +301,7 @@ pub struct LoggerConfig {
         JsonSchema,
         Merge,
         PartialEq,
+        Eq,
         Serialize
     ),
     merge(path_overrides(merge = "crate::config::merge")),

@@ -7,7 +7,7 @@ use crate::kvp::{Annotation, Annotations, Label, LabelError, Labels, ObjectLabel
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum Error {
     #[snafu(display("failed to set recommended labels"))]
     RecommendedLabels { source: LabelError },
