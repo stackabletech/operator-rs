@@ -1,3 +1,4 @@
+#![allow(clippy::doc_link_with_quotes)]
 //! Fragments are partially validated parts of a product configuration. For example, mandatory values may be missing.
 //! Fragments may be [`validate`]d and turned into their ["full"](`FromFragment`) type.
 //!
