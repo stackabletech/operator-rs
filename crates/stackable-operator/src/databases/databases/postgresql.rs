@@ -72,7 +72,8 @@ impl JdbcDatabaseConnection for PostgresqlConnection {
 
         let connection_uri = format!(
             "jdbc:postgresql://{host}:{port}/{database}{parameters}",
-            parameters = connection_parameters_as_url_query_parameters(parameters)
+            parameters =
+                connection_parameters_as_url_query_parameters(parameters).unwrap_or_default()
         );
         let connection_uri = connection_uri.parse().context(ParseConnectionUrlSnafu)?;
 
@@ -102,7 +103,8 @@ impl SqlAlchemyDatabaseConnection for PostgresqlConnection {
             username_and_password_envs(unique_database_name, credentials_secret);
         let username_env_name = &username_env.name;
         let password_env_name = &password_env.name;
-        let parameters = connection_parameters_as_url_query_parameters(parameters);
+        let parameters =
+            connection_parameters_as_url_query_parameters(parameters).unwrap_or_default();
 
         let uri_template = match templating_mechanism {
             TemplatingMechanism::ConfigUtils => format!(
@@ -138,7 +140,8 @@ impl CeleryDatabaseConnection for PostgresqlConnection {
             username_and_password_envs(unique_database_name, credentials_secret);
         let username_env_name = &username_env.name;
         let password_env_name = &password_env.name;
-        let parameters = connection_parameters_as_url_query_parameters(parameters);
+        let parameters =
+            connection_parameters_as_url_query_parameters(parameters).unwrap_or_default();
 
         let uri_template = match templating_mechanism {
             TemplatingMechanism::ConfigUtils => format!(

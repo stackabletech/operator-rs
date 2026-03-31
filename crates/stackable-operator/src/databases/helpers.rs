@@ -32,19 +32,19 @@ pub fn username_and_password_env_names(unique_database_name: &str) -> (String, S
 
 /// Returns
 ///
-/// * If no params are defined: ""
-/// * If params are defined: "?key=value&foo=bar"
+/// * [`None`] if no connection parameters are defined.
+/// * `?key1=value1&key2=value2` if connection parameters are defined.
 pub fn connection_parameters_as_url_query_parameters(
     parameters: &BTreeMap<String, String>,
-) -> String {
+) -> Option<String> {
     if parameters.is_empty() {
-        String::new()
-    } else {
-        let parameters = parameters
-            .iter()
-            .map(|(k, v)| format!("{k}={v}"))
-            .collect::<Vec<_>>()
-            .join("&");
-        format!("?{parameters}")
+        return None;
     }
+
+    let parameters = parameters
+        .iter()
+        .map(|(k, v)| format!("{k}={v}"))
+        .collect::<Vec<_>>()
+        .join("&");
+    Some(format!("?{parameters}"))
 }

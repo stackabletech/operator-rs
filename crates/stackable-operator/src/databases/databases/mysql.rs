@@ -68,7 +68,8 @@ impl JdbcDatabaseConnection for MysqlConnection {
 
         let connection_uri = format!(
             "jdbc:mysql://{host}:{port}/{database}{parameters}",
-            parameters = connection_parameters_as_url_query_parameters(parameters)
+            parameters =
+                connection_parameters_as_url_query_parameters(parameters).unwrap_or_default()
         );
         let connection_uri = connection_uri.parse().context(ParseConnectionUrlSnafu)?;
 
