@@ -21,6 +21,14 @@ pub enum Error {
     Derby { source: databases::derby::Error },
 }
 
+/// Templating mechanism to use when substituting env variables.
+///
+/// Most products consume config files, which are templated using
+/// [`config-utils`](https://github.com/stackabletech/config-utils). This is the recommended
+/// mechanism, hence it's the default.
+///
+/// And than there is Airflow, where we configured everything via env variables, so that doesn't
+/// work. So we also support using bash env substitution.
 #[derive(Copy, Clone, Debug, Default)]
 pub enum TemplatingMechanism {
     /// Template files using <https://github.com/stackabletech/config-utils>, e.g.
