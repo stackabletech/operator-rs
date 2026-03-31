@@ -58,7 +58,7 @@ pub trait Merge {
 
 impl<T: Merge> Merge for Box<T> {
     fn merge(&mut self, defaults: &Self) {
-        T::merge(self, defaults)
+        T::merge(self, defaults);
     }
 }
 impl<K: Ord + Clone, V: Merge + Clone> Merge for BTreeMap<K, V> {
@@ -166,7 +166,7 @@ mod tests {
     struct Accumulator(u8);
     impl Merge for Accumulator {
         fn merge(&mut self, defaults: &Self) {
-            self.0 += defaults.0
+            self.0 += defaults.0;
         }
     }
 

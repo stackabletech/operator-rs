@@ -194,7 +194,10 @@ impl ProbeBuilder<ProbeAction, Duration> {
 
         // SAFETY: Period is checked above to be non-zero
         let success_threshold = success_threshold_duration.div_duration_f32(*self.period);
-        Ok(self.with_success_threshold(success_threshold.ceil() as i32))
+        // Note: We calculate an f32, which can overflow an i32, so we clamp it to bo in range
+        #[expect(clippy::cast_possible_truncation)]
+        #[expect(clippy::cast_precision_loss)]
+        Ok(self.with_success_threshold(success_threshold.ceil().clamp(0.0, i32::MAX as f32) as i32))
     }
 
     /// After a probe fails `failureThreshold` times in a row, Kubernetes considers that the
@@ -257,7 +260,10 @@ impl ProbeBuilder<ProbeAction, Duration> {
 
         // SAFETY: Period is checked above to be non-zero
         let failure_threshold = failure_threshold_duration.div_duration_f32(*self.period);
-        Ok(self.with_failure_threshold(failure_threshold.ceil() as i32))
+        // Note: We calculate an f32, which can overflow an i32, so we clamp it to bo in range
+        #[expect(clippy::cast_possible_truncation)]
+        #[expect(clippy::cast_precision_loss)]
+        Ok(self.with_failure_threshold(failure_threshold.ceil().clamp(0.0, i32::MAX as f32) as i32))
     }
 
     /// Build the [`Probe`] using the specified contents.

@@ -417,7 +417,7 @@ mod test {
             .prefix()
             .is_some_and(|prefix| *prefix == "app.kubernetes.io");
 
-        assert_eq!(is_valid, expected)
+        assert_eq!(is_valid, expected);
     }
 
     #[rstest]

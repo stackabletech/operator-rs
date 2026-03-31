@@ -248,7 +248,7 @@ impl AutomaticContainerLogConfig {
     pub fn root_log_level(&self) -> LogLevel {
         self.loggers
             .get(Self::ROOT_LOGGER)
-            .map(|root| root.level.to_owned())
+            .map(|root| root.level)
             .unwrap_or_default()
     }
 }
@@ -338,8 +338,7 @@ impl LogLevel {
             LogLevel::DEBUG => "debug",
             LogLevel::INFO => "info",
             LogLevel::WARN => "warn",
-            LogLevel::ERROR => "error",
-            LogLevel::FATAL => "error",
+            LogLevel::ERROR | LogLevel::FATAL => "error",
             LogLevel::NONE => "off",
         }
         .into()
@@ -352,8 +351,7 @@ impl LogLevel {
             LogLevel::DEBUG => "DEBUG",
             LogLevel::INFO => "INFO",
             LogLevel::WARN => "WARN",
-            LogLevel::ERROR => "ERROR",
-            LogLevel::FATAL => "ERROR",
+            LogLevel::ERROR | LogLevel::FATAL => "ERROR",
             LogLevel::NONE => "OFF",
         }
         .into()
@@ -382,13 +380,9 @@ impl LogLevel {
     // based on https://www.openpolicyagent.org/docs/latest/cli/#options-10 opa has only log levels {debug,info,error}
     pub fn to_opa_literal(&self) -> String {
         match self {
-            LogLevel::TRACE => "debug",
-            LogLevel::DEBUG => "debug",
+            LogLevel::TRACE | LogLevel::DEBUG => "debug",
             LogLevel::INFO => "info",
-            LogLevel::WARN => "error",
-            LogLevel::ERROR => "error",
-            LogLevel::FATAL => "error",
-            LogLevel::NONE => "error",
+            LogLevel::WARN | LogLevel::ERROR | LogLevel::FATAL | LogLevel::NONE => "error",
         }
         .into()
     }
@@ -396,8 +390,7 @@ impl LogLevel {
     /// Convert the log level to a Python expression
     pub fn to_python_expression(&self) -> String {
         match self {
-            LogLevel::TRACE => "logging.DEBUG",
-            LogLevel::DEBUG => "logging.DEBUG",
+            LogLevel::TRACE | LogLevel::DEBUG => "logging.DEBUG",
             LogLevel::INFO => "logging.INFO",
             LogLevel::WARN => "logging.WARNING",
             LogLevel::ERROR => "logging.ERROR",

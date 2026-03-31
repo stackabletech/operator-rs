@@ -61,7 +61,7 @@ impl ConnectionSpec {
         let mut url = Url::parse(&endpoint).context(ParseS3EndpointSnafu { endpoint })?;
 
         if self.tls.uses_tls() {
-            url.set_scheme("https").map_err(|_| {
+            url.set_scheme("https").map_err(|()| {
                 SetS3EndpointSchemeSnafu {
                     scheme: "https".to_string(),
                     endpoint: url.clone(),

@@ -31,7 +31,7 @@ impl UrlExt for url::Url {
 
         while let Some(input) = iter.next() {
             url = if !input.ends_with('/') && iter.peek().is_some() {
-                url.join(&format!("{}/", input))?
+                url.join(&format!("{input}/"))?
             } else {
                 url.join(input)?
             };

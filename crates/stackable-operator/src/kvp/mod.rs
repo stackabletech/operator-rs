@@ -464,7 +464,7 @@ mod test {
         let labels = Labels::common("test", "test-01").unwrap();
 
         assert!(labels.contains(("app.kubernetes.io/name", "test")));
-        assert!(labels.contains_key("app.kubernetes.io/instance"))
+        assert!(labels.contains_key("app.kubernetes.io/instance"));
     }
 
     #[test]
@@ -482,14 +482,14 @@ mod test {
     fn key_error() {
         let err = Label::try_from(("stäckable.tech/vendor", "Stackable")).unwrap_err();
         let report = Report::from_error(err);
-        println!("{report}")
+        println!("{report}");
     }
 
     #[test]
     fn value_error() {
         let err = Label::try_from(("stackable.tech/vendor", "Stäckable")).unwrap_err();
         let report = Report::from_error(err);
-        println!("{report}")
+        println!("{report}");
     }
 
     #[test]
@@ -502,6 +502,6 @@ mod test {
             BTreeMap::from(
                 Labels::try_from_iter([("a", "a"), ("b", "b"), ("c", "c"), ("d", "d")]).unwrap()
             )
-        )
+        );
     }
 }

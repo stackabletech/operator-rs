@@ -509,7 +509,7 @@ impl<'a> ClusterResources<'a> {
             operator_name: operator_name.into(),
             controller_name: controller_name.into(),
             manager: format_full_controller_name(operator_name, controller_name),
-            resource_ids: Default::default(),
+            resource_ids: HashSet::default(),
             apply_strategy,
             object_overrides,
         })
@@ -739,7 +739,7 @@ impl<'a> ClusterResources<'a> {
                         T::plural(&()),
                         ClusterResources::print_resources(&orphaned_resources),
                     );
-                    for resource in orphaned_resources.iter() {
+                    for resource in &orphaned_resources {
                         client
                             .delete(resource)
                             .await
@@ -798,17 +798,17 @@ impl<'a> ClusterResources<'a> {
                 LabelSelectorRequirement {
                     key: K8S_APP_INSTANCE_KEY.into(),
                     operator: "In".into(),
-                    values: Some(vec![self.app_instance.to_owned()]),
+                    values: Some(vec![self.app_instance.clone()]),
                 },
                 LabelSelectorRequirement {
                     key: K8S_APP_NAME_KEY.into(),
                     operator: "In".into(),
-                    values: Some(vec![self.app_name.to_owned()]),
+                    values: Some(vec![self.app_name.clone()]),
                 },
                 LabelSelectorRequirement {
                     key: K8S_APP_MANAGED_BY_KEY.into(),
                     operator: "In".into(),
-                    values: Some(vec![self.manager.to_owned()]),
+                    values: Some(vec![self.manager.clone()]),
                 },
             ]),
             ..Default::default()

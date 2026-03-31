@@ -84,7 +84,7 @@ impl VolumeBuilder {
         quantity: Option<Quantity>,
     ) -> &mut Self {
         self.volume_source = VolumeSource::EmptyDir(EmptyDirVolumeSource {
-            medium: medium.map(|m| m.into()),
+            medium: medium.map(Into::into),
             size_limit: quantity,
         });
         self
@@ -102,7 +102,7 @@ impl VolumeBuilder {
     ) -> &mut Self {
         self.volume_source = VolumeSource::HostPath(HostPathVolumeSource {
             path: path.into(),
-            type_: type_.map(|t| t.into()),
+            type_: type_.map(Into::into),
         });
         self
     }
@@ -362,12 +362,12 @@ impl SecretOperatorVolumeSourceBuilder {
 
         if let Some(password) = &self.tls_pkcs12_password {
             // The `tls_pkcs12_password` is only used for PKCS12 stores.
-            if Some(SecretFormat::TlsPkcs12) != self.format {
-                warn!(format.actual = ?self.format, format.expected = ?Some(SecretFormat::TlsPkcs12), "A TLS PKCS12 password was set but ignored because another format was requested")
-            } else {
+            if Some(SecretFormat::TlsPkcs12) == self.format {
                 annotations.insert(
                     Annotation::tls_pkcs12_password(password).context(ParseAnnotationSnafu)?,
                 );
+            } else {
+                warn!(format.actual = ?self.format, format.expected = ?Some(SecretFormat::TlsPkcs12), "A TLS PKCS12 password was set but ignored because another format was requested");
             }
         }
 
@@ -500,18 +500,6 @@ impl ListenerOperatorVolumeSourceBuilder {
         }
     }
 
-    fn build_spec(&self) -> PersistentVolumeClaimSpec {
-        PersistentVolumeClaimSpec {
-            storage_class_name: Some("listeners.stackable.tech".to_string()),
-            resources: Some(VolumeResourceRequirements {
-                requests: Some([("storage".to_string(), Quantity("1".to_string()))].into()),
-                ..Default::default()
-            }),
-            access_modes: Some(vec!["ReadWriteMany".to_string()]),
-            ..PersistentVolumeClaimSpec::default()
-        }
-    }
-
     #[deprecated(note = "renamed to `build_ephemeral`", since = "0.61.1")]
     pub fn build(&self) -> Result<EphemeralVolumeSource, ListenerOperatorVolumeSourceBuilderError> {
         self.build_ephemeral()
@@ -534,7 +522,7 @@ impl ListenerOperatorVolumeSourceBuilder {
                         .with_labels(self.labels.clone())
                         .build(),
                 ),
-                spec: self.build_spec(),
+                spec: Self::spec(),
             }),
         })
     }
@@ -555,9 +543,21 @@ impl ListenerOperatorVolumeSourceBuilder {
                 .with_annotation(listener_reference_annotation)
                 .with_labels(self.labels.clone())
                 .build(),
-            spec: Some(self.build_spec()),
+            spec: Some(Self::spec()),
             ..Default::default()
         })
+    }
+
+    fn spec() -> PersistentVolumeClaimSpec {
+        PersistentVolumeClaimSpec {
+            storage_class_name: Some("listeners.stackable.tech".to_string()),
+            resources: Some(VolumeResourceRequirements {
+                requests: Some([("storage".to_string(), Quantity("1".to_string()))].into()),
+                ..Default::default()
+            }),
+            access_modes: Some(vec!["ReadWriteMany".to_string()]),
+            ..PersistentVolumeClaimSpec::default()
+        }
     }
 }
 

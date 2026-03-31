@@ -36,11 +36,11 @@ pub fn print_startup_string(
     rustc_version: &str,
 ) {
     let git = match git_version {
-        None => "".to_string(),
+        None => String::new(),
         Some(git) => format!(" (Git information: {git})"),
     };
     info!("Starting {pkg_description}");
     info!(
         "This is version {pkg_version}{git}, built for {target} by {rustc_version} at {built_time}",
-    )
+    );
 }

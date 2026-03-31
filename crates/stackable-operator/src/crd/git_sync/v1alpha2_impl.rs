@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{collections::BTreeMap, fmt::Write as _, path::PathBuf};
 
 use k8s_openapi::api::core::v1::{
     Container, EmptyDirVolumeSource, EnvVar, EnvVarSource, SecretKeySelector, Volume, VolumeMount,
@@ -264,7 +264,7 @@ impl GitSyncResources {
     ) -> String {
         let internal_args = BTreeMap::from([
             ("--repo".to_string(), git_sync.repo.as_str().to_owned()),
-            ("--ref".to_string(), git_sync.branch.to_owned()),
+            ("--ref".to_string(), git_sync.branch.clone()),
             ("--depth".to_string(), git_sync.depth.to_string()),
             (
                 "--period".to_string(),
@@ -346,7 +346,7 @@ impl GitSyncResources {
                 log_config,
             ));
             shell_script.push('\n');
-        };
+        }
 
         let git_sync_command = format!("/stackable/git-sync {args_string}");
 
@@ -354,12 +354,14 @@ impl GitSyncResources {
             shell_script.push_str(&git_sync_command);
         } else {
             // Run the git-sync command in the background
-            shell_script.push_str(&format!(
+            write!(
+                shell_script,
                 "{COMMON_BASH_TRAP_FUNCTIONS}
 prepare_signal_handlers
 {git_sync_command} &
 wait_for_termination $!"
-            ))
+            )
+            .expect("We can always write to a String");
         }
 
         shell_script
@@ -715,7 +717,7 @@ volumeMounts:
         assert_eq!(3, git_sync_resources.git_sync_init_containers.len());
 
         assert_eq!(
-            r#"args:
+            r"args:
 - |-
   mkdir --parents /stackable/log/git-sync-0-init && exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2)
   /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git' --link=current --one-time=true --period=20s --ref=main --repo=https://github.com/stackabletech/repo1 --root=/tmp/git
@@ -747,12 +749,12 @@ volumeMounts:
   name: log-volume
 - mountPath: /mnt/extra-volume
   name: extra-volume
-"#,
+",
             serde_yaml::to_string(&git_sync_resources.git_sync_init_containers.first()).unwrap()
         );
 
         assert_eq!(
-            r#"args:
+            r"args:
 - |-
   mkdir --parents /stackable/log/git-sync-1-init && exec > >(tee /stackable/log/git-sync-1-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-1-init/container.stderr.log >&2)
   /stackable/git-sync --depth=3 --git-config='safe.directory:/tmp/git,http.sslCAInfo:/tmp/ca-cert/ca.crt' --link=current --one-time=true --period=60s --ref=trunk --repo=https://github.com/stackabletech/repo2 --rev=HEAD --root=/tmp/git
@@ -789,12 +791,12 @@ volumeMounts:
   name: log-volume
 - mountPath: /mnt/extra-volume
   name: extra-volume
-"#,
+",
             serde_yaml::to_string(&git_sync_resources.git_sync_init_containers.get(1)).unwrap()
         );
 
         assert_eq!(
-            r#"args:
+            r"args:
 - |-
   mkdir --parents /stackable/log/git-sync-2-init && exec > >(tee /stackable/log/git-sync-2-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-2-init/container.stderr.log >&2)
   /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git,key:value,safe.directory:/safe-dir' --link=current --one-time=true --period=20s --ref=feat/git-sync --repo=https://github.com/stackabletech/repo3 --root=/tmp/git
@@ -826,7 +828,7 @@ volumeMounts:
   name: log-volume
 - mountPath: /mnt/extra-volume
   name: extra-volume
-"#,
+",
             serde_yaml::to_string(&git_sync_resources.git_sync_init_containers.get(2)).unwrap()
         );
 
@@ -1029,7 +1031,7 @@ volumeMounts:
         assert_eq!(1, git_sync_resources.git_sync_init_containers.len());
 
         assert_eq!(
-            r#"args:
+            r"args:
 - |-
   mkdir --parents /stackable/log/git-sync-0-init && exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2)
   /stackable/git-sync --depth=3 --git-config='safe.directory:/tmp/git,http.sslCAInfo:/tmp/ca-cert/ca.crt' --link=current --one-time=true --period=60s --ref=trunk --repo=ssh://git@github.com/stackabletech/repo.git --rev=HEAD --root=/tmp/git
@@ -1065,7 +1067,7 @@ volumeMounts:
   name: extra-volume
 - mountPath: /stackable/gitssh-0
   name: ssh-keys-info-0
-"#,
+",
             serde_yaml::to_string(&git_sync_resources.git_sync_init_containers.first()).unwrap()
         );
 

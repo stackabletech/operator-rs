@@ -71,7 +71,7 @@ impl BinaryMultiple {
 
     /// The exponential scale factor used when converting a `BinaryMultiple`
     /// to another one.
-    const fn exponential_scale_factor(&self) -> i32 {
+    const fn exponential_scale_factor(self) -> i32 {
         match self {
             BinaryMultiple::Kibi => 1,
             BinaryMultiple::Mebi => 2,
@@ -138,9 +138,7 @@ impl Display for BinaryMultiple {
 pub fn to_java_heap(q: &Quantity, factor: f32) -> Result<String> {
     let scaled = (q.0.parse::<MemoryQuantity>()? * factor).scale_for_java();
     if scaled.value < 1.0 {
-        Err(Error::CannotConvertToJavaHeap {
-            value: q.0.to_owned(),
-        })
+        Err(Error::CannotConvertToJavaHeap { value: q.0.clone() })
     } else {
         Ok(format!(
             "-Xmx{:.0}{}",
@@ -174,7 +172,7 @@ pub fn to_java_heap_value(q: &Quantity, factor: f32, target_unit: BinaryMultiple
 
     if scaled.value < 1.0 {
         Err(Error::CannotConvertToJavaHeapValue {
-            value: q.0.to_owned(),
+            value: q.0.clone(),
             target_unit: target_unit.to_string(),
         })
     } else {
@@ -206,19 +204,17 @@ impl MemoryQuantity {
 
     /// Scales down the unit to GB if it is TB or bigger.
     /// Leaves the quantity unchanged otherwise.
-    fn scale_to_at_most_gb(&self) -> Self {
+    fn scale_to_at_most_gb(self) -> Self {
         match self.unit {
-            BinaryMultiple::Kibi => *self,
-            BinaryMultiple::Mebi => *self,
-            BinaryMultiple::Gibi => *self,
-            BinaryMultiple::Tebi => self.scale_to(BinaryMultiple::Gibi),
-            BinaryMultiple::Pebi => self.scale_to(BinaryMultiple::Gibi),
-            BinaryMultiple::Exbi => self.scale_to(BinaryMultiple::Gibi),
+            BinaryMultiple::Kibi | BinaryMultiple::Mebi | BinaryMultiple::Gibi => self,
+            BinaryMultiple::Tebi | BinaryMultiple::Pebi | BinaryMultiple::Exbi => {
+                self.scale_to(BinaryMultiple::Gibi)
+            }
         }
     }
 
     /// Scale down the unit by one order of magnitude, i.e. GB to MB.
-    fn scale_down_unit(&self) -> Result<Self> {
+    fn scale_down_unit(self) -> Result<Self> {
         match self.unit {
             BinaryMultiple::Kibi => Err(Error::CannotScaleDownMemoryUnit),
             BinaryMultiple::Mebi => Ok(self.scale_to(BinaryMultiple::Kibi)),
@@ -248,11 +244,11 @@ impl MemoryQuantity {
     /// If the MemoryQuantity value is smaller than 1 (starts with a zero), convert it to a smaller
     /// unit until the non fractional part of the value is not zero anymore.
     /// This can fail if the quantity is smaller than 1kB.
-    fn ensure_no_zero(&self) -> Result<Self> {
+    fn ensure_no_zero(self) -> Result<Self> {
         if self.value < 1. {
             self.scale_down_unit()?.ensure_no_zero()
         } else {
-            Ok(*self)
+            Ok(self)
         }
     }
 
@@ -260,7 +256,7 @@ impl MemoryQuantity {
     /// This is done by picking smaller units until the fractional part is smaller than the tolerated
     /// rounding loss, and then rounding down.
     /// This can fail if the tolerated rounding loss is less than 1kB.
-    fn ensure_integer(&self, tolerated_rounding_loss: MemoryQuantity) -> Result<Self> {
+    fn ensure_integer(self, tolerated_rounding_loss: MemoryQuantity) -> Result<Self> {
         let fraction_memory = MemoryQuantity {
             value: self.value.fract(),
             unit: self.unit,
@@ -289,17 +285,18 @@ impl MemoryQuantity {
     /// Scales the unit to a value supported by Java and may even scale
     /// further down, in an attempt to avoid having zero sizes or losing too
     /// much precision.
-    fn scale_for_java(&self) -> Self {
+    fn scale_for_java(self) -> Self {
+        const EPS: f32 = 0.2;
+
         let (norm_value, norm_unit) = match self.unit {
-            BinaryMultiple::Kibi => (self.value, self.unit),
-            BinaryMultiple::Mebi => (self.value, self.unit),
-            BinaryMultiple::Gibi => (self.value, self.unit),
+            BinaryMultiple::Kibi | BinaryMultiple::Mebi | BinaryMultiple::Gibi => {
+                (self.value, self.unit)
+            }
             BinaryMultiple::Tebi => (self.value * 1024.0, BinaryMultiple::Gibi),
             BinaryMultiple::Pebi => (self.value * 1024.0 * 1024.0, BinaryMultiple::Gibi),
             BinaryMultiple::Exbi => (self.value * 1024.0 * 1024.0 * 1024.0, BinaryMultiple::Gibi),
         };
 
-        const EPS: f32 = 0.2;
         let (scaled_value, scaled_unit) = if norm_value < 1.0 || norm_value.fract() > EPS {
             match norm_unit {
                 BinaryMultiple::Mebi => (norm_value * 1024.0, BinaryMultiple::Kibi),
@@ -509,7 +506,7 @@ impl From<MemoryQuantity> for Quantity {
 
 impl From<&MemoryQuantity> for Quantity {
     fn from(quantity: &MemoryQuantity) -> Self {
-        Quantity(format!("{}", quantity))
+        Quantity(format!("{quantity}"))
     }
 }
 
@@ -522,7 +519,7 @@ mod tests {
 
     #[rstest]
     #[case("256Ki", MemoryQuantity { value: 256.0, unit: BinaryMultiple::Kibi })]
-    #[case("49041204Ki", MemoryQuantity { value: 49041204.0, unit: BinaryMultiple::Kibi })]
+    #[case("49041204Ki", MemoryQuantity { value: 49_041_204.0, unit: BinaryMultiple::Kibi })]
     #[case("8Mi", MemoryQuantity { value: 8.0, unit: BinaryMultiple::Mebi })]
     #[case("1.5Gi", MemoryQuantity { value: 1.5, unit: BinaryMultiple::Gibi })]
     #[case("0.8Ti", MemoryQuantity { value: 0.8, unit: BinaryMultiple::Tebi })]
@@ -583,7 +580,7 @@ mod tests {
     #[case("2Mi", 0.8, BinaryMultiple::Kibi, 1638)]
     #[case("1.5Gi", 0.8, BinaryMultiple::Mebi, 1228)]
     #[case("2Gi", 0.8, BinaryMultiple::Mebi, 1638)]
-    #[case("2Ti", 0.8, BinaryMultiple::Mebi, 1677721)]
+    #[case("2Ti", 0.8, BinaryMultiple::Mebi, 1_677_721)]
     #[case("2Ti", 0.8, BinaryMultiple::Gibi, 1638)]
     #[case("2Ti", 1.0, BinaryMultiple::Gibi, 2048)]
     #[case("2048Ki", 1.0, BinaryMultiple::Mebi, 2)]
@@ -664,7 +661,7 @@ mod tests {
     fn partial_ord(#[case] lhs: &str, #[case] rhs: &str, #[case] res: bool) {
         let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
         let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
-        assert_eq!(lhs > rhs, res)
+        assert_eq!(lhs > rhs, res);
     }
 
     #[rstest]
@@ -675,7 +672,7 @@ mod tests {
     fn partial_eq(#[case] lhs: &str, #[case] rhs: &str, #[case] res: bool) {
         let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
         let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
-        assert_eq!(lhs == rhs, res)
+        assert_eq!(lhs == rhs, res);
     }
 
     #[rstest]

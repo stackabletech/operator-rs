@@ -62,7 +62,7 @@ impl AuthenticationProvider {
         .context(ParseOidcEndpointUrlSnafu)?;
 
         if self.tls.uses_tls() {
-            url.set_scheme("https").map_err(|_| {
+            url.set_scheme("https").map_err(|()| {
                 SetOidcEndpointSchemeSnafu {
                     scheme: "https".to_string(),
                     endpoint: url.clone(),
@@ -137,7 +137,7 @@ impl AuthenticationProvider {
         let secret_name_hash = hasher.finish();
 
         // Prefix with zeros to have consistent length. Max length is 16 characters, which is caused by [`u64::MAX`].
-        let secret_name_hash = format!("{:016x}", secret_name_hash).to_uppercase();
+        let secret_name_hash = format!("{secret_name_hash:016x}").to_uppercase();
         let env_var_prefix = format!("OIDC_{secret_name_hash}");
 
         (

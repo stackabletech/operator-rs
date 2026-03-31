@@ -181,7 +181,7 @@ impl ClusterCondition {
     /// combines it with the optional message to provide more context.
     pub fn display_long(&self) -> String {
         match &self.message {
-            Some(message) => format!("{}: {}", self, message),
+            Some(message) => format!("{self}: {message}"),
             None => self.to_string(),
         }
     }
@@ -193,9 +193,10 @@ impl ClusterCondition {
     /// which contains the optional message to provide more context. Internally
     /// this method uses the `display_short` and `display_long` methods.
     pub fn display_short_or_long(&self) -> String {
-        match self.is_good() {
-            true => self.display_short(),
-            false => self.display_long(),
+        if self.is_good() {
+            self.display_short()
+        } else {
+            self.display_long()
         }
     }
 }
@@ -328,7 +329,7 @@ impl ClusterConditionSet {
                 _ => None,
             } {
                 result.put(condition);
-            };
+            }
         }
 
         result

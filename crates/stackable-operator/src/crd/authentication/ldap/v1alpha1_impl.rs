@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn full() {
-        let input = r#"
+        let input = r"
             hostname: my.ldap.server
             port: 42
             searchBase: ou=users,dc=example,dc=org
@@ -212,7 +212,7 @@ mod tests {
                 server:
                   caCert:
                     secretClass: ldap-ca-cert
-        "#;
+        ";
         let ldap: AuthenticationProvider = yaml_from_str_singleton_map(input).unwrap();
 
         assert_eq!(ldap.port(), 42);

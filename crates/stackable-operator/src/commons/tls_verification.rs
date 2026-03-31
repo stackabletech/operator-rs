@@ -94,8 +94,7 @@ impl TlsClientDetails {
     pub fn uses_tls_verification(&self) -> bool {
         self.tls
             .as_ref()
-            .map(|tls| tls.verification != TlsVerification::None {})
-            .unwrap_or_default()
+            .is_some_and(|tls| tls.verification != TlsVerification::None {})
     }
 
     /// Returns the path of the ca.crt that should be used to verify the LDAP server certificate

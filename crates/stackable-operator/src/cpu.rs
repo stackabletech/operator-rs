@@ -93,9 +93,10 @@ impl<'de> Deserialize<'de> for CpuQuantity {
 
 impl Display for CpuQuantity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.millis < 1000 {
-            true => write!(f, "{}m", self.millis),
-            false => write!(f, "{}", self.as_cpu_count()),
+        if self.millis < 1000 {
+            write!(f, "{}m", self.millis)
+        } else {
+            write!(f, "{}", self.as_cpu_count())
         }
     }
 }
@@ -267,7 +268,7 @@ mod tests {
     #[case(CpuQuantity::from_millis(2000), "2")]
     #[case(CpuQuantity::from_millis(1000), "1")]
     fn to_string(#[case] cpu: CpuQuantity, #[case] expected: &str) {
-        assert_eq!(cpu.to_string(), expected)
+        assert_eq!(cpu.to_string(), expected);
     }
 
     #[rstest]

@@ -10,6 +10,10 @@ All notable changes to this project will be documented in this file.
 - Add support for specifying a `clientAuthenticationMethod` for OIDC ([#1178]).
   This was originally done in [#1158] and had been reverted in [#1170].
 
+### Changed
+
+- BREAKING: `OpaConfig::full_document_url` now takes `&OpaApiVersion` instead of `OpaApiVersion` ([#XXXX]).
+
 ### Removed
 
 - BREAKING: Remove unused `add_prefix`, `try_add_prefix`, `set_name`, and `try_set_name` associated

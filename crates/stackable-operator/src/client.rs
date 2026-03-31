@@ -95,6 +95,7 @@ pub enum Error {
 /// It wraps an underlying [kube::client::Client] and provides some common functionality.
 #[derive(Clone)]
 pub struct Client {
+    #[expect(clippy::struct_field_names)]
     client: KubeClient,
     patch_params: PatchParams,
     post_params: PostParams,
@@ -707,7 +708,7 @@ mod tests {
 
     use crate::utils::cluster_info::KubernetesClusterInfoOptions;
 
-    async fn test_cluster_info_opts() -> KubernetesClusterInfoOptions {
+    fn test_cluster_info_opts() -> KubernetesClusterInfoOptions {
         KubernetesClusterInfoOptions {
             // We have to hard-code a made-up cluster domain,
             // since kubernetes_node_name (probably) won't be a valid Node that we can query.
@@ -724,7 +725,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created() {
-        let client = super::initialize_operator(None, &test_cluster_info_opts().await)
+        let client = super::initialize_operator(None, &test_cluster_info_opts())
             .await
             .expect("KUBECONFIG variable must be configured.");
 
@@ -785,10 +786,10 @@ mod tests {
                     Event::Delete(_) => {
                         panic!("Not expected the test_wait_created busybox pod to be deleted");
                     }
-                    Event::Init | Event::InitDone => continue,
+                    Event::Init | Event::InitDone => {}
                 },
-                Err(_) => {
-                    panic!("Error while waiting for readiness.");
+                Err(err) => {
+                    panic!("Error while waiting for readiness: {err}");
                 }
             }
         }
@@ -802,7 +803,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created_timeout() {
-        let client = super::initialize_operator(None, &test_cluster_info_opts().await)
+        let client = super::initialize_operator(None, &test_cluster_info_opts())
             .await
             .expect("KUBECONFIG variable must be configured.");
 
@@ -822,7 +823,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_list_with_label_selector() {
-        let client = super::initialize_operator(None, &test_cluster_info_opts().await)
+        let client = super::initialize_operator(None, &test_cluster_info_opts())
             .await
             .expect("KUBECONFIG variable must be configured.");
 

@@ -63,7 +63,7 @@ impl LabelSelectorExt for LabelSelector {
                 .iter()
                 .map(|requirement| match requirement.operator.as_str() {
                     // In and NotIn can be handled the same, they both map to a simple "key OPERATOR (values)" string
-                    operator @ "In" | operator @ "NotIn" => match &requirement.values {
+                    operator @ ("In" | "NotIn") => match &requirement.values {
                         Some(values) if !values.is_empty() => Ok(format!(
                             "{} {} ({})",
                             requirement.key,
@@ -81,7 +81,7 @@ impl LabelSelectorExt for LabelSelector {
                                 operator: operator.to_owned(),
                             })
                         }
-                        _ => Ok(requirement.key.to_string()),
+                        _ => Ok(requirement.key.clone()),
                     },
                     // "DoesNotExist" is similar to "Exists" but it is preceded by an exclamation mark
                     operator @ "DoesNotExist" => match &requirement.values {
@@ -103,7 +103,7 @@ impl LabelSelectorExt for LabelSelector {
 
         if let Some(expressions) = expressions.transpose()? {
             query_string.push_str(&expressions.join(","));
-        };
+        }
 
         Ok(query_string)
     }
@@ -174,7 +174,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic = "LabelSelectorBinaryOperatorWithoutValues { operator: \"In\" }"]
     fn invalid_label_in_selector() {
         let match_expressions = vec![LabelSelectorRequirement {
             key: "foo".to_string(),
@@ -191,7 +191,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic = "LabelSelectorInvalidOperator { operator: \"IllegalOperator\" }"]
     fn invalid_operator_in_selector() {
         let match_expressions = vec![LabelSelectorRequirement {
             key: "foo".to_string(),
@@ -208,7 +208,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic = "LabelSelectorUnaryOperatorWithValues { operator: \"Exists\" }"]
     fn invalid_exists_operator_in_selector() {
         let match_expressions = vec![LabelSelectorRequirement {
             key: "foo".to_string(),

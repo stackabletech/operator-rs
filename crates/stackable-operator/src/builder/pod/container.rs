@@ -83,7 +83,7 @@ impl ContainerBuilder {
         self
     }
 
-    /// Adds the following container attributes from a [ResolvedProductImage]:
+    /// Adds the following container attributes from a [`ResolvedProductImage`]:
     /// * image
     /// * image_pull_policy
     pub fn image_from_product_image(&mut self, product_image: &ResolvedProductImage) -> &mut Self {
@@ -118,7 +118,7 @@ impl ContainerBuilder {
     pub fn add_env_var_from_field_path(
         &mut self,
         name: impl Into<String>,
-        field_path: FieldPathEnvVar,
+        field_path: &FieldPathEnvVar,
     ) -> &mut Self {
         self.add_env_var_from_source(
             name,
@@ -587,12 +587,12 @@ mod tests {
             assert_eq!(
                 source.to_string(),
                 "input is 64 bytes long but must be no more than 63"
-            )
+            );
         }
         // One characters shorter name is valid
         let max_len_container_name: String = long_container_name.chars().skip(1).collect();
         assert_eq!(max_len_container_name.len(), 63);
-        assert!(ContainerBuilder::new(&max_len_container_name).is_ok())
+        assert!(ContainerBuilder::new(&max_len_container_name).is_ok());
     }
 
     #[test]
@@ -644,7 +644,7 @@ mod tests {
             .resources(resources.clone())
             .build();
 
-        assert_eq!(container.resources, Some(resources))
+        assert_eq!(container.resources, Some(resources));
     }
 
     /// Panics if given container builder constructor result is not [Err] with error message

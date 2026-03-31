@@ -190,7 +190,7 @@ impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, PodDisruptionBudgetCo
                 min_available: min_available.map(i32::from).map(IntOrString::Int),
                 selector: Some(self.selector),
                 // Because this feature is still in beta in k8s version 1.27, the builder currently does not offer this attribute.
-                unhealthy_pod_eviction_policy: Default::default(),
+                unhealthy_pod_eviction_policy: None,
             }),
             ..Default::default()
         }
@@ -250,7 +250,7 @@ mod tests {
                 }),
                 ..Default::default()
             }
-        )
+        );
     }
 
     #[test]
@@ -340,6 +340,6 @@ mod tests {
                 }),
                 ..Default::default()
             }
-        )
+        );
     }
 }

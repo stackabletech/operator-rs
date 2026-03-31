@@ -27,7 +27,7 @@ fn error_to_event<E: ReconcilerError>(err: &E) -> Event {
         reason: err.category().to_string(),
         note: Some(error),
         action: "Reconcile".to_string(),
-        secondary: err.secondary_object().map(|secondary| secondary.into()),
+        secondary: err.secondary_object().map(Into::into),
     }
 }
 

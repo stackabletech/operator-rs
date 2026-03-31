@@ -108,7 +108,7 @@ pub enum LoggingError {
 pub fn calculate_log_volume_size_limit(max_log_files_size: &[MemoryQuantity]) -> Quantity {
     let log_volume_size_limit = max_log_files_size
         .iter()
-        .cloned()
+        .copied()
         .sum::<MemoryQuantity>()
         .scale_to(BinaryMultiple::Mebi)
         // According to the reasons mentioned in the function documentation, the multiplier must be
@@ -194,7 +194,7 @@ pub fn capture_shell_output(
         file_log_level <= LogLevel::INFO,
     ) {
         (true, true) => format!(" > >(tee {log_file_dir}/container.stdout.log)"),
-        (true, false) => "".into(),
+        (true, false) => String::new(),
         (false, true) => format!(" > {log_file_dir}/container.stdout.log"),
         (false, false) => " > /dev/null".into(),
     };
@@ -204,7 +204,7 @@ pub fn capture_shell_output(
         file_log_level <= LogLevel::ERROR,
     ) {
         (true, true) => format!(" 2> >(tee {log_file_dir}/container.stderr.log >&2)"),
-        (true, false) => "".into(),
+        (true, false) => String::new(),
         (false, true) => format!(" 2> {log_file_dir}/container.stderr.log"),
         (false, false) => " 2> /dev/null".into(),
     };
@@ -305,7 +305,7 @@ pub fn create_log4j_config(
         });
 
     format!(
-        r#"log4j.rootLogger={root_log_level}, CONSOLE, FILE
+        r"log4j.rootLogger={root_log_level}, CONSOLE, FILE
 
 log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender
 log4j.appender.CONSOLE.Threshold={console_log_level}
@@ -319,7 +319,7 @@ log4j.appender.FILE.MaxFileSize={max_log_file_size_in_mib}MB
 log4j.appender.FILE.MaxBackupIndex={number_of_archived_log_files}
 log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 
-{loggers}"#,
+{loggers}",
         max_log_file_size_in_mib =
             cmp::max(1, max_size_in_mib / (1 + number_of_archived_log_files)),
         root_log_level = config.root_log_level().to_log4j_literal(),
@@ -414,7 +414,7 @@ pub fn create_log4j2_config(
         .collect::<Vec<String>>()
         .join(", ");
     let loggers = if logger_names.is_empty() {
-        "".to_string()
+        String::new()
     } else {
         format!("loggers = {logger_names}")
     };
@@ -431,7 +431,7 @@ pub fn create_log4j2_config(
         });
 
     format!(
-        r#"appenders = FILE, CONSOLE
+        r"appenders = FILE, CONSOLE
 
 appender.CONSOLE.type = Console
 appender.CONSOLE.name = CONSOLE
@@ -458,7 +458,7 @@ appender.FILE.filter.threshold.level = {file_log_level}
 rootLogger.level={root_log_level}
 rootLogger.appenderRefs = CONSOLE, FILE
 rootLogger.appenderRef.CONSOLE.ref = CONSOLE
-rootLogger.appenderRef.FILE.ref = FILE"#,
+rootLogger.appenderRef.FILE.ref = FILE",
         max_log_file_size_in_mib =
             cmp::max(1, max_size_in_mib / (1 + number_of_archived_log_files)),
         root_log_level = config.root_log_level().to_log4j2_literal(),
@@ -708,8 +708,7 @@ where
         LogLevel::INFO => r#"!includes(["TRACE", "DEBUG"], .metadata.level)"#,
         LogLevel::WARN => r#"!includes(["TRACE", "DEBUG", "INFO"], .metadata.level)"#,
         LogLevel::ERROR => r#"!includes(["TRACE", "DEBUG", "INFO", "WARN"], .metadata.level)"#,
-        LogLevel::FATAL => "false",
-        LogLevel::NONE => "false",
+        LogLevel::FATAL | LogLevel::NONE => "false",
     };
 
     format!(

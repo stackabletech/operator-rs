@@ -116,10 +116,7 @@ impl EventBuilder {
             reporting_instance: self.reporting_instance.clone(),
             series: None,
             source,
-            type_: self
-                .event_type
-                .as_ref()
-                .map(|event_type| event_type.to_string()),
+            type_: self.event_type.as_ref().map(ToString::to_string),
         }
     }
 }

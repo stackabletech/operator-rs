@@ -152,7 +152,7 @@ impl ObjectMetaBuilder {
     /// for more flexibility if needed.
     pub fn with_recommended_labels<T: Resource>(
         &mut self,
-        object_labels: ObjectLabels<T>,
+        object_labels: &ObjectLabels<T>,
     ) -> Result<&mut Self> {
         let recommended_labels =
             Labels::recommended(object_labels).context(RecommendedLabelsSnafu)?;
@@ -206,8 +206,8 @@ impl ObjectMetaBuilder {
                 .ownerreference
                 .as_ref()
                 .map(|ownerreference| vec![ownerreference.clone()]),
-            labels: self.labels.clone().map(|l| l.into()),
-            annotations: self.annotations.clone().map(|a| a.into()),
+            labels: self.labels.clone().map(Into::into),
+            annotations: self.annotations.clone().map(Into::into),
             finalizers: self.finalizers.clone(),
             ..ObjectMeta::default()
         }
@@ -350,7 +350,7 @@ mod tests {
             .namespace("bar")
             .ownerreference_from_resource(&pod, Some(true), Some(false))
             .unwrap()
-            .with_recommended_labels(ObjectLabels {
+            .with_recommended_labels(&ObjectLabels {
                 owner: &pod,
                 app_name: "test_app",
                 app_version: "1.0",

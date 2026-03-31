@@ -97,7 +97,7 @@ impl FromStr for HostName {
 
         if let Ok(domain_name) = value.parse() {
             return Ok(HostName::DomainName(domain_name));
-        };
+        }
 
         InvalidHostnameSnafu {
             hostname: value.to_owned(),

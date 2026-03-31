@@ -1,3 +1,18 @@
+#![deny(clippy::pedantic)]
+#![expect(clippy::doc_markdown)]
+#![expect(clippy::missing_errors_doc)]
+#![expect(clippy::must_use_candidate)]
+#![expect(clippy::return_self_not_must_use)]
+#![expect(clippy::too_many_lines)]
+#![expect(clippy::implicit_hasher)]
+#![expect(clippy::doc_link_with_quotes)]
+#![expect(clippy::missing_panics_doc)]
+#![expect(clippy::explicit_deref_methods)]
+#![expect(clippy::cast_possible_truncation)]
+#![expect(clippy::float_cmp)]
+#![expect(clippy::cast_sign_loss)]
+#![expect(clippy::cast_precision_loss)]
+
 //! ## Crate Features
 //!
 //! - `default` enables a default set of features which most operators need.
