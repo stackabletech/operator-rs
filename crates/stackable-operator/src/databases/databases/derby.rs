@@ -2,9 +2,12 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 
-use crate::databases::{
-    TemplatingMechanism,
-    drivers::jdbc::{JdbcDatabaseConnection, JdbcDatabaseConnectionDetails},
+use crate::{
+    databases::{
+        TemplatingMechanism,
+        drivers::jdbc::{JdbcDatabaseConnection, JdbcDatabaseConnectionDetails},
+    },
+    utils::OptionExt,
 };
 
 #[derive(Debug, Snafu)]
