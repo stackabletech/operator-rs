@@ -275,9 +275,9 @@ impl MemoryQuantity {
 
     /// Returns a value like '1355m' or '2g'. Always returns natural numbers with either 'k', 'm' or 'g',
     /// even if the values is multiple Terabytes or more.
-    /// The original quantity may be rounded down to achive a compact, natural number representation.
+    /// The original quantity may be rounded down to achieve a compact, natural number representation.
     /// This rounding may cause the quantity to shrink by up to 20MB.
-    /// Useful to set memory quantities as JVM paramters.
+    /// Useful to set memory quantities as JVM parameters.
     pub fn format_for_java(&self) -> Result<String> {
         let m = self
             .scale_to_at_most_gb() // Java Heap only supports specifying kb, mb or gb

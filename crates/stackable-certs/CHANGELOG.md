@@ -14,7 +14,7 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: The functions `generate_leaf_certificate`, `generate_rsa_leaf_certificate` and
   `generate_ecdsa_leaf_certificate` of `CertificateAuthority` accept an additional parameter
-  `subject_alterative_dns_names` ([#1057]).
+  `subject_alternative_dns_names` ([#1057]).
   - The passed SANs are added to the generated certificate, this is needed when the HTTPS server is
     accessible on multiple DNS names and/or IPs.
   - Pass an empty list (`[]`) to keep the existing behavior.

@@ -58,6 +58,16 @@ pub enum KeyError {
 /// [k8s-labels]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Key {
+    /// A cached and formatted representation of a [`Key`] as a [`String`], which enables the
+    /// implementation of [`Deref`], instead of constructing a new [`String`] every time the string
+    /// representation of a key is needed.
+    ///
+    /// ### Safety
+    ///
+    /// This is safe to do (and cache it), because [`Key`] doesn't provide any **mutable** access
+    /// to the inner values.
+    string: String,
+
     prefix: Option<KeyPrefix>,
     name: KeyName,
 }
@@ -80,12 +90,22 @@ impl FromStr for Key {
             _ => return NestedPrefixSnafu.fail(),
         };
 
+        let prefix = prefix
+            .map(KeyPrefix::from_str)
+            .transpose()
+            .context(KeyPrefixSnafu)?;
+
+        let name = KeyName::from_str(name).context(KeyNameSnafu)?;
+
+        let string = match prefix {
+            Some(ref prefix) => format!("{prefix}/{name}"),
+            None => format!("{name}"),
+        };
+
         let key = Self {
-            prefix: prefix
-                .map(KeyPrefix::from_str)
-                .transpose()
-                .context(KeyPrefixSnafu)?,
-            name: KeyName::from_str(name).context(KeyNameSnafu)?,
+            string,
+            prefix,
+            name,
         };
 
         Ok(key)
@@ -102,10 +122,15 @@ impl TryFrom<&str> for Key {
 
 impl Display for Key {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.prefix {
-            Some(prefix) => write!(f, "{}/{}", prefix, self.name),
-            None => write!(f, "{}", self.name),
-        }
+        write!(f, "{key}", key = self.string)
+    }
+}
+
+impl Deref for Key {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        self.string.as_str()
     }
 }
 
@@ -126,21 +151,6 @@ impl Key {
         self.prefix.as_ref()
     }
 
-    /// Adds or replaces the key prefix. This takes a parsed and validated
-    /// [`KeyPrefix`] as a parameter. If instead you want to use a raw value,
-    /// use the [`Key::try_add_prefix()`] function instead.
-    pub fn add_prefix(&mut self, prefix: KeyPrefix) {
-        self.prefix = Some(prefix)
-    }
-
-    /// Adds or replaces the key prefix by parsing and validation raw input. If
-    /// instead you already have a parsed and validated [`KeyPrefix`], use the
-    /// [`Key::add_prefix()`] function instead.
-    pub fn try_add_prefix(&mut self, prefix: impl AsRef<str>) -> Result<&mut Self, KeyError> {
-        self.prefix = Some(KeyPrefix::from_str(prefix.as_ref()).context(KeyPrefixSnafu)?);
-        Ok(self)
-    }
-
     /// Retrieves the key's name.
     ///
     /// ```
@@ -155,21 +165,6 @@ impl Key {
     /// ```
     pub fn name(&self) -> &KeyName {
         &self.name
-    }
-
-    /// Sets the key name. This takes a parsed and validated [`KeyName`] as a
-    /// parameter. If instead you want to use a raw value, use the
-    /// [`Key::try_set_name()`] function instead.
-    pub fn set_name(&mut self, name: KeyName) {
-        self.name = name
-    }
-
-    /// Sets the key name by parsing and validation raw input. If instead you
-    /// already have a parsed and validated [`KeyName`], use the
-    /// [`Key::set_name()`] function instead.
-    pub fn try_set_name(&mut self, name: impl AsRef<str>) -> Result<&mut Self, KeyError> {
-        self.name = KeyName::from_str(name.as_ref()).context(KeyNameSnafu)?;
-        Ok(self)
     }
 }
 
@@ -266,7 +261,7 @@ pub enum KeyNameError {
     #[snafu(display("name segment of key cannot be empty"))]
     NameEmpty,
 
-    /// Indicates that the key name sgement exceeds the maximum length of 63
+    /// Indicates that the key name segment exceeds the maximum length of 63
     /// ASCII characters. It additionally reports how many characters were
     /// encountered during parsing / validation.
     #[snafu(display(
@@ -285,7 +280,7 @@ pub enum KeyNameError {
     NameInvalid,
 }
 
-/// A validated name segement of a key. This part of the key is required.
+/// A validated name segment of a key. This part of the key is required.
 ///
 /// Instances of this struct are always valid. It also implements [`Deref`],
 /// which enables read-only access to the inner value (a [`String`]). It,
