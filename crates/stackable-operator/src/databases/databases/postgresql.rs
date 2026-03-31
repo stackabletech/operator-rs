@@ -17,6 +17,8 @@ use crate::{
     },
 };
 
+pub const POSTGRES_JDBC_DRIVER_CLASS: &str = "org.postgresql.Driver";
+
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("failed to parse connection URL"))]
@@ -78,7 +80,7 @@ impl JdbcDatabaseConnection for PostgresqlConnection {
         let connection_uri = connection_uri.parse().context(ParseConnectionUrlSnafu)?;
 
         Ok(JdbcDatabaseConnectionDetails {
-            driver: "org.postgresql.Driver".to_owned(),
+            driver: POSTGRES_JDBC_DRIVER_CLASS.to_owned(),
             connection_uri,
             username_env: Some(username_env),
             password_env: Some(password_env),
@@ -189,7 +191,7 @@ mod tests {
         let jdbc_connection_details = postgres_connection
             .jdbc_connection_details(UNIQUE_DATABASE_NAME)
             .expect("failed to get JDBC connection details");
-        assert_eq!(jdbc_connection_details.driver, "org.postgresql.Driver");
+        assert_eq!(jdbc_connection_details.driver, POSTGRES_JDBC_DRIVER_CLASS);
         assert_eq!(
             jdbc_connection_details.connection_uri.to_string(),
             "jdbc:postgresql://airflow-postgresql:5432/airflow"

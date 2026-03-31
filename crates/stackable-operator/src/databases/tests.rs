@@ -7,7 +7,10 @@ use crate::{
     builder::pod::container::ContainerBuilder,
     databases::{
         TemplatingMechanism,
-        databases::{postgresql::PostgresqlConnection, redis::RedisConnection},
+        databases::{
+            postgresql::{POSTGRES_JDBC_DRIVER_CLASS, PostgresqlConnection},
+            redis::RedisConnection,
+        },
         drivers::{
             celery::{CeleryDatabaseConnection, GenericCeleryDatabaseConnection},
             jdbc::{GenericJdbcDatabaseConnection, JdbcDatabaseConnection},
@@ -70,7 +73,7 @@ fn test_dummy_jdbc_database_usage() {
     jdbc_connection_details.add_to_container(&mut container_builder);
     let container = container_builder.build();
 
-    assert_eq!(jdbc_connection_details.driver, "org.postgresql.Driver");
+    assert_eq!(jdbc_connection_details.driver, POSTGRES_JDBC_DRIVER_CLASS);
     assert_eq!(
         jdbc_connection_details.connection_uri.to_string(),
         "jdbc:postgresql://my-database:1234/my_schema"
