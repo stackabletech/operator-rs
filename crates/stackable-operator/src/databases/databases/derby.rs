@@ -38,8 +38,7 @@ impl JdbcDatabaseConnection for DerbyConnection {
     ) -> Result<JdbcDatabaseConnectionDetails, crate::databases::Error> {
         let location = self
             .location
-            .clone()
-            .unwrap_or_else(|| format!("/tmp/derby/{unique_database_name}/derby.db"));
+            .as_ref_or_else(|| format!("/tmp/derby/{unique_database_name}/derby.db"));
         let connection_uri = format!("jdbc:derby:{location};create=true",);
         let connection_uri = connection_uri.parse().context(ParseConnectionUrlSnafu)?;
 
