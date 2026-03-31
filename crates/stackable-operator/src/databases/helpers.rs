@@ -30,10 +30,7 @@ pub fn username_and_password_env_names(unique_database_name: &str) -> (String, S
     )
 }
 
-/// Returns
-///
-/// * [`None`] if no connection parameters are defined.
-/// * `?key1=value1&key2=value2` if connection parameters are defined.
+/// Returns [`None`] if no connection parameters are defined, `?key1=value1&key2=value2` otherwise.
 pub fn connection_parameters_as_url_query_parameters(
     parameters: &BTreeMap<String, String>,
 ) -> Option<String> {
