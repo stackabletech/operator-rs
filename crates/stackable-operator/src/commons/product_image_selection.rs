@@ -122,7 +122,10 @@ impl ProductImage {
         match &self.image_selection {
             ProductImageSelection::Custom(image_selection) => {
                 let image = ImageRef::parse(&image_selection.custom);
-                let image_tag_or_hash = image.tag.or(image.hash).unwrap_or("latest".to_string());
+                let image_tag_or_hash = image
+                    .tag
+                    .or(image.hash)
+                    .unwrap_or_else(|| "latest".to_string());
 
                 let app_version = format!("{product_version}-{image_tag_or_hash}");
                 let app_version_label_value = Self::prepare_app_version_label_value(&app_version)?;

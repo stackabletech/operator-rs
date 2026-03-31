@@ -106,7 +106,7 @@ impl ObjectMetaBuilder {
     /// It'll override an annotation with the same key.
     pub fn with_annotation(&mut self, annotation: Annotation) -> &mut Self {
         self.annotations
-            .get_or_insert(Annotations::new())
+            .get_or_insert_with(Annotations::new)
             .insert(annotation);
         self
     }
@@ -115,7 +115,7 @@ impl ObjectMetaBuilder {
     /// Any existing annotation with a key that is contained in `annotations` will be overwritten
     pub fn with_annotations(&mut self, annotations: Annotations) -> &mut Self {
         self.annotations
-            .get_or_insert(Annotations::new())
+            .get_or_insert_with(Annotations::new)
             .extend(annotations);
         self
     }
@@ -129,14 +129,14 @@ impl ObjectMetaBuilder {
     /// This adds a single label to the existing labels.
     /// It'll override a label with the same key.
     pub fn with_label(&mut self, label: Label) -> &mut Self {
-        self.labels.get_or_insert(Labels::new()).insert(label);
+        self.labels.get_or_insert_with(Labels::new).insert(label);
         self
     }
 
     /// This adds multiple labels to the existing labels.
     /// Any existing label with a key that is contained in `labels` will be overwritten
     pub fn with_labels(&mut self, labels: Labels) -> &mut Self {
-        self.labels.get_or_insert(Labels::new()).extend(labels);
+        self.labels.get_or_insert_with(Labels::new).extend(labels);
         self
     }
 
@@ -158,7 +158,7 @@ impl ObjectMetaBuilder {
             Labels::recommended(object_labels).context(RecommendedLabelsSnafu)?;
 
         self.labels
-            .get_or_insert(Labels::new())
+            .get_or_insert_with(Labels::new)
             .extend(recommended_labels);
 
         Ok(self)

@@ -305,13 +305,15 @@ impl ContainerBuilder {
 
     pub fn lifecycle_post_start(&mut self, post_start: LifecycleHandler) -> &mut Self {
         self.lifecycle
-            .get_or_insert(Lifecycle::default())
+            .get_or_insert_with(Lifecycle::default)
             .post_start = Some(post_start);
         self
     }
 
     pub fn lifecycle_pre_stop(&mut self, pre_stop: LifecycleHandler) -> &mut Self {
-        self.lifecycle.get_or_insert(Lifecycle::default()).pre_stop = Some(pre_stop);
+        self.lifecycle
+            .get_or_insert_with(Lifecycle::default)
+            .pre_stop = Some(pre_stop);
         self
     }
 

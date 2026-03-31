@@ -225,7 +225,7 @@ pub fn validate_all_roles_and_groups_config(
     let mut result = HashMap::new();
 
     for (role, role_group) in role_config {
-        let role_entry = result.entry(role.clone()).or_insert(HashMap::new());
+        let role_entry = result.entry(role.clone()).or_insert_with(HashMap::new);
 
         for (group, properties_by_kind) in role_group {
             role_entry.insert(

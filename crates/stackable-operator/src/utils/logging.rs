@@ -35,10 +35,7 @@ pub fn print_startup_string(
     built_time: &str,
     rustc_version: &str,
 ) {
-    let git = match git_version {
-        None => String::new(),
-        Some(git) => format!(" (Git information: {git})"),
-    };
+    let git = git_version.map_or_else(String::new, |git| format!(" (Git information: {git})"));
     info!("Starting {pkg_description}");
     info!(
         "This is version {pkg_version}{git}, built for {target} by {rustc_version} at {built_time}",

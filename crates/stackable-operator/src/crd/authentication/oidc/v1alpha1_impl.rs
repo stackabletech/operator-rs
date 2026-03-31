@@ -108,7 +108,7 @@ impl AuthenticationProvider {
     /// Returns the port to be used, which is either user configured or defaulted based upon TLS usage
     pub fn port(&self) -> u16 {
         self.port
-            .unwrap_or(if self.tls.uses_tls() { 443 } else { 80 })
+            .unwrap_or_else(|| if self.tls.uses_tls() { 443 } else { 80 })
     }
 
     /// Returns the path of the files containing client id and secret in case they are given.

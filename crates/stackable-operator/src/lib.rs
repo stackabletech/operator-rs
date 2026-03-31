@@ -13,6 +13,7 @@
 // Nursery lints
 // #![deny(clippy::nursery)]
 #![deny(clippy::use_self)]
+#![deny(clippy::or_fun_call)]
 
 //! ## Crate Features
 //!
