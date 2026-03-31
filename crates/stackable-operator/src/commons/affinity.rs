@@ -139,6 +139,7 @@ mod tests {
     use crate::config::fragment;
 
     #[test]
+    #[expect(clippy::too_many_lines)]
     fn merge_new_attributes() {
         let default_affinity = StackableAffinityFragment {
             pod_affinity: None,

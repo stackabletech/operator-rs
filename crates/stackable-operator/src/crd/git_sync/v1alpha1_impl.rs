@@ -388,6 +388,7 @@ mod tests {
     }
 
     #[test]
+    #[expect(clippy::too_many_lines)]
     fn test_multiple_git_syncs() {
         let git_sync_spec = r#"
           # GitSync with defaults

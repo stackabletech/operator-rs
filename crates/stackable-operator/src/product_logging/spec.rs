@@ -561,6 +561,7 @@ mod tests {
     }
 
     #[test]
+    #[expect(clippy::too_many_lines)]
     fn merge_automatic_container_log_config_fragment() {
         // no overriding log level + no default log level -> no log level
         assert_eq!(

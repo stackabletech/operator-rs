@@ -809,6 +809,7 @@ mod tests {
         Some(collection! {property.to_string() => property.to_string()})
     }
 
+    #[expect(clippy::too_many_lines)]
     fn build_role_and_group(
         role_config: bool,
         group_config: bool,
@@ -1512,6 +1513,7 @@ mod tests {
     }
 
     #[test]
+    #[expect(clippy::too_many_lines)]
     fn test_validate_all_roles_and_groups_config() {
         let role_1 = "role_1";
         let role_2 = "role_2";

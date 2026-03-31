@@ -84,6 +84,7 @@ impl GitSyncResources {
     }
 
     /// Creates `GitSyncResources` from the given `GitSync` specifications.
+    #[expect(clippy::too_many_lines)]
     pub fn new(
         git_syncs: &[GitSync],
         resolved_product_image: &ResolvedProductImage,
@@ -432,6 +433,7 @@ mod tests {
     }
 
     #[test]
+    #[expect(clippy::too_many_lines)]
     fn test_multiple_git_syncs() {
         let git_sync_spec = r#"
           # GitSync with defaults
@@ -906,6 +908,7 @@ name: content-from-git-2
     }
 
     #[test]
+    #[expect(clippy::too_many_lines)]
     fn test_git_sync_ssh() {
         let git_sync_spec = r#"
           # GitSync using SSH
