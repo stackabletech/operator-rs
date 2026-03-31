@@ -6,16 +6,23 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Implement `Deref` for `kvp::Key` to be more ergonomic to use ([#1182]).
 - Add support for specifying a `clientAuthenticationMethod` for OIDC ([#1178]).
   This was originally done in [#1158] and had been reverted in [#1170].
-- Add generic database connection mechanism ([#1163])
+- Add generic database connection mechanism ([#1163]).
 
 ### Changed
 
-- BREAKING: Change signature of `ContainerBuilder::add_env_vars` from `Vec<EnvVar>` to `IntoIterator<Item = EnvVar>` ([#1163])
+- BREAKING: Change signature of `ContainerBuilder::add_env_vars` from `Vec<EnvVar>` to `IntoIterator<Item = EnvVar>` ([#1163]).
+
+### Removed
+
+- BREAKING: Remove unused `add_prefix`, `try_add_prefix`, `set_name`, and `try_set_name` associated
+  functions from `kvp::Key` to disallow mutable access to inner values ([#1182]).
 
 [#1163]: https://github.com/stackabletech/operator-rs/pull/1163
 [#1178]: https://github.com/stackabletech/operator-rs/pull/1178
+[#1182]: https://github.com/stackabletech/operator-rs/pull/1182
 
 ## [0.108.0] - 2026-03-10
 
