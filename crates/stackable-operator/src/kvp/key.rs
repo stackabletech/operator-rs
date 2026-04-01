@@ -248,6 +248,8 @@ impl<T> PartialEq<T> for KeyPrefix
 where
     T: AsRef<str>,
 {
+    // Not sure how to write that differently without getting a warning about recursion
+    #[expect(clippy::explicit_deref_methods)]
     fn eq(&self, other: &T) -> bool {
         self.deref() == other.as_ref()
     }
@@ -332,6 +334,8 @@ impl<T> PartialEq<T> for KeyName
 where
     T: AsRef<str>,
 {
+    // Not sure how to write that differently without getting a warning about recursion
+    #[expect(clippy::explicit_deref_methods)]
     fn eq(&self, other: &T) -> bool {
         self.deref() == other.as_ref()
     }
