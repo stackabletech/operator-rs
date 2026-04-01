@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add support to provide `#[versioned(crd(scale(...)))]` argument to enable the `/scale` subresource ([#1185]).
+
+[#1185]: https://github.com/stackabletech/operator-rs/pull/1185
+
 ## [0.8.3] - 2025-10-23
 
 ### Fixed
