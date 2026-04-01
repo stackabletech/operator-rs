@@ -31,6 +31,10 @@ pub fn username_and_password_env_names(unique_database_name: &str) -> (String, S
 }
 
 /// Returns [`None`] if no connection parameters are defined, `?key1=value1&key2=value2` otherwise.
+//
+// TODO: Do we need to escape anything here? Ideally the products themselves take care of this.
+// Additionally, we need to keep in mind that whatever escaping we come up with needs to be
+// understood by all products (which includes JDBC, SQLAlchemy and Celery connections strings).
 pub fn connection_parameters_as_url_query_parameters(
     parameters: &BTreeMap<String, String>,
 ) -> Option<String> {
