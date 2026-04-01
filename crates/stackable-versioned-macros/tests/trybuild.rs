@@ -31,6 +31,7 @@ mod inputs {
         // mod module_preserve;
         // mod renamed_field;
         // mod renamed_kind;
+        // mod scale;
         // mod shortnames;
         // mod submodule;
     }

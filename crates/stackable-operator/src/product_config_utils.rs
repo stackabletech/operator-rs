@@ -654,13 +654,13 @@ pub fn env_var_from_tuple(entry: (impl Into<String>, impl Into<String>)) -> EnvV
 /// use stackable_operator::product_config_utils::{env_vars_from, insert_or_update_env_vars};
 ///
 /// let env_vars = env_vars_from([("VAR1", "original value 1"), ("VAR2", "original value 2")]);
-/// let env_overrides = env_vars_from([("VAR2", "overriden value 2"), ("VAR3", "new value 3")]);
+/// let env_overrides = env_vars_from([("VAR2", "overridden value 2"), ("VAR3", "new value 3")]);
 ///
 /// let combined_env_vars = insert_or_update_env_vars(&env_vars, &env_overrides);
 ///
 /// let expected_result = env_vars_from([
 ///     ("VAR1", "original value 1"),
-///     ("VAR2", "overriden value 2"),
+///     ("VAR2", "overridden value 2"),
 ///     ("VAR3", "new value 3"),
 /// ]);
 ///
