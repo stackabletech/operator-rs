@@ -5,7 +5,7 @@ use quote::quote;
 use syn::{Generics, ItemStruct};
 
 use crate::{
-    attrs::container::{ContainerAttributes, StructCrdArguments},
+    attrs::container::{ContainerAttributes, Scale, StructCrdArguments},
     codegen::{
         Direction, VersionContext, VersionDefinition,
         changes::Neighbors,
@@ -272,20 +272,27 @@ impl Struct {
             _ => None,
         };
 
-        let scale = spec_gen_ctx.kubernetes_arguments.scale.as_ref().map(|s| {
-            let spec_replicas_path = &s.spec_replicas_path;
-            let status_replicas_path = &s.status_replicas_path;
-            let label_selector_path = s
-                .label_selector_path
-                .as_ref()
-                .map(|p| quote! { , label_selector_path = #p });
+        let scale = spec_gen_ctx
+            .kubernetes_arguments
+            .scale
+            .as_ref()
+            .map(|scale| {
+                let Scale {
+                    spec_replicas_path,
+                    status_replicas_path,
+                    label_selector_path,
+                } = scale;
 
-            quote! { , scale(
-                spec_replicas_path = #spec_replicas_path,
-                status_replicas_path = #status_replicas_path
-                #label_selector_path
-            )}
-        });
+                let label_selector_path = label_selector_path
+                    .as_ref()
+                    .map(|p| quote! { , label_selector_path = #p });
+
+                quote! { , scale(
+                    spec_replicas_path = #spec_replicas_path,
+                    status_replicas_path = #status_replicas_path
+                    #label_selector_path
+                )}
+            });
 
         let shortnames: TokenStream = spec_gen_ctx
             .kubernetes_arguments
