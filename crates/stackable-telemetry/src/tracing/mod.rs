@@ -6,7 +6,7 @@
 //!
 //! To get started, see [`Tracing`].
 
-use std::{ops::Not, path::PathBuf};
+use std::{io::IsTerminal, ops::Not, path::PathBuf};
 
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
@@ -432,15 +432,21 @@ impl Tracing {
 
             // NOTE (@NickLarsenNZ): There is no elegant way to build the layer depending on formats because the types
             // returned from each subscriber "modifier" function is different (sometimes with different generics).
+            // tracing-subscriber does not auto-detect whether stdout is a terminal
+            // (https://github.com/tokio-rs/tracing/issues/1160), so we check explicitly.
+            let use_ansi = std::io::stdout().is_terminal();
+
             match log_format {
                 Format::Plain => {
-                    let console_output_layer =
-                        tracing_subscriber::fmt::layer().with_filter(env_filter_layer);
+                    let console_output_layer = tracing_subscriber::fmt::layer()
+                        .with_ansi(use_ansi)
+                        .with_filter(env_filter_layer);
                     layers.push(console_output_layer.boxed());
                 }
                 Format::Json => {
                     let console_output_layer = tracing_subscriber::fmt::layer()
                         .json()
+                        .with_ansi(use_ansi)
                         .with_filter(env_filter_layer);
                     layers.push(console_output_layer.boxed());
                 }
