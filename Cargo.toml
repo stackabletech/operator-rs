@@ -90,10 +90,6 @@ x509-cert = { version = "0.2.5", features = ["builder"] }
 zeroize = "1.8.1"
 
 [workspace.lints.clippy]
-unwrap_in_result = "deny"
-unwrap_used = "deny"
-panic = "deny"
-
 # Enable all pedantic lints (with lower priority so individual lints can override)
 pedantic = { level = "deny", priority = -1 }
 
@@ -116,6 +112,11 @@ use_self = "deny"
 or_fun_call = "deny"
 derive_partial_eq_without_eq = "deny"
 unnecessary_struct_initialization = "deny"
+
+# Additional restriction lints we enforce
+unwrap_in_result = "deny"
+unwrap_used = "deny"
+panic = "deny"
 
 # Use O3 in tests to improve the RSA key generation speed in the stackable-certs crate
 [profile.test.package]
