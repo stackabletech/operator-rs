@@ -18,9 +18,9 @@ mod test {
     use super::*;
     use crate::{Level, Version};
 
-    fn parse_meta(tokens: proc_macro2::TokenStream) -> ::std::result::Result<syn::Meta, String> {
+    fn parse_meta(tokens: &proc_macro2::TokenStream) -> syn::Meta {
         let attribute: syn::Attribute = syn::parse_quote!(#[#tokens]);
-        Ok(attribute.meta)
+        attribute.meta
     }
 
     #[rstest]
@@ -28,7 +28,7 @@ mod test {
     #[case(quote!(ignore = "v1beta1"), ApiVersion { group: None, version: Version { major: 1, level: Some(Level::Beta(1)) } })]
     #[case(quote!(ignore = "v1"), ApiVersion { group: None, version: Version { major: 1, level: None } })]
     fn from_meta(#[case] input: proc_macro2::TokenStream, #[case] expected: ApiVersion) {
-        let meta = parse_meta(input).expect("valid attribute tokens");
+        let meta = parse_meta(&input);
         let api_version = ApiVersion::from_meta(&meta).expect("version must parse from attribute");
         assert_eq!(api_version, expected);
     }

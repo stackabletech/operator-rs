@@ -214,7 +214,7 @@ impl TlsServer {
                 // Once a shutdown signal is received (this future becomes `Poll::Ready`), break out
                 // of the main loop which cancels the certification rotation interval and stops
                 // accepting new TCP connections.
-                _ = &mut shutdown_signal => {
+                () = &mut shutdown_signal => {
                     tracing::trace!("received shutdown signal");
                     break;
                 }
@@ -251,7 +251,7 @@ impl TlsServer {
                         async move {
                             Self::handle_request(tcp_stream, remote_addr, tls_acceptor, tower_service, self.socket_addr)
                             .instrument(span)
-                            .await
+                            .await;
                         }
                     );
                 }
@@ -274,11 +274,11 @@ impl TlsServer {
             { semconv::attribute::OTEL_STATUS_CODE } = Empty,
             { semconv::attribute::OTEL_STATUS_DESCRIPTION } = Empty,
             { semconv::trace::CLIENT_ADDRESS } = remote_addr.ip().to_string(),
-            { semconv::trace::CLIENT_PORT } = remote_addr.port() as i64,
+            { semconv::trace::CLIENT_PORT } = i64::from(remote_addr.port()),
             { semconv::trace::SERVER_ADDRESS } = Empty,
             { semconv::trace::SERVER_PORT } = Empty,
             { semconv::trace::NETWORK_PEER_ADDRESS } = remote_addr.ip().to_string(),
-            { semconv::trace::NETWORK_PEER_PORT } = remote_addr.port() as i64,
+            { semconv::trace::NETWORK_PEER_PORT } = i64::from(remote_addr.port()),
             { semconv::trace::NETWORK_LOCAL_ADDRESS } = Empty,
             { semconv::trace::NETWORK_LOCAL_PORT } = Empty,
             { semconv::trace::NETWORK_TRANSPORT } = "tcp",
@@ -289,9 +289,9 @@ impl TlsServer {
             let addr = &local_addr.ip().to_string();
             let port = local_addr.port();
             span.record(semconv::trace::SERVER_ADDRESS, addr)
-                .record(semconv::trace::SERVER_PORT, port as i64)
+                .record(semconv::trace::SERVER_PORT, i64::from(port))
                 .record(semconv::trace::NETWORK_LOCAL_ADDRESS, addr)
-                .record(semconv::trace::NETWORK_LOCAL_PORT, port as i64);
+                .record(semconv::trace::NETWORK_LOCAL_PORT, i64::from(port));
         }
 
         // Wait for tls handshake to happen
@@ -335,7 +335,7 @@ impl TlsServer {
                 span.record(semconv::attribute::OTEL_STATUS_CODE, "Error")
                     .record(semconv::attribute::OTEL_STATUS_DESCRIPTION, err.to_string());
                 tracing::warn!(%err, %remote_addr, "failed to serve connection");
-            })
+            });
     }
 }
 
@@ -346,8 +346,8 @@ pub trait SocketAddrExt {
 impl SocketAddrExt for SocketAddr {
     fn semantic_convention_network_type(&self) -> &'static str {
         match self {
-            SocketAddr::V4(_) => "ipv4",
-            SocketAddr::V6(_) => "ipv6",
+            Self::V4(_) => "ipv4",
+            Self::V6(_) => "ipv6",
         }
     }
 }

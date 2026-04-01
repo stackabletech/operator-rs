@@ -159,7 +159,7 @@ impl Struct {
 
         // Generate code which is only needed for the top-level CRD spec
         if let Some(spec_gen_ctx) = spec_gen_ctx {
-            let entry_enum = self.generate_entry_enum(mod_gen_ctx, &spec_gen_ctx);
+            let entry_enum = Self::generate_entry_enum(mod_gen_ctx, &spec_gen_ctx);
             let entry_enum_impl =
                 self.generate_entry_impl_block(versions, mod_gen_ctx, &spec_gen_ctx);
             let version_enum = self.generate_version_enum(mod_gen_ctx, &spec_gen_ctx);
@@ -195,9 +195,8 @@ impl Struct {
             .filter_map(|field| field.generate_for_container(ver_ctx.version))
             .collect();
 
-        let kube_attribute = spec_gen_ctx.and_then(|spec_gen_ctx| {
-            self.generate_kube_attribute(ver_ctx, mod_gen_ctx, spec_gen_ctx)
-        });
+        let kube_attribute = spec_gen_ctx
+            .map(|spec_gen_ctx| self.generate_kube_attribute(ver_ctx, mod_gen_ctx, spec_gen_ctx));
 
         quote! {
             #(#[doc = #version_docs])*
@@ -214,17 +213,14 @@ impl Struct {
         ver_ctx: VersionContext<'_>,
         mod_gen_ctx: ModuleGenerationContext<'_>,
         spec_gen_ctx: &SpecGenerationContext<'_>,
-    ) -> Option<TokenStream> {
+    ) -> TokenStream {
         // Required arguments
         let group = &spec_gen_ctx.kubernetes_arguments.group;
         let version = ver_ctx.version.inner.to_string();
-        let kind = spec_gen_ctx
-            .kubernetes_arguments
-            .kind
-            .as_ref()
-            .map_or(spec_gen_ctx.kubernetes_idents.kind.to_string(), |kind| {
-                kind.clone()
-            });
+        let kind = spec_gen_ctx.kubernetes_arguments.kind.as_ref().map_or_else(
+            || spec_gen_ctx.kubernetes_idents.kind.to_string(),
+            Clone::clone,
+        );
 
         // Optional arguments
         let singular = spec_gen_ctx
@@ -279,7 +275,7 @@ impl Struct {
             .map(|s| quote! { , shortname = #s })
             .collect();
 
-        Some(quote! {
+        quote! {
             // The end-developer needs to derive CustomResource and JsonSchema.
             // This is because we don't know if they want to use a re-exported or renamed import.
             #[kube(
@@ -288,11 +284,10 @@ impl Struct {
                 // These fields are optional, and therefore the token stream must prefix each with a comma:
                 #singular #plural #namespaced #crates #status #shortnames
             )]
-        })
+        }
     }
 
     fn generate_entry_enum(
-        &self,
         mod_gen_ctx: ModuleGenerationContext<'_>,
         spec_gen_ctx: &SpecGenerationContext<'_>,
     ) -> TokenStream {

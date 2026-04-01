@@ -53,14 +53,14 @@ enum InputType {
     Enum,
 }
 
-pub fn derive(input: DeriveInput) -> TokenStream {
+pub fn derive(input: &DeriveInput) -> TokenStream {
     let MergeInput {
         ident,
         mut generics,
         data,
         path_overrides: PathOverrides { merge: merge_mod },
         bound,
-    } = match MergeInput::from_derive_input(&input) {
+    } = match MergeInput::from_derive_input(input) {
         Ok(input) => input,
         Err(err) => return err.write_errors(),
     };

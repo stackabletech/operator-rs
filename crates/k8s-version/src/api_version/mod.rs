@@ -12,7 +12,7 @@ mod darling;
 
 /// Error variants which can be encountered when creating a new [`ApiVersion`]
 /// from unparsed input.
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum ParseApiVersionError {
     #[snafu(display("failed to parse version"))]
     ParseVersion { source: ParseVersionError },
@@ -87,10 +87,7 @@ impl ApiVersion {
     /// Try to create a new Kubernetes API version based on the unvalidated
     /// `group` string.
     pub fn try_new(group: Option<&str>, version: Version) -> Result<Self, ParseApiVersionError> {
-        let group = group
-            .map(|g| g.parse())
-            .transpose()
-            .context(ParseGroupSnafu)?;
+        let group = group.map(str::parse).transpose().context(ParseGroupSnafu)?;
 
         Ok(Self { group, version })
     }

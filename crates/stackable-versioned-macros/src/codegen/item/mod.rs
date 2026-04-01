@@ -7,7 +7,7 @@ pub use field::*;
 mod variant;
 pub use variant::*;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ItemStatus {
     Addition {
         ident: IdentString,
@@ -40,11 +40,13 @@ pub enum ItemStatus {
 impl ItemStatus {
     pub fn get_ident(&self) -> &IdentString {
         match &self {
-            ItemStatus::Addition { ident, .. } => ident,
-            ItemStatus::Change { to_ident, .. } => to_ident,
-            ItemStatus::Deprecation { ident, .. } => ident,
-            ItemStatus::NoChange { ident, .. } => ident,
-            ItemStatus::NotPresent => unreachable!("ItemStatus::NotPresent does not have an ident"),
+            Self::Addition { ident, .. }
+            | Self::Change {
+                to_ident: ident, ..
+            }
+            | Self::Deprecation { ident, .. }
+            | Self::NoChange { ident, .. } => ident,
+            Self::NotPresent => unreachable!("ItemStatus::NotPresent does not have an ident"),
         }
     }
 }

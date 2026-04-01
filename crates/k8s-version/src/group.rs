@@ -12,7 +12,7 @@ static API_GROUP_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 
 /// Error variants which can be encountered when creating a new [`Group`] from
 /// unparsed input.
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum ParseGroupError {
     #[snafu(display("group must not be empty"))]
     Empty,

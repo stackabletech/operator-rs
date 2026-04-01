@@ -83,6 +83,7 @@ impl VersionedField {
     pub fn generate_for_container(&self, version: &VersionDefinition) -> Option<TokenStream> {
         let original_attributes = &self.original_attributes;
 
+        #[allow(clippy::single_match_else)]
         match &self.changes {
             Some(changes) => {
                 // Check if the provided container version is present in the map of actions. If it
@@ -196,6 +197,7 @@ impl VersionedField {
         next_version: &VersionDefinition,
         from_struct_ident: &IdentString,
     ) -> Option<TokenStream> {
+        #[allow(clippy::single_match_else)]
         match &self.changes {
             Some(changes) => {
                 let next_change = changes.get_expect(&next_version.inner);
@@ -413,7 +415,7 @@ impl VersionedField {
             None => {
                 if self.nested {
                     let json_path_ident = lhs_field_ident.json_path_ident();
-                    let func = self.generate_tracking_conversion_function(json_path_ident);
+                    let func = self.generate_tracking_conversion_function(&json_path_ident);
 
                     quote! {
                         #lhs_field_ident: #rhs_struct_ident.#rhs_field_ident.#func,
@@ -430,28 +432,30 @@ impl VersionedField {
     }
 
     /// Generates tracking conversion functions used by field definitions in `From` impl blocks.
-    fn generate_tracking_conversion_function(&self, json_path_ident: IdentString) -> TokenStream {
-        match &self.hint {
-            Some(hint) => match hint {
+    fn generate_tracking_conversion_function(&self, json_path_ident: &IdentString) -> TokenStream {
+        if let Some(hint) = &self.hint {
+            match hint {
                 Hint::Option => {
                     quote! { map(|v| v.tracking_into(status, &#json_path_ident)) }
                 }
                 Hint::Vec => {
                     quote! { into_iter().map(|v| v.tracking_into(status, &#json_path_ident)).collect() }
                 }
-            },
-            None => quote! { tracking_into(status, &#json_path_ident) },
+            }
+        } else {
+            quote! { tracking_into(status, &#json_path_ident) }
         }
     }
 
     /// Generates conversion functions used by field definitions in `From` impl blocks.
     fn generate_conversion_function(&self) -> TokenStream {
-        match &self.hint {
-            Some(hint) => match hint {
+        if let Some(hint) = &self.hint {
+            match hint {
                 Hint::Option => quote! { map(Into::into) },
                 Hint::Vec => quote! { into_iter().map(Into::into).collect() },
-            },
-            None => quote! { into() },
+            }
+        } else {
+            quote! { into() }
         }
     }
 }
@@ -491,9 +495,9 @@ impl From<Ident> for FieldIdents {
         let json_path = cleaned.json_path_ident();
 
         Self {
-            json_path,
             original,
             cleaned,
+            json_path,
         }
     }
 }

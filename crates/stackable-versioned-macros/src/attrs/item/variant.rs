@@ -52,11 +52,9 @@ impl VariantAttributes {
     /// Internally, it calls out to other specialized validation functions.
     fn validate(self) -> Result<Self> {
         let mut errors = Error::accumulator();
+        let variant_idents = VariantIdents::from(self.ident.clone());
 
-        errors.handle(
-            self.common
-                .validate(VariantIdents::from(self.ident.clone()), &self.attrs),
-        );
+        errors.handle(self.common.validate(&variant_idents, &self.attrs));
 
         // Validate names of renames
         for change in &self.common.changes {
@@ -66,7 +64,7 @@ impl VariantAttributes {
                 errors.push(
                     Error::custom("renamed variant must use PascalCase")
                         .with_span(&from_name.span()),
-                )
+                );
             }
         }
 

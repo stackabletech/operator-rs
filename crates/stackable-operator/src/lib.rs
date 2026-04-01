@@ -1,21 +1,3 @@
-// We enable all pedantic lints and explicitly disable a few
-#![deny(clippy::pedantic)]
-#![expect(clippy::doc_markdown)]
-#![expect(clippy::missing_errors_doc)]
-#![expect(clippy::must_use_candidate)]
-#![expect(clippy::return_self_not_must_use)]
-#![expect(clippy::missing_panics_doc)]
-#![expect(clippy::explicit_deref_methods)]
-#![expect(clippy::cast_possible_truncation)]
-#![expect(clippy::float_cmp)]
-#![expect(clippy::cast_sign_loss)]
-#![expect(clippy::cast_precision_loss)]
-// Additionally, we explicitly enable a few nursery lints
-#![deny(clippy::use_self)]
-#![deny(clippy::or_fun_call)]
-#![deny(clippy::derive_partial_eq_without_eq)]
-#![deny(clippy::unnecessary_struct_initialization)]
-
 //! ## Crate Features
 //!
 //! - `default` enables a default set of features which most operators need.

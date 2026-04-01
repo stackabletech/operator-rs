@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// This struct is a redefinition of the one provided by k8s-openapi to make
 /// name and namespace mandatory.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SecretReference {
     /// Namespace of the Secret being referred to.
@@ -34,12 +34,12 @@ impl Display for SecretReference {
 
 impl From<SecretReference> for ObjectRef<Secret> {
     fn from(val: SecretReference) -> Self {
-        ObjectRef::<Secret>::from(&val)
+        Self::from(&val)
     }
 }
 
 impl From<&SecretReference> for ObjectRef<Secret> {
     fn from(val: &SecretReference) -> Self {
-        ObjectRef::<Secret>::new(&val.name).within(&val.namespace)
+        Self::new(&val.name).within(&val.namespace)
     }
 }

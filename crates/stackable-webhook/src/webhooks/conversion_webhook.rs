@@ -171,8 +171,8 @@ impl<H> ConversionWebhook<H> {
                 conversion_review_versions: vec!["v1".to_owned()],
                 client_config: Some(WebhookClientConfig {
                     service: Some(ServiceReference {
-                        name: options.webhook_service_name.to_owned(),
-                        namespace: options.webhook_namespace.to_owned(),
+                        name: options.webhook_service_name.clone(),
+                        namespace: options.webhook_namespace.clone(),
                         path: Some(format!("/convert/{crd_name}")),
                         port: Some(options.socket_addr.port().into()),
                     }),

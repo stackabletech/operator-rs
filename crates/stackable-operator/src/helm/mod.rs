@@ -101,7 +101,7 @@ mod tests {
         let expected = std::fs::read_to_string("fixtures/helm/output.yaml").unwrap();
 
         let mut output = Vec::new();
-        ser(&values, &mut output, SerializeOptions::default()).unwrap();
+        ser(&values, &mut output, &SerializeOptions::default()).unwrap();
 
         assert_eq!(std::str::from_utf8(&output).unwrap(), expected);
     }
