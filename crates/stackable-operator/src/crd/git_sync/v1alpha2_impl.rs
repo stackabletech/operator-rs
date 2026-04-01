@@ -175,7 +175,7 @@ impl GitSyncResources {
                 git_sync_container_volume_mounts.push(ssh_volume_mount);
             }
 
-            // Check tls/scheme compatability early
+            // Check tls/scheme compatibility early
             let scheme = git_sync.repo.scheme();
             let ca_cert_path = match &git_sync.tls.tls {
                 Some(tls) => {
