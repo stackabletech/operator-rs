@@ -32,6 +32,9 @@ pub enum Error {
 ///
 /// And than there is Airflow, where we configured everything via env variables, so that doesn't
 /// work. So we also support using bash env substitution.
+/// As of 2026-04 to my knowledge this is the only operator doing such, it would be great to
+/// switch airflow-operator to config files, so that we can remove templating support for bash env
+/// substitution.
 #[derive(Copy, Clone, Debug, Default)]
 pub enum TemplatingMechanism {
     /// Template files using <https://github.com/stackabletech/config-utils>, e.g.
