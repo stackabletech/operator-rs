@@ -6,9 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Implement `Deref` for `kvp::Key` to be more ergonomic to use ([#1182]).
+- Git sync: add support for CAs ([#1154]).
 - Add support for specifying a `clientAuthenticationMethod` for OIDC ([#1178]).
   This was originally done in [#1158] and had been reverted in [#1170].
+- Implement `Deref` for `kvp::Key` to be more ergonomic to use ([#1182]).
+
+### Changed
+
+- BREAKING: Add mandatory `provision_parts` argument to `SecretOperatorVolumeSourceBuilder::new` ([#1165]).
+  It now forces the caller to make an explicit choice if the public parts are sufficient or if private
+  (e.g. a certificate for the Pod) parts are needed as well. This is done to avoid accidentally requesting
+  too much parts. For details see [this issue](https://github.com/stackabletech/issues/issues/547).
+
+  Additionally, `SecretClassVolume::to_volume` and `SecretClassVolume::to_ephemeral_volume_source`
+  also take the same new argument.
 
 ### Changed
 
@@ -25,6 +36,8 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Remove unused `add_prefix`, `try_add_prefix`, `set_name`, and `try_set_name` associated
   functions from `kvp::Key` to disallow mutable access to inner values ([#1182]).
 
+[#1154]: https://github.com/stackabletech/operator-rs/pull/1154
+[#1165]: https://github.com/stackabletech/operator-rs/pull/1165
 [#1178]: https://github.com/stackabletech/operator-rs/pull/1178
 [#1182]: https://github.com/stackabletech/operator-rs/pull/1182
 [#1186]: https://github.com/stackabletech/operator-rs/pull/1186

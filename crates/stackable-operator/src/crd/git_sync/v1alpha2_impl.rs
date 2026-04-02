@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, fmt::Write as _, path::PathBuf};
 use k8s_openapi::api::core::v1::{
     Container, EmptyDirVolumeSource, EnvVar, EnvVarSource, SecretKeySelector, Volume, VolumeMount,
 };
-use snafu::{ResultExt, Snafu};
+use snafu::{ResultExt, Snafu, ensure};
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
@@ -12,7 +12,12 @@ use crate::{
         resources::ResourceRequirementsBuilder,
         volume::{VolumeBuilder, VolumeMountBuilder},
     },
-    commons::product_image_selection::ResolvedProductImage,
+    commons::{
+        self,
+        product_image_selection::ResolvedProductImage,
+        secret_class::{SecretClassVolume, SecretClassVolumeProvisionParts},
+        tls_verification::{CaCert, TlsServerVerification, TlsVerification},
+    },
     crd::git_sync::v1alpha2::{Credentials, GitSync},
     product_config_utils::insert_or_update_env_vars,
     product_logging::{
@@ -30,6 +35,10 @@ pub const SSH_MOUNT_PATH_PREFIX: &str = "/stackable/gitssh";
 pub const GIT_SYNC_SAFE_DIR_OPTION: &str = "safe.directory";
 pub const GIT_SYNC_ROOT_DIR: &str = "/tmp/git";
 pub const GIT_SYNC_LINK: &str = "current";
+pub const CA_CERT_VOLUME_NAME_PREFIX: &str = "ca-cert";
+pub const CA_CERT_MOUNT_PATH_PREFIX: &str = "/stackable/gitca";
+pub const GIT_SSL_CA_INFO_CONFIG_KEY: &str = "http.sslCAInfo";
+pub const GIT_SSL_VERIFY: &str = "http.sslverify";
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
@@ -43,6 +52,14 @@ pub enum Error {
     AddVolumeMount {
         source: crate::builder::pod::container::Error,
     },
+
+    #[snafu(display("failed to convert secret class volume into named Kubernetes volume"))]
+    SecretClassVolume {
+        source: commons::secret_class::SecretClassVolumeError,
+    },
+
+    #[snafu(display("scheme does not match tls setting"))]
+    SchemeMismatch { scheme: String },
 }
 
 /// Kubernetes resources generated from `GitSync` specifications which should be added to the Pod.
@@ -65,6 +82,9 @@ pub struct GitSyncResources {
 
     /// GitSync volumes containing the synchronized repository
     pub git_ssh_volumes: Vec<Volume>,
+
+    // GitSync volumes containing Ca certificates
+    pub git_ca_cert_volumes: Vec<Volume>,
 }
 
 impl GitSyncResources {
@@ -156,6 +176,44 @@ impl GitSyncResources {
                 git_sync_container_volume_mounts.push(ssh_volume_mount);
             }
 
+            // Check tls/scheme compatibility early
+            let scheme = git_sync.repo.scheme();
+            let ca_cert_path = match &git_sync.tls.tls {
+                Some(tls) => {
+                    match &tls.verification {
+                        TlsVerification::None {} => {
+                            // We can't check the scheme for http here as github redirects to https and any PAT-based credentials will require https.
+                            // "http.sslverify=false" will be set later in the shell script.
+                            None
+                        }
+                        TlsVerification::Server(TlsServerVerification {
+                            ca_cert: CaCert::WebPki {},
+                        }) => {
+                            // This will default to github/gitlab using its standard certificates
+                            ensure!(scheme != "http", SchemeMismatchSnafu { scheme });
+                            None
+                        }
+                        TlsVerification::Server(TlsServerVerification {
+                            ca_cert: CaCert::SecretClass(_),
+                        }) => {
+                            ensure!(scheme != "http", SchemeMismatchSnafu { scheme });
+                            Some(format!("{CA_CERT_MOUNT_PATH_PREFIX}-{i}/ca.crt"))
+                        }
+                    }
+                }
+                None => None,
+            };
+
+            if git_sync.tls.tls_ca_cert_secret_class().is_some() {
+                let ca_cert_secret_mount_path = format!("{CA_CERT_MOUNT_PATH_PREFIX}-{i}");
+                let ca_cert_secret_volume_name = format!("{CA_CERT_VOLUME_NAME_PREFIX}-{i}");
+
+                let ca_cert_volume_mount =
+                    VolumeMountBuilder::new(ca_cert_secret_volume_name, ca_cert_secret_mount_path)
+                        .build();
+                git_sync_container_volume_mounts.push(ca_cert_volume_mount);
+            }
+
             let container = Self::create_git_sync_container(
                 &format!("{CONTAINER_NAME_PREFIX}-{i}"),
                 resolved_product_image,
@@ -164,6 +222,7 @@ impl GitSyncResources {
                 &env_vars,
                 &git_sync_container_volume_mounts,
                 container_log_config,
+                ca_cert_path.as_deref(),
             )?;
 
             let init_container = Self::create_git_sync_container(
@@ -174,6 +233,7 @@ impl GitSyncResources {
                 &env_vars,
                 &git_sync_container_volume_mounts,
                 container_log_config,
+                ca_cert_path.as_deref(),
             )?;
 
             let volume = VolumeBuilder::new(volume_name.clone())
@@ -212,11 +272,22 @@ impl GitSyncResources {
                     .build();
                 resources.git_ssh_volumes.push(ssh_secret_volume);
             }
+
+            if let Some(secret_class) = git_sync.tls.tls_ca_cert_secret_class() {
+                let secret_class_volume = SecretClassVolume::new(secret_class.clone(), None);
+                let volume_name = format!("{CA_CERT_VOLUME_NAME_PREFIX}-{i}");
+                let ca_cert_secret_volume = secret_class_volume
+                    // We only need the public CA cert
+                    .to_volume(&volume_name, SecretClassVolumeProvisionParts::Public)
+                    .context(SecretClassVolumeSnafu)?;
+                resources.git_ca_cert_volumes.push(ca_cert_secret_volume);
+            }
         }
 
         Ok(resources)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn create_git_sync_container(
         container_name: &str,
         resolved_product_image: &ResolvedProductImage,
@@ -225,6 +296,7 @@ impl GitSyncResources {
         env_vars: &[EnvVar],
         volume_mounts: &[VolumeMount],
         container_log_config: &ContainerLogConfig,
+        ca_cert_path: Option<&str>,
     ) -> Result<k8s_openapi::api::core::v1::Container, Error> {
         let container = ContainerBuilder::new(container_name)
             .context(InvalidContainerNameSnafu)?
@@ -241,6 +313,7 @@ impl GitSyncResources {
                 git_sync,
                 one_time,
                 container_log_config,
+                ca_cert_path,
             )])
             .add_env_vars(env_vars.into())
             .add_volume_mounts(volume_mounts.to_vec())
@@ -262,6 +335,7 @@ impl GitSyncResources {
         git_sync: &GitSync,
         one_time: bool,
         container_log_config: &ContainerLogConfig,
+        ca_cert_path: Option<&str>,
     ) -> String {
         let internal_args = BTreeMap::from([
             ("--repo".to_string(), git_sync.repo.as_str().to_owned()),
@@ -276,10 +350,20 @@ impl GitSyncResources {
             ("--one-time".to_string(), one_time.to_string()),
         ]);
 
-        let internal_git_config = BTreeMap::from([(
+        let mut internal_git_config = BTreeMap::from([(
             GIT_SYNC_SAFE_DIR_OPTION.to_owned(),
             GIT_SYNC_ROOT_DIR.to_owned(),
         )]);
+
+        if let Some(path) = ca_cert_path {
+            internal_git_config.insert(GIT_SSL_CA_INFO_CONFIG_KEY.to_owned(), path.to_owned());
+        }
+
+        // Tls defaults to webPki but if the user has *explicitly* set this to
+        // none then we honour this by deactivating the ssl check.
+        if let Some(TlsVerification::None {}) = git_sync.tls.tls.as_ref().map(|t| &t.verification) {
+            internal_git_config.insert(GIT_SSL_VERIFY.to_owned(), "false".to_owned());
+        }
 
         let mut git_sync_config = git_sync.git_sync_conf.clone();
 
@@ -390,6 +474,8 @@ wait_for_termination $!"
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
     use crate::{
         config::fragment::validate, product_config_utils::env_vars_from,
@@ -1112,5 +1198,351 @@ secret:
 ",
             serde_yaml::to_string(&git_sync_resources.git_ssh_volumes.first()).unwrap()
         );
+    }
+
+    #[test]
+    fn test_git_sync_ca_cert() {
+        let git_sync_spec = r#"
+          # GitSync using SSH
+          - repo: ssh://git@github.com/stackabletech/repo.git
+            branch: trunk
+            gitFolder: ""
+            depth: 3
+            wait: 1m
+            tls:
+              verification:
+                server:
+                  caCert:
+                    secretClass: git-tls-ca
+            gitSyncConf:
+              --rev: HEAD
+          "#;
+
+        let git_syncs: Vec<GitSync> = yaml_from_str_singleton_map(git_sync_spec).unwrap();
+
+        let resolved_product_image = ResolvedProductImage {
+            image: "oci.stackable.tech/sdp/product:latest".to_string(),
+            app_version_label_value: "1.0.0-latest"
+                .parse()
+                .expect("static app version label is always valid"),
+            product_version: "1.0.0".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        };
+
+        let extra_env_vars = env_vars_from([("VAR1", "value1")]);
+
+        let extra_volume_mounts = [VolumeMount {
+            name: "extra-volume".to_string(),
+            mount_path: "/mnt/extra-volume".to_string(),
+            ..VolumeMount::default()
+        }];
+
+        let git_sync_resources = GitSyncResources::new(
+            &git_syncs,
+            &resolved_product_image,
+            &extra_env_vars,
+            &extra_volume_mounts,
+            "log-volume",
+            &validate(default_container_log_config()).unwrap(),
+        )
+        .unwrap();
+
+        assert!(git_sync_resources.is_git_sync_enabled());
+
+        assert_eq!(1, git_sync_resources.git_sync_containers.len());
+
+        assert_eq!(
+            r#"args:
+- |-
+  mkdir --parents /stackable/log/git-sync-0 && exec > >(tee /stackable/log/git-sync-0/container.stdout.log) 2> >(tee /stackable/log/git-sync-0/container.stderr.log >&2)
+
+  prepare_signal_handlers()
+  {
+      unset term_child_pid
+      unset term_kill_needed
+      trap 'handle_term_signal' TERM
+  }
+
+  handle_term_signal()
+  {
+      if [ "${term_child_pid}" ]; then
+          kill -TERM "${term_child_pid}" 2>/dev/null
+      else
+          term_kill_needed="yes"
+      fi
+  }
+
+  wait_for_termination()
+  {
+      set +e
+      term_child_pid=$1
+      if [[ -v term_kill_needed ]]; then
+          kill -TERM "${term_child_pid}" 2>/dev/null
+      fi
+      wait ${term_child_pid} 2>/dev/null
+      trap - TERM
+      wait ${term_child_pid} 2>/dev/null
+      set -e
+  }
+
+  prepare_signal_handlers
+  /stackable/git-sync --depth=3 --git-config='http.sslCAInfo:/stackable/gitca-0/ca.crt,safe.directory:/tmp/git' --link=current --one-time=false --period=60s --ref=trunk --repo=ssh://git@github.com/stackabletech/repo.git --rev=HEAD --root=/tmp/git &
+  wait_for_termination $!
+command:
+- /bin/bash
+- -x
+- -euo
+- pipefail
+- -c
+env:
+- name: VAR1
+  value: value1
+image: oci.stackable.tech/sdp/product:latest
+imagePullPolicy: Always
+name: git-sync-0
+resources:
+  limits:
+    cpu: 200m
+    memory: 64Mi
+  requests:
+    cpu: 100m
+    memory: 64Mi
+volumeMounts:
+- mountPath: /tmp/git
+  name: content-from-git-0
+- mountPath: /stackable/log
+  name: log-volume
+- mountPath: /mnt/extra-volume
+  name: extra-volume
+- mountPath: /stackable/gitca-0
+  name: ca-cert-0
+"#,
+            serde_yaml::to_string(&git_sync_resources.git_sync_containers.first()).unwrap()
+        );
+
+        assert_eq!(1, git_sync_resources.git_sync_init_containers.len());
+
+        assert_eq!(
+            r#"args:
+- |-
+  mkdir --parents /stackable/log/git-sync-0-init && exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2)
+  /stackable/git-sync --depth=3 --git-config='http.sslCAInfo:/stackable/gitca-0/ca.crt,safe.directory:/tmp/git' --link=current --one-time=true --period=60s --ref=trunk --repo=ssh://git@github.com/stackabletech/repo.git --rev=HEAD --root=/tmp/git
+command:
+- /bin/bash
+- -x
+- -euo
+- pipefail
+- -c
+env:
+- name: VAR1
+  value: value1
+image: oci.stackable.tech/sdp/product:latest
+imagePullPolicy: Always
+name: git-sync-0-init
+resources:
+  limits:
+    cpu: 200m
+    memory: 64Mi
+  requests:
+    cpu: 100m
+    memory: 64Mi
+volumeMounts:
+- mountPath: /tmp/git
+  name: content-from-git-0
+- mountPath: /stackable/log
+  name: log-volume
+- mountPath: /mnt/extra-volume
+  name: extra-volume
+- mountPath: /stackable/gitca-0
+  name: ca-cert-0
+"#,
+            serde_yaml::to_string(&git_sync_resources.git_sync_init_containers.first()).unwrap()
+        );
+
+        assert_eq!(1, git_sync_resources.git_content_volumes.len());
+
+        assert_eq!(
+            "emptyDir: {}
+name: content-from-git-0
+",
+            serde_yaml::to_string(&git_sync_resources.git_content_volumes.first()).unwrap()
+        );
+
+        assert_eq!(1, git_sync_resources.git_content_volume_mounts.len());
+
+        assert_eq!(
+            "mountPath: /stackable/app/git-0
+name: content-from-git-0
+",
+            serde_yaml::to_string(&git_sync_resources.git_content_volume_mounts.first()).unwrap()
+        );
+
+        assert_eq!(1, git_sync_resources.git_content_folders.len());
+
+        assert_eq!(
+            "/stackable/app/git-0/current/",
+            git_sync_resources
+                .git_content_folders_as_string()
+                .first()
+                .unwrap()
+        );
+
+        assert_eq!(1, git_sync_resources.git_ca_cert_volumes.len());
+
+        assert_eq!(
+            "ephemeral:
+  volumeClaimTemplate:
+    metadata:
+      annotations:
+        secrets.stackable.tech/class: git-tls-ca
+        secrets.stackable.tech/provision-parts: public
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: '1'
+      storageClassName: secrets.stackable.tech
+name: ca-cert-0
+",
+            serde_yaml::to_string(&git_sync_resources.git_ca_cert_volumes.first()).unwrap()
+        );
+    }
+
+    #[rstest]
+    // https with tls/null --> deactivate: Ok
+    #[case(
+        "https://github.com/stackabletech/repo1",
+        r#"
+  tls: null
+    "#,
+        true
+    )]
+    // https with no tls --> defaults to webPki: Ok
+    #[case(
+        "https://github.com/stackabletech/repo1",
+        r#"
+    "#,
+        true
+    )]
+    // http with no tls --> defaults to webPki: Error
+    #[case(
+        "http://github.com/stackabletech/repo1",
+        r#"
+    "#,
+        false
+    )]
+    // https with tls/None: Ok
+    #[case(
+        "https://github.com/stackabletech/repo1",
+        r#"
+  tls:
+    verification:
+      none: {}
+    "#,
+        true
+    )]
+    // https with tls/None: Error
+    #[case(
+        "http://github.com/stackabletech/repo1",
+        r#"
+  tls:
+    "#,
+        true
+    )]
+    // ssh with tls/secret: Ok
+    #[case(
+        "ssh://git@github.com/stackabletech/repo.git",
+        r#"
+  tls:
+    verification:
+      server:
+        caCert:
+          secretClass: git-tls-ca
+    "#,
+        true
+    )]
+    // https with tls/secret: Ok
+    #[case(
+        "https://github.com/stackabletech/repo1",
+        r#"
+  tls:
+    verification:
+      server:
+        caCert:
+          secretClass: another-ca
+    "#,
+        true
+    )]
+    // https with tls/webPki: Ok
+    #[case(
+        "https://github.com/stackabletech/repo1",
+        r#"
+  tls:
+    verification:
+      server:
+        caCert:
+          webPki: {}
+    "#,
+        true
+    )]
+    // http with tls/webPki: Error
+    #[case(
+        "http://github.com/stackabletech/repo1",
+        r#"
+  tls:
+    verification:
+      server:
+        caCert:
+          webPki: {}
+    "#,
+        false
+    )]
+    // http with tls/secret: Error
+    #[case(
+        "http://github.com/stackabletech/repo1",
+        r#"
+  tls:
+    verification:
+      server:
+        caCert:
+          secretClass: http-ca
+    "#,
+        false
+    )]
+    fn test_git_sync_tls_scheme(#[case] repo: &str, #[case] tls: &str, #[case] expect_ok: bool) {
+        let git_sync_spec = format!(
+            r#"
+- repo: {repo}
+  {tls}
+          "#
+        );
+
+        let git_syncs: Vec<GitSync> = yaml_from_str_singleton_map(&git_sync_spec).unwrap();
+
+        let resolved_product_image = ResolvedProductImage {
+            image: "oci.stackable.tech/sdp/product:latest".to_string(),
+            app_version_label_value: "1.0.0-latest"
+                .parse()
+                .expect("static app version label is always valid"),
+            product_version: "1.0.0".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        };
+
+        let git_sync_resources = GitSyncResources::new(
+            &git_syncs,
+            &resolved_product_image,
+            &[],
+            &[],
+            "log-volume",
+            &validate(default_container_log_config()).unwrap(),
+        );
+        if expect_ok {
+            assert!(git_sync_resources.is_ok());
+        } else {
+            assert!(git_sync_resources.is_err());
+        }
     }
 }

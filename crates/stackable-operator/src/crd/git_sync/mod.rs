@@ -7,13 +7,17 @@ use serde::{Deserialize, Serialize};
 use stackable_shared::time::Duration;
 use url::Url;
 
-use crate::{crd::git_sync::v1alpha2::Credentials, versioned::versioned};
+use crate::{
+    commons::tls_verification::TlsClientDetailsWithSecureDefaults,
+    crd::git_sync::v1alpha2::Credentials, versioned::versioned,
+};
 
 mod v1alpha1_impl;
 mod v1alpha2_impl;
 
 #[versioned(version(name = "v1alpha1"), version(name = "v1alpha2"))]
 pub mod versioned {
+
     pub mod v1alpha1 {
         pub use v1alpha1_impl::{Error, GitSyncResources};
     }
@@ -68,6 +72,12 @@ pub mod versioned {
             downgrade_with = credentials_to_secret
         ))]
         pub credentials: Option<Credentials>,
+
+        /// An optional field used for referencing CA certificates that will be used to verify the git server's TLS certificate by passing it to the git config option `http.sslCAInfo` passed with the gitsync command. The secret must have a key named `ca.crt` whose value is the PEM-encoded certificate bundle.
+        /// If `http.sslCAInfo` is also set via `gitSyncConf` (the `--git-config` option) then a warning will be logged.
+        /// If not specified no TLS will be used, defaulting to github/lab using commonly-recognised certificates.
+        #[serde(flatten)]
+        pub tls: TlsClientDetailsWithSecureDefaults,
     }
 
     #[derive(strum::Display, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
