@@ -6,8 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add support to override kube crate ([#1173]).
 - Add support to provide `#[versioned(crd(scale(...)))]` argument to enable the `/scale` subresource ([#1185]).
 
+[#1173]: https://github.com/stackabletech/operator-rs/pull/1173
 [#1185]: https://github.com/stackabletech/operator-rs/pull/1185
 
 ## [0.8.3] - 2025-10-23
