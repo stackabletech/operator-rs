@@ -294,8 +294,8 @@ impl<T> Deref for Override<T> {
 impl<T> Override<T> {
     pub fn is_explicit(&self) -> bool {
         match self {
-            Override::Default(_) => false,
-            Override::Explicit(_) => true,
+            Self::Default(_) => false,
+            Self::Explicit(_) => true,
         }
     }
 }
