@@ -10,7 +10,7 @@ use crate::{
 
 /// Implemented by database connection types that support JDBC.
 ///
-/// Provides a standardized way to obtain JDBC connection details (driver class, URI, and
+/// Provides a standardized way to obtain JDBC connection details (driver class, URL, and
 /// credential env vars) regardless of the concrete database type.
 pub trait JdbcDatabaseConnection {
     /// Returns the JDBC connection details for the given `unique_database_name` using the
@@ -43,9 +43,9 @@ pub struct JdbcDatabaseConnectionDetails {
     /// The Java class name of the driver, e.g. `org.postgresql.Driver`
     pub driver: String,
 
-    /// The connection URI (without user and password), e.g.
+    /// The connection URL (without user and password), e.g.
     /// `jdbc:postgresql://airflow-postgresql:5432/airflow`
-    pub connection_uri: Url,
+    pub connection_url: Url,
 
     /// The [`EnvVar`] that mounts the credentials Secret and provides the username.
     pub username_env: Option<EnvVar>,
@@ -70,7 +70,7 @@ impl JdbcDatabaseConnectionDetails {
 ///
 /// Use this when you need to connect to a JDBC-compatible database that does not have a
 /// first-class connection type. You are responsible for providing the correct driver class name
-/// and a fully-formed JDBC URI as well as providing the needed classes on the Java classpath.
+/// and a fully-formed JDBC URL as well as providing the needed classes on the Java classpath.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenericJdbcDatabaseConnection {
@@ -78,14 +78,14 @@ pub struct GenericJdbcDatabaseConnection {
     /// `com.mysql.jdbc.Driver`. The driver JAR must be provided by you on the classpath.
     pub driver: String,
 
-    /// The JDBC connection URI, e.g. `jdbc:postgresql://my-host:5432/mydb`. Credentials must
-    /// not be embedded in this URI; they are instead injected via environment variables sourced
+    /// The JDBC connection URL, e.g. `jdbc:postgresql://my-host:5432/mydb`. Credentials must
+    /// not be embedded in this URL; they are instead injected via environment variables sourced
     /// from `credentials_secret`.
-    pub uri: Url,
+    pub url: Url,
 
     /// Name of a Secret containing the `username` and `password` keys used to authenticate
     /// against the database.
-    pub credentials_secret: String,
+    pub credentials_secret_name: String,
 }
 
 impl JdbcDatabaseConnection for GenericJdbcDatabaseConnection {
@@ -95,11 +95,11 @@ impl JdbcDatabaseConnection for GenericJdbcDatabaseConnection {
         _templating_mechanism: &TemplatingMechanism,
     ) -> Result<JdbcDatabaseConnectionDetails, crate::database_connections::Error> {
         let (username_env, password_env) =
-            username_and_password_envs(unique_database_name, &self.credentials_secret);
+            username_and_password_envs(unique_database_name, &self.credentials_secret_name);
 
         Ok(JdbcDatabaseConnectionDetails {
             driver: self.driver.clone(),
-            connection_uri: self.uri.clone(),
+            connection_url: self.url.clone(),
             username_env: Some(username_env),
             password_env: Some(password_env),
         })

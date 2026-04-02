@@ -32,7 +32,7 @@ pub struct RedisConnection {
 
     /// Name of a Secret containing the `username` and `password` keys used to authenticate
     /// against the Redis server.
-    pub credentials_secret: String,
+    pub credentials_secret_name: String,
 }
 
 impl RedisConnection {
@@ -55,14 +55,14 @@ impl CeleryDatabaseConnection for RedisConnection {
             host,
             port,
             database_id,
-            credentials_secret,
+            credentials_secret_name,
         } = self;
         let (username_env, password_env) =
-            username_and_password_envs(unique_database_name, credentials_secret);
+            username_and_password_envs(unique_database_name, credentials_secret_name);
         let username_env_name = &username_env.name;
         let password_env_name = &password_env.name;
 
-        let uri_template = match templating_mechanism {
+        let url_template = match templating_mechanism {
             TemplatingMechanism::ConfigUtils => format!(
                 "redis://${{env:{username_env_name}}}:${{env:{password_env_name}}}@{host}:{port}/{database_id}",
             ),
@@ -71,10 +71,10 @@ impl CeleryDatabaseConnection for RedisConnection {
             ),
         };
         CeleryDatabaseConnectionDetails {
-            uri_template,
+            url_template,
             username_env: Some(username_env),
             password_env: Some(password_env),
-            generic_uri_var: None,
+            generic_url_var: None,
         }
     }
 }
@@ -92,18 +92,18 @@ mod tests {
             host: my-redis
             port: 42
             databaseId: 13
-            credentialsSecret: redis-credentials
+            credentialsSecretName: redis-credentials
             ",
         )
         .expect("invalid test input");
         let celery_connection_details =
             redis_connection.celery_connection_details(UNIQUE_DATABASE_NAME);
         assert_eq!(
-            celery_connection_details.uri_template,
+            celery_connection_details.url_template,
             "redis://${env:WORKER_QUEUE_DATABASE_USERNAME}:${env:WORKER_QUEUE_DATABASE_PASSWORD}@my-redis:42/13"
         );
         assert!(celery_connection_details.username_env.is_some());
         assert!(celery_connection_details.password_env.is_some());
-        assert!(celery_connection_details.generic_uri_var.is_none());
+        assert!(celery_connection_details.generic_url_var.is_none());
     }
 }

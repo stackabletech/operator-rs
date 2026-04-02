@@ -10,7 +10,7 @@ use crate::{
 /// Implemented by database connection types that support
 /// [SQLAlchemy](https://www.sqlalchemy.org/) connection URLs.
 ///
-/// Provides a standardized way to obtain a SQLAlchemy connection URI template together with the
+/// Provides a standardized way to obtain a SQLAlchemy connection URL template together with the
 /// necessary credential environment variables, regardless of the concrete database type.
 pub trait SqlAlchemyDatabaseConnection {
     /// Returns the SQLAlchemy connection details for the given `unique_database_name` using the
@@ -40,11 +40,11 @@ pub trait SqlAlchemyDatabaseConnection {
 }
 
 pub struct SqlAlchemyDatabaseConnectionDetails {
-    /// The connection URI, which can contain env variable templates, e.g.
+    /// The connection URL, which can contain env variable templates, e.g.
     /// `postgresql+psycopg2://${env:METADATA_DATABASE_USERNAME}:${env:METADATA_DATABASE_PASSWORD}@airflow-postgresql:5432/airflow`
     /// or
-    /// `<generic URI from the user>`.
-    pub uri_template: String,
+    /// `<generic URL from the user>`.
+    pub url_template: String,
 
     /// The [`EnvVar`] that mounts the credentials Secret and provides the username.
     pub username_env: Option<EnvVar>,
@@ -52,8 +52,8 @@ pub struct SqlAlchemyDatabaseConnectionDetails {
     /// The [`EnvVar`] that mounts the credentials Secret and provides the password.
     pub password_env: Option<EnvVar>,
 
-    /// The [`EnvVar`] that mounts the user-specified Secret and provides the generic URI.
-    pub generic_uri_var: Option<EnvVar>,
+    /// The [`EnvVar`] that mounts the user-specified Secret and provides the generic URL.
+    pub generic_url_var: Option<EnvVar>,
 }
 
 impl SqlAlchemyDatabaseConnectionDetails {
@@ -61,7 +61,7 @@ impl SqlAlchemyDatabaseConnectionDetails {
         [
             &self.username_env,
             &self.password_env,
-            &self.generic_uri_var,
+            &self.generic_url_var,
         ]
         .into_iter()
         .flatten()
@@ -80,13 +80,13 @@ impl SqlAlchemyDatabaseConnectionDetails {
 /// A generic SQLAlchemy database connection for database types not covered by a dedicated variant.
 ///
 /// Use this when you need to connect to a SQLAlchemy-compatible database that does not have a
-/// first-class connection type. The complete connection URI is read from a Secret, giving the user
+/// first-class connection type. The complete connection URL is read from a Secret, giving the user
 /// full control over the connection string including any driver-specific options.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenericSqlAlchemyDatabaseConnection {
-    /// The name of the Secret that contains an `uri` key with the complete SQLAlchemy URI.
-    pub uri_secret: String,
+    /// The name of the Secret that contains an `connectionUrl` key with the complete SQLAlchemy URL.
+    pub connection_url_secret_name: String,
 }
 
 impl SqlAlchemyDatabaseConnection for GenericSqlAlchemyDatabaseConnection {
@@ -95,21 +95,25 @@ impl SqlAlchemyDatabaseConnection for GenericSqlAlchemyDatabaseConnection {
         unique_database_name: &str,
         templating_mechanism: &TemplatingMechanism,
     ) -> SqlAlchemyDatabaseConnectionDetails {
-        let uri_env_name = format!(
-            "{upper}_DATABASE_URI",
+        let url_env_name = format!(
+            "{upper}_DATABASE_URL",
             upper = unique_database_name.to_uppercase()
         );
-        let uri_env_var = env_var_from_secret(&uri_env_name, &self.uri_secret, "uri");
-        let uri_template = match templating_mechanism {
-            TemplatingMechanism::ConfigUtils => format!("${{env:{uri_env_name}}}"),
-            TemplatingMechanism::BashEnvSubstitution => format!("${{{uri_env_name}}}"),
+        let url_env_var = env_var_from_secret(
+            &url_env_name,
+            &self.connection_url_secret_name,
+            "connectionUrl",
+        );
+        let url_template = match templating_mechanism {
+            TemplatingMechanism::ConfigUtils => format!("${{env:{url_env_name}}}"),
+            TemplatingMechanism::BashEnvSubstitution => format!("${{{url_env_name}}}"),
         };
 
         SqlAlchemyDatabaseConnectionDetails {
-            uri_template,
+            url_template,
             username_env: None,
             password_env: None,
-            generic_uri_var: Some(uri_env_var),
+            generic_url_var: Some(url_env_var),
         }
     }
 }

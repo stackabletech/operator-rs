@@ -41,7 +41,7 @@ pub struct PostgresqlConnection {
 
     /// Name of a Secret containing the `username` and `password` keys used to authenticate
     /// against the PostgreSQL server.
-    pub credentials_secret: String,
+    pub credentials_secret_name: String,
 
     /// Additional map of JDBC connection parameters to append to the connection URL. The given
     /// `HashMap<String, String>` will be converted to query parameters in the form of
@@ -66,22 +66,22 @@ impl JdbcDatabaseConnection for PostgresqlConnection {
             host,
             port,
             database,
-            credentials_secret,
+            credentials_secret_name,
             parameters,
         } = self;
         let (username_env, password_env) =
-            username_and_password_envs(unique_database_name, credentials_secret);
+            username_and_password_envs(unique_database_name, credentials_secret_name);
 
-        let connection_uri = format!(
+        let connection_url = format!(
             "jdbc:postgresql://{host}:{port}/{database}{parameters}",
             parameters =
                 connection_parameters_as_url_query_parameters(parameters).unwrap_or_default()
         );
-        let connection_uri = connection_uri.parse().context(ParseConnectionUrlSnafu)?;
+        let connection_url = connection_url.parse().context(ParseConnectionUrlSnafu)?;
 
         Ok(JdbcDatabaseConnectionDetails {
             driver: POSTGRES_JDBC_DRIVER_CLASS.to_owned(),
-            connection_uri,
+            connection_url,
             username_env: Some(username_env),
             password_env: Some(password_env),
         })
@@ -98,17 +98,17 @@ impl SqlAlchemyDatabaseConnection for PostgresqlConnection {
             host,
             port,
             database,
-            credentials_secret,
+            credentials_secret_name,
             parameters,
         } = self;
         let (username_env, password_env) =
-            username_and_password_envs(unique_database_name, credentials_secret);
+            username_and_password_envs(unique_database_name, credentials_secret_name);
         let username_env_name = &username_env.name;
         let password_env_name = &password_env.name;
         let parameters =
             connection_parameters_as_url_query_parameters(parameters).unwrap_or_default();
 
-        let uri_template = match templating_mechanism {
+        let url_template = match templating_mechanism {
             TemplatingMechanism::ConfigUtils => format!(
                 "postgresql+psycopg2://${{env:{username_env_name}}}:${{env:{password_env_name}}}@{host}:{port}/{database}{parameters}",
             ),
@@ -117,10 +117,10 @@ impl SqlAlchemyDatabaseConnection for PostgresqlConnection {
             ),
         };
         SqlAlchemyDatabaseConnectionDetails {
-            uri_template,
+            url_template,
             username_env: Some(username_env),
             password_env: Some(password_env),
-            generic_uri_var: None,
+            generic_url_var: None,
         }
     }
 }
@@ -135,17 +135,17 @@ impl CeleryDatabaseConnection for PostgresqlConnection {
             host,
             port,
             database,
-            credentials_secret,
+            credentials_secret_name,
             parameters,
         } = self;
         let (username_env, password_env) =
-            username_and_password_envs(unique_database_name, credentials_secret);
+            username_and_password_envs(unique_database_name, credentials_secret_name);
         let username_env_name = &username_env.name;
         let password_env_name = &password_env.name;
         let parameters =
             connection_parameters_as_url_query_parameters(parameters).unwrap_or_default();
 
-        let uri_template = match templating_mechanism {
+        let url_template = match templating_mechanism {
             TemplatingMechanism::ConfigUtils => format!(
                 "db+postgresql://${{env:{username_env_name}}}:${{env:{password_env_name}}}@{host}:{port}/{database}{parameters}",
             ),
@@ -154,10 +154,10 @@ impl CeleryDatabaseConnection for PostgresqlConnection {
             ),
         };
         CeleryDatabaseConnectionDetails {
-            uri_template,
+            url_template,
             username_env: Some(username_env),
             password_env: Some(password_env),
-            generic_uri_var: None,
+            generic_url_var: None,
         }
     }
 }
@@ -174,26 +174,26 @@ mod tests {
             "
             host: airflow-postgresql
             database: airflow
-            credentialsSecret: airflow-postgresql-credentials
+            credentialsSecretName: airflow-postgresql-credentials
             ",
         )
         .expect("invalid test input");
         let sqlalchemy_connection_details =
             postgres_connection.sqlalchemy_connection_details(UNIQUE_DATABASE_NAME);
         assert_eq!(
-            sqlalchemy_connection_details.uri_template,
+            sqlalchemy_connection_details.url_template,
             "postgresql+psycopg2://${env:METADATA_DATABASE_USERNAME}:${env:METADATA_DATABASE_PASSWORD}@airflow-postgresql:5432/airflow"
         );
         assert!(sqlalchemy_connection_details.username_env.is_some());
         assert!(sqlalchemy_connection_details.password_env.is_some());
-        assert!(sqlalchemy_connection_details.generic_uri_var.is_none());
+        assert!(sqlalchemy_connection_details.generic_url_var.is_none());
 
         let jdbc_connection_details = postgres_connection
             .jdbc_connection_details(UNIQUE_DATABASE_NAME)
             .expect("failed to get JDBC connection details");
         assert_eq!(jdbc_connection_details.driver, POSTGRES_JDBC_DRIVER_CLASS);
         assert_eq!(
-            jdbc_connection_details.connection_uri.to_string(),
+            jdbc_connection_details.connection_url.to_string(),
             "jdbc:postgresql://airflow-postgresql:5432/airflow"
         );
         assert_eq!(
@@ -208,12 +208,12 @@ mod tests {
         let celery_connection_details =
             postgres_connection.celery_connection_details(UNIQUE_DATABASE_NAME);
         assert_eq!(
-            celery_connection_details.uri_template,
+            celery_connection_details.url_template,
             "db+postgresql://${env:METADATA_DATABASE_USERNAME}:${env:METADATA_DATABASE_PASSWORD}@airflow-postgresql:5432/airflow"
         );
         assert!(celery_connection_details.username_env.is_some());
         assert!(celery_connection_details.password_env.is_some());
-        assert!(celery_connection_details.generic_uri_var.is_none());
+        assert!(celery_connection_details.generic_url_var.is_none());
     }
 
     #[test]
@@ -223,7 +223,7 @@ mod tests {
             host: my-airflow.default.svc.cluster.local
             database: my_database
             port: 1234
-            credentialsSecret: airflow-postgresql-credentials
+            credentialsSecretName: airflow-postgresql-credentials
             parameters:
               createDatabaseIfNotExist: true
               foo: bar
@@ -233,7 +233,7 @@ mod tests {
         let sqlalchemy_connection_details =
             postgres_connection.sqlalchemy_connection_details(UNIQUE_DATABASE_NAME);
         assert_eq!(
-            sqlalchemy_connection_details.uri_template,
+            sqlalchemy_connection_details.url_template,
             "postgresql+psycopg2://${env:METADATA_DATABASE_USERNAME}:${env:METADATA_DATABASE_PASSWORD}@my-airflow.default.svc.cluster.local:1234/my_database?createDatabaseIfNotExist=true&foo=bar"
         );
 
@@ -241,7 +241,7 @@ mod tests {
             .jdbc_connection_details(UNIQUE_DATABASE_NAME)
             .expect("failed to get JDBC connection details");
         assert_eq!(
-            jdbc_connection_details.connection_uri.to_string(),
+            jdbc_connection_details.connection_url.to_string(),
             "jdbc:postgresql://my-airflow.default.svc.cluster.local:1234/my_database?createDatabaseIfNotExist=true&foo=bar"
         );
     }

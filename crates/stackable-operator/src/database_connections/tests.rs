@@ -61,7 +61,7 @@ fn test_dummy_jdbc_database_usage() {
         host: "my-database".parse().expect("static host is always valid"),
         port: 1234,
         database: "my_schema".to_owned(),
-        credentials_secret: "my-credentials".to_owned(),
+        credentials_secret_name: "my-credentials".to_owned(),
         parameters: BTreeMap::new(),
     });
     // Apply actual config
@@ -75,7 +75,7 @@ fn test_dummy_jdbc_database_usage() {
 
     assert_eq!(jdbc_connection_details.driver, POSTGRES_JDBC_DRIVER_CLASS);
     assert_eq!(
-        jdbc_connection_details.connection_uri.to_string(),
+        jdbc_connection_details.connection_url.to_string(),
         "jdbc:postgresql://my-database:1234/my_schema"
     );
     assert_eq!(
@@ -96,7 +96,7 @@ fn test_dummy_jdbc_database_usage() {
 fn test_dummy_celery_database_usage() {
     // Set up test data
     let dummy_celery_connection = DummyCeleryConnection::Generic(GenericCeleryDatabaseConnection {
-        uri_secret: "my-celery-db".to_owned(),
+        connection_url_secret_name: "my-celery-db".to_owned(),
     });
     // Apply actual config
     let celery_connection_details = dummy_celery_connection
@@ -110,8 +110,8 @@ fn test_dummy_celery_database_usage() {
     let container = container_builder.build();
 
     assert_eq!(
-        celery_connection_details.uri_template,
-        "${WORKER_QUEUE_DATABASE_URI}"
+        celery_connection_details.url_template,
+        "${WORKER_QUEUE_DATABASE_URL}"
     );
     assert_eq!(
         container
@@ -120,6 +120,6 @@ fn test_dummy_celery_database_usage() {
             .iter()
             .map(|env| &env.name)
             .collect::<Vec<_>>(),
-        vec!["WORKER_QUEUE_DATABASE_URI"]
+        vec!["WORKER_QUEUE_DATABASE_URL"]
     );
 }
