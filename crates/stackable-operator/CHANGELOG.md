@@ -14,6 +14,13 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Implement `Deref` for `kvp::Key` to be more ergonomic to use ([#1182]).
+- BREAKING: Add mandatory `provision_parts` argument to `SecretOperatorVolumeSourceBuilder::new` ([#1165]).
+  It now forces the caller to make an explicit choice if the public parts are sufficient or if private
+  (e.g. a certificate for the Pod) parts are needed as well. This is done to avoid accidentally requesting
+  too much parts. For details see [this issue](https://github.com/stackabletech/issues/issues/547).
+
+  Additionally, `SecretClassVolume::to_volume` and `SecretClassVolume::to_ephemeral_volume_source`
+  also take the same new argument.
 - BREAKING: Change signature of `ContainerBuilder::add_env_vars` from `Vec<EnvVar>` to `IntoIterator<Item = EnvVar>` ([#1163]).
 
 ### Removed
@@ -23,6 +30,7 @@ All notable changes to this project will be documented in this file.
 
 [#1154]: https://github.com/stackabletech/operator-rs/pull/1154
 [#1163]: https://github.com/stackabletech/operator-rs/pull/1163
+[#1165]: https://github.com/stackabletech/operator-rs/pull/1165
 [#1178]: https://github.com/stackabletech/operator-rs/pull/1178
 [#1182]: https://github.com/stackabletech/operator-rs/pull/1182
 

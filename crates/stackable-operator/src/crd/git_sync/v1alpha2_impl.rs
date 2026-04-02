@@ -15,7 +15,7 @@ use crate::{
     commons::{
         self,
         product_image_selection::ResolvedProductImage,
-        secret_class::SecretClassVolume,
+        secret_class::{SecretClassVolume, SecretClassVolumeProvisionParts},
         tls_verification::{CaCert, TlsServerVerification, TlsVerification},
     },
     crd::git_sync::v1alpha2::{Credentials, GitSync},
@@ -276,7 +276,8 @@ impl GitSyncResources {
                 let secret_class_volume = SecretClassVolume::new(secret_class.clone(), None);
                 let volume_name = format!("{CA_CERT_VOLUME_NAME_PREFIX}-{i}");
                 let ca_cert_secret_volume = secret_class_volume
-                    .to_volume(&volume_name)
+                    // We only need the public CA cert
+                    .to_volume(&volume_name, SecretClassVolumeProvisionParts::Public)
                     .context(SecretClassVolumeSnafu)?;
                 resources.git_ca_cert_volumes.push(ca_cert_secret_volume);
             }
@@ -1390,6 +1391,7 @@ name: content-from-git-0
     metadata:
       annotations:
         secrets.stackable.tech/class: git-tls-ca
+        secrets.stackable.tech/provision-parts: public
     spec:
       accessModes:
       - ReadWriteOnce
