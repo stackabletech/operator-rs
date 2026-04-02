@@ -6,8 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Git sync: add support for CAs ([#1154]).
 - Add support for specifying a `clientAuthenticationMethod` for OIDC ([#1178]).
   This was originally done in [#1158] and had been reverted in [#1170].
+- Implement `Deref` for `kvp::Key` to be more ergonomic to use ([#1182]).
 
 ### Changed
 
@@ -19,8 +21,15 @@ All notable changes to this project will be documented in this file.
   Additionally, `SecretClassVolume::to_volume` and `SecretClassVolume::to_ephemeral_volume_source`
   also take the same new argument.
 
+### Removed
+
+- BREAKING: Remove unused `add_prefix`, `try_add_prefix`, `set_name`, and `try_set_name` associated
+  functions from `kvp::Key` to disallow mutable access to inner values ([#1182]).
+
+[#1154]: https://github.com/stackabletech/operator-rs/pull/1154
 [#1165]: https://github.com/stackabletech/operator-rs/pull/1165
 [#1178]: https://github.com/stackabletech/operator-rs/pull/1178
+[#1182]: https://github.com/stackabletech/operator-rs/pull/1182
 
 ## [0.108.0] - 2026-03-10
 

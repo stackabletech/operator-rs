@@ -28,6 +28,7 @@ pub enum TlsClientDetailsError {
     },
 }
 
+#[repr(transparent)]
 #[derive(
     Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
 )]
@@ -35,6 +36,40 @@ pub enum TlsClientDetailsError {
 pub struct TlsClientDetails {
     /// Use a TLS connection. If not specified no TLS will be used.
     pub tls: Option<Tls>,
+}
+
+#[repr(transparent)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct TlsClientDetailsWithSecureDefaults {
+    /// Configure a TLS connection. If not specified it will default to webPki validation.
+    #[serde(default = "default_web_pki_tls")]
+    pub tls: Option<Tls>,
+}
+
+impl std::ops::Deref for TlsClientDetailsWithSecureDefaults {
+    type Target = TlsClientDetails;
+
+    fn deref(&self) -> &TlsClientDetails {
+        // SAFETY: both types are `#[repr(transparent)]` over `Option<Tls>`, so they share
+        // the same memory layout and this cast is sound.
+        //
+        // This cannot silently break due to struct changes: `#[repr(transparent)]` requires
+        // exactly one non-zero-sized field, so adding a second real field to either struct
+        // is a compile error. The only scenario that would NOT be caught at compile time is
+        // deliberately removing `#[repr(transparent)]` from one of the two structs.
+        unsafe { &*(self as *const Self as *const TlsClientDetails) }
+    }
+}
+
+fn default_web_pki_tls() -> Option<Tls> {
+    Some(Tls {
+        verification: TlsVerification::Server(TlsServerVerification {
+            ca_cert: CaCert::WebPki {},
+        }),
+    })
 }
 
 impl TlsClientDetails {
@@ -167,4 +202,52 @@ pub enum CaCert {
     /// Note that a SecretClass does not need to have a key but can also work with just a CA certificate,
     /// so if you got provided with a CA cert but don't have access to the key you can still use this method.
     SecretClass(String),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::yaml_from_str_singleton_map;
+
+    #[test]
+    fn tls_client_details_with_secure_defaults_deserialization() {
+        // No tls key at all → WebPki default kicks in
+        let parsed: TlsClientDetailsWithSecureDefaults =
+            yaml_from_str_singleton_map("{}").expect("failed to deserialize empty input");
+        assert_eq!(parsed.tls, default_web_pki_tls());
+
+        // Explicit null → opt out of TLS entirely
+        let parsed: TlsClientDetailsWithSecureDefaults =
+            yaml_from_str_singleton_map("tls: null").expect("failed to deserialize tls: null");
+        assert_eq!(parsed.tls, None);
+
+        // Explicit SecretClass value is preserved as-is
+        let parsed: TlsClientDetailsWithSecureDefaults = yaml_from_str_singleton_map(
+            "tls:
+               verification:
+                 server:
+                   caCert:
+                     secretClass: my-ca",
+        )
+        .expect("failed to deserialize secretClass");
+        assert_eq!(
+            parsed.tls,
+            Some(Tls {
+                verification: TlsVerification::Server(TlsServerVerification {
+                    ca_cert: CaCert::SecretClass("my-ca".to_owned()),
+                }),
+            })
+        );
+    }
+
+    #[test]
+    #[allow(clippy::explicit_auto_deref)]
+    fn tls_client_details_with_secure_defaults_deref() {
+        let secure: TlsClientDetailsWithSecureDefaults =
+            yaml_from_str_singleton_map("{}").expect("failed to deserialize");
+
+        // Deref must not panic and must expose the same tls value
+        let tls_client_details: &TlsClientDetails = &*secure;
+        assert_eq!(tls_client_details.tls, secure.tls);
+    }
 }
