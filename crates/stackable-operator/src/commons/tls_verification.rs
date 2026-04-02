@@ -60,10 +60,11 @@ impl std::ops::Deref for TlsClientDetailsWithSecureDefaults {
         // exactly one non-zero-sized field, so adding a second real field to either struct
         // is a compile error. The only scenario that would NOT be caught at compile time is
         // deliberately removing `#[repr(transparent)]` from one of the two structs.
-        unsafe { &*(self as *const Self as *const TlsClientDetails) }
+        unsafe { &*std::ptr::from_ref(self).cast::<TlsClientDetails>() }
     }
 }
 
+#[expect(clippy::unnecessary_wraps)]
 fn default_web_pki_tls() -> Option<Tls> {
     Some(Tls {
         verification: TlsVerification::Server(TlsServerVerification {

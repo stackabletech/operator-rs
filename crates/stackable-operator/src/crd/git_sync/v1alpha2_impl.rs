@@ -1201,6 +1201,7 @@ secret:
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn test_git_sync_ca_cert() {
         let git_sync_spec = r#"
           # GitSync using SSH
@@ -1324,7 +1325,7 @@ volumeMounts:
         assert_eq!(1, git_sync_resources.git_sync_init_containers.len());
 
         assert_eq!(
-            r#"args:
+            r"args:
 - |-
   mkdir --parents /stackable/log/git-sync-0-init && exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2)
   /stackable/git-sync --depth=3 --git-config='http.sslCAInfo:/stackable/gitca-0/ca.crt,safe.directory:/tmp/git' --link=current --one-time=true --period=60s --ref=trunk --repo=ssh://git@github.com/stackabletech/repo.git --rev=HEAD --root=/tmp/git
@@ -1356,7 +1357,7 @@ volumeMounts:
   name: extra-volume
 - mountPath: /stackable/gitca-0
   name: ca-cert-0
-"#,
+",
             serde_yaml::to_string(&git_sync_resources.git_sync_init_containers.first()).unwrap()
         );
 
@@ -1414,109 +1415,109 @@ name: ca-cert-0
     // https with tls/null --> deactivate: Ok
     #[case(
         "https://github.com/stackabletech/repo1",
-        r#"
+        "
   tls: null
-    "#,
+    ",
         true
     )]
     // https with no tls --> defaults to webPki: Ok
     #[case(
         "https://github.com/stackabletech/repo1",
-        r#"
-    "#,
+        "
+    ",
         true
     )]
     // http with no tls --> defaults to webPki: Error
     #[case(
         "http://github.com/stackabletech/repo1",
-        r#"
-    "#,
+        "
+    ",
         false
     )]
     // https with tls/None: Ok
     #[case(
         "https://github.com/stackabletech/repo1",
-        r#"
+        "
   tls:
     verification:
       none: {}
-    "#,
+    ",
         true
     )]
     // https with tls/None: Error
     #[case(
         "http://github.com/stackabletech/repo1",
-        r#"
+        "
   tls:
-    "#,
+    ",
         true
     )]
     // ssh with tls/secret: Ok
     #[case(
         "ssh://git@github.com/stackabletech/repo.git",
-        r#"
+        "
   tls:
     verification:
       server:
         caCert:
           secretClass: git-tls-ca
-    "#,
+    ",
         true
     )]
     // https with tls/secret: Ok
     #[case(
         "https://github.com/stackabletech/repo1",
-        r#"
+        "
   tls:
     verification:
       server:
         caCert:
           secretClass: another-ca
-    "#,
+    ",
         true
     )]
     // https with tls/webPki: Ok
     #[case(
         "https://github.com/stackabletech/repo1",
-        r#"
+        "
   tls:
     verification:
       server:
         caCert:
           webPki: {}
-    "#,
+    ",
         true
     )]
     // http with tls/webPki: Error
     #[case(
         "http://github.com/stackabletech/repo1",
-        r#"
+        "
   tls:
     verification:
       server:
         caCert:
           webPki: {}
-    "#,
+    ",
         false
     )]
     // http with tls/secret: Error
     #[case(
         "http://github.com/stackabletech/repo1",
-        r#"
+        "
   tls:
     verification:
       server:
         caCert:
           secretClass: http-ca
-    "#,
+    ",
         false
     )]
     fn test_git_sync_tls_scheme(#[case] repo: &str, #[case] tls: &str, #[case] expect_ok: bool) {
         let git_sync_spec = format!(
-            r#"
+            "
 - repo: {repo}
   {tls}
-          "#
+          "
         );
 
         let git_syncs: Vec<GitSync> = yaml_from_str_singleton_map(&git_sync_spec).unwrap();
