@@ -3,7 +3,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    builder::pod::{container::ContainerBuilder, env::env_var_from_secret},
+    builder::pod::{container::ContainerBuilder, env::env_var_with_value_from_secret},
     database_connections::TemplatingMechanism,
 };
 
@@ -100,7 +100,7 @@ impl CeleryDatabaseConnection for GenericCeleryDatabaseConnection {
             "{upper}_DATABASE_URL",
             upper = unique_database_name.to_uppercase()
         );
-        let url_env_var = env_var_from_secret(
+        let url_env_var = env_var_with_value_from_secret(
             &url_env_name,
             &self.connection_url_secret_name,
             "connectionUrl",

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use k8s_openapi::api::core::v1::EnvVar;
 
-use crate::builder::pod::env::env_var_from_secret;
+use crate::builder::pod::env::env_var_with_value_from_secret;
 
 /// Returns the needed [`EnvVar`] mounts for username and password.
 ///
@@ -14,8 +14,8 @@ pub fn username_and_password_envs(
     let (username_env_name, password_env_name) =
         username_and_password_env_names(unique_database_name);
     (
-        env_var_from_secret(username_env_name, credentials_secret_name, "username"),
-        env_var_from_secret(password_env_name, credentials_secret_name, "password"),
+        env_var_with_value_from_secret(username_env_name, credentials_secret_name, "username"),
+        env_var_with_value_from_secret(password_env_name, credentials_secret_name, "password"),
     )
 }
 

@@ -1,6 +1,6 @@
 use k8s_openapi::api::core::v1::{EnvVar, EnvVarSource, SecretKeySelector};
 
-pub fn env_var_from_secret(
+pub fn env_var_with_value_from_secret(
     env_var_name: impl Into<String>,
     secret_name: impl Into<String>,
     secret_key: impl Into<String>,
