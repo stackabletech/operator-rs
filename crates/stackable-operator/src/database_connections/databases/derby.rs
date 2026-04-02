@@ -12,6 +12,11 @@ use crate::{
     utils::OptionExt as _,
 };
 
+/// Sadly the Derby driver class name is a bit complicated, e.g. for HMS up to 4.1.x we used
+/// `org.apache.derby.jdbc.EmbeddedDriver`, for HMS 4.2.x we used
+/// `org.apache.derby.iapi.jdbc.AutoloadedDriver`.
+pub const DERBY_JDBC_DRIVER_CLASS: &str = "org.apache.derby.jdbc.EmbeddedDriver";
+
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("failed to parse connection URL"))]
@@ -54,10 +59,7 @@ impl JdbcDatabaseConnection for DerbyConnection {
         let connection_url = connection_url.parse().context(ParseConnectionUrlSnafu)?;
 
         Ok(JdbcDatabaseConnectionDetails {
-            // Sadly the Derby driver class name is a bit complicated, e.g. for HMS up to 4.1.x we used
-            // "org.apache.derby.jdbc.EmbeddedDriver",
-            // for HMS 4.2.x we used "org.apache.derby.iapi.jdbc.AutoloadedDriver".
-            driver: "org.apache.derby.jdbc.EmbeddedDriver".to_owned(),
+            driver: DERBY_JDBC_DRIVER_CLASS.to_owned(),
             connection_url,
             username_env: None,
             password_env: None,
