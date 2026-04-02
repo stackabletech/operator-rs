@@ -35,7 +35,7 @@ pub struct MysqlConnection {
 
     /// Name of a Secret containing the `username` and `password` keys used to authenticate
     /// against the MySQL server.
-    pub credentials_secret: String,
+    pub credentials_secret_name: String,
 
     /// Additional map of connection parameters to append to the connection URL. The given
     /// `HashMap<String, String>` will be converted to query parameters in the form of
@@ -60,22 +60,22 @@ impl JdbcDatabaseConnection for MysqlConnection {
             host,
             port,
             database,
-            credentials_secret,
+            credentials_secret_name,
             parameters,
         } = self;
         let (username_env, password_env) =
-            username_and_password_envs(unique_database_name, credentials_secret);
+            username_and_password_envs(unique_database_name, credentials_secret_name);
 
-        let connection_uri = format!(
+        let connection_url = format!(
             "jdbc:mysql://{host}:{port}/{database}{parameters}",
             parameters =
                 connection_parameters_as_url_query_parameters(parameters).unwrap_or_default()
         );
-        let connection_uri = connection_uri.parse().context(ParseConnectionUrlSnafu)?;
+        let connection_url = connection_url.parse().context(ParseConnectionUrlSnafu)?;
 
         Ok(JdbcDatabaseConnectionDetails {
             driver: "com.mysql.jdbc.Driver".to_owned(),
-            connection_uri,
+            connection_url,
             username_env: Some(username_env),
             password_env: Some(password_env),
         })

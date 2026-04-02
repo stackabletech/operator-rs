@@ -50,15 +50,15 @@ impl JdbcDatabaseConnection for DerbyConnection {
         let location = location.to_str().with_context(|| NonUtf8LocationSnafu {
             location: location.to_path_buf(),
         })?;
-        let connection_uri = format!("jdbc:derby:{location};create=true",);
-        let connection_uri = connection_uri.parse().context(ParseConnectionUrlSnafu)?;
+        let connection_url = format!("jdbc:derby:{location};create=true",);
+        let connection_url = connection_url.parse().context(ParseConnectionUrlSnafu)?;
 
         Ok(JdbcDatabaseConnectionDetails {
             // Sadly the Derby driver class name is a bit complicated, e.g. for HMS up to 4.1.x we used
             // "org.apache.derby.jdbc.EmbeddedDriver",
             // for HMS 4.2.x we used "org.apache.derby.iapi.jdbc.AutoloadedDriver".
             driver: "org.apache.derby.jdbc.EmbeddedDriver".to_owned(),
-            connection_uri,
+            connection_url,
             username_env: None,
             password_env: None,
         })

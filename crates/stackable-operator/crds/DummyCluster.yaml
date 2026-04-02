@@ -124,14 +124,14 @@ spec:
                       dedicated variant.
 
                       Use this when you need a Celery-compatible connection that does not have a first-class
-                      connection type. The complete connection URI is read from a Secret, giving the user full
+                      connection type. The complete connection URL is read from a Secret, giving the user full
                       control over the connection string.
                     properties:
-                      uriSecret:
-                        description: The name of the Secret that contains an `uri` key with the complete SQLAlchemy URI.
+                      connectionUrlSecretName:
+                        description: The name of the Secret that contains an `connectionUrl` key with the complete Celery URL.
                         type: string
                     required:
-                    - uriSecret
+                    - connectionUrlSecretName
                     type: object
                   genericJdbc:
                     description: |-
@@ -139,9 +139,9 @@ spec:
 
                       Use this when you need to connect to a JDBC-compatible database that does not have a
                       first-class connection type. You are responsible for providing the correct driver class name
-                      and a fully-formed JDBC URI as well as providing the needed classes on the Java classpath.
+                      and a fully-formed JDBC URL as well as providing the needed classes on the Java classpath.
                     properties:
-                      credentialsSecret:
+                      credentialsSecretName:
                         description: |-
                           Name of a Secret containing the `username` and `password` keys used to authenticate
                           against the database.
@@ -151,36 +151,36 @@ spec:
                           Fully-qualified Java class name of the JDBC driver, e.g. `org.postgresql.Driver` or
                           `com.mysql.jdbc.Driver`. The driver JAR must be provided by you on the classpath.
                         type: string
-                      uri:
+                      url:
                         description: |-
-                          The JDBC connection URI, e.g. `jdbc:postgresql://my-host:5432/mydb`. Credentials must
-                          not be embedded in this URI; they are instead injected via environment variables sourced
+                          The JDBC connection URL, e.g. `jdbc:postgresql://my-host:5432/mydb`. Credentials must
+                          not be embedded in this URL; they are instead injected via environment variables sourced
                           from `credentials_secret`.
                         format: uri
                         type: string
                     required:
-                    - credentialsSecret
+                    - credentialsSecretName
                     - driver
-                    - uri
+                    - url
                     type: object
                   genericSqlAlchemy:
                     description: |-
                       A generic SQLAlchemy database connection for database types not covered by a dedicated variant.
 
                       Use this when you need to connect to a SQLAlchemy-compatible database that does not have a
-                      first-class connection type. The complete connection URI is read from a Secret, giving the user
+                      first-class connection type. The complete connection URL is read from a Secret, giving the user
                       full control over the connection string including any driver-specific options.
                     properties:
-                      uriSecret:
-                        description: The name of the Secret that contains an `uri` key with the complete SQLAlchemy URI.
+                      connectionUrlSecretName:
+                        description: The name of the Secret that contains an `connectionUrl` key with the complete SQLAlchemy URL.
                         type: string
                     required:
-                    - uriSecret
+                    - connectionUrlSecretName
                     type: object
                   mysql:
                     description: Connection settings for a [MySQL](https://www.mysql.com/) database.
                     properties:
-                      credentialsSecret:
+                      credentialsSecretName:
                         description: |-
                           Name of a Secret containing the `username` and `password` keys used to authenticate
                           against the MySQL server.
@@ -208,14 +208,14 @@ spec:
                         minimum: 0.0
                         type: integer
                     required:
-                    - credentialsSecret
+                    - credentialsSecretName
                     - database
                     - host
                     type: object
                   postgresql:
                     description: Connection settings for a [PostgreSQL](https://www.postgresql.org/) database.
                     properties:
-                      credentialsSecret:
+                      credentialsSecretName:
                         description: |-
                           Name of a Secret containing the `username` and `password` keys used to authenticate
                           against the PostgreSQL server.
@@ -243,7 +243,7 @@ spec:
                         minimum: 0.0
                         type: integer
                     required:
-                    - credentialsSecret
+                    - credentialsSecretName
                     - database
                     - host
                     type: object
@@ -253,7 +253,7 @@ spec:
 
                       Redis is commonly used as a Celery message broker or result backend (e.g. for Apache Airflow).
                     properties:
-                      credentialsSecret:
+                      credentialsSecretName:
                         description: |-
                           Name of a Secret containing the `username` and `password` keys used to authenticate
                           against the Redis server.
@@ -280,7 +280,7 @@ spec:
                         minimum: 0.0
                         type: integer
                     required:
-                    - credentialsSecret
+                    - credentialsSecretName
                     - host
                     type: object
                 type: object
