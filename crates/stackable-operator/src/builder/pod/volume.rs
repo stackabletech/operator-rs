@@ -14,6 +14,7 @@ use tracing::warn;
 
 use crate::{
     builder::meta::ObjectMetaBuilder,
+    commons::secret_class::SecretClassVolumeProvisionParts,
     kvp::{Annotation, AnnotationError, Annotations, LabelError, Labels},
 };
 
@@ -281,10 +282,21 @@ pub struct SecretOperatorVolumeSourceBuilder {
     kerberos_service_names: Vec<String>,
     tls_pkcs12_password: Option<String>,
     auto_tls_cert_lifetime: Option<Duration>,
+    provision_parts: SecretClassVolumeProvisionParts,
 }
 
 impl SecretOperatorVolumeSourceBuilder {
-    pub fn new(secret_class: impl Into<String>) -> Self {
+    /// Creates a builder for a secret-operator volume that uses the specified SecretClass to
+    /// request the specified [`SecretClassVolumeProvisionParts`].
+    ///
+    /// This function forces the caller to make an explicit choice if the public parts are
+    /// sufficient or if private (e.g. a certificate for the Pod) parts are needed as well.
+    /// This is done to avoid accidentally requesting too much parts. For details see
+    /// [this issue](https://github.com/stackabletech/issues/issues/547).
+    pub fn new(
+        secret_class: impl Into<String>,
+        provision_parts: SecretClassVolumeProvisionParts,
+    ) -> Self {
         Self {
             secret_class: secret_class.into(),
             scopes: Vec::new(),
@@ -292,6 +304,7 @@ impl SecretOperatorVolumeSourceBuilder {
             kerberos_service_names: Vec::new(),
             tls_pkcs12_password: None,
             auto_tls_cert_lifetime: None,
+            provision_parts,
         }
     }
 
@@ -340,8 +353,10 @@ impl SecretOperatorVolumeSourceBuilder {
     pub fn build(&self) -> Result<EphemeralVolumeSource, SecretOperatorVolumeSourceBuilderError> {
         let mut annotations = Annotations::new();
 
+        #[rustfmt::skip]
         annotations
-            .insert(Annotation::secret_class(&self.secret_class).context(ParseAnnotationSnafu)?);
+            .insert(Annotation::secret_class(&self.secret_class).context(ParseAnnotationSnafu)?)
+            .insert(Annotation::secret_provision_parts(&self.provision_parts).context(ParseAnnotationSnafu)?);
 
         if !self.scopes.is_empty() {
             annotations

@@ -19,6 +19,7 @@ use delegate::delegate;
 
 use crate::{
     builder::pod::volume::SecretOperatorVolumeScope,
+    commons::secret_class::SecretClassVolumeProvisionParts,
     iter::TryFromIterator,
     kvp::{Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError},
 };
@@ -78,6 +79,15 @@ impl Annotation {
     /// Consumes self and returns the inner [`KeyValuePair<AnnotationValue>`].
     pub fn into_inner(self) -> KeyValuePair<AnnotationValue> {
         self.0
+    }
+
+    /// Constructs a `secrets.stackable.tech/provision-parts` annotation.
+    pub fn secret_provision_parts(
+        provision_parts: &SecretClassVolumeProvisionParts,
+    ) -> Result<Self, AnnotationError> {
+        let kvp =
+            KeyValuePair::try_from(("secrets.stackable.tech/provision-parts", provision_parts))?;
+        Ok(Self(kvp))
     }
 
     /// Constructs a `secrets.stackable.tech/class` annotation.

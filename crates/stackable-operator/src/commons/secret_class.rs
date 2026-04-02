@@ -38,9 +38,10 @@ impl SecretClassVolume {
 
     pub fn to_ephemeral_volume_source(
         &self,
+        provision_parts: SecretClassVolumeProvisionParts,
     ) -> Result<EphemeralVolumeSource, SecretClassVolumeError> {
         let mut secret_operator_volume_builder =
-            SecretOperatorVolumeSourceBuilder::new(&self.secret_class);
+            SecretOperatorVolumeSourceBuilder::new(&self.secret_class, provision_parts);
 
         if let Some(scope) = &self.scope {
             if scope.pod {
@@ -62,8 +63,12 @@ impl SecretClassVolume {
             .context(SecretOperatorVolumeSnafu)
     }
 
-    pub fn to_volume(&self, volume_name: &str) -> Result<Volume, SecretClassVolumeError> {
-        let ephemeral = self.to_ephemeral_volume_source()?;
+    pub fn to_volume(
+        &self,
+        volume_name: &str,
+        provision_parts: SecretClassVolumeProvisionParts,
+    ) -> Result<Volume, SecretClassVolumeError> {
+        let ephemeral = self.to_ephemeral_volume_source(provision_parts)?;
         Ok(VolumeBuilder::new(volume_name).ephemeral(ephemeral).build())
     }
 }
@@ -94,6 +99,25 @@ pub struct SecretClassVolumeScope {
     pub listener_volumes: Vec<String>,
 }
 
+/// What parts of secret material should be provisioned into the requested volume.
+//
+// There intentionally isn't a global [`Default`] impl, as it is secret-operator's concern what it
+// chooses as a default.
+// TODO (@Techassi): This to me is a HUGE indicator this lives in the wrong place. All these secret
+// volume builders/helpers should be defined as part of a secret-operator library to be as close as
+// possible to secret-operator, which is the authoritative source of truth for all of this.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, strum::AsRefStr)]
+#[strum(serialize_all = "kebab-case")]
+pub enum SecretClassVolumeProvisionParts {
+    /// Only provision public parts, such as the CA certificate (either as PEM or truststore) or
+    /// `krb5.conf`.
+    Public,
+
+    /// Provision all parts, which includes all [`Public`](Self::Public) ones as well as additional
+    /// private parts, such as a TLS cert + private key, a keystore or a keytab.
+    PublicPrivate,
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -101,7 +125,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn volume_to_csi_volume_source() {
+    fn volume_to_ephemeral_volume_source() {
         let secret_class_volume_source = SecretClassVolume {
             secret_class: "myclass".to_string(), // pragma: allowlist secret
             scope: Some(SecretClassVolumeScope {
@@ -111,7 +135,8 @@ mod tests {
                 listener_volumes: vec!["mylistener".to_string()],
             }),
         }
-        .to_ephemeral_volume_source()
+        // Let's assume we need some form of private data (e.g. a certificate or S3 credentials)
+        .to_ephemeral_volume_source(SecretClassVolumeProvisionParts::PublicPrivate)
         .unwrap();
 
         let expected_volume_attributes = BTreeMap::from([
@@ -122,6 +147,10 @@ mod tests {
             (
                 "secrets.stackable.tech/scope".to_string(),
                 "pod,service=myservice,listener-volume=mylistener".to_string(),
+            ),
+            (
+                "secrets.stackable.tech/provision-parts".to_string(),
+                "public-private".to_string(),
             ),
         ]);
 
