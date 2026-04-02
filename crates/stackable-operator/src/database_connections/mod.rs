@@ -10,6 +10,9 @@ mod tests;
 ///
 /// All variants use `context(false)` to enable automatic [`From`] conversion,
 /// so callers can use `?` directly without needing `.context(SomeSnafu)`.
+///
+/// This makes it way more comfortable to use in a trait context, which returns
+/// this core error type.
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(context(false), display("PostgreSQL database connection error"))]
