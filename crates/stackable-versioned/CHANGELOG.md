@@ -6,12 +6,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add support to provide `#[versioned(crd(scale(...)))]` argument to enable the `/scale` subresource ([#1185]).
 - BREAKING: The `versioned` macro now automatically generates tests to test roundtrip converts for
   every versioned struct. This requires you to implement the `RoundtripTestData` trait for all
   structs, which returns some test data to be used for the roundtrip tests.
   Read on the `RoundtripTestData` documentation for details ([#1172]).
 
 [#1172]: https://github.com/stackabletech/operator-rs/pull/1172
+[#1185]: https://github.com/stackabletech/operator-rs/pull/1185
 
 ## [0.8.3] - 2025-10-23
 
