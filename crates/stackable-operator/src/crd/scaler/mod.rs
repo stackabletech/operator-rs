@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 use kube::CustomResource;
 use schemars::JsonSchema;
@@ -57,8 +59,13 @@ pub struct ScalerStatus {
     pub last_transition_time: Time,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, strum::Display)]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[derive(Clone, Debug, Deserialize, Serialize, strum::Display)]
+#[serde(
+    tag = "state",
+    content = "details",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 #[strum(serialize_all = "camelCase")]
 pub enum ScalerState {
     /// No scaling operation is in progress.
@@ -90,6 +97,37 @@ pub enum ScalerState {
         /// Human-readable error message from the hook.
         reason: String,
     },
+}
+
+impl JsonSchema for ScalerState {
+    fn schema_name() -> Cow<'static, str> {
+        "ScalerState".into()
+    }
+
+    fn json_schema(generator: &mut schemars::generate::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema!({
+            "type": "object",
+            "required": ["state"],
+            "properties": {
+                "state": {
+                    "type": "string",
+                    "enum": ["idle", "preScaling", "scaling", "postScaling", "failed"]
+                },
+                "details": {
+                    "type": "object",
+                    "properties": {
+                        "failedIn": generator.subschema_for::<FailedInState>(),
+                        "previous_replicas": {
+                            "type": "uint16",
+                            "minimum": u16::MIN,
+                            "maximum": u16::MAX
+                        },
+                        "reason": { "type": "string" }
+                    }
+                }
+            }
+        })
+    }
 }
 
 /// Which stage of a scaling operation failed.
