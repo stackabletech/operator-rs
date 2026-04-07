@@ -4,7 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
 - Add generic database connection mechanism ([#1163]).
+
+### Changed
+
+- BREAKING: Change signature of `ContainerBuilder::add_env_vars` from `Vec<EnvVar>` to `IntoIterator<Item = EnvVar>` ([#1163]).
 
 [#1163]: https://github.com/stackabletech/operator-rs/pull/1163
 
@@ -15,9 +21,6 @@ All notable changes to this project will be documented in this file.
 - Git sync: add support for CAs ([#1154]).
 - Add support for specifying a `clientAuthenticationMethod` for OIDC ([#1178]).
   This was originally done in [#1158] and had been reverted in [#1170].
-
-### Changed
-
 - Implement `Deref` for `kvp::Key` to be more ergonomic to use ([#1182]).
 - Add `create_random_secret_if_not_exists` function, which create a random Secret in case it doesn't already exist.
   It notably also fixes a bug we had in trino and airflow-operator, where we created immutable Secrets,
@@ -34,7 +37,6 @@ All notable changes to this project will be documented in this file.
 
   Additionally, `SecretClassVolume::to_volume` and `SecretClassVolume::to_ephemeral_volume_source`
   also take the same new argument.
-- BREAKING: Change signature of `ContainerBuilder::add_env_vars` from `Vec<EnvVar>` to `IntoIterator<Item = EnvVar>` ([#1163]).
 
 ### Removed
 
