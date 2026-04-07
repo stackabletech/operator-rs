@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add generic database connection mechanism ([#1163]).
+
+### Changed
+
+- BREAKING: Change signature of `ContainerBuilder::add_env_vars` from `Vec<EnvVar>` to `IntoIterator<Item = EnvVar>` ([#1163]).
+
+[#1163]: https://github.com/stackabletech/operator-rs/pull/1163
+
 ## [0.109.0] - 2026-04-07
 
 ### Added
