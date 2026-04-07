@@ -59,6 +59,11 @@ pub struct ScalerStatus {
     pub last_transition_time: Time,
 }
 
+// We use `#[serde(tag)]` and `#[serde(content)]` here to circumvent Kubernetes restrictions in their
+// structural schema subset of OpenAPI schemas. They don't allow one variant to be typed as a string
+// and others to be typed as objects. We therefore encode the variant data in a separate details
+// key/object. With this, all variants can be encoded as strings, while the status can still contain
+// additional data in an extra field when needed.
 #[derive(Clone, Debug, Deserialize, Serialize, strum::Display)]
 #[serde(
     tag = "state",
@@ -99,6 +104,10 @@ pub enum ScalerState {
     },
 }
 
+// We manually implement the JSON schema instead of deriving it, because kube's schema transformer
+// cannot handle the derived JsonSchema and proceeds to hit the following error: "Property "state"
+// has the schema ... but was already defined as ... in another subschema. The schemas for a
+// property used in multiple subschemas must be identical".
 impl JsonSchema for ScalerState {
     fn schema_name() -> Cow<'static, str> {
         "ScalerState".into()
@@ -130,7 +139,7 @@ impl JsonSchema for ScalerState {
     }
 }
 
-/// Which stage of a scaling operation failed.
+/// In which state the scaling operation failed.
 #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum FailedInState {
