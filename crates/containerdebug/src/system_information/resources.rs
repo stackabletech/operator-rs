@@ -7,6 +7,7 @@ pub struct Resources {
     pub physical_core_count: Option<usize>,
 
     pub open_files_limit: Option<usize>,
+    pub open_files_count: Option<usize>,
 
     pub total_memory: u64,
     pub free_memory: u64,
@@ -43,7 +44,14 @@ impl Resources {
         );
 
         let open_files_limit = System::open_files_limit();
-        tracing::info!(open_files.limit = open_files_limit, "open files limit");
+        let open_files_count = std::fs::read_dir("/proc/self/fd")
+            .map(|entries| entries.count())
+            .ok();
+        tracing::info!(
+            open_files.limit = open_files_limit,
+            open_files.count = open_files_count,
+            "open files"
+        );
 
         let total_memory = sys.total_memory();
         let free_memory = sys.free_memory();
@@ -91,6 +99,7 @@ impl Resources {
             physical_core_count,
 
             open_files_limit,
+            open_files_count,
 
             total_memory,
             free_memory,
