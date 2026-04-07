@@ -7,6 +7,7 @@ pub mod networking;
 pub mod opa;
 pub mod pdb;
 pub mod product_image_selection;
+pub mod random_secret_creation;
 pub mod rbac;
 pub mod resources;
 pub mod secret_class;

@@ -2943,6 +2943,7 @@ dependencies = [
 name = "stackable-operator"
 version = "0.108.0"
 dependencies = [
+ "base64",
  "clap",
  "const_format",
  "delegate",
@@ -2958,6 +2959,7 @@ dependencies = [
  "k8s-openapi",
  "kube",
  "product-config",
+ "rand 0.9.2",
  "regex",
  "rstest",
  "schemars",
