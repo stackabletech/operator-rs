@@ -23,6 +23,7 @@ mod inputs {
         // mod conversion_tracking_hints;
         // mod conversion_tracking;
         // mod crate_overrides;
+        // mod crate_overrides_only_kube;
         // mod docs;
         // mod downgrade_with;
         // mod enum_fields;
@@ -30,6 +31,7 @@ mod inputs {
         // mod module_preserve;
         // mod renamed_field;
         // mod renamed_kind;
+        // mod scale;
         // mod shortnames;
         // mod submodule;
     }
