@@ -25,6 +25,7 @@ stackable-telemetry = { path = "../stackable-telemetry", features = ["clap"] }
 stackable-versioned = { path = "../stackable-versioned", optional = true }
 stackable-webhook = { path = "../stackable-webhook", optional = true }
 
+base64.workspace = true
 clap.workspace = true
 const_format.workspace = true
 delegate.workspace = true
@@ -39,6 +40,7 @@ json-patch.workspace = true
 k8s-openapi.workspace = true
 kube.workspace = true
 product-config.workspace = true
+rand.workspace = true
 regex.workspace = true
 schemars.workspace = true
 semver.workspace = true
