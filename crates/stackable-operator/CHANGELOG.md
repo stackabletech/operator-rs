@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.109.0] - 2026-04-07
+
 ### Added
 
 - Git sync: add support for CAs ([#1154]).
@@ -16,6 +18,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Bump stackable-versioned to `0.9.0`, refer to its [changelog](../stackable-versioned/CHANGELOG.md) ([#1189]).
+- Bump stackable-webhook to `0.9.1`, refer to its [changelog](../stackable-webhook/CHANGELOG.md) ([#1189]).
 - BREAKING: Add mandatory `provision_parts` argument to `SecretOperatorVolumeSourceBuilder::new` ([#1165]).
   It now forces the caller to make an explicit choice if the public parts are sufficient or if private
   (e.g. a certificate for the Pod) parts are needed as well. This is done to avoid accidentally requesting
@@ -34,6 +38,7 @@ All notable changes to this project will be documented in this file.
 [#1178]: https://github.com/stackabletech/operator-rs/pull/1178
 [#1182]: https://github.com/stackabletech/operator-rs/pull/1182
 [#1187]: https://github.com/stackabletech/operator-rs/pull/1187
+[#1189]: https://github.com/stackabletech/operator-rs/pull/1189
 
 ## [0.108.0] - 2026-03-10
 

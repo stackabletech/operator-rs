@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-04-07
+
 ### Added
 
 - Add support to override kube crate ([#1173]).
