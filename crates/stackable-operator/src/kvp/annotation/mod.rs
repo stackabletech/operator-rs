@@ -156,6 +156,16 @@ impl Annotation {
         ))?;
         Ok(Self(kvp))
     }
+
+    /// Constructs a `autoscaling.stackable.tech/retry` annotation.
+    pub fn autoscaling_retry(retry: bool) -> Self {
+        // SAFETY: We use expect here, because the input parameter can only be one of two possible
+        // values: true or false. This fact in combination with the known annotation key length
+        // allows use to use expect here, instead of bubbling up the error.
+        let kvp = KeyValuePair::try_from(("autoscaling.stackable.tech/retry", retry.to_string()))
+            .expect("autoscaling retry annotation must be valid");
+        Self(kvp)
+    }
 }
 
 /// A validated set/list of Kubernetes annotations.

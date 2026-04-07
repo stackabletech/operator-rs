@@ -8,6 +8,7 @@ pub mod authentication;
 pub mod git_sync;
 pub mod listener;
 pub mod s3;
+pub mod scaler;
 
 /// A reference to a product cluster (for example, a `ZookeeperCluster`)
 ///
