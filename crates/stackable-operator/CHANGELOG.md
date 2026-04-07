@@ -23,9 +23,6 @@ All notable changes to this project will be documented in this file.
 
   Additionally, `SecretClassVolume::to_volume` and `SecretClassVolume::to_ephemeral_volume_source`
   also take the same new argument.
-
-### Changed
-
 - BREAKING: `OpaConfig::full_document_url` now takes `&OpaApiVersion` instead of `OpaApiVersion` ([#1186]).
 - BREAKING: `EndOfSupportChecker::new` now takes `&EndOfSupportOptions` instead of `EndOfSupportOptions` ([#1186]).
 - BREAKING: `Labels::recommended` now takes `&ObjectLabels<R>` instead of `ObjectLabels<R>` ([#1186]).
