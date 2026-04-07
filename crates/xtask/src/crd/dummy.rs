@@ -95,9 +95,6 @@ pub mod versioned {
         #[serde(default)]
         pub object_overrides: ObjectOverrides,
 
-        #[serde(default)]
-        config_overrides: DummyConfigOverrides,
-
         // Already versioned
         client_authentication_details:
             stackable_operator::crd::authentication::core::v1alpha1::ClientAuthenticationDetails,
