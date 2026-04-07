@@ -4,16 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Add generic database connection mechanism ([#1163]).
+
+[#1163]: https://github.com/stackabletech/operator-rs/pull/1163
+
+## [0.109.0] - 2026-04-07
+
 ### Added
 
 - Git sync: add support for CAs ([#1154]).
 - Add support for specifying a `clientAuthenticationMethod` for OIDC ([#1178]).
   This was originally done in [#1158] and had been reverted in [#1170].
-- Add generic database connection mechanism ([#1163]).
 
 ### Changed
 
 - Implement `Deref` for `kvp::Key` to be more ergonomic to use ([#1182]).
+- Add `create_random_secret_if_not_exists` function, which create a random Secret in case it doesn't already exist.
+  It notably also fixes a bug we had in trino and airflow-operator, where we created immutable Secrets,
+  which lead to problems ([#1187]).
+
+### Changed
+
+- Bump stackable-versioned to `0.9.0`, refer to its [changelog](../stackable-versioned/CHANGELOG.md) ([#1189]).
+- Bump stackable-webhook to `0.9.1`, refer to its [changelog](../stackable-webhook/CHANGELOG.md) ([#1189]).
 - BREAKING: Add mandatory `provision_parts` argument to `SecretOperatorVolumeSourceBuilder::new` ([#1165]).
   It now forces the caller to make an explicit choice if the public parts are sufficient or if private
   (e.g. a certificate for the Pod) parts are needed as well. This is done to avoid accidentally requesting
@@ -29,10 +42,11 @@ All notable changes to this project will be documented in this file.
   functions from `kvp::Key` to disallow mutable access to inner values ([#1182]).
 
 [#1154]: https://github.com/stackabletech/operator-rs/pull/1154
-[#1163]: https://github.com/stackabletech/operator-rs/pull/1163
 [#1165]: https://github.com/stackabletech/operator-rs/pull/1165
 [#1178]: https://github.com/stackabletech/operator-rs/pull/1178
 [#1182]: https://github.com/stackabletech/operator-rs/pull/1182
+[#1187]: https://github.com/stackabletech/operator-rs/pull/1187
+[#1189]: https://github.com/stackabletech/operator-rs/pull/1189
 
 ## [0.108.0] - 2026-03-10
 
