@@ -13,8 +13,18 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Change signature of `ContainerBuilder::add_env_vars` from `Vec<EnvVar>` to `IntoIterator<Item = EnvVar>` ([#1163]).
 - BREAKING: Remove `EXPERIMENTAL_` prefix in `CONFIG_OVERRIDE_FILE_HEADER_KEY` and `CONFIG_OVERRIDE_FILE_FOOTER_KEY` ([#1191]).
 
+### Fixed
+
+- BREAKING: In [#1178] the `clientAuthenticationMethod` was added to the `ClientAuthenticationOptions` struct,
+  resulting it to show up in all product CRDs. even those that don't support configuring the client authentication method.
+  With this change, operators need to opt-in to the `clientAuthenticationMethod` field by using the new
+  `ClientAuthenticationMethodOption` struct for the generic type `ProductSpecificClientAuthenticationOptions` on
+  `ClientAuthenticationOptions`. That way the struct definitions (as well as docs etc.) remain in stackable-operator,
+  but operators can decide if they want to offer support for this field or not ([#XXXX]).
+
 [#1163]: https://github.com/stackabletech/operator-rs/pull/1163
 [#1191]: https://github.com/stackabletech/operator-rs/pull/1191
+[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
 
 ## [0.109.0] - 2026-04-07
 

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use stackable_operator::{
     commons::resources::{JvmHeapLimits, Resources},
     config::fragment::Fragment,
-    crd::git_sync::v1alpha2::GitSync,
+    crd::{authentication, authentication::oidc, git_sync::v1alpha2::GitSync},
     database_connections::{
         databases::{
             derby::DerbyConnection, mysql::MysqlConnection, postgresql::PostgresqlConnection,
@@ -66,8 +66,9 @@ pub mod versioned {
         pub object_overrides: ObjectOverrides,
 
         // Already versioned
-        client_authentication_details:
-            stackable_operator::crd::authentication::core::v1alpha1::ClientAuthenticationDetails,
+        client_authentication_details: authentication::core::v1alpha1::ClientAuthenticationDetails<
+            oidc::v1alpha1::ClientAuthenticationMethodOption,
+        >,
     }
 
     #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]
