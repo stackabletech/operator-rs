@@ -20,11 +20,11 @@ All notable changes to this project will be documented in this file.
   With this change, operators need to opt-in to the `clientAuthenticationMethod` field by using the new
   `ClientAuthenticationMethodOption` struct for the generic type `ProductSpecificClientAuthenticationOptions` on
   `ClientAuthenticationOptions`. That way the struct definitions (as well as docs etc.) remain in stackable-operator,
-  but operators can decide if they want to offer support for this field or not ([#XXXX]).
+  but operators can decide if they want to offer support for this field or not ([#1194]).
 
 [#1163]: https://github.com/stackabletech/operator-rs/pull/1163
 [#1191]: https://github.com/stackabletech/operator-rs/pull/1191
-[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+[#1194]: https://github.com/stackabletech/operator-rs/pull/1194
 
 ## [0.109.0] - 2026-04-07
 
