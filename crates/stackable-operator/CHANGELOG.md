@@ -11,9 +11,10 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: Change signature of `ContainerBuilder::add_env_vars` from `Vec<EnvVar>` to `IntoIterator<Item = EnvVar>` ([#1163]).
-- BREAKING: Remove `EXPERIMENTAL_` prefix in `CONFIG_OVERRIDE_FILE_HEADER_KEY` and `CONFIG_OVERRIDE_FILE_FOOTER_KEY`
+- BREAKING: Remove `EXPERIMENTAL_` prefix in `CONFIG_OVERRIDE_FILE_HEADER_KEY` and `CONFIG_OVERRIDE_FILE_FOOTER_KEY` ([#1191]).
 
 [#1163]: https://github.com/stackabletech/operator-rs/pull/1163
+[#1191]: https://github.com/stackabletech/operator-rs/pull/1191
 
 ## [0.109.0] - 2026-04-07
 
