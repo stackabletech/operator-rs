@@ -12,8 +12,8 @@ use crate::{
     role_utils::{CommonConfiguration, Role},
 };
 
-pub const CONFIG_OVERRIDE_FILE_HEADER_KEY: &str = "EXPERIMENTAL_FILE_HEADER";
-pub const CONFIG_OVERRIDE_FILE_FOOTER_KEY: &str = "EXPERIMENTAL_FILE_FOOTER";
+pub const CONFIG_OVERRIDE_FILE_HEADER_KEY: &str = "FILE_HEADER";
+pub const CONFIG_OVERRIDE_FILE_FOOTER_KEY: &str = "FILE_FOOTER";
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
