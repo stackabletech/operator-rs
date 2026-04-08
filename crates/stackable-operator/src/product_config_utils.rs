@@ -711,7 +711,7 @@ mod tests {
         fn get_key_value_overrides(&self, file: &str) -> BTreeMap<String, Option<String>> {
             self.files
                 .get(file)
-                .map(|kv| kv.as_overrides())
+                .map(|kv| kv.as_product_config_overrides())
                 .unwrap_or_default()
         }
     }

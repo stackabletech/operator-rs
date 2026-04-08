@@ -58,7 +58,7 @@ impl KeyValueConfigOverrides {
     ///
     /// This is useful when implementing [`KeyValueOverridesProvider`] for a
     /// typed override struct that contains [`KeyValueConfigOverrides`] fields.
-    pub fn as_overrides(&self) -> BTreeMap<String, Option<String>> {
+    pub fn as_product_config_overrides(&self) -> BTreeMap<String, Option<String>> {
         self.overrides
             .iter()
             .map(|(k, v)| (k.clone(), Some(v.clone())))
@@ -269,13 +269,13 @@ mod tests {
     }
 
     #[test]
-    fn key_value_config_overrides_as_overrides() {
+    fn key_value_config_overrides_as_product_config_overrides() {
         let mut overrides = BTreeMap::new();
         overrides.insert("key1".to_owned(), "value1".to_owned());
         overrides.insert("key2".to_owned(), "value2".to_owned());
 
         let kv = KeyValueConfigOverrides { overrides };
-        let result = kv.as_overrides();
+        let result = kv.as_product_config_overrides();
 
         assert_eq!(result.len(), 2);
         assert_eq!(result.get("key1"), Some(&Some("value1".to_owned())));

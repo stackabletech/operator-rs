@@ -56,7 +56,7 @@ impl KeyValueOverridesProvider for DummyConfigOverrides {
             "dummy.properties" => self
                 .dummy_properties
                 .as_ref()
-                .map(|o| o.as_overrides())
+                .map(|o| o.as_product_config_overrides())
                 .unwrap_or_default(),
             _ => BTreeMap::new(),
         }
