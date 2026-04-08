@@ -175,7 +175,10 @@ impl ContainerBuilder {
         self
     }
 
-    pub fn add_env_vars(&mut self, env_vars: Vec<EnvVar>) -> &mut Self {
+    pub fn add_env_vars<I>(&mut self, env_vars: I) -> &mut Self
+    where
+        I: IntoIterator<Item = EnvVar>,
+    {
         self.env.get_or_insert_with(Vec::new).extend(env_vars);
         self
     }
