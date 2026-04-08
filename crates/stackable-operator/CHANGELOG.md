@@ -7,13 +7,19 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add generic database connection mechanism ([#1163]).
+- Add `config_overrides` module with `KeyValueOverridesProvider` trait, enabling
+  structured config file formats (e.g. JSON) in addition to key-value overrides ([#1177]).
 
 ### Changed
 
 - BREAKING: Change signature of `ContainerBuilder::add_env_vars` from `Vec<EnvVar>` to `IntoIterator<Item = EnvVar>` ([#1163]).
 - BREAKING: Remove `EXPERIMENTAL_` prefix in `CONFIG_OVERRIDE_FILE_HEADER_KEY` and `CONFIG_OVERRIDE_FILE_FOOTER_KEY` ([#1191]).
+- BREAKING: Add `ConfigOverrides` type parameter to `CommonConfiguration`, `Role`,
+  and `RoleGroup`. The `config_overrides` field is now generic instead of
+  `HashMap<String, HashMap<String, String>>` ([#1177]).
 
 [#1163]: https://github.com/stackabletech/operator-rs/pull/1163
+[#1177]: https://github.com/stackabletech/operator-rs/pull/1177
 [#1191]: https://github.com/stackabletech/operator-rs/pull/1191
 
 ## [0.109.0] - 2026-04-07
