@@ -4,14 +4,14 @@ version = "0.3.0"
 edition = "2024"
 
 [dependencies]
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.6", features = ["derive"] }
 hickory-resolver = "0.25"
 local-ip-address = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 snafu = "0.9"
 sysinfo = { version = "0.38", features = ["serde"] }
-tokio = { version = "1.49", default-features = false, features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.51", default-features = false, features = ["rt-multi-thread", "macros"] }
 tracing = "0.1"
 
 stackable-shared = {git = "https://github.com/stackabletech/operator-rs", tag = "stackable-telemetry-0.6.3", default-features = false }
