@@ -135,7 +135,7 @@ pub mod versioned {
         Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
     )]
     #[serde(rename_all = "camelCase")]
-    pub struct ClientAuthenticationOptions<T = ()> {
+    pub struct ClientAuthenticationOptions<ProductSpecificClientAuthenticationOptions = ()> {
         /// A reference to the OIDC client credentials secret. The secret contains
         /// the client id and secret.
         #[serde(rename = "clientCredentialsSecret")]
@@ -151,6 +151,20 @@ pub mod versioned {
         #[serde(default)]
         pub extra_scopes: Vec<String>,
 
+        /// If desired, operators can add custom fields that are only needed for this specific product.
+        /// They need to create a struct holding them and pass that as `ProductSpecific`.
+        ///
+        /// In case you only need the `clientAuthenticationMethod` field, you can use
+        /// [`ClientAuthenticationMethodOption`] directly.
+        #[serde(flatten)]
+        pub product_specific_fields: ProductSpecificClientAuthenticationOptions,
+    }
+
+    #[derive(
+        Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+    )]
+    #[serde(rename_all = "camelCase")]
+    pub struct ClientAuthenticationMethodOption {
         /// The OAuth2 client authentication method to use for token endpoint requests.
         /// Defaults to [`ClientAuthenticationMethod::ClientSecretBasic`].
         ///
@@ -169,10 +183,5 @@ pub mod versioned {
         )]
         #[serde(default)]
         pub client_authentication_method: ClientAuthenticationMethod,
-
-        // If desired, operators can add custom fields that are only needed for this specific product.
-        // They need to create a struct holding them and pass that as `T`.
-        #[serde(flatten)]
-        pub product_specific_fields: T,
     }
 }

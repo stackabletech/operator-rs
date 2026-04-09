@@ -128,7 +128,7 @@ pub mod versioned {
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
     #[schemars(description = "")]
-    pub struct ClientAuthenticationDetails<O = ()> {
+    pub struct ClientAuthenticationDetails<OidcProductSpecificOptions = ()> {
         /// Name of the [`AuthenticationClass`] used to authenticate users.
         ///
         /// To get the concrete [`AuthenticationClass`], we must resolve it. This resolution can be
@@ -152,6 +152,6 @@ pub mod versioned {
         #[schemars(
             description = "This field contains OIDC-specific configuration. It is only required in case OIDC is used."
         )]
-        oidc: Option<oidc::v1alpha1::ClientAuthenticationOptions<O>>,
+        oidc: Option<oidc::v1alpha1::ClientAuthenticationOptions<OidcProductSpecificOptions>>,
     }
 }
