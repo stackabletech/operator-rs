@@ -9,13 +9,14 @@ repository.workspace = true
 
 [features]
 default = ["crds"]
-full = ["crds", "certs", "time", "webhook", "kube-ws"]
+full = ["crds", "certs", "time", "webhook", "kube-ws", "test-utils"]
 
 crds = ["dep:stackable-versioned"]
 certs = ["dep:stackable-certs"]
 time = ["stackable-shared/time"]
 webhook = ["dep:stackable-webhook"]
 kube-ws = ["kube/ws"]
+test-utils = []
 
 [dependencies]
 stackable-certs = { path = "../stackable-certs", optional = true }

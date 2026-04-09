@@ -31,6 +31,7 @@ pub mod product_config_utils;
 pub mod product_logging;
 pub mod role_utils;
 pub mod status;
+#[cfg(feature = "test-utils")]
 pub mod test_utils;
 pub mod utils;
 pub mod validation;
