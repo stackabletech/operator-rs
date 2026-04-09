@@ -6,6 +6,36 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add generic database connection mechanism ([#1163]).
+- Add `config_overrides` module with `KeyValueOverridesProvider` trait, enabling
+  structured config file formats (e.g. JSON) in addition to key-value overrides ([#1177]).
+
+### Changed
+
+- BREAKING: Change signature of `ContainerBuilder::add_env_vars` from `Vec<EnvVar>` to `IntoIterator<Item = EnvVar>` ([#1163]).
+- BREAKING: Remove `EXPERIMENTAL_` prefix in `CONFIG_OVERRIDE_FILE_HEADER_KEY` and `CONFIG_OVERRIDE_FILE_FOOTER_KEY` ([#1191]).
+- BREAKING: Bump `kube` from a custom version (`fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5`, which is between `3.0.1` and `3.1.0`
+  and was needed to pull in schema fixes) to `3.1.0`. This means that the CRD schema generation bugs
+  [#1934](https://github.com/kube-rs/kube/pull/1934) and [#1942](https://github.com/kube-rs/kube/pull/1942) are fixed ([#1192]).
+- BREAKING: Add `ConfigOverrides` type parameter to `CommonConfiguration`, `Role` and `RoleGroup`.
+  The `config_overrides` field is now generic instead of `HashMap<String, HashMap<String, String>>` ([#1177]).
+- BREAKING: In [#1178] the `clientAuthenticationMethod` was added to the `ClientAuthenticationOptions` struct,
+  resulting it to show up in all product CRDs. even those that don't support configuring the client authentication method.
+  With this change, operators need to opt-in to the `clientAuthenticationMethod` field by using the new
+  `ClientAuthenticationMethodOption` struct for the generic type `ProductSpecificClientAuthenticationOptions` on
+  `ClientAuthenticationOptions`. That way the struct definitions (as well as docs etc.) remain in stackable-operator,
+  but operators can decide if they want to offer support for this field or not ([#1194]).
+
+[#1163]: https://github.com/stackabletech/operator-rs/pull/1163
+[#1177]: https://github.com/stackabletech/operator-rs/pull/1177
+[#1191]: https://github.com/stackabletech/operator-rs/pull/1191
+[#1192]: https://github.com/stackabletech/operator-rs/pull/1192
+[#1194]: https://github.com/stackabletech/operator-rs/pull/1194
+
+## [0.109.0] - 2026-04-07
+
+### Added
+
 - Git sync: add support for CAs ([#1154]).
 - Add support for specifying a `clientAuthenticationMethod` for OIDC ([#1178]).
   This was originally done in [#1158] and had been reverted in [#1170].
@@ -16,6 +46,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Bump stackable-versioned to `0.9.0`, refer to its [changelog](../stackable-versioned/CHANGELOG.md) ([#1189]).
+- Bump stackable-webhook to `0.9.1`, refer to its [changelog](../stackable-webhook/CHANGELOG.md) ([#1189]).
 - BREAKING: Add mandatory `provision_parts` argument to `SecretOperatorVolumeSourceBuilder::new` ([#1165]).
   It now forces the caller to make an explicit choice if the public parts are sufficient or if private
   (e.g. a certificate for the Pod) parts are needed as well. This is done to avoid accidentally requesting
@@ -42,6 +74,7 @@ All notable changes to this project will be documented in this file.
 [#1182]: https://github.com/stackabletech/operator-rs/pull/1182
 [#1186]: https://github.com/stackabletech/operator-rs/pull/1186
 [#1187]: https://github.com/stackabletech/operator-rs/pull/1187
+[#1189]: https://github.com/stackabletech/operator-rs/pull/1189
 
 ## [0.108.0] - 2026-03-10
 

@@ -315,7 +315,7 @@ impl GitSyncResources {
                 container_log_config,
                 ca_cert_path,
             )])
-            .add_env_vars(env_vars.into())
+            .add_env_vars(env_vars.iter().cloned())
             .add_volume_mounts(volume_mounts.to_vec())
             .context(AddVolumeMountSnafu)?
             .resources(
