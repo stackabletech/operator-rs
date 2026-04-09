@@ -21,7 +21,7 @@ pub mod versioned {
         ),
         namespaced
     ))]
-    #[derive(Clone, Debug, PartialEq, CustomResource, Deserialize, Serialize, JsonSchema)]
+    #[derive(Clone, Debug, PartialEq, Eq, CustomResource, Deserialize, Serialize, JsonSchema)]
     pub struct ScalerSpec {
         /// Desired replica count.
         ///
@@ -40,7 +40,7 @@ pub mod versioned {
 }
 
 /// Status of a StackableScaler.
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScalerStatus {
     /// The current total number of replicas targeted by the managed StatefulSet.
@@ -64,14 +64,14 @@ pub struct ScalerStatus {
 // and others to be typed as objects. We therefore encode the variant data in a separate details
 // key/object. With this, all variants can be encoded as strings, while the status can still contain
 // additional data in an extra field when needed.
-#[derive(Clone, Debug, Deserialize, Serialize, strum::Display)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, strum::Display)]
 #[serde(
     tag = "state",
     content = "details",
-    rename_all = "camelCase",
+    rename_all = "PascalCase",
     rename_all_fields = "camelCase"
 )]
-#[strum(serialize_all = "camelCase")]
+#[strum(serialize_all = "PascalCase")]
 pub enum ScalerState {
     /// No scaling operation is in progress.
     Idle,
@@ -140,8 +140,8 @@ impl JsonSchema for ScalerState {
 }
 
 /// In which state the scaling operation failed.
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
+#[serde(rename_all = "PascalCase")]
 pub enum FailedInState {
     /// The `pre_scale` hook returned an error.
     PreScaling,
@@ -151,4 +151,52 @@ pub enum FailedInState {
 
     /// The `post_scale` hook returned an error.
     PostScaling,
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::*;
+    use crate::utils::yaml_from_str_singleton_map;
+
+    #[rstest]
+    #[case::idle("state: Idle", ScalerState::Idle { })]
+    #[case::pre_scaling("state: PreScaling", ScalerState::PreScaling { })]
+    #[case::scaling("state: Scaling
+details:
+  previousReplicas: 42", ScalerState::Scaling { previous_replicas: 42 })]
+    #[case::post_scaling("state: PostScaling
+details:
+  previousReplicas: 42", ScalerState::PostScaling { previous_replicas: 42 })]
+    #[case::failed("state: Failed
+details:
+  failedIn: PreScaling
+  reason: bruh moment", ScalerState::Failed {
+         failed_in: FailedInState::PreScaling,
+         reason: "bruh moment".to_owned()
+     } )]
+    fn parse_state(#[case] input: &str, #[case] expected: ScalerState) {
+        let parsed: ScalerState =
+            yaml_from_str_singleton_map(input).expect("invalid test YAML input");
+        assert_eq!(parsed, expected);
+    }
+
+    #[rstest]
+    #[case::idle(ScalerState::Idle { }, "state: Idle\n")]
+    #[case::pre_scaling(ScalerState::PreScaling { }, "state: PreScaling\n")]
+    #[case::scaling(ScalerState::Scaling { previous_replicas: 42 }, "state: Scaling
+details:
+  previousReplicas: 42\n")]
+    #[case::post_scaling(ScalerState::PostScaling { previous_replicas: 42 }, "state: PostScaling
+details:
+  previousReplicas: 42\n")]
+    #[case::failed(ScalerState::Failed { failed_in: FailedInState::PreScaling, reason: "bruh moment".to_owned() }, "state: Failed
+details:
+  failedIn: PreScaling
+  reason: bruh moment\n")]
+    fn serialize_state(#[case] input: ScalerState, #[case] expected: &str) {
+        let serialized = serde_yaml::to_string(&input).expect("serialization always passes");
+        assert_eq!(serialized, expected);
+    }
 }
