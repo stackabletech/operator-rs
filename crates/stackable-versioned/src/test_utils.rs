@@ -10,10 +10,10 @@ use serde::Serialize;
 const TEST_CONVERSION_UUID: &str = "9980028f-816b-4b38-a521-5f087266f76c";
 
 /// One very important requirement for CRD conversions is that they support roundtrips, which means
-/// that we can not loose data when starting at version A, converting to version B and back to
+/// that we can not lose data when starting at version A, converting to version B and back to
 /// version A.
 ///
-/// As it's very hard to make sure the roundtrips never loos data, the
+/// As it's very hard to make sure the roundtrips never lose data, the
 /// [`crate::versioned`] macro automatically generates tests that test roundtrips.
 /// However, for that to work it needs some test data to run through the conversions, hence it
 /// requires you to provide test data for the earliest and latest version of the CRD struct.
