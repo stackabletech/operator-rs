@@ -30,6 +30,9 @@
 //!     role_utils::Role,
 //! };
 //!
+//! #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+//! pub struct ProductConfigOverrides {}
+//!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, Serialize)]
 //! #[kube(
 //!     group = "product.stackable.tech",
@@ -46,7 +49,7 @@
 //! #[serde(rename_all = "camelCase")]
 //! pub struct ProductSpec {
 //!     #[serde(default, skip_serializing_if = "Option::is_none")]
-//!     pub nodes: Option<Role<ProductConfigFragment>>,
+//!     pub nodes: Option<Role<ProductConfigFragment, ProductConfigOverrides>>,
 //! }
 //!
 //! #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]

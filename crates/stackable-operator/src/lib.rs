@@ -12,6 +12,7 @@ pub mod client;
 pub mod cluster_resources;
 pub mod commons;
 pub mod config;
+pub mod config_overrides;
 pub mod constants;
 pub mod cpu;
 #[cfg(feature = "crds")]

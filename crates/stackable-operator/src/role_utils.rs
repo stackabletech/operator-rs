@@ -118,16 +118,19 @@ pub enum Error {
 #[serde(
     rename_all = "camelCase",
     bound(
-        deserialize = "T: Default + Deserialize<'de>, ProductSpecificCommonConfig: Default + Deserialize<'de>"
+        deserialize = "Config: Default + Deserialize<'de>, CommonConfig: Default + Deserialize<'de>, ConfigOverrides: Default + Deserialize<'de>"
     )
 )]
-pub struct CommonConfiguration<T, ProductSpecificCommonConfig> {
+#[schemars(
+    bound = "Config: JsonSchema, CommonConfig: JsonSchema, ConfigOverrides: Default + JsonSchema"
+)]
+pub struct CommonConfiguration<Config, CommonConfig, ConfigOverrides> {
     #[serde(default)]
-    // We can't depend on T being `Default`, since that trait is not object-safe
+    // We can't depend on Config being `Default`, since that trait is not object-safe
     // We only need to generate schemas for fully specified types, but schemars_derive
     // does not support specifying custom bounds.
     #[schemars(default = "Self::default_config")]
-    pub config: T,
+    pub config: Config,
 
     /// The `configOverrides` can be used to configure properties in product config files
     /// that are not exposed in the CRD. Read the
@@ -135,7 +138,7 @@ pub struct CommonConfiguration<T, ProductSpecificCommonConfig> {
     /// and consult the operator specific usage guide documentation for details on the
     /// available config files and settings for the specific product.
     #[serde(default)]
-    pub config_overrides: HashMap<String, HashMap<String, String>>,
+    pub config_overrides: ConfigOverrides,
 
     /// `envOverrides` configure environment variables to be set in the Pods.
     /// It is a map from strings to strings - environment variables and the value to set.
@@ -168,17 +171,19 @@ pub struct CommonConfiguration<T, ProductSpecificCommonConfig> {
     // If [`JavaCommonConfig`] is used, please use [`Role::get_merged_jvm_argument_overrides`] instead of
     // reading this field directly.
     #[serde(flatten, default)]
-    pub product_specific_common_config: ProductSpecificCommonConfig,
+    pub product_specific_common_config: CommonConfig,
 }
 
-impl<T, ProductSpecificCommonConfig> CommonConfiguration<T, ProductSpecificCommonConfig> {
+impl<Config, CommonConfig, ConfigOverrides>
+    CommonConfiguration<Config, CommonConfig, ConfigOverrides>
+{
     fn default_config() -> serde_json::Value {
         serde_json::json!({})
     }
 }
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
-pub struct GenericProductSpecificCommonConfig {}
+pub struct GenericCommonConfig {}
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -291,43 +296,47 @@ impl JvmArgumentOverrides {
 // Everything below is only a "normal" comment, not rustdoc - so we don't bloat the CRD documentation
 // with technical (Rust) details.
 //
-// `T` here is the `config` shared between role and roleGroup.
+// `Config` here is the `config` shared between role and roleGroup.
 //
-// `U` here is the `roleConfig` only available on the role. It defaults to [`GenericRoleConfig`], which is
+// `RoleConfig` here is the `roleConfig` only available on the role. It defaults to [`GenericRoleConfig`], which is
 // sufficient for most of the products. There are some exceptions, where e.g. [`EmptyRoleConfig`] is used.
 // However, product-operators can define their own - custom - struct and use that here.
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Role<
-    T,
-    U = GenericRoleConfig,
-    ProductSpecificCommonConfig = GenericProductSpecificCommonConfig,
+    Config,
+    ConfigOverrides,
+    RoleConfig = GenericRoleConfig,
+    CommonConfig = GenericCommonConfig,
 > where
     // Don't remove this trait bounds!!!
     // We don't know why, but if you remove either of them, the generated default value in the CRDs will
     // be missing!
-    U: Default + JsonSchema + Serialize,
-    ProductSpecificCommonConfig: Default + JsonSchema + Serialize,
+    RoleConfig: Default + JsonSchema + Serialize,
+    CommonConfig: Default + JsonSchema + Serialize,
+    ConfigOverrides: Default + JsonSchema + Serialize,
 {
     #[serde(
         flatten,
         bound(
-            deserialize = "T: Default + Deserialize<'de>, ProductSpecificCommonConfig: Deserialize<'de>"
+            deserialize = "Config: Default + Deserialize<'de>, CommonConfig: Deserialize<'de>, ConfigOverrides: Deserialize<'de>"
         )
     )]
-    pub config: CommonConfiguration<T, ProductSpecificCommonConfig>,
+    pub config: CommonConfiguration<Config, CommonConfig, ConfigOverrides>,
 
     #[serde(default)]
-    pub role_config: U,
+    pub role_config: RoleConfig,
 
-    pub role_groups: HashMap<String, RoleGroup<T, ProductSpecificCommonConfig>>,
+    pub role_groups: HashMap<String, RoleGroup<Config, CommonConfig, ConfigOverrides>>,
 }
 
-impl<T, U, ProductSpecificCommonConfig> Role<T, U, ProductSpecificCommonConfig>
+impl<Config, ConfigOverrides, RoleConfig, CommonConfig>
+    Role<Config, ConfigOverrides, RoleConfig, CommonConfig>
 where
-    T: Configuration + 'static,
-    U: Default + JsonSchema + Serialize,
-    ProductSpecificCommonConfig: Default + JsonSchema + Serialize + Clone,
+    Config: Configuration + 'static,
+    RoleConfig: Default + JsonSchema + Serialize,
+    CommonConfig: Default + JsonSchema + Serialize + Clone,
+    ConfigOverrides: Default + JsonSchema + Serialize,
 {
     /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
     /// and used in [`Role`] into a Box of a dynamically dispatched
@@ -336,12 +345,16 @@ where
     /// have different structs implementing Configuration.
     pub fn erase(
         self,
-    ) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>, U, ProductSpecificCommonConfig>
-    {
+    ) -> Role<
+        Box<dyn Configuration<Configurable = Config::Configurable>>,
+        ConfigOverrides,
+        RoleConfig,
+        CommonConfig,
+    > {
         Role {
             config: CommonConfiguration {
                 config: Box::new(self.config.config)
-                    as Box<dyn Configuration<Configurable = T::Configurable>>,
+                    as Box<dyn Configuration<Configurable = Config::Configurable>>,
                 config_overrides: self.config.config_overrides,
                 env_overrides: self.config.env_overrides,
                 cli_overrides: self.config.cli_overrides,
@@ -358,7 +371,7 @@ where
                         RoleGroup {
                             config: CommonConfiguration {
                                 config: Box::new(group.config.config)
-                                    as Box<dyn Configuration<Configurable = T::Configurable>>,
+                                    as Box<dyn Configuration<Configurable = Config::Configurable>>,
                                 config_overrides: group.config.config_overrides,
                                 env_overrides: group.config.env_overrides,
                                 cli_overrides: group.config.cli_overrides,
@@ -376,9 +389,11 @@ where
     }
 }
 
-impl<T, U> Role<T, U, JavaCommonConfig>
+impl<Config, ConfigOverrides, RoleConfig>
+    Role<Config, ConfigOverrides, RoleConfig, JavaCommonConfig>
 where
-    U: Default + JsonSchema + Serialize,
+    RoleConfig: Default + JsonSchema + Serialize,
+    ConfigOverrides: Default + JsonSchema + Serialize,
 {
     /// Merges jvm argument overrides from
     ///
@@ -431,25 +446,30 @@ pub struct EmptyRoleConfig {}
 #[serde(
     rename_all = "camelCase",
     bound(
-        deserialize = "T: Default + Deserialize<'de>, ProductSpecificCommonConfig: Default + Deserialize<'de>"
+        deserialize = "Config: Default + Deserialize<'de>, CommonConfig: Default + Deserialize<'de>, ConfigOverrides: Default + Deserialize<'de>"
     )
 )]
-pub struct RoleGroup<T, ProductSpecificCommonConfig> {
+#[schemars(
+    bound = "Config: JsonSchema, CommonConfig: JsonSchema, ConfigOverrides: Default + JsonSchema"
+)]
+pub struct RoleGroup<Config, CommonConfig, ConfigOverrides> {
     #[serde(flatten)]
-    pub config: CommonConfiguration<T, ProductSpecificCommonConfig>,
+    pub config: CommonConfiguration<Config, CommonConfig, ConfigOverrides>,
     pub replicas: Option<u16>,
 }
 
-impl<T, ProductSpecificCommonConfig> RoleGroup<T, ProductSpecificCommonConfig> {
-    pub fn validate_config<C, U>(
+impl<Config, CommonConfig, ConfigOverrides> RoleGroup<Config, CommonConfig, ConfigOverrides> {
+    pub fn validate_config<C, RoleConfig>(
         &self,
-        role: &Role<T, U>,
-        default_config: &T,
+        role: &Role<Config, ConfigOverrides, RoleConfig, CommonConfig>,
+        default_config: &Config,
     ) -> Result<C, fragment::ValidationError>
     where
-        C: FromFragment<Fragment = T>,
-        T: Merge + Clone,
-        U: Default + JsonSchema + Serialize,
+        C: FromFragment<Fragment = Config>,
+        Config: Merge + Clone,
+        RoleConfig: Default + JsonSchema + Serialize,
+        CommonConfig: Default + JsonSchema + Serialize,
+        ConfigOverrides: Default + JsonSchema + Serialize,
     {
         let mut role_config = role.config.config.clone();
         role_config.merge(default_config);
@@ -511,6 +531,9 @@ mod tests {
     use super::*;
     use crate::role_utils::JavaCommonConfig;
 
+    #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+    struct EmptyConfigOverrides {}
+
     #[test]
     fn test_merge_java_common_config() {
         // The operator generates some JVM arguments
@@ -527,7 +550,7 @@ mod tests {
             .into(),
         );
 
-        let entire_role: Role<(), GenericRoleConfig, JavaCommonConfig> =
+        let entire_role: Role<(), EmptyConfigOverrides, GenericRoleConfig, JavaCommonConfig> =
             serde_yaml::from_str("
                 # Let's say we want to set some additional HTTP Proxy and IPv4 settings
                 # And we don't like the garbage collector for some reason...
@@ -589,8 +612,9 @@ mod tests {
         let operator_generated =
             JvmArgumentOverrides::new_with_only_additions(["-Xms1m".to_owned()].into());
 
-        let entire_role: Role<(), GenericRoleConfig, JavaCommonConfig> = serde_yaml::from_str(
-            "
+        let entire_role: Role<(), EmptyConfigOverrides, GenericRoleConfig, JavaCommonConfig> =
+            serde_yaml::from_str(
+                "
                 jvmArgumentOverrides:
                   add:
                     - -Xms2m
@@ -600,8 +624,8 @@ mod tests {
                       add:
                         - -Xms3m
             ",
-        )
-        .expect("Failed to parse role");
+            )
+            .expect("Failed to parse role");
 
         let merged_jvm_argument_overrides = entire_role
             .get_merged_jvm_argument_overrides("default", &operator_generated)
