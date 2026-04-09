@@ -57,11 +57,6 @@ pub struct ScalerStatus {
     pub last_transition_time: Time,
 }
 
-// We use `#[serde(tag)]` and `#[serde(content)]` here to circumvent Kubernetes restrictions in their
-// structural schema subset of OpenAPI schemas. They don't allow one variant to be typed as a string
-// and others to be typed as objects. We therefore encode the variant data in a separate details
-// key/object. With this, all variants can be encoded as strings, while the status can still contain
-// additional data in an extra field when needed.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema, strum::Display)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 #[strum(serialize_all = "camelCase")]
