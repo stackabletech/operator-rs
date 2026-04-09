@@ -30,9 +30,7 @@ impl AuthenticationClass {
     }
 }
 
-impl<OidcProductSpecificClientAuthenticationOptions>
-    ClientAuthenticationDetails<OidcProductSpecificClientAuthenticationOptions>
-{
+impl<OidcProductSpecificOptions> ClientAuthenticationDetails<OidcProductSpecificOptions> {
     /// Resolves this specific [`AuthenticationClass`]. Usually products support
     /// a list of authentication classes, which individually need to be resolved.crate::client
     pub async fn resolve_class(
@@ -52,9 +50,7 @@ impl<OidcProductSpecificClientAuthenticationOptions>
     pub fn oidc_or_error(
         &self,
         auth_class_name: &str,
-    ) -> Result<
-        &oidc_v1alpha1::ClientAuthenticationOptions<OidcProductSpecificClientAuthenticationOptions>,
-    > {
+    ) -> Result<&oidc_v1alpha1::ClientAuthenticationOptions<OidcProductSpecificOptions>> {
         self.oidc
             .as_ref()
             .with_context(|| OidcAuthenticationDetailsNotSpecifiedSnafu {
