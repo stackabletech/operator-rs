@@ -71,7 +71,7 @@ impl JdbcDatabaseConnectionDetails {
 /// Use this when you need to connect to a JDBC-compatible database that does not have a
 /// first-class connection type. You are responsible for providing the correct driver class name
 /// and a fully-formed JDBC URL as well as providing the needed classes on the Java classpath.
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenericJdbcDatabaseConnection {
     /// Fully-qualified Java class name of the JDBC driver, e.g. `org.postgresql.Driver` or

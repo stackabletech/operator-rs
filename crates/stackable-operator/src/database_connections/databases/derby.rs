@@ -31,7 +31,7 @@ pub enum Error {
 /// Derby is an embedded, file-based Java database engine that requires no separate server process.
 /// It is typically used for development, testing, or as a lightweight metastore backend (e.g. for
 /// Apache Hive).
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DerbyConnection {
     /// Path on the filesystem where Derby stores its database files.

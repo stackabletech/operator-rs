@@ -56,7 +56,7 @@ impl KeyValueOverridesProvider for DummyConfigOverrides {
             "dummy.properties" => self
                 .dummy_properties
                 .as_ref()
-                .map(|o| o.as_product_config_overrides())
+                .map(KeyValueConfigOverrides::as_product_config_overrides)
                 .unwrap_or_default(),
             _ => BTreeMap::new(),
         }
@@ -162,7 +162,7 @@ pub mod versioned {
         UserInfoFetcher,
     }
 
-    #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+    #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
     #[serde(rename_all = "camelCase")]
     #[schemars(crate = "stackable_operator::schemars")]
     pub enum DummyDatabaseConnection {
