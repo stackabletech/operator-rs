@@ -14,13 +14,14 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: Change signature of `ContainerBuilder::add_env_vars` from `Vec<EnvVar>` to `IntoIterator<Item = EnvVar>` ([#1163]).
 - BREAKING: Remove `EXPERIMENTAL_` prefix in `CONFIG_OVERRIDE_FILE_HEADER_KEY` and `CONFIG_OVERRIDE_FILE_FOOTER_KEY` ([#1191]).
-- BREAKING: Add `ConfigOverrides` type parameter to `CommonConfiguration`, `Role`,
-  and `RoleGroup`. The `config_overrides` field is now generic instead of
-  `HashMap<String, HashMap<String, String>>` ([#1177]).
+- BREAKING: Bump `kube` from a custom version (`fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5`, which is between `3.0.1` and `3.1.0` and was needed to pull in schema fixes) to `3.1.0`. This means that the CRD schema generation bugs [#1934](https://github.com/kube-rs/kube/pull/1934) and [#1942](https://github.com/kube-rs/kube/pull/1942) are fixed ([#1192]).
+- BREAKING: Add `ConfigOverrides` type parameter to `CommonConfiguration`, `Role` and `RoleGroup`.
+  The `config_overrides` field is now generic instead of `HashMap<String, HashMap<String, String>>` ([#1177]).
 
 [#1163]: https://github.com/stackabletech/operator-rs/pull/1163
 [#1177]: https://github.com/stackabletech/operator-rs/pull/1177
 [#1191]: https://github.com/stackabletech/operator-rs/pull/1191
+[#1192]: https://github.com/stackabletech/operator-rs/pull/1192
 
 ## [0.109.0] - 2026-04-07
 
