@@ -65,38 +65,80 @@ spec:
                 type: string
               state:
                 description: The current state of the scaler state machine.
+                oneOf:
+                - required:
+                  - idle
+                - required:
+                  - preScaling
+                - required:
+                  - scaling
+                - required:
+                  - postScaling
+                - required:
+                  - failed
                 properties:
-                  details:
+                  failed:
+                    description: |-
+                      A hook returned an error.
+
+                      The scaler stays here until the user applies the [`Annotation::autoscaling_retry`] annotation
+                      to trigger a reset to [`ScalerState::Idle`].
                     properties:
                       failedIn:
-                        description: In which state the scaling operation failed.
+                        description: Which stage produced the error.
                         enum:
-                        - preScaling
-                        - scaling
-                        - postScaling
+                        - PreScaling
+                        - Scaling
+                        - PostScaling
                         type: string
-                      previous_replicas:
+                      reason:
+                        description: Human-readable error message from the hook.
+                        type: string
+                    required:
+                    - failedIn
+                    - reason
+                    type: object
+                  idle:
+                    description: No scaling operation is in progress.
+                    type: object
+                  postScaling:
+                    description: |-
+                      Running the `post_scale` hook (e.g. cluster rebalance).
+
+                      This stage additionally tracks the previous replica count to be able derive the direction
+                      of the scaling operation.
+                    properties:
+                      previousReplicas:
+                        format: uint16
                         maximum: 65535.0
                         minimum: 0.0
-                        type: uint16
-                      reason:
-                        type: string
+                        type: integer
+                    required:
+                    - previousReplicas
                     type: object
-                  state:
-                    enum:
-                    - idle
-                    - preScaling
-                    - scaling
-                    - postScaling
-                    - failed
-                    type: string
-                required:
-                - state
+                  preScaling:
+                    description: Running the `pre_scale` hook (e.g. data offload).
+                    type: object
+                  scaling:
+                    description: |-
+                      Waiting for the StatefulSet to converge to the new replica count.
+
+                      This stage additionally tracks the previous replica count to be able derive the direction
+                      of the scaling operation.
+                    properties:
+                      previousReplicas:
+                        format: uint16
+                        maximum: 65535.0
+                        minimum: 0.0
+                        type: integer
+                    required:
+                    - previousReplicas
+                    type: object
                 type: object
             required:
+            - lastTransitionTime
             - replicas
             - state
-            - lastTransitionTime
             type: object
         required:
         - spec
