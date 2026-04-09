@@ -40,7 +40,7 @@ impl KubeletConfig {
     pub async fn fetch(client: &Client, node_name: &str) -> Result<Self, Error> {
         let url_path = format!("/api/v1/nodes/{node_name}/proxy/configz");
         let req = http::Request::get(url_path.clone())
-            .body(Default::default())
+            .body(Vec::new())
             .context(BuildConfigzRequestSnafu { url_path })?;
 
         let resp = client

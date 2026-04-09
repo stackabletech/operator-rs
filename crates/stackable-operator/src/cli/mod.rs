@@ -126,6 +126,6 @@ mod tests {
         RunArguments::command()
             .print_long_help()
             .expect("help message should be printed to stdout");
-        RunArguments::command().debug_assert()
+        RunArguments::command().debug_assert();
     }
 }

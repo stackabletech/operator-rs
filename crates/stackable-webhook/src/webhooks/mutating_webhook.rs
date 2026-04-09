@@ -116,6 +116,7 @@ pub struct MutatingWebhook<H, S, R> {
     /// All webhooks need to set the `admissionReviewVersions` to `["v1"]`, as this mutating webhook
     /// only supports that version! A failure to do so will result in a panic during the
     /// [`MutatingWebhook`] creation.
+    #[allow(clippy::struct_field_names)]
     mutating_webhook_configuration: MutatingWebhookConfiguration,
 
     /// The async handler that get's a [`AdmissionRequest`] and returns an [`AdmissionResponse`]

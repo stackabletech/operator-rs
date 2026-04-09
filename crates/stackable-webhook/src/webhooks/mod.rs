@@ -64,8 +64,8 @@ fn create_webhook_client_config(
 ) -> WebhookClientConfig {
     WebhookClientConfig {
         service: Some(ServiceReference {
-            name: options.webhook_service_name.to_owned(),
-            namespace: options.webhook_namespace.to_owned(),
+            name: options.webhook_service_name.clone(),
+            namespace: options.webhook_namespace.clone(),
             path: Some(http_path.into()),
             port: Some(options.socket_addr.port().into()),
         }),

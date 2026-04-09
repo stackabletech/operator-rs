@@ -182,10 +182,10 @@ impl<Config, CommonConfig, ConfigOverrides>
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
 pub struct GenericCommonConfig {}
 
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JavaCommonConfig {
     /// Allows overriding JVM arguments.
@@ -196,7 +196,7 @@ pub struct JavaCommonConfig {
     pub jvm_argument_overrides: JvmArgumentOverrides,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JvmArgumentOverrides {
     /// JVM arguments to be added
@@ -429,7 +429,7 @@ where
 }
 
 /// This is a product-agnostic RoleConfig, which is sufficient for most of the products.
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenericRoleConfig {
     #[serde(default)]
@@ -438,7 +438,7 @@ pub struct GenericRoleConfig {
 
 /// This is a product-agnostic RoleConfig, with nothing in it. It is used e.g. by products that have
 /// nothing configurable at role level.
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmptyRoleConfig {}
 

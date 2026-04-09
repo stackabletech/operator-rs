@@ -5,6 +5,8 @@ use std::borrow::Cow;
 use k8s_openapi::api::apps::v1::StatefulSet;
 use snafu::Snafu;
 
+use crate::status::rollout::outdated_statefulset::{HasOutdatedReplicasSnafu, NotYetObservedSnafu};
+
 /// The reason for why a [`StatefulSet`] is still rolling out. Returned by [`check_statefulset_rollout_complete`].
 #[derive(Debug, Snafu)]
 #[snafu(module(outdated_statefulset))]
@@ -35,8 +37,6 @@ pub enum StatefulSetRolloutInProgress {
 pub fn check_statefulset_rollout_complete(
     sts: &StatefulSet,
 ) -> Result<(), StatefulSetRolloutInProgress> {
-    use outdated_statefulset::*;
-
     let status = sts.status.as_ref().map_or_else(Cow::default, Cow::Borrowed);
 
     let current_generation = sts.metadata.generation;

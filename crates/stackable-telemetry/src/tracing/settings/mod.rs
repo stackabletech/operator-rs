@@ -28,7 +28,7 @@ pub trait SettingsToggle {
 }
 
 /// General settings that apply to any subscriber.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Settings {
     /// The environment variable used to set the [`LevelFilter`].
     ///

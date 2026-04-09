@@ -66,7 +66,7 @@ impl FieldAttributes {
         })?;
 
         self.common
-            .validate(FieldIdents::from(ident), &self.attrs)?;
+            .validate(&FieldIdents::from(ident), &self.attrs)?;
 
         Ok(self)
     }

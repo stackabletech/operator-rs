@@ -123,8 +123,8 @@ mod tests {
         #[case] expected_stopped_status: ClusterConditionStatus,
     ) {
         let cluster_operation = ClusterOperation {
-            reconciliation_paused,
             stopped,
+            reconciliation_paused,
         };
 
         let op_condition_builder = ClusterOperationsConditionBuilder::new(&cluster_operation);

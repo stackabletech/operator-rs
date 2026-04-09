@@ -82,7 +82,7 @@ mod tests {
 
     #[test]
     fn test_defaults() {
-        let my_cache: MyCache = Default::default();
+        let my_cache: MyCache = TtlCache::default();
         assert_eq!(my_cache.entry_time_to_live, Duration::from_secs(30));
         assert_eq!(my_cache.max_entries, 10_000);
     }

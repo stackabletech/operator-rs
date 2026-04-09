@@ -82,7 +82,7 @@ impl SqlAlchemyDatabaseConnectionDetails {
 /// Use this when you need to connect to a SQLAlchemy-compatible database that does not have a
 /// first-class connection type. The complete connection URL is read from a Secret, giving the user
 /// full control over the connection string including any driver-specific options.
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenericSqlAlchemyDatabaseConnection {
     /// The name of the Secret that contains an `connectionUrl` key with the complete SQLAlchemy URL.

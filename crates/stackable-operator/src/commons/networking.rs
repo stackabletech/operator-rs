@@ -21,7 +21,7 @@ impl FromStr for DomainName {
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         validation::is_domain(value)?;
-        Ok(DomainName(value.to_owned()))
+        Ok(Self(value.to_owned()))
     }
 }
 
@@ -92,12 +92,12 @@ impl FromStr for HostName {
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         if let Ok(ip) = value.parse::<IpAddr>() {
-            return Ok(HostName::IpAddress(ip));
+            return Ok(Self::IpAddress(ip));
         }
 
         if let Ok(domain_name) = value.parse() {
-            return Ok(HostName::DomainName(domain_name));
-        };
+            return Ok(Self::DomainName(domain_name));
+        }
 
         InvalidHostnameSnafu {
             hostname: value.to_owned(),
@@ -123,8 +123,8 @@ impl From<HostName> for String {
 impl Display for HostName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            HostName::IpAddress(ip) => write!(f, "{ip}"),
-            HostName::DomainName(domain_name) => write!(f, "{domain_name}"),
+            Self::IpAddress(ip) => write!(f, "{ip}"),
+            Self::DomainName(domain_name) => write!(f, "{domain_name}"),
         }
     }
 }
@@ -133,17 +133,17 @@ impl HostName {
     /// Formats the host in such a way that it can be used in URLs.
     pub fn as_url_host(&self) -> String {
         match self {
-            HostName::IpAddress(ip) => match ip {
+            Self::IpAddress(ip) => match ip {
                 IpAddr::V4(ip) => ip.to_string(),
                 IpAddr::V6(ip) => format!("[{ip}]"),
             },
-            HostName::DomainName(domain_name) => domain_name.to_string(),
+            Self::DomainName(domain_name) => domain_name.to_string(),
         }
     }
 }
 
 /// A validated kerberos realm name type, for use in CRDs.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(try_from = "String", into = "String")]
 pub struct KerberosRealmName(
     // Note: Starting with schemars 1.0 and kube 2.0, this pattern is missing in the CRD
@@ -155,7 +155,7 @@ impl TryFrom<String> for KerberosRealmName {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         validation::is_kerberos_realm_name(&value)?;
-        Ok(KerberosRealmName(value))
+        Ok(Self(value))
     }
 }
 

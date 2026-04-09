@@ -11,7 +11,7 @@ use crate::{
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 // NOTE (@Techassi): Where is the best place to put this?
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum Error {
     #[snafu(display(
         "authentication details for OIDC were not specified. The AuthenticationClass {auth_class_name:?} uses an OIDC provider, you need to specify OIDC authentication details (such as client credentials) as well"
@@ -23,9 +23,9 @@ impl AuthenticationClass {
     pub async fn resolve(
         client: &Client,
         authentication_class_name: &str,
-    ) -> crate::client::Result<AuthenticationClass> {
+    ) -> crate::client::Result<Self> {
         client
-            .get::<AuthenticationClass>(authentication_class_name, &()) // AuthenticationClass has ClusterScope
+            .get::<Self>(authentication_class_name, &()) // AuthenticationClass has ClusterScope
             .await
     }
 }

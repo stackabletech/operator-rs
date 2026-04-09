@@ -26,7 +26,7 @@ pub enum Error {
 }
 
 /// Connection settings for a [PostgreSQL](https://www.postgresql.org/) database.
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PostgresqlConnection {
     /// Hostname or IP address of the PostgreSQL server.

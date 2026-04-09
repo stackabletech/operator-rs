@@ -190,7 +190,7 @@ fn validate_str_regex(
 fn validate_all(validations: impl IntoIterator<Item = Result<(), Error>>) -> Result {
     let errors = validations
         .into_iter()
-        .filter_map(|res| res.err())
+        .filter_map(Result::err)
         .collect::<Vec<_>>();
     if errors.is_empty() {
         Ok(())

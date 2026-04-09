@@ -98,7 +98,7 @@ pub trait YamlSchema: Sized + serde::Serialize {
     fn generate_yaml_schema(
         &self,
         operator_version: &str,
-        options: SerializeOptions,
+        options: &SerializeOptions,
     ) -> Result<String> {
         let mut buffer = Vec::new();
 
@@ -118,7 +118,7 @@ pub trait YamlSchema: Sized + serde::Serialize {
         &self,
         path: P,
         operator_version: &str,
-        options: SerializeOptions,
+        options: &SerializeOptions,
     ) -> Result<()> {
         let schema = self.generate_yaml_schema(operator_version, options)?;
         std::fs::write(path, schema).context(WriteToFileSnafu)
@@ -126,7 +126,7 @@ pub trait YamlSchema: Sized + serde::Serialize {
 
     /// Generates and prints the YAML schema of `self` to stdout at `path` using the provided
     /// [`SerializeOptions`].
-    fn print_yaml_schema(&self, operator_version: &str, options: SerializeOptions) -> Result<()> {
+    fn print_yaml_schema(&self, operator_version: &str, options: &SerializeOptions) -> Result<()> {
         let schema = self.generate_yaml_schema(operator_version, options)?;
 
         let mut writer = std::io::stdout();
@@ -139,7 +139,7 @@ pub trait YamlSchema: Sized + serde::Serialize {
 impl<T> YamlSchema for T where T: serde::ser::Serialize {}
 
 /// Serializes the given data structure and writes it to a [`Writer`](Write).
-pub fn serialize<T, W>(value: &T, mut writer: W, options: SerializeOptions) -> Result<()>
+pub fn serialize<T, W>(value: &T, mut writer: W, options: &SerializeOptions) -> Result<()>
 where
     T: serde::Serialize,
     W: std::io::Write,

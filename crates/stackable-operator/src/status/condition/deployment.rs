@@ -36,7 +36,7 @@ impl DeploymentConditionBuilder {
             let current_status = Self::deployment_available(deployment);
 
             if current_status != ClusterConditionStatus::True {
-                unavailable_resources.push(deployment.name_any())
+                unavailable_resources.push(deployment.name_any());
             }
 
             available = cmp::max(available, current_status);

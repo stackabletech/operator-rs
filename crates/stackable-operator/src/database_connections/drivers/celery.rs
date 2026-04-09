@@ -83,7 +83,7 @@ impl CeleryDatabaseConnectionDetails {
 /// Use this when you need a Celery-compatible connection that does not have a first-class
 /// connection type. The complete connection URL is read from a Secret, giving the user full
 /// control over the connection string.
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenericCeleryDatabaseConnection {
     /// The name of the Secret that contains an `connectionUrl` key with the complete Celery URL.

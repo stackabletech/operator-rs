@@ -55,6 +55,13 @@ All notable changes to this project will be documented in this file.
 
   Additionally, `SecretClassVolume::to_volume` and `SecretClassVolume::to_ephemeral_volume_source`
   also take the same new argument.
+- BREAKING: `OpaConfig::full_document_url` now takes `&OpaApiVersion` instead of `OpaApiVersion` ([#1186]).
+- BREAKING: `EndOfSupportChecker::new` now takes `&EndOfSupportOptions` instead of `EndOfSupportOptions` ([#1186]).
+- BREAKING: `Labels::recommended` now takes `&ObjectLabels<R>` instead of `ObjectLabels<R>` ([#1186]).
+- BREAKING: `transform_all_roles_to_config` now takes `&HashMap<..., S>` by reference and requires generic `S: BuildHasher` ([#1186]).
+- BREAKING: `env_vars_from_rolegroup_config` now requires generic `S: BuildHasher` for the HashMap parameter ([#1186]).
+- BREAKING: `FromFragment` impl for `HashMap` now requires `S: BuildHasher + Default` ([#1186]).
+- BREAKING: `Merge` impl for `HashMap` now requires `S: BuildHasher` ([#1186]).
 
 ### Removed
 
@@ -65,6 +72,7 @@ All notable changes to this project will be documented in this file.
 [#1165]: https://github.com/stackabletech/operator-rs/pull/1165
 [#1178]: https://github.com/stackabletech/operator-rs/pull/1178
 [#1182]: https://github.com/stackabletech/operator-rs/pull/1182
+[#1186]: https://github.com/stackabletech/operator-rs/pull/1186
 [#1187]: https://github.com/stackabletech/operator-rs/pull/1187
 [#1189]: https://github.com/stackabletech/operator-rs/pull/1189
 

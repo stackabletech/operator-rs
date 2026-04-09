@@ -34,7 +34,7 @@ impl EventBuilder {
     /// # Arguments
     ///
     /// - `resource` - The resource for which this event is created, will be used to create the `involvedObject` and `metadata.name` fields
-    pub fn new<T>(resource: &T) -> EventBuilder
+    pub fn new<T>(resource: &T) -> Self
     where
         T: Resource<DynamicType = ()>,
     {
@@ -48,10 +48,10 @@ impl EventBuilder {
             uid: resource.meta().uid.clone(),
         };
 
-        EventBuilder {
+        Self {
             name: resource.name_any(),
             involved_object,
-            ..EventBuilder::default()
+            ..Self::default()
         }
     }
 
@@ -116,10 +116,7 @@ impl EventBuilder {
             reporting_instance: self.reporting_instance.clone(),
             series: None,
             source,
-            type_: self
-                .event_type
-                .as_ref()
-                .map(|event_type| event_type.to_string()),
+            type_: self.event_type.as_ref().map(ToString::to_string),
         }
     }
 }

@@ -5,7 +5,7 @@ use tracing::level_filters::LevelFilter;
 use super::{Settings, SettingsBuilder, SettingsToggle};
 
 /// Configure specific settings for the OpenTelemetry log subscriber.
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub enum OtlpLogSettings {
     /// OpenTelemetry log subscriber disabled.
     #[default]
@@ -21,8 +21,8 @@ pub enum OtlpLogSettings {
 impl SettingsToggle for OtlpLogSettings {
     fn is_enabled(&self) -> bool {
         match self {
-            OtlpLogSettings::Disabled => false,
-            OtlpLogSettings::Enabled { .. } => true,
+            Self::Disabled => false,
+            Self::Enabled { .. } => true,
         }
     }
 }
@@ -65,12 +65,12 @@ impl From<Settings> for OtlpLogSettings {
 
 impl<T> From<Option<T>> for OtlpLogSettings
 where
-    T: Into<OtlpLogSettings>,
+    T: Into<Self>,
 {
     fn from(settings: Option<T>) -> Self {
         match settings {
             Some(settings) => settings.into(),
-            None => OtlpLogSettings::default(),
+            None => Self::default(),
         }
     }
 }
@@ -88,14 +88,15 @@ impl From<(&'static str, LevelFilter)> for OtlpLogSettings {
 
 impl From<(&'static str, LevelFilter, bool)> for OtlpLogSettings {
     fn from(value: (&'static str, LevelFilter, bool)) -> Self {
-        match value.2 {
-            true => Self::Enabled {
+        if value.2 {
+            Self::Enabled {
                 common_settings: Settings {
                     environment_variable: value.0,
                     default_level: value.1,
                 },
-            },
-            false => Self::Disabled,
+            }
+        } else {
+            Self::Disabled
         }
     }
 }

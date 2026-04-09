@@ -139,6 +139,7 @@ mod tests {
     use crate::config::fragment;
 
     #[test]
+    #[expect(clippy::too_many_lines)]
     fn merge_new_attributes() {
         let default_affinity = StackableAffinityFragment {
             pod_affinity: None,
@@ -152,7 +153,7 @@ mod tests {
             node_selector: None,
         };
 
-        let role_input = r#"
+        let role_input = r"
           podAffinity:
             requiredDuringSchedulingIgnoredDuringExecution:
               - labelSelector:
@@ -173,7 +174,7 @@ mod tests {
                       - antarctica-west1
           nodeSelector:
             disktype: ssd
-          "#;
+          ";
         let mut role_affinity: StackableAffinityFragment =
             serde_yaml::from_str(role_input).expect("illegal test input");
 
@@ -195,7 +196,7 @@ mod tests {
                                 }]),
                                 match_labels: None,
                             }),
-                            topology_key: "".to_string(),
+                            topology_key: String::new(),
                             ..Default::default()
                         }
                     ])
@@ -265,7 +266,7 @@ mod tests {
 
         // The following anti-affinity tells k8s it *must* spread the brokers across multiple zones
         // It will overwrite the default anti-affinity
-        let role_input = r#"
+        let role_input = r"
           podAntiAffinity:
             requiredDuringSchedulingIgnoredDuringExecution:
               - labelSelector:
@@ -274,7 +275,7 @@ mod tests {
                     app.kubernetes.io/instance: simple-kafka
                     app.kubernetes.io/component: broker
                 topologyKey: topology.kubernetes.io/zone
-          "#;
+          ";
         let mut role_affinity: StackableAffinityFragment =
             serde_yaml::from_str(role_input).expect("illegal test input");
 

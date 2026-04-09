@@ -59,7 +59,7 @@ impl ProductConfigPath {
         let search_paths = if let Some(path) = user_provided_path {
             vec![path]
         } else {
-            default_paths.iter().map(|path| path.as_ref()).collect()
+            default_paths.iter().map(AsRef::as_ref).collect()
         };
         for path in &search_paths {
             if path.exists() {
@@ -148,7 +148,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic = "RequiredFileMissing { search_path: [\"user_provided_path_properties.yaml\"] }"]
     fn resolve_path_user_path_not_existing() {
         ProductConfigPath::resolve_path(Some(USER_PROVIDED_PATH.as_ref()), &[DEPLOY_FILE_PATH])
             .unwrap();
@@ -165,7 +165,7 @@ mod tests {
                     PathBuf::from(DEPLOY_FILE_PATH),
                     PathBuf::from(DEFAULT_FILE_PATH)
                 ]
-            )
+            );
         } else {
             panic!("must return RequiredFileMissing when file was not found")
         }

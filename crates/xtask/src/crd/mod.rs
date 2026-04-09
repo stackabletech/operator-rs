@@ -55,7 +55,7 @@ macro_rules! write_crd {
                     &merged,
                     &path,
                     "0.0.0-dev",
-                    stackable_operator::shared::yaml::SerializeOptions::default(),
+                    &stackable_operator::shared::yaml::SerializeOptions::default(),
                 )
                 .with_context(|_| WriteCrdSnafu { path: path.clone() })?;
         }

@@ -81,7 +81,7 @@ impl EndOfSupportChecker {
     /// - The `options` allow customizing the checker. It is recommended to use values provided by
     ///   CLI args, see [`EndOfSupportOptions`], [`MaintenanceOptions`](crate::cli::MaintenanceOptions),
     ///   and [`RunArguments`](crate::cli::RunArguments).
-    pub fn new(built_time: &str, options: EndOfSupportOptions) -> Result<Self, Error> {
+    pub fn new(built_time: &str, options: &EndOfSupportOptions) -> Result<Self, Error> {
         let EndOfSupportOptions {
             interval,
             support_duration,
@@ -98,13 +98,13 @@ impl EndOfSupportChecker {
         };
 
         // Add the support duration to the built date. This marks the end-of-support date.
-        let eos_datetime = &built_datetime + *support_duration;
+        let eos_datetime = &built_datetime + **support_duration;
 
         Ok(Self {
             built_datetime,
             eos_datetime,
-            interval,
-            disabled,
+            interval: *interval,
+            disabled: *disabled,
         })
     }
 
@@ -133,7 +133,7 @@ impl EndOfSupportChecker {
                 // interval.
                 biased;
 
-                _ = &mut shutdown_signal => {
+                () = &mut shutdown_signal => {
                     tracing::trace!("received shutdown signal");
                     break;
                 }
@@ -155,7 +155,7 @@ impl EndOfSupportChecker {
                         continue;
                     }
 
-                    self.emit_warning(now);
+                    self.emit_warning(&now);
                 }
             }
         }
@@ -163,10 +163,10 @@ impl EndOfSupportChecker {
 
     /// Emits the end-of-support warning.
     #[instrument(level = Level::DEBUG, skip(self))]
-    fn emit_warning(&self, now: Zoned) {
+    fn emit_warning(&self, now: &Zoned) {
         let built_datetime = jiff::fmt::rfc2822::to_string(&self.built_datetime)
             .expect("The build datetime can always be serialized using rfc2822::to_string");
-        let build_age = Duration::try_from(&now - &self.built_datetime)
+        let build_age = Duration::try_from(now - &self.built_datetime)
             .expect("time delta of now and built datetime must not be less than 0")
             .to_string();
 

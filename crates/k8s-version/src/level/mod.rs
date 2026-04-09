@@ -22,7 +22,7 @@ static LEVEL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 
 /// Error variants which can be encountered when creating a new [`Level`] from
 /// unparsed input.
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum ParseLevelError {
     #[snafu(display("invalid level format, expected alpha<VERSION>|beta<VERSION>"))]
     InvalidFormat,
@@ -87,13 +87,13 @@ impl PartialOrd for Level {
 impl Ord for Level {
     fn cmp(&self, other: &Self) -> Ordering {
         match self {
-            Level::Alpha(lhs) => match other {
-                Level::Alpha(rhs) => lhs.cmp(rhs),
-                Level::Beta(_) => Ordering::Less,
+            Self::Alpha(lhs) => match other {
+                Self::Alpha(rhs) => lhs.cmp(rhs),
+                Self::Beta(_) => Ordering::Less,
             },
-            Level::Beta(lhs) => match other {
-                Level::Alpha(_) => Ordering::Greater,
-                Level::Beta(rhs) => lhs.cmp(rhs),
+            Self::Beta(lhs) => match other {
+                Self::Alpha(_) => Ordering::Greater,
+                Self::Beta(rhs) => lhs.cmp(rhs),
             },
         }
     }
@@ -103,12 +103,12 @@ impl<T> Add<T> for Level
 where
     T: Into<u64>,
 {
-    type Output = Level;
+    type Output = Self;
 
     fn add(self, rhs: T) -> Self::Output {
         match self {
-            Level::Alpha(lhs) => Level::Alpha(lhs + rhs.into()),
-            Level::Beta(lhs) => Level::Beta(lhs + rhs.into()),
+            Self::Alpha(lhs) => Self::Alpha(lhs + rhs.into()),
+            Self::Beta(lhs) => Self::Beta(lhs + rhs.into()),
         }
     }
 }
@@ -119,8 +119,7 @@ where
 {
     fn add_assign(&mut self, rhs: T) {
         match self {
-            Level::Alpha(lhs) => *lhs + rhs.into(),
-            Level::Beta(lhs) => *lhs + rhs.into(),
+            Self::Alpha(lhs) | Self::Beta(lhs) => *lhs + rhs.into(),
         };
     }
 }
@@ -129,12 +128,12 @@ impl<T> Sub<T> for Level
 where
     T: Into<u64>,
 {
-    type Output = Level;
+    type Output = Self;
 
     fn sub(self, rhs: T) -> Self::Output {
         match self {
-            Level::Alpha(lhs) => Level::Alpha(lhs - rhs.into()),
-            Level::Beta(lhs) => Level::Beta(lhs - rhs.into()),
+            Self::Alpha(lhs) => Self::Alpha(lhs - rhs.into()),
+            Self::Beta(lhs) => Self::Beta(lhs - rhs.into()),
         }
     }
 }
@@ -145,8 +144,7 @@ where
 {
     fn sub_assign(&mut self, rhs: T) {
         match self {
-            Level::Alpha(lhs) => *lhs - rhs.into(),
-            Level::Beta(lhs) => *lhs - rhs.into(),
+            Self::Alpha(lhs) | Self::Beta(lhs) => *lhs - rhs.into(),
         };
     }
 }
@@ -154,8 +152,8 @@ where
 impl Display for Level {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Level::Alpha(alpha) => write!(f, "alpha{}", alpha),
-            Level::Beta(beta) => write!(f, "beta{}", beta),
+            Self::Alpha(alpha) => write!(f, "alpha{alpha}"),
+            Self::Beta(beta) => write!(f, "beta{beta}"),
         }
     }
 }
@@ -181,11 +179,11 @@ mod test {
 
     #[apply(ord_cases)]
     fn ord(input: Level, other: Level, expected: Ordering) {
-        assert_eq!(input.cmp(&other), expected)
+        assert_eq!(input.cmp(&other), expected);
     }
 
     #[apply(ord_cases)]
     fn partial_ord(input: Level, other: Level, expected: Ordering) {
-        assert_eq!(input.partial_cmp(&other), Some(expected))
+        assert_eq!(input.partial_cmp(&other), Some(expected));
     }
 }

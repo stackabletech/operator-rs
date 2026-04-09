@@ -28,7 +28,7 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
     /// leading dashes (`---`).
     fn write_yaml_schema<P: AsRef<Path>>(path: P, operator_version: &str) -> Result<()> {
         Self::crd()
-            .write_yaml_schema(path, operator_version, SerializeOptions::default())
+            .write_yaml_schema(path, operator_version, &SerializeOptions::default())
             .context(WriteToFileSnafu)
     }
 
@@ -41,14 +41,14 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
     /// [stdout]: std::io::stdout
     fn print_yaml_schema(operator_version: &str) -> Result<()> {
         Self::crd()
-            .print_yaml_schema(operator_version, SerializeOptions::default())
+            .print_yaml_schema(operator_version, &SerializeOptions::default())
             .context(WriteToStdoutSnafu)
     }
 
     /// Generates the YAML schema of a `CustomResourceDefinition` and returns it as a [`String`].
     fn yaml_schema(operator_version: &str) -> Result<String> {
         Self::crd()
-            .generate_yaml_schema(operator_version, SerializeOptions::default())
+            .generate_yaml_schema(operator_version, &SerializeOptions::default())
             .context(GenerateSchemaSnafu)
     }
 }

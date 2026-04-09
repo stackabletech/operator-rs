@@ -33,7 +33,7 @@ impl<K: kube::Resource> ClusterRef<K> {
     pub fn to_named(name: &str, namespace: Option<&str>) -> Self {
         Self {
             name: Some(name.into()),
-            namespace: namespace.map(|ns| ns.into()),
+            namespace: namespace.map(Into::into),
             _kind: PhantomData,
         }
     }

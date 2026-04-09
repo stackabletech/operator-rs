@@ -12,7 +12,7 @@ impl Add<Duration> for time::OffsetDateTime {
 
 impl AddAssign<Duration> for time::OffsetDateTime {
     fn add_assign(&mut self, rhs: Duration) {
-        self.add_assign(*rhs)
+        self.add_assign(*rhs);
     }
 }
 
@@ -26,7 +26,7 @@ impl Sub<Duration> for time::OffsetDateTime {
 
 impl SubAssign<Duration> for time::OffsetDateTime {
     fn sub_assign(&mut self, rhs: Duration) {
-        self.sub_assign(*rhs)
+        self.sub_assign(*rhs);
     }
 }
 
@@ -42,7 +42,8 @@ mod test {
         assert!(now < later);
         assert_eq!(
             later.unix_timestamp() - now.unix_timestamp(),
-            Duration::from_minutes_unchecked(10).as_secs() as i64
+            i64::try_from(Duration::from_minutes_unchecked(10).as_secs())
+                .expect("10 minutes as seconds fits in i64")
         );
     }
 
@@ -54,7 +55,8 @@ mod test {
         assert!(now > earlier);
         assert_eq!(
             now.unix_timestamp() - earlier.unix_timestamp(),
-            Duration::from_minutes_unchecked(10).as_secs() as i64
+            i64::try_from(Duration::from_minutes_unchecked(10).as_secs())
+                .expect("10 minutes as seconds fits in i64")
         );
     }
 }

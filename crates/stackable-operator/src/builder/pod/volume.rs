@@ -42,17 +42,15 @@ pub enum VolumeSource {
 
 impl Default for VolumeSource {
     fn default() -> Self {
-        Self::EmptyDir(EmptyDirVolumeSource {
-            ..EmptyDirVolumeSource::default()
-        })
+        Self::EmptyDir(EmptyDirVolumeSource::default())
     }
 }
 
 impl VolumeBuilder {
-    pub fn new(name: impl Into<String>) -> VolumeBuilder {
-        VolumeBuilder {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
             name: name.into(),
-            ..VolumeBuilder::default()
+            ..Self::default()
         }
     }
 
@@ -85,7 +83,7 @@ impl VolumeBuilder {
         quantity: Option<Quantity>,
     ) -> &mut Self {
         self.volume_source = VolumeSource::EmptyDir(EmptyDirVolumeSource {
-            medium: medium.map(|m| m.into()),
+            medium: medium.map(Into::into),
             size_limit: quantity,
         });
         self
@@ -103,7 +101,7 @@ impl VolumeBuilder {
     ) -> &mut Self {
         self.volume_source = VolumeSource::HostPath(HostPathVolumeSource {
             path: path.into(),
-            type_: type_.map(|t| t.into()),
+            type_: type_.map(Into::into),
         });
         self
     }
@@ -223,11 +221,11 @@ pub struct VolumeMountBuilder {
 }
 
 impl VolumeMountBuilder {
-    pub fn new(name: impl Into<String>, mount_path: impl Into<String>) -> VolumeMountBuilder {
-        VolumeMountBuilder {
+    pub fn new(name: impl Into<String>, mount_path: impl Into<String>) -> Self {
+        Self {
             mount_path: mount_path.into(),
             name: name.into(),
-            ..VolumeMountBuilder::default()
+            ..Self::default()
         }
     }
 
@@ -268,7 +266,7 @@ impl VolumeMountBuilder {
     }
 }
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum SecretOperatorVolumeSourceBuilderError {
     #[snafu(display("failed to parse secret operator volume annotation"))]
     ParseAnnotation { source: AnnotationError },
@@ -377,12 +375,12 @@ impl SecretOperatorVolumeSourceBuilder {
 
         if let Some(password) = &self.tls_pkcs12_password {
             // The `tls_pkcs12_password` is only used for PKCS12 stores.
-            if Some(SecretFormat::TlsPkcs12) != self.format {
-                warn!(format.actual = ?self.format, format.expected = ?Some(SecretFormat::TlsPkcs12), "A TLS PKCS12 password was set but ignored because another format was requested")
-            } else {
+            if Some(SecretFormat::TlsPkcs12) == self.format {
                 annotations.insert(
                     Annotation::tls_pkcs12_password(password).context(ParseAnnotationSnafu)?,
                 );
+            } else {
+                warn!(format.actual = ?self.format, format.expected = ?Some(SecretFormat::TlsPkcs12), "A TLS PKCS12 password was set but ignored because another format was requested");
             }
         }
 
@@ -443,10 +441,10 @@ impl ListenerReference {
     /// Return the key and value for a Kubernetes object annotation
     fn to_annotation(&self) -> Result<Annotation, AnnotationError> {
         match self {
-            ListenerReference::ListenerClass(class) => {
+            Self::ListenerClass(class) => {
                 Annotation::try_from(("listeners.stackable.tech/listener-class", class.as_str()))
             }
-            ListenerReference::ListenerName(name) => {
+            Self::ListenerName(name) => {
                 Annotation::try_from(("listeners.stackable.tech/listener-name", name.as_str()))
             }
         }
@@ -455,7 +453,7 @@ impl ListenerReference {
 
 // NOTE (Techassi): We might want to think about these names and how long they
 // are getting.
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum ListenerOperatorVolumeSourceBuilderError {
     #[snafu(display("failed to convert listener reference into Kubernetes annotation"))]
     ListenerReferenceAnnotation { source: AnnotationError },
@@ -505,25 +503,10 @@ pub struct ListenerOperatorVolumeSourceBuilder {
 
 impl ListenerOperatorVolumeSourceBuilder {
     /// Create a builder for the given listener class or listener name
-    pub fn new(
-        listener_reference: &ListenerReference,
-        labels: &Labels,
-    ) -> ListenerOperatorVolumeSourceBuilder {
+    pub fn new(listener_reference: &ListenerReference, labels: &Labels) -> Self {
         Self {
             listener_reference: listener_reference.to_owned(),
             labels: labels.to_owned(),
-        }
-    }
-
-    fn build_spec(&self) -> PersistentVolumeClaimSpec {
-        PersistentVolumeClaimSpec {
-            storage_class_name: Some("listeners.stackable.tech".to_string()),
-            resources: Some(VolumeResourceRequirements {
-                requests: Some([("storage".to_string(), Quantity("1".to_string()))].into()),
-                ..Default::default()
-            }),
-            access_modes: Some(vec!["ReadWriteMany".to_string()]),
-            ..PersistentVolumeClaimSpec::default()
         }
     }
 
@@ -549,7 +532,7 @@ impl ListenerOperatorVolumeSourceBuilder {
                         .with_labels(self.labels.clone())
                         .build(),
                 ),
-                spec: self.build_spec(),
+                spec: Self::spec(),
             }),
         })
     }
@@ -570,9 +553,21 @@ impl ListenerOperatorVolumeSourceBuilder {
                 .with_annotation(listener_reference_annotation)
                 .with_labels(self.labels.clone())
                 .build(),
-            spec: Some(self.build_spec()),
+            spec: Some(Self::spec()),
             ..Default::default()
         })
+    }
+
+    fn spec() -> PersistentVolumeClaimSpec {
+        PersistentVolumeClaimSpec {
+            storage_class_name: Some("listeners.stackable.tech".to_string()),
+            resources: Some(VolumeResourceRequirements {
+                requests: Some([("storage".to_string(), Quantity("1".to_string()))].into()),
+                ..Default::default()
+            }),
+            access_modes: Some(vec!["ReadWriteMany".to_string()]),
+            ..PersistentVolumeClaimSpec::default()
+        }
     }
 }
 

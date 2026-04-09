@@ -105,12 +105,12 @@ impl JsonConfigOverrides {
     /// entirely and the user-provided string is parsed and returned.
     pub fn apply(&self, base: &serde_json::Value) -> Result<serde_json::Value, Error> {
         match self {
-            JsonConfigOverrides::JsonMergePatch(patch) => {
+            Self::JsonMergePatch(patch) => {
                 let mut doc = base.clone();
                 json_patch::merge(&mut doc, patch);
                 Ok(doc)
             }
-            JsonConfigOverrides::JsonPatches(patches) => {
+            Self::JsonPatches(patches) => {
                 let mut doc = base.clone();
                 let operations: Vec<json_patch::PatchOperation> = patches
                     .iter()
@@ -123,7 +123,7 @@ impl JsonConfigOverrides {
                 json_patch::patch(&mut doc, &operations).context(ApplyJsonPatchSnafu)?;
                 Ok(doc)
             }
-            JsonConfigOverrides::UserProvided(content) => {
+            Self::UserProvided(content) => {
                 serde_json::from_str(content).context(ParseUserProvidedJsonSnafu)
             }
         }

@@ -50,15 +50,15 @@ pub struct CommonItemAttributes {
 // it contains functions which can only be called after the initial parsing and validation because
 // they need additional context, namely the list of versions defined on the container or module.
 impl CommonItemAttributes {
-    pub fn validate(&self, item_idents: impl ItemIdents, item_attrs: &[Attribute]) -> Result<()> {
+    pub fn validate(&self, item_idents: &impl ItemIdents, item_attrs: &[Attribute]) -> Result<()> {
         let mut errors = Error::accumulator();
 
-        errors.handle(self.validate_action_combinations(&item_idents));
-        errors.handle(self.validate_action_order(&item_idents));
-        errors.handle(self.validate_item_name(&item_idents));
+        errors.handle(self.validate_action_combinations(item_idents));
+        errors.handle(self.validate_action_order(item_idents));
+        errors.handle(self.validate_item_name(item_idents));
         errors.handle(self.validate_added_action());
-        errors.handle(self.validate_changed_action(&item_idents));
-        errors.handle(self.validate_item_attributes(item_attrs));
+        errors.handle(self.validate_changed_action(item_idents));
+        errors.handle(Self::validate_item_attributes(item_attrs));
 
         errors.finish()
     }
@@ -274,7 +274,7 @@ impl CommonItemAttributes {
     ///
     /// - `deprecated` must not be set on items. Instead, use the `deprecated()`
     ///   action of the `#[versioned()]` macro.
-    fn validate_item_attributes(&self, item_attrs: &[Attribute]) -> Result<()> {
+    fn validate_item_attributes(item_attrs: &[Attribute]) -> Result<()> {
         for attr in item_attrs {
             for segment in &attr.path().segments {
                 if segment.ident == "deprecated" {
@@ -288,6 +288,7 @@ impl CommonItemAttributes {
 }
 
 impl CommonItemAttributes {
+    #[expect(clippy::too_many_lines)]
     pub fn into_changeset(
         self,
         idents: &impl ItemIdents,
@@ -326,8 +327,7 @@ impl CommonItemAttributes {
                 let from_ty = change
                     .from_type
                     .as_ref()
-                    .map(|sv| sv.deref().clone())
-                    .unwrap_or(ty.clone());
+                    .map_or_else(|| ty.clone(), |sv| sv.deref().clone());
 
                 actions.insert(
                     *change.since,
@@ -377,8 +377,7 @@ impl CommonItemAttributes {
                 let from_ty = change
                     .from_type
                     .as_ref()
-                    .map(|sv| sv.deref().clone())
-                    .unwrap_or(ty.clone());
+                    .map_or_else(|| ty.clone(), |sv| sv.deref().clone());
 
                 actions.insert(
                     *change.since,

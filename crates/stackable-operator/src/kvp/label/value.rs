@@ -15,7 +15,7 @@ static LABEL_VALUE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 /// The error type for label value parse/validation operations.
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum LabelValueError {
     /// Indicates that the label value exceeds the maximum length of 63 ASCII
     /// characters. It additionally reports how many characters were

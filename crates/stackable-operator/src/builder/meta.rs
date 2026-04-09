@@ -7,7 +7,7 @@ use crate::kvp::{Annotation, Annotations, Label, LabelError, Labels, ObjectLabel
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum Error {
     #[snafu(display("failed to set recommended labels"))]
     RecommendedLabels { source: LabelError },
@@ -34,8 +34,8 @@ pub struct ObjectMetaBuilder {
 }
 
 impl ObjectMetaBuilder {
-    pub fn new() -> ObjectMetaBuilder {
-        ObjectMetaBuilder::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// This sets the name and namespace from a given resource
@@ -106,7 +106,7 @@ impl ObjectMetaBuilder {
     /// It'll override an annotation with the same key.
     pub fn with_annotation(&mut self, annotation: Annotation) -> &mut Self {
         self.annotations
-            .get_or_insert(Annotations::new())
+            .get_or_insert_with(Annotations::new)
             .insert(annotation);
         self
     }
@@ -115,7 +115,7 @@ impl ObjectMetaBuilder {
     /// Any existing annotation with a key that is contained in `annotations` will be overwritten
     pub fn with_annotations(&mut self, annotations: Annotations) -> &mut Self {
         self.annotations
-            .get_or_insert(Annotations::new())
+            .get_or_insert_with(Annotations::new)
             .extend(annotations);
         self
     }
@@ -129,14 +129,14 @@ impl ObjectMetaBuilder {
     /// This adds a single label to the existing labels.
     /// It'll override a label with the same key.
     pub fn with_label(&mut self, label: Label) -> &mut Self {
-        self.labels.get_or_insert(Labels::new()).insert(label);
+        self.labels.get_or_insert_with(Labels::new).insert(label);
         self
     }
 
     /// This adds multiple labels to the existing labels.
     /// Any existing label with a key that is contained in `labels` will be overwritten
     pub fn with_labels(&mut self, labels: Labels) -> &mut Self {
-        self.labels.get_or_insert(Labels::new()).extend(labels);
+        self.labels.get_or_insert_with(Labels::new).extend(labels);
         self
     }
 
@@ -152,13 +152,13 @@ impl ObjectMetaBuilder {
     /// for more flexibility if needed.
     pub fn with_recommended_labels<T: Resource>(
         &mut self,
-        object_labels: ObjectLabels<T>,
+        object_labels: &ObjectLabels<T>,
     ) -> Result<&mut Self> {
         let recommended_labels =
             Labels::recommended(object_labels).context(RecommendedLabelsSnafu)?;
 
         self.labels
-            .get_or_insert(Labels::new())
+            .get_or_insert_with(Labels::new)
             .extend(recommended_labels);
 
         Ok(self)
@@ -206,8 +206,8 @@ impl ObjectMetaBuilder {
                 .ownerreference
                 .as_ref()
                 .map(|ownerreference| vec![ownerreference.clone()]),
-            labels: self.labels.clone().map(|l| l.into()),
-            annotations: self.annotations.clone().map(|a| a.into()),
+            labels: self.labels.clone().map(Into::into),
+            annotations: self.annotations.clone().map(Into::into),
             finalizers: self.finalizers.clone(),
             ..ObjectMeta::default()
         }
@@ -228,8 +228,8 @@ pub struct OwnerReferenceBuilder {
 }
 
 impl OwnerReferenceBuilder {
-    pub fn new() -> OwnerReferenceBuilder {
-        OwnerReferenceBuilder::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn api_version(&mut self, api_version: impl Into<String>) -> &mut Self {
@@ -350,7 +350,7 @@ mod tests {
             .namespace("bar")
             .ownerreference_from_resource(&pod, Some(true), Some(false))
             .unwrap()
-            .with_recommended_labels(ObjectLabels {
+            .with_recommended_labels(&ObjectLabels {
                 owner: &pod,
                 app_name: "test_app",
                 app_version: "1.0",

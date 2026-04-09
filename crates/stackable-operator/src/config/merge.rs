@@ -2,7 +2,7 @@
 
 use std::{
     collections::{BTreeMap, HashMap, btree_map, hash_map},
-    hash::Hash,
+    hash::{BuildHasher, Hash},
 };
 
 use k8s_openapi::{
@@ -58,7 +58,7 @@ pub trait Merge {
 
 impl<T: Merge> Merge for Box<T> {
     fn merge(&mut self, defaults: &Self) {
-        T::merge(self, defaults)
+        T::merge(self, defaults);
     }
 }
 impl<K: Ord + Clone, V: Merge + Clone> Merge for BTreeMap<K, V> {
@@ -75,7 +75,7 @@ impl<K: Ord + Clone, V: Merge + Clone> Merge for BTreeMap<K, V> {
         }
     }
 }
-impl<K: Hash + Eq + Clone, V: Merge + Clone> Merge for HashMap<K, V> {
+impl<K: Hash + Eq + Clone, V: Merge + Clone, S: BuildHasher> Merge for HashMap<K, V, S> {
     fn merge(&mut self, defaults: &Self) {
         for (k, default_v) in defaults {
             match self.entry(k.clone()) {
@@ -166,7 +166,7 @@ mod tests {
     struct Accumulator(u8);
     impl Merge for Accumulator {
         fn merge(&mut self, defaults: &Self) {
-            self.0 += defaults.0
+            self.0 += defaults.0;
         }
     }
 

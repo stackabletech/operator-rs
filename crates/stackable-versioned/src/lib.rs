@@ -166,7 +166,7 @@ impl ConvertObjectError {
         // two solutions performs better needs to evaluated.
         // self.iter_chain().join(": ")
         self.iter_chain()
-            .map(|err| err.to_string())
+            .map(ToString::to_string)
             .collect::<Vec<String>>()
             .join(": ")
     }
@@ -174,12 +174,11 @@ impl ConvertObjectError {
     /// Returns a HTTP status code based on the underlying error.
     pub fn http_status_code(&self) -> u16 {
         match self {
-            ConvertObjectError::Parse { .. } => 400,
-            ConvertObjectError::Serialize { .. } => 500,
-
+            Self::Serialize { .. } => 500,
+            Self::Parse { .. }
             // This is likely the clients fault, as it is requesting a unsupported version
-            ConvertObjectError::ParseDesiredApiVersion {
-                source: UnknownDesiredApiVersionError { .. },
+            | Self::ParseDesiredApiVersion {
+                source: UnknownDesiredApiVersionError { .. }
             } => 400,
         }
     }

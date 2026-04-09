@@ -8,7 +8,7 @@ pub use tracing_appender::rolling::Rotation;
 use super::{Settings, SettingsToggle};
 
 /// Configure specific settings for the File Log subscriber.
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub enum FileLogSettings {
     /// File Log subscriber disabled.
     #[default]
@@ -36,8 +36,8 @@ pub enum FileLogSettings {
 impl SettingsToggle for FileLogSettings {
     fn is_enabled(&self) -> bool {
         match self {
-            FileLogSettings::Disabled => false,
-            FileLogSettings::Enabled { .. } => true,
+            Self::Disabled => false,
+            Self::Enabled { .. } => true,
         }
     }
 }
@@ -82,12 +82,12 @@ impl FileLogSettingsBuilder {
 
 impl<T> From<Option<T>> for FileLogSettings
 where
-    T: Into<FileLogSettings>,
+    T: Into<Self>,
 {
     fn from(settings: Option<T>) -> Self {
         match settings {
             Some(settings) => settings.into(),
-            None => FileLogSettings::default(),
+            None => Self::default(),
         }
     }
 }

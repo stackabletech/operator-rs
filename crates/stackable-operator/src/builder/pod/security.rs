@@ -18,8 +18,8 @@ impl SecurityContextBuilder {
         }
     }
 
-    pub fn new() -> SecurityContextBuilder {
-        SecurityContextBuilder::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn allow_privilege_escalation(&mut self, value: bool) -> &mut Self {
@@ -150,8 +150,8 @@ pub struct PodSecurityContextBuilder {
 }
 
 impl PodSecurityContextBuilder {
-    pub fn new() -> PodSecurityContextBuilder {
-        PodSecurityContextBuilder::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn build(&self) -> PodSecurityContext {
@@ -189,92 +189,116 @@ impl PodSecurityContextBuilder {
     }
 
     pub fn se_linux_level(&mut self, level: &str) -> &mut Self {
-        self.pod_security_context.se_linux_options =
-            Some(self.pod_security_context.se_linux_options.clone().map_or(
-                SELinuxOptions {
-                    level: Some(level.to_string()),
-                    ..SELinuxOptions::default()
-                },
-                |o| SELinuxOptions {
-                    level: Some(level.to_string()),
-                    ..o
-                },
-            ));
+        self.pod_security_context.se_linux_options = Some(
+            self.pod_security_context
+                .se_linux_options
+                .clone()
+                .map_or_else(
+                    || SELinuxOptions {
+                        level: Some(level.to_string()),
+                        ..SELinuxOptions::default()
+                    },
+                    |o| SELinuxOptions {
+                        level: Some(level.to_string()),
+                        ..o
+                    },
+                ),
+        );
         self
     }
 
     pub fn se_linux_role(&mut self, role: &str) -> &mut Self {
-        self.pod_security_context.se_linux_options =
-            Some(self.pod_security_context.se_linux_options.clone().map_or(
-                SELinuxOptions {
-                    role: Some(role.to_string()),
-                    ..SELinuxOptions::default()
-                },
-                |o| SELinuxOptions {
-                    role: Some(role.to_string()),
-                    ..o
-                },
-            ));
+        self.pod_security_context.se_linux_options = Some(
+            self.pod_security_context
+                .se_linux_options
+                .clone()
+                .map_or_else(
+                    || SELinuxOptions {
+                        role: Some(role.to_string()),
+                        ..SELinuxOptions::default()
+                    },
+                    |o| SELinuxOptions {
+                        role: Some(role.to_string()),
+                        ..o
+                    },
+                ),
+        );
         self
     }
 
     pub fn se_linux_type(&mut self, type_: &str) -> &mut Self {
-        self.pod_security_context.se_linux_options =
-            Some(self.pod_security_context.se_linux_options.clone().map_or(
-                SELinuxOptions {
-                    type_: Some(type_.to_string()),
-                    ..SELinuxOptions::default()
-                },
-                |o| SELinuxOptions {
-                    type_: Some(type_.to_string()),
-                    ..o
-                },
-            ));
+        self.pod_security_context.se_linux_options = Some(
+            self.pod_security_context
+                .se_linux_options
+                .clone()
+                .map_or_else(
+                    || SELinuxOptions {
+                        type_: Some(type_.to_string()),
+                        ..SELinuxOptions::default()
+                    },
+                    |o| SELinuxOptions {
+                        type_: Some(type_.to_string()),
+                        ..o
+                    },
+                ),
+        );
         self
     }
 
     pub fn se_linux_user(&mut self, user: &str) -> &mut Self {
-        self.pod_security_context.se_linux_options =
-            Some(self.pod_security_context.se_linux_options.clone().map_or(
-                SELinuxOptions {
-                    user: Some(user.to_string()),
-                    ..SELinuxOptions::default()
-                },
-                |o| SELinuxOptions {
-                    user: Some(user.to_string()),
-                    ..o
-                },
-            ));
+        self.pod_security_context.se_linux_options = Some(
+            self.pod_security_context
+                .se_linux_options
+                .clone()
+                .map_or_else(
+                    || SELinuxOptions {
+                        user: Some(user.to_string()),
+                        ..SELinuxOptions::default()
+                    },
+                    |o| SELinuxOptions {
+                        user: Some(user.to_string()),
+                        ..o
+                    },
+                ),
+        );
         self
     }
 
     pub fn seccomp_profile_localhost(&mut self, profile: &str) -> &mut Self {
-        self.pod_security_context.seccomp_profile =
-            Some(self.pod_security_context.seccomp_profile.clone().map_or(
-                SeccompProfile {
-                    localhost_profile: Some(profile.to_string()),
-                    ..SeccompProfile::default()
-                },
-                |o| SeccompProfile {
-                    localhost_profile: Some(profile.to_string()),
-                    ..o
-                },
-            ));
+        self.pod_security_context.seccomp_profile = Some(
+            self.pod_security_context
+                .seccomp_profile
+                .clone()
+                .map_or_else(
+                    || SeccompProfile {
+                        localhost_profile: Some(profile.to_string()),
+                        ..SeccompProfile::default()
+                    },
+                    |o| SeccompProfile {
+                        localhost_profile: Some(profile.to_string()),
+                        ..o
+                    },
+                ),
+        );
         self
     }
 
     pub fn seccomp_profile_type(&mut self, type_: &str) -> &mut Self {
-        self.pod_security_context.seccomp_profile =
-            Some(self.pod_security_context.seccomp_profile.clone().map_or(
-                SeccompProfile {
-                    type_: type_.to_string(),
-                    ..SeccompProfile::default()
-                },
-                |o| SeccompProfile {
-                    type_: type_.to_string(),
-                    ..o
-                },
-            ));
+        self.pod_security_context.seccomp_profile = Some(
+            self.pod_security_context
+                .seccomp_profile
+                .clone()
+                .map_or_else(
+                    || SeccompProfile {
+                        type_: type_.to_string(),
+                        ..SeccompProfile::default()
+                    },
+                    |o| SeccompProfile {
+                        type_: type_.to_string(),
+                        ..o
+                    },
+                ),
+        );
         self
     }
 
@@ -292,47 +316,59 @@ impl PodSecurityContextBuilder {
     }
 
     pub fn win_credential_spec(&mut self, spec: &str) -> &mut Self {
-        self.pod_security_context.windows_options =
-            Some(self.pod_security_context.windows_options.clone().map_or(
-                WindowsSecurityContextOptions {
-                    gmsa_credential_spec: Some(spec.to_string()),
-                    ..WindowsSecurityContextOptions::default()
-                },
-                |o| WindowsSecurityContextOptions {
-                    gmsa_credential_spec: Some(spec.to_string()),
-                    ..o
-                },
-            ));
+        self.pod_security_context.windows_options = Some(
+            self.pod_security_context
+                .windows_options
+                .clone()
+                .map_or_else(
+                    || WindowsSecurityContextOptions {
+                        gmsa_credential_spec: Some(spec.to_string()),
+                        ..WindowsSecurityContextOptions::default()
+                    },
+                    |o| WindowsSecurityContextOptions {
+                        gmsa_credential_spec: Some(spec.to_string()),
+                        ..o
+                    },
+                ),
+        );
         self
     }
 
     pub fn win_credential_spec_name(&mut self, name: &str) -> &mut Self {
-        self.pod_security_context.windows_options =
-            Some(self.pod_security_context.windows_options.clone().map_or(
-                WindowsSecurityContextOptions {
-                    gmsa_credential_spec_name: Some(name.to_string()),
-                    ..WindowsSecurityContextOptions::default()
-                },
-                |o| WindowsSecurityContextOptions {
-                    gmsa_credential_spec_name: Some(name.to_string()),
-                    ..o
-                },
-            ));
+        self.pod_security_context.windows_options = Some(
+            self.pod_security_context
+                .windows_options
+                .clone()
+                .map_or_else(
+                    || WindowsSecurityContextOptions {
+                        gmsa_credential_spec_name: Some(name.to_string()),
+                        ..WindowsSecurityContextOptions::default()
+                    },
+                    |o| WindowsSecurityContextOptions {
+                        gmsa_credential_spec_name: Some(name.to_string()),
+                        ..o
+                    },
+                ),
+        );
         self
     }
 
     pub fn win_run_as_user_name(&mut self, name: &str) -> &mut Self {
-        self.pod_security_context.windows_options =
-            Some(self.pod_security_context.windows_options.clone().map_or(
-                WindowsSecurityContextOptions {
-                    run_as_user_name: Some(name.to_string()),
-                    ..WindowsSecurityContextOptions::default()
-                },
-                |o| WindowsSecurityContextOptions {
-                    run_as_user_name: Some(name.to_string()),
-                    ..o
-                },
-            ));
+        self.pod_security_context.windows_options = Some(
+            self.pod_security_context
+                .windows_options
+                .clone()
+                .map_or_else(
+                    || WindowsSecurityContextOptions {
+                        run_as_user_name: Some(name.to_string()),
+                        ..WindowsSecurityContextOptions::default()
+                    },
+                    |o| WindowsSecurityContextOptions {
+                        run_as_user_name: Some(name.to_string()),
+                        ..o
+                    },
+                ),
+        );
         self
     }
 }

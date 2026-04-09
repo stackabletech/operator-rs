@@ -78,10 +78,8 @@ where
 impl<E: snafu::Error + std::cmp::PartialEq> PartialEq for CertificatePairError<E> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::WriteFile { source: lhs_source }, Self::WriteFile { source: rhs_source }) => {
-                lhs_source.kind() == rhs_source.kind()
-            }
-            (Self::ReadFile { source: lhs_source }, Self::ReadFile { source: rhs_source }) => {
+            (Self::WriteFile { source: lhs_source }, Self::WriteFile { source: rhs_source })
+            | (Self::ReadFile { source: lhs_source }, Self::ReadFile { source: rhs_source }) => {
                 lhs_source.kind() == rhs_source.kind()
             }
             (lhs, rhs) => lhs == rhs,
@@ -169,7 +167,7 @@ pub enum PrivateKeyType {
 }
 
 /// Private and public key encoding, either DER or PEM.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum KeyEncoding {
     Pem,
     Der,
@@ -178,8 +176,8 @@ pub enum KeyEncoding {
 impl std::fmt::Display for KeyEncoding {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            KeyEncoding::Pem => write!(f, "PEM"),
-            KeyEncoding::Der => write!(f, "DER"),
+            Self::Pem => write!(f, "PEM"),
+            Self::Der => write!(f, "DER"),
         }
     }
 }

@@ -17,10 +17,13 @@ use opentelemetry_sdk::{
 };
 use snafu::{ResultExt as _, Snafu};
 use tracing::{level_filters::LevelFilter, subscriber::SetGlobalDefaultError};
-use tracing_appender::rolling::{InitError, RollingFileAppender};
+use tracing_appender::rolling::{InitError, RollingFileAppender, Rotation};
 use tracing_subscriber::{EnvFilter, Layer, Registry, filter::Directive, layer::SubscriberExt};
 
-use crate::tracing::settings::*;
+use crate::tracing::settings::{
+    ConsoleLogSettings, FileLogSettings, Format, OtlpLogSettings, OtlpTraceSettings, Settings,
+    SettingsToggle,
+};
 
 pub mod settings;
 
@@ -417,7 +420,8 @@ impl Tracing {
     // once we bump the toolchain to 1.91.0.
     // See https://github.com/rust-lang/rust-clippy/pull/15445
     #[allow(clippy::unwrap_in_result)]
-    pub fn init(mut self) -> Result<Tracing> {
+    #[allow(clippy::too_many_lines)]
+    pub fn init(mut self) -> Result<Self> {
         let mut layers: Vec<Box<dyn Layer<Registry> + Sync + Send>> = Vec::new();
 
         if let ConsoleLogSettings::Enabled {
@@ -450,7 +454,7 @@ impl Tracing {
                         .with_filter(env_filter_layer);
                     layers.push(console_output_layer.boxed());
                 }
-            };
+            }
         }
 
         if let FileLogSettings::Enabled {
@@ -588,7 +592,7 @@ impl Drop for Tracing {
         if let Some(tracer_provider) = &self.tracer_provider
             && let Err(error) = tracer_provider.shutdown()
         {
-            tracing::error!(%error, "unable to shutdown TracerProvider")
+            tracing::error!(%error, "unable to shutdown TracerProvider");
         }
 
         if let Some(logger_provider) = &self.logger_provider
@@ -616,12 +620,12 @@ pub trait BuilderState: private::Sealed {}
 /// [1]: private::Sealed
 #[doc(hidden)]
 mod private {
-    use super::*;
+    use crate::tracing::builder_state::{Config, PreServiceName};
 
     pub trait Sealed {}
 
-    impl Sealed for builder_state::PreServiceName {}
-    impl Sealed for builder_state::Config {}
+    impl Sealed for PreServiceName {}
+    impl Sealed for Config {}
 }
 
 /// This module holds the possible states that the builder is in.
@@ -682,11 +686,8 @@ impl TracingBuilder<builder_state::Config> {
     /// Enable the console output tracing subscriber and set the default
     /// [`LevelFilter`] which is overridable through the given environment
     /// variable.
-    pub fn with_console_output(
-        self,
-        console_log_settings: impl Into<ConsoleLogSettings>,
-    ) -> TracingBuilder<builder_state::Config> {
-        TracingBuilder {
+    pub fn with_console_output(self, console_log_settings: impl Into<ConsoleLogSettings>) -> Self {
+        Self {
             service_name: self.service_name,
             console_log_settings: console_log_settings.into(),
             otlp_log_settings: self.otlp_log_settings,
@@ -699,11 +700,8 @@ impl TracingBuilder<builder_state::Config> {
     /// Enable the file output tracing subscriber and set the default
     /// [`LevelFilter`] which is overridable through the given environment
     /// variable.
-    pub fn with_file_output(
-        self,
-        file_log_settings: impl Into<FileLogSettings>,
-    ) -> TracingBuilder<builder_state::Config> {
-        TracingBuilder {
+    pub fn with_file_output(self, file_log_settings: impl Into<FileLogSettings>) -> Self {
+        Self {
             service_name: self.service_name,
             console_log_settings: self.console_log_settings,
             file_log_settings: file_log_settings.into(),
@@ -718,11 +716,8 @@ impl TracingBuilder<builder_state::Config> {
     ///
     /// You can configure the OTLP log exports through the variables defined
     /// in the opentelemetry crates. See [`Tracing`].
-    pub fn with_otlp_log_exporter(
-        self,
-        otlp_log_settings: impl Into<OtlpLogSettings>,
-    ) -> TracingBuilder<builder_state::Config> {
-        TracingBuilder {
+    pub fn with_otlp_log_exporter(self, otlp_log_settings: impl Into<OtlpLogSettings>) -> Self {
+        Self {
             service_name: self.service_name,
             console_log_settings: self.console_log_settings,
             otlp_log_settings: otlp_log_settings.into(),
@@ -740,8 +735,8 @@ impl TracingBuilder<builder_state::Config> {
     pub fn with_otlp_trace_exporter(
         self,
         otlp_trace_settings: impl Into<OtlpTraceSettings>,
-    ) -> TracingBuilder<builder_state::Config> {
-        TracingBuilder {
+    ) -> Self {
+        Self {
             service_name: self.service_name,
             console_log_settings: self.console_log_settings,
             otlp_log_settings: self.otlp_log_settings,
@@ -784,7 +779,7 @@ fn env_filter_builder(env_var: &str, default_directive: impl Into<Directive>) ->
 /// available if the feature `clap` is enabled.
 #[cfg_attr(
     feature = "clap",
-    doc = r#"
+    doc = r"
 ```
 # use stackable_telemetry::tracing::TelemetryOptions;
 use clap::Parser;
@@ -798,7 +793,7 @@ struct Cli {
     telemetry_arguments: TelemetryOptions,
 }
 ```
-"#
+"
 )]
 #[cfg_attr(
     feature = "clap",
@@ -916,7 +911,7 @@ mod test {
                     environment_variable: "ABC_B",
                     default_level: LevelFilter::DEBUG
                 },
-                log_format: Default::default()
+                log_format: Format::default()
             }
         );
 
@@ -939,9 +934,9 @@ mod test {
                     environment_variable: "ABC_A",
                     default_level: LevelFilter::TRACE,
                 },
-                log_format: Default::default()
+                log_format: Format::default()
             }
-        )
+        );
     }
 
     #[rstest]
@@ -953,18 +948,19 @@ mod test {
             .with_console_output(("ABC_A", LevelFilter::TRACE, enabled))
             .build();
 
-        let expected = match enabled {
-            true => ConsoleLogSettings::Enabled {
+        let expected = if enabled {
+            ConsoleLogSettings::Enabled {
                 common_settings: Settings {
                     environment_variable: "ABC_A",
                     default_level: LevelFilter::TRACE,
                 },
-                log_format: Default::default(),
-            },
-            false => ConsoleLogSettings::Disabled,
+                log_format: Format::default(),
+            }
+        } else {
+            ConsoleLogSettings::Disabled
         };
 
-        assert_eq!(trace_guard.console_log_settings, expected)
+        assert_eq!(trace_guard.console_log_settings, expected);
     }
 
     #[test]
@@ -1005,7 +1001,7 @@ mod test {
                     environment_variable: "ABC_CONSOLE",
                     default_level: LevelFilter::INFO
                 },
-                log_format: Default::default()
+                log_format: Format::default()
             }
         );
         assert_eq!(
@@ -1085,7 +1081,7 @@ mod test {
             "test",
             TelemetryOptions {
                 console_log_disabled: false,
-                console_log_format: Default::default(),
+                console_log_format: Format::default(),
                 file_log_directory: None,
                 file_log_rotation_period: None,
                 file_log_max_files: None,

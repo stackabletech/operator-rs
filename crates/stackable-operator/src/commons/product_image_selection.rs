@@ -122,9 +122,12 @@ impl ProductImage {
         match &self.image_selection {
             ProductImageSelection::Custom(image_selection) => {
                 let image = ImageRef::parse(&image_selection.custom);
-                let image_tag_or_hash = image.tag.or(image.hash).unwrap_or("latest".to_string());
+                let image_tag_or_hash = image
+                    .tag
+                    .or(image.hash)
+                    .unwrap_or_else(|| "latest".to_string());
 
-                let app_version = format!("{}-{}", product_version, image_tag_or_hash);
+                let app_version = format!("{product_version}-{image_tag_or_hash}");
                 let app_version_label_value = Self::prepare_app_version_label_value(&app_version)?;
 
                 Ok(ResolvedProductImage {
@@ -180,8 +183,8 @@ impl ProductImage {
             ProductImageSelection::Custom(ProductImageCustom {
                 product_version: pv,
                 ..
-            }) => pv,
-            ProductImageSelection::StackableVersion(ProductImageStackableVersion {
+            })
+            | ProductImageSelection::StackableVersion(ProductImageStackableVersion {
                 product_version: pv,
                 ..
             }) => pv,
@@ -194,12 +197,12 @@ impl ProductImage {
         formatted_app_version.truncate(LABEL_VALUE_MAX_LEN);
         // The hash has the format `sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb`
         // As the colon (`:`) is not a valid label value character, we replace it with a valid "-" character.
-        let formatted_app_version = formatted_app_version.replace(":", "-");
+        let formatted_app_version = formatted_app_version.replace(':', "-");
 
         formatted_app_version
             .parse()
             .with_context(|_| ParseAppVersionLabelSnafu {
-                app_version: formatted_app_version.to_string(),
+                app_version: formatted_app_version,
             })
     }
 }
@@ -214,9 +217,9 @@ mod tests {
     #[case::stackable_version_without_stackable_version_stable_version(
         "superset",
         "23.7.42",
-        r#"
+        r"
         productVersion: 1.4.1
-        "#,
+        ",
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable23.7.42".to_string(),
             app_version_label_value: "1.4.1-stackable23.7.42".parse().expect("static app version label is always valid"),
@@ -228,9 +231,9 @@ mod tests {
     #[case::stackable_version_without_stackable_version_nightly(
         "superset",
         "0.0.0-dev",
-        r#"
+        r"
         productVersion: 1.4.1
-        "#,
+        ",
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable0.0.0-dev".to_string(),
             app_version_label_value: "1.4.1-stackable0.0.0-dev".parse().expect("static app version label is always valid"),
@@ -242,9 +245,9 @@ mod tests {
     #[case::stackable_version_without_stackable_version_pr_version(
         "superset",
         "0.0.0-pr123",
-        r#"
+        r"
         productVersion: 1.4.1
-        "#,
+        ",
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable0.0.0-dev".to_string(),
             app_version_label_value: "1.4.1-stackable0.0.0-dev".parse().expect("static app version label is always valid"),
@@ -256,10 +259,10 @@ mod tests {
     #[case::stackable_version_without_repo(
         "superset",
         "23.7.42",
-        r#"
+        r"
         productVersion: 1.4.1
         stackableVersion: 2.1.0
-        "#,
+        ",
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable2.1.0".to_string(),
             app_version_label_value: "1.4.1-stackable2.1.0".parse().expect("static app version label is always valid"),
@@ -271,11 +274,11 @@ mod tests {
     #[case::stackable_version_with_repo(
         "trino",
         "23.7.42",
-        r#"
+        r"
         productVersion: 1.4.1
         stackableVersion: 2.1.0
         repo: my.corp/myteam/stackable
-        "#,
+        ",
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/trino:1.4.1-stackable2.1.0".to_string(),
             app_version_label_value: "1.4.1-stackable2.1.0".parse().expect("static app version label is always valid"),
@@ -287,10 +290,10 @@ mod tests {
     #[case::custom_without_tag(
         "superset",
         "23.7.42",
-        r#"
+        r"
         custom: my.corp/myteam/stackable/superset
         productVersion: 1.4.1
-        "#,
+        ",
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset".to_string(),
             app_version_label_value: "1.4.1-latest".parse().expect("static app version label is always valid"),
@@ -302,10 +305,10 @@ mod tests {
     #[case::custom_with_tag(
         "superset",
         "23.7.42",
-        r#"
+        r"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
-        "#,
+        ",
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
             app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
@@ -317,10 +320,10 @@ mod tests {
     #[case::custom_with_colon_in_repo_and_without_tag(
         "superset",
         "23.7.42",
-        r#"
+        r"
         custom: 127.0.0.1:8080/myteam/stackable/superset
         productVersion: 1.4.1
-        "#,
+        ",
         ResolvedProductImage {
             image: "127.0.0.1:8080/myteam/stackable/superset".to_string(),
             app_version_label_value: "1.4.1-latest".parse().expect("static app version label is always valid"),
@@ -332,10 +335,10 @@ mod tests {
     #[case::custom_with_colon_in_repo_and_with_tag(
         "superset",
         "23.7.42",
-        r#"
+        r"
         custom: 127.0.0.1:8080/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
-        "#,
+        ",
         ResolvedProductImage {
             image: "127.0.0.1:8080/myteam/stackable/superset:latest-and-greatest".to_string(),
             app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
@@ -347,10 +350,10 @@ mod tests {
     #[case::custom_with_hash_in_repo_and_without_tag(
         "superset",
         "23.7.42",
-        r#"
+        r"
         custom: oci.stackable.tech/sdp/superset@sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb8c42f76efc1098
         productVersion: 1.4.1
-        "#,
+        ",
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset@sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb8c42f76efc1098".to_string(),
             app_version_label_value: "1.4.1-sha256-85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb".parse().expect("static app version label is always valid"),
@@ -362,11 +365,11 @@ mod tests {
     #[case::custom_takes_precedence(
         "superset",
         "23.7.42",
-        r#"
+        r"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
         stackableVersion: not-used
-        "#,
+        ",
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
             app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
@@ -378,11 +381,11 @@ mod tests {
     #[case::pull_policy_if_not_present(
         "superset",
         "23.7.42",
-        r#"
+        r"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
         pullPolicy: IfNotPresent
-        "#,
+        ",
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
             app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
@@ -394,11 +397,11 @@ mod tests {
     #[case::pull_policy_always(
         "superset",
         "23.7.42",
-        r#"
+        r"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
         pullPolicy: Always
-        "#,
+        ",
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
             app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
@@ -410,11 +413,11 @@ mod tests {
     #[case::pull_policy_never(
         "superset",
         "23.7.42",
-        r#"
+        r"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
         pullPolicy: Never
-        "#,
+        ",
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
             app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
@@ -426,14 +429,14 @@ mod tests {
     #[case::pull_secrets(
         "superset",
         "23.7.42",
-        r#"
+        r"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
         pullPolicy: Always
         pullSecrets:
         - name: myPullSecrets1
         - name: myPullSecrets2
-        "#,
+        ",
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
             app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
@@ -458,15 +461,15 @@ mod tests {
 
     #[rstest]
     #[case::custom(
-        r#"
+        r"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
-        "#,
+        ",
         "data did not match any variant of untagged enum ProductImageSelection at line 2 column 9"
     )]
     #[case::stackable_version(
-        r#"
+        r"
         stackableVersion: 2.1.0
-        "#,
+        ",
         "data did not match any variant of untagged enum ProductImageSelection at line 2 column 9"
     )]
     #[case::empty(

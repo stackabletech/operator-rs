@@ -42,7 +42,7 @@ pub enum Error {
 
 pub fn expand_from_file(path: &Path) -> Result<String, Error> {
     let input = std::fs::read_to_string(path).context(ReadFileSnafu)?;
-    let (attrs, input) = prepare_from_string(input)?;
+    let (attrs, input) = prepare_from_str(&input)?;
 
     let expanded = versioned_impl(attrs, input).to_string();
     let parsed = syn::parse_file(&expanded).context(ParseOutputFileSnafu)?;
@@ -50,7 +50,7 @@ pub fn expand_from_file(path: &Path) -> Result<String, Error> {
     Ok(prettyplease::unparse(&parsed))
 }
 
-fn prepare_from_string(input: String) -> Result<(TokenStream, Item), Error> {
+fn prepare_from_str(input: &str) -> Result<(TokenStream, Item), Error> {
     let parts: [&str; 4] = input
         .split(DELIMITER)
         .collect::<Vec<_>>()
