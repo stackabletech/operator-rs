@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 use kube::CustomResource;
 use schemars::JsonSchema;
@@ -64,20 +62,15 @@ pub struct ScalerStatus {
 // and others to be typed as objects. We therefore encode the variant data in a separate details
 // key/object. With this, all variants can be encoded as strings, while the status can still contain
 // additional data in an extra field when needed.
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, strum::Display)]
-#[serde(
-    tag = "state",
-    content = "details",
-    rename_all = "PascalCase",
-    rename_all_fields = "camelCase"
-)]
-#[strum(serialize_all = "PascalCase")]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema, strum::Display)]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[strum(serialize_all = "camelCase")]
 pub enum ScalerState {
     /// No scaling operation is in progress.
-    Idle,
+    Idle {},
 
     /// Running the `pre_scale` hook (e.g. data offload).
-    PreScaling,
+    PreScaling {},
 
     /// Waiting for the StatefulSet to converge to the new replica count.
     ///
@@ -104,41 +97,6 @@ pub enum ScalerState {
     },
 }
 
-// We manually implement the JSON schema instead of deriving it, because kube's schema transformer
-// cannot handle the derived JsonSchema and proceeds to hit the following error: "Property "state"
-// has the schema ... but was already defined as ... in another subschema. The schemas for a
-// property used in multiple subschemas must be identical".
-impl JsonSchema for ScalerState {
-    fn schema_name() -> Cow<'static, str> {
-        "ScalerState".into()
-    }
-
-    fn json_schema(generator: &mut schemars::generate::SchemaGenerator) -> schemars::Schema {
-        schemars::json_schema!({
-            "type": "object",
-            "required": ["state"],
-            "properties": {
-                "state": {
-                    "type": "string",
-                    "enum": ["idle", "preScaling", "scaling", "postScaling", "failed"]
-                },
-                "details": {
-                    "type": "object",
-                    "properties": {
-                        "failedIn": generator.subschema_for::<FailedInState>(),
-                        "previous_replicas": {
-                            "type": "uint16",
-                            "minimum": u16::MIN,
-                            "maximum": u16::MAX
-                        },
-                        "reason": { "type": "string" }
-                    }
-                }
-            }
-        })
-    }
-}
-
 /// In which state the scaling operation failed.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "PascalCase")]
@@ -158,19 +116,18 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
-    use crate::utils::yaml_from_str_singleton_map;
+    use crate::{
+        test_utils::serialize_to_yaml_with_singleton_map, utils::yaml_from_str_singleton_map,
+    };
 
     #[rstest]
-    #[case::idle("state: Idle", ScalerState::Idle { })]
-    #[case::pre_scaling("state: PreScaling", ScalerState::PreScaling { })]
-    #[case::scaling("state: Scaling
-details:
+    #[case::idle("idle: {}", ScalerState::Idle { })]
+    #[case::pre_scaling("preScaling: {}", ScalerState::PreScaling { })]
+    #[case::scaling("scaling:
   previousReplicas: 42", ScalerState::Scaling { previous_replicas: 42 })]
-    #[case::post_scaling("state: PostScaling
-details:
+    #[case::post_scaling("postScaling:
   previousReplicas: 42", ScalerState::PostScaling { previous_replicas: 42 })]
-    #[case::failed("state: Failed
-details:
+    #[case::failed("failed:
   failedIn: PreScaling
   reason: bruh moment", ScalerState::Failed {
          failed_in: FailedInState::PreScaling,
@@ -183,20 +140,19 @@ details:
     }
 
     #[rstest]
-    #[case::idle(ScalerState::Idle { }, "state: Idle\n")]
-    #[case::pre_scaling(ScalerState::PreScaling { }, "state: PreScaling\n")]
-    #[case::scaling(ScalerState::Scaling { previous_replicas: 42 }, "state: Scaling
-details:
+    #[case::idle(ScalerState::Idle { }, "idle: {}\n")]
+    #[case::pre_scaling(ScalerState::PreScaling { }, "preScaling: {}\n")]
+    #[case::scaling(ScalerState::Scaling { previous_replicas: 42 }, "scaling:
   previousReplicas: 42\n")]
-    #[case::post_scaling(ScalerState::PostScaling { previous_replicas: 42 }, "state: PostScaling
-details:
+    #[case::post_scaling(ScalerState::PostScaling { previous_replicas: 42 }, "postScaling:
   previousReplicas: 42\n")]
-    #[case::failed(ScalerState::Failed { failed_in: FailedInState::PreScaling, reason: "bruh moment".to_owned() }, "state: Failed
-details:
+    #[case::failed(ScalerState::Failed { failed_in: FailedInState::PreScaling, reason: "bruh moment".to_owned() }, "failed:
   failedIn: PreScaling
   reason: bruh moment\n")]
     fn serialize_state(#[case] input: ScalerState, #[case] expected: &str) {
-        let serialized = serde_yaml::to_string(&input).expect("serialization always passes");
+        let serialized =
+            serialize_to_yaml_with_singleton_map(&input).expect("serialization always passes");
+
         assert_eq!(serialized, expected);
     }
 }
