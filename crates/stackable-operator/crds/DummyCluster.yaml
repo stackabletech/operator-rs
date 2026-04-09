@@ -82,6 +82,208 @@ spec:
                       and `stopped` will take no effect until `reconciliationPaused` is set to false or removed.
                     type: boolean
                 type: object
+              databaseConnection:
+                oneOf:
+                - required:
+                  - postgresql
+                - required:
+                  - mysql
+                - required:
+                  - derby
+                - required:
+                  - redis
+                - required:
+                  - genericJdbc
+                - required:
+                  - genericSqlAlchemy
+                - required:
+                  - genericCelery
+                properties:
+                  derby:
+                    description: |-
+                      Connection settings for an embedded [Apache Derby](https://db.apache.org/derby/) database.
+
+                      Derby is an embedded, file-based Java database engine that requires no separate server process.
+                      It is typically used for development, testing, or as a lightweight metastore backend (e.g. for
+                      Apache Hive).
+                    properties:
+                      location:
+                        description: |-
+                          Path on the filesystem where Derby stores its database files.
+
+                          If not specified, defaults to `/tmp/derby/{unique_database_name}/derby.db`.
+                          The `{unique_database_name}` part is automatically handled by the operator and is added to
+                          prevent clashing database files. The `create=true` flag is always appended to the JDBC URL,
+                          so the database is created automatically if it does not yet exist at this location.
+                        nullable: true
+                        type: string
+                    type: object
+                  genericCelery:
+                    description: |-
+                      A generic Celery database connection for broker or result backend types not covered by a
+                      dedicated variant.
+
+                      Use this when you need a Celery-compatible connection that does not have a first-class
+                      connection type. The complete connection URL is read from a Secret, giving the user full
+                      control over the connection string.
+                    properties:
+                      connectionUrlSecretName:
+                        description: The name of the Secret that contains an `connectionUrl` key with the complete Celery URL.
+                        type: string
+                    required:
+                    - connectionUrlSecretName
+                    type: object
+                  genericJdbc:
+                    description: |-
+                      A generic JDBC database connection for database types not covered by a dedicated variant.
+
+                      Use this when you need to connect to a JDBC-compatible database that does not have a
+                      first-class connection type. You are responsible for providing the correct driver class name
+                      and a fully-formed JDBC URL as well as providing the needed classes on the Java classpath.
+                    properties:
+                      credentialsSecretName:
+                        description: |-
+                          Name of a Secret containing the `username` and `password` keys used to authenticate
+                          against the database.
+                        type: string
+                      driver:
+                        description: |-
+                          Fully-qualified Java class name of the JDBC driver, e.g. `org.postgresql.Driver` or
+                          `com.mysql.jdbc.Driver`. The driver JAR must be provided by you on the classpath.
+                        type: string
+                      url:
+                        description: |-
+                          The JDBC connection URL, e.g. `jdbc:postgresql://my-host:5432/mydb`. Credentials must
+                          not be embedded in this URL; they are instead injected via environment variables sourced
+                          from `credentials_secret`.
+                        format: uri
+                        type: string
+                    required:
+                    - credentialsSecretName
+                    - driver
+                    - url
+                    type: object
+                  genericSqlAlchemy:
+                    description: |-
+                      A generic SQLAlchemy database connection for database types not covered by a dedicated variant.
+
+                      Use this when you need to connect to a SQLAlchemy-compatible database that does not have a
+                      first-class connection type. The complete connection URL is read from a Secret, giving the user
+                      full control over the connection string including any driver-specific options.
+                    properties:
+                      connectionUrlSecretName:
+                        description: The name of the Secret that contains an `connectionUrl` key with the complete SQLAlchemy URL.
+                        type: string
+                    required:
+                    - connectionUrlSecretName
+                    type: object
+                  mysql:
+                    description: Connection settings for a [MySQL](https://www.mysql.com/) database.
+                    properties:
+                      credentialsSecretName:
+                        description: |-
+                          Name of a Secret containing the `username` and `password` keys used to authenticate
+                          against the MySQL server.
+                        type: string
+                      database:
+                        description: Name of the database (schema) to connect to.
+                        type: string
+                      host:
+                        description: Hostname or IP address of the MySQL server.
+                        type: string
+                      parameters:
+                        additionalProperties:
+                          type: string
+                        default: {}
+                        description: |-
+                          Additional map of connection parameters to append to the connection URL. The given
+                          `HashMap<String, String>` will be converted to query parameters in the form of
+                          `?param1=value1&param2=value2`.
+                        type: object
+                      port:
+                        default: 3306
+                        description: Port the MySQL server is listening on. Defaults to `3306`.
+                        format: uint16
+                        maximum: 65535.0
+                        minimum: 0.0
+                        type: integer
+                    required:
+                    - credentialsSecretName
+                    - database
+                    - host
+                    type: object
+                  postgresql:
+                    description: Connection settings for a [PostgreSQL](https://www.postgresql.org/) database.
+                    properties:
+                      credentialsSecretName:
+                        description: |-
+                          Name of a Secret containing the `username` and `password` keys used to authenticate
+                          against the PostgreSQL server.
+                        type: string
+                      database:
+                        description: Name of the database (schema) to connect to.
+                        type: string
+                      host:
+                        description: Hostname or IP address of the PostgreSQL server.
+                        type: string
+                      parameters:
+                        additionalProperties:
+                          type: string
+                        default: {}
+                        description: |-
+                          Additional map of JDBC connection parameters to append to the connection URL. The given
+                          `HashMap<String, String>` will be converted to query parameters in the form of
+                          `?param1=value1&param2=value2`.
+                        type: object
+                      port:
+                        default: 5432
+                        description: Port the PostgreSQL server is listening on. Defaults to `5432`.
+                        format: uint16
+                        maximum: 65535.0
+                        minimum: 0.0
+                        type: integer
+                    required:
+                    - credentialsSecretName
+                    - database
+                    - host
+                    type: object
+                  redis:
+                    description: |-
+                      Connection settings for a [Redis](https://redis.io/) instance.
+
+                      Redis is commonly used as a Celery message broker or result backend (e.g. for Apache Airflow).
+                    properties:
+                      credentialsSecretName:
+                        description: |-
+                          Name of a Secret containing the `username` and `password` keys used to authenticate
+                          against the Redis server.
+                        type: string
+                      databaseId:
+                        default: 0
+                        description: |-
+                          Numeric index of the Redis logical database to use. Defaults to `0`.
+
+                          Redis supports multiple logical databases within a single instance, identified by an
+                          integer index. Database `0` is the default.
+                        format: uint16
+                        maximum: 65535.0
+                        minimum: 0.0
+                        type: integer
+                      host:
+                        description: Hostname or IP address of the Redis server.
+                        type: string
+                      port:
+                        default: 6379
+                        description: Port the Redis server is listening on. Defaults to `6379`.
+                        format: uint16
+                        maximum: 65535.0
+                        minimum: 0.0
+                        type: integer
+                    required:
+                    - credentialsSecretName
+                    - host
+                    type: object
+                type: object
               domainName:
                 description: A validated domain name type conforming to RFC 1123, so e.g. not an IP address
                 type: string
@@ -274,7 +476,7 @@ spec:
                                         type: string
                                     type: object
                                   custom:
-                                    description: Custom log configuration provided in a ConfigMap
+                                    description: Log configuration provided in a ConfigMap
                                     properties:
                                       configMap:
                                         description: ConfigMap containing the log configuration files
@@ -354,7 +556,7 @@ spec:
                                         type: string
                                     type: object
                                   custom:
-                                    description: Custom log configuration provided in a ConfigMap
+                                    description: Log configuration provided in a ConfigMap
                                     properties:
                                       configMap:
                                         description: ConfigMap containing the log configuration files
@@ -434,7 +636,7 @@ spec:
                                         type: string
                                     type: object
                                   custom:
-                                    description: Custom log configuration provided in a ConfigMap
+                                    description: Log configuration provided in a ConfigMap
                                     properties:
                                       configMap:
                                         description: ConfigMap containing the log configuration files
@@ -514,7 +716,7 @@ spec:
                                         type: string
                                     type: object
                                   custom:
-                                    description: Custom log configuration provided in a ConfigMap
+                                    description: Log configuration provided in a ConfigMap
                                     properties:
                                       configMap:
                                         description: ConfigMap containing the log configuration files
@@ -594,7 +796,7 @@ spec:
                                         type: string
                                     type: object
                                   custom:
-                                    description: Custom log configuration provided in a ConfigMap
+                                    description: Log configuration provided in a ConfigMap
                                     properties:
                                       configMap:
                                         description: ConfigMap containing the log configuration files
@@ -886,7 +1088,7 @@ spec:
                                               type: string
                                           type: object
                                         custom:
-                                          description: Custom log configuration provided in a ConfigMap
+                                          description: Log configuration provided in a ConfigMap
                                           properties:
                                             configMap:
                                               description: ConfigMap containing the log configuration files
@@ -966,7 +1168,7 @@ spec:
                                               type: string
                                           type: object
                                         custom:
-                                          description: Custom log configuration provided in a ConfigMap
+                                          description: Log configuration provided in a ConfigMap
                                           properties:
                                             configMap:
                                               description: ConfigMap containing the log configuration files
@@ -1046,7 +1248,7 @@ spec:
                                               type: string
                                           type: object
                                         custom:
-                                          description: Custom log configuration provided in a ConfigMap
+                                          description: Log configuration provided in a ConfigMap
                                           properties:
                                             configMap:
                                               description: ConfigMap containing the log configuration files
@@ -1126,7 +1328,7 @@ spec:
                                               type: string
                                           type: object
                                         custom:
-                                          description: Custom log configuration provided in a ConfigMap
+                                          description: Log configuration provided in a ConfigMap
                                           properties:
                                             configMap:
                                               description: ConfigMap containing the log configuration files
@@ -1206,7 +1408,7 @@ spec:
                                               type: string
                                           type: object
                                         custom:
-                                          description: Custom log configuration provided in a ConfigMap
+                                          description: Log configuration provided in a ConfigMap
                                           properties:
                                             configMap:
                                               description: ConfigMap containing the log configuration files
@@ -2188,6 +2390,7 @@ spec:
             required:
             - clientAuthenticationDetails
             - clusterOperation
+            - databaseConnection
             - domainName
             - gitSync
             - hostName

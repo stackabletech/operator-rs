@@ -6,10 +6,41 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add generic database connection mechanism ([#1163]).
+
+### Changed
+
+- BREAKING: Change signature of `ContainerBuilder::add_env_vars` from `Vec<EnvVar>` to `IntoIterator<Item = EnvVar>` ([#1163]).
+- BREAKING: Remove `EXPERIMENTAL_` prefix in `CONFIG_OVERRIDE_FILE_HEADER_KEY` and `CONFIG_OVERRIDE_FILE_FOOTER_KEY` ([#1191]).
+- BREAKING: Bump `kube` from a custom version (`fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5`, which is between `3.0.1` and `3.1.0` and was needed to pull in schema fixes) to `3.1.0`. This means that the CRD schema generation bugs [#1934](https://github.com/kube-rs/kube/pull/1934) and [#1942](https://github.com/kube-rs/kube/pull/1942) are fixed ([#1192]).
+
+[#1163]: https://github.com/stackabletech/operator-rs/pull/1163
+[#1191]: https://github.com/stackabletech/operator-rs/pull/1191
+[#1192]: https://github.com/stackabletech/operator-rs/pull/1192
+
+## [0.109.0] - 2026-04-07
+
+### Added
+
 - Git sync: add support for CAs ([#1154]).
 - Add support for specifying a `clientAuthenticationMethod` for OIDC ([#1178]).
   This was originally done in [#1158] and had been reverted in [#1170].
 - Implement `Deref` for `kvp::Key` to be more ergonomic to use ([#1182]).
+- Add `create_random_secret_if_not_exists` function, which create a random Secret in case it doesn't already exist.
+  It notably also fixes a bug we had in trino and airflow-operator, where we created immutable Secrets,
+  which lead to problems ([#1187]).
+
+### Changed
+
+- Bump stackable-versioned to `0.9.0`, refer to its [changelog](../stackable-versioned/CHANGELOG.md) ([#1189]).
+- Bump stackable-webhook to `0.9.1`, refer to its [changelog](../stackable-webhook/CHANGELOG.md) ([#1189]).
+- BREAKING: Add mandatory `provision_parts` argument to `SecretOperatorVolumeSourceBuilder::new` ([#1165]).
+  It now forces the caller to make an explicit choice if the public parts are sufficient or if private
+  (e.g. a certificate for the Pod) parts are needed as well. This is done to avoid accidentally requesting
+  too much parts. For details see [this issue](https://github.com/stackabletech/issues/issues/547).
+
+  Additionally, `SecretClassVolume::to_volume` and `SecretClassVolume::to_ephemeral_volume_source`
+  also take the same new argument.
 
 ### Removed
 
@@ -17,8 +48,11 @@ All notable changes to this project will be documented in this file.
   functions from `kvp::Key` to disallow mutable access to inner values ([#1182]).
 
 [#1154]: https://github.com/stackabletech/operator-rs/pull/1154
+[#1165]: https://github.com/stackabletech/operator-rs/pull/1165
 [#1178]: https://github.com/stackabletech/operator-rs/pull/1178
 [#1182]: https://github.com/stackabletech/operator-rs/pull/1182
+[#1187]: https://github.com/stackabletech/operator-rs/pull/1187
+[#1189]: https://github.com/stackabletech/operator-rs/pull/1189
 
 ## [0.108.0] - 2026-03-10
 

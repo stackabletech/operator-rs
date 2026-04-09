@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-04-07
+
 ### Changed
 
 - Check for certificate rotation every 5 minutes to prevent expiry due to monotonic and wall clock divergence ([#1175]).
