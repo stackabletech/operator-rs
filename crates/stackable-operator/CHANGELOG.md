@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.110.0] - 2026-04-10
+
 ### Added
 
 - Add generic database connection mechanism ([#1163]).
