@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 use kube::CustomResource;
 use schemars::JsonSchema;
@@ -21,7 +19,7 @@ pub mod versioned {
         ),
         namespaced
     ))]
-    #[derive(Clone, Debug, PartialEq, CustomResource, Deserialize, Serialize, JsonSchema)]
+    #[derive(Clone, Debug, PartialEq, Eq, CustomResource, Deserialize, Serialize, JsonSchema)]
     pub struct ScalerSpec {
         /// Desired replica count.
         ///
@@ -40,7 +38,7 @@ pub mod versioned {
 }
 
 /// Status of a StackableScaler.
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScalerStatus {
     /// The current total number of replicas targeted by the managed StatefulSet.
@@ -59,25 +57,15 @@ pub struct ScalerStatus {
     pub last_transition_time: Time,
 }
 
-// We use `#[serde(tag)]` and `#[serde(content)]` here to circumvent Kubernetes restrictions in their
-// structural schema subset of OpenAPI schemas. They don't allow one variant to be typed as a string
-// and others to be typed as objects. We therefore encode the variant data in a separate details
-// key/object. With this, all variants can be encoded as strings, while the status can still contain
-// additional data in an extra field when needed.
-#[derive(Clone, Debug, Deserialize, Serialize, strum::Display)]
-#[serde(
-    tag = "state",
-    content = "details",
-    rename_all = "camelCase",
-    rename_all_fields = "camelCase"
-)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema, strum::Display)]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum ScalerState {
     /// No scaling operation is in progress.
-    Idle,
+    Idle {},
 
     /// Running the `pre_scale` hook (e.g. data offload).
-    PreScaling,
+    PreScaling {},
 
     /// Waiting for the StatefulSet to converge to the new replica count.
     ///
@@ -104,44 +92,9 @@ pub enum ScalerState {
     },
 }
 
-// We manually implement the JSON schema instead of deriving it, because kube's schema transformer
-// cannot handle the derived JsonSchema and proceeds to hit the following error: "Property "state"
-// has the schema ... but was already defined as ... in another subschema. The schemas for a
-// property used in multiple subschemas must be identical".
-impl JsonSchema for ScalerState {
-    fn schema_name() -> Cow<'static, str> {
-        "ScalerState".into()
-    }
-
-    fn json_schema(generator: &mut schemars::generate::SchemaGenerator) -> schemars::Schema {
-        schemars::json_schema!({
-            "type": "object",
-            "required": ["state"],
-            "properties": {
-                "state": {
-                    "type": "string",
-                    "enum": ["idle", "preScaling", "scaling", "postScaling", "failed"]
-                },
-                "details": {
-                    "type": "object",
-                    "properties": {
-                        "failedIn": generator.subschema_for::<FailedInState>(),
-                        "previous_replicas": {
-                            "type": "uint16",
-                            "minimum": u16::MIN,
-                            "maximum": u16::MAX
-                        },
-                        "reason": { "type": "string" }
-                    }
-                }
-            }
-        })
-    }
-}
-
 /// In which state the scaling operation failed.
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
+#[serde(rename_all = "PascalCase")]
 pub enum FailedInState {
     /// The `pre_scale` hook returned an error.
     PreScaling,

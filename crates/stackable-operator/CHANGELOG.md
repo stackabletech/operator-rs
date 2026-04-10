@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Add generic database connection mechanism ([#1163]).
 - Add `config_overrides` module with `KeyValueOverridesProvider` trait, enabling
   structured config file formats (e.g. JSON) in addition to key-value overrides ([#1177]).
+- Add `Scaler` CRD ([#1190], [#1195]).
 
 ### Changed
 
@@ -28,9 +29,11 @@ All notable changes to this project will be documented in this file.
 
 [#1163]: https://github.com/stackabletech/operator-rs/pull/1163
 [#1177]: https://github.com/stackabletech/operator-rs/pull/1177
+[#1190]: https://github.com/stackabletech/operator-rs/pull/1190
 [#1191]: https://github.com/stackabletech/operator-rs/pull/1191
 [#1192]: https://github.com/stackabletech/operator-rs/pull/1192
 [#1194]: https://github.com/stackabletech/operator-rs/pull/1194
+[#1195]: https://github.com/stackabletech/operator-rs/pull/1195
 
 ## [0.109.0] - 2026-04-07
 
