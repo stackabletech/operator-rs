@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.110.1] - 2026-04-16
+
 ### Added
 
 - Derive `strum::AsRefStr` for `ClientAuthenticationMethod` ([#1197]).
