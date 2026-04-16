@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Derive `strum::AsRefStr` for `ClientAuthenticationMethod` ([#XXXX]).
+
+[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+
 ## [0.110.0] - 2026-04-10
 
 ### Added
