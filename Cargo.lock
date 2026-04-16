@@ -2972,7 +2972,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.110.0"
+version = "0.110.1"
 dependencies = [
  "base64",
  "clap",
