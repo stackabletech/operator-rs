@@ -109,8 +109,10 @@ pub mod versioned {
         PartialEq,
         PartialOrd,
         Serialize,
+        strum::AsRefStr,
     )]
     #[serde(rename_all = "snake_case")]
+    #[strum(serialize_all = "snake_case")]
     pub enum ClientAuthenticationMethod {
         /// Authenticate using HTTP Basic authentication with client_id and client_secret.
         /// This is the default method according to the OIDC spec.
