@@ -65,21 +65,18 @@ where
     fn add_label(&mut self, label: Label) -> &mut Self {
         let meta = self.meta_mut();
 
-        match &mut meta.labels {
-            Some(labels) => {
-                // TODO (@Techassi): Add an API to consume key and value
-                let KeyValuePair { key, value } = label.into_inner();
-                labels.insert(key.to_string(), value.to_string());
-            }
-            None => {
-                let mut labels = BTreeMap::new();
+        if let Some(labels) = &mut meta.labels {
+            // TODO (@Techassi): Add an API to consume key and value
+            let KeyValuePair { key, value } = label.into_inner();
+            labels.insert(key.to_string(), value.to_string());
+        } else {
+            let mut labels = BTreeMap::new();
 
-                // TODO (@Techassi): Add an API to consume key and value
-                let KeyValuePair { key, value } = label.into_inner();
-                labels.insert(key.to_string(), value.to_string());
+            // TODO (@Techassi): Add an API to consume key and value
+            let KeyValuePair { key, value } = label.into_inner();
+            labels.insert(key.to_string(), value.to_string());
 
-                meta.labels = Some(labels);
-            }
+            meta.labels = Some(labels);
         }
 
         self
@@ -90,7 +87,7 @@ where
 
         match &mut meta.labels {
             Some(existing_labels) => {
-                existing_labels.extend::<BTreeMap<String, String>>(labels.into())
+                existing_labels.extend::<BTreeMap<String, String>>(labels.into());
             }
             None => meta.labels = Some(labels.into()),
         }
@@ -397,7 +394,7 @@ impl Labels {
     /// This function returns a result, because the parameter `object_labels`
     /// can contain invalid data or can exceed the maximum allowed number of
     /// characters.
-    pub fn recommended<R>(object_labels: ObjectLabels<R>) -> Result<Self, LabelError>
+    pub fn recommended<R>(object_labels: &ObjectLabels<R>) -> Result<Self, LabelError>
     where
         R: Resource,
     {

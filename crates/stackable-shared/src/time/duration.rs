@@ -24,7 +24,7 @@ use schemars::JsonSchema;
 use snafu::{OptionExt, ResultExt, Snafu};
 use strum::IntoEnumIterator;
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 #[snafu(module)]
 pub enum DurationParseError {
     #[snafu(display("empty input"))]
@@ -69,6 +69,7 @@ impl FromStr for Duration {
     type Err = DurationParseError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
+        #[allow(clippy::wildcard_imports)]
         use duration_parse_error::*;
         if input.is_empty() {
             return EmptyInputSnafu.fail();
@@ -98,9 +99,8 @@ impl FromStr for Duration {
             let Some(unit) = take_group(char::is_alphabetic) else {
                 if let Some(&(_, chr)) = chars.peek() {
                     return UnexpectedCharacterSnafu { chr }.fail();
-                } else {
-                    return NoUnitSnafu { value }.fail();
                 }
+                return NoUnitSnafu { value }.fail();
             };
 
             let unit = unit.parse::<DurationUnit>().ok().context(ParseUnitSnafu {
@@ -119,7 +119,7 @@ impl FromStr for Duration {
                         .fail();
                     }
                     Ordering::Equal => return DuplicateUnitSnafu { unit }.fail(),
-                    _ => (),
+                    Ordering::Greater => (),
                 }
             }
 
@@ -127,7 +127,7 @@ impl FromStr for Duration {
             // the appropriate number of milliseconds for this unit
             let fragment_value =
                 value
-                    .checked_mul(unit.millis() as u128)
+                    .checked_mul(u128::from(unit.millis()))
                     .context(OverflowSnafu {
                         input: input.to_string(),
                         value,
@@ -186,11 +186,11 @@ impl Display for Duration {
         let mut millis = self.0.as_millis();
 
         for unit in DurationUnit::iter() {
-            let whole = millis / unit.millis() as u128;
-            let rest = millis % unit.millis() as u128;
+            let whole = millis / u128::from(unit.millis());
+            let rest = millis % u128::from(unit.millis());
 
             if whole > 0 {
-                write!(f, "{}{}", whole, unit)?;
+                write!(f, "{whole}{unit}")?;
             }
 
             millis = rest;
@@ -244,13 +244,13 @@ impl Add<Duration> for std::time::Instant {
 
 impl AddAssign for Duration {
     fn add_assign(&mut self, rhs: Self) {
-        self.0 += rhs.0
+        self.0 += rhs.0;
     }
 }
 
 impl AddAssign<Duration> for std::time::Instant {
     fn add_assign(&mut self, rhs: Duration) {
-        *self += rhs.0
+        *self += rhs.0;
     }
 }
 
@@ -272,20 +272,20 @@ impl Sub<Duration> for std::time::Instant {
 
 impl SubAssign for Duration {
     fn sub_assign(&mut self, rhs: Self) {
-        self.0 -= rhs.0
+        self.0 -= rhs.0;
     }
 }
 
 impl SubAssign<Duration> for std::time::Instant {
     fn sub_assign(&mut self, rhs: Duration) {
-        *self -= rhs.0
+        *self -= rhs.0;
     }
 }
 
 impl Mul<u32> for Duration {
     type Output = Self;
 
-    fn mul(self, rhs: u32) -> Duration {
+    fn mul(self, rhs: u32) -> Self {
         Self(self.0 * rhs)
     }
 }
@@ -301,7 +301,7 @@ impl Mul<Duration> for u32 {
 impl Div<u32> for Duration {
     type Output = Self;
 
-    fn div(self, rhs: u32) -> Duration {
+    fn div(self, rhs: u32) -> Self {
         Self(self.0 / rhs)
     }
 }
@@ -410,15 +410,13 @@ pub enum DurationUnit {
 impl DurationUnit {
     /// Returns the number of whole milliseconds in each supported
     /// [`DurationUnit`].
-    const fn millis(&self) -> u64 {
-        use DurationUnit::*;
-
+    const fn millis(self) -> u64 {
         match self {
-            Days => 24 * Hours.millis(),
-            Hours => 60 * Minutes.millis(),
-            Minutes => 60 * Seconds.millis(),
-            Seconds => 1000,
-            Milliseconds => 1,
+            Self::Days => 24 * Self::Hours.millis(),
+            Self::Hours => 60 * Self::Minutes.millis(),
+            Self::Minutes => 60 * Self::Seconds.millis(),
+            Self::Seconds => 1000,
+            Self::Milliseconds => 1,
         }
     }
 }
@@ -452,7 +450,7 @@ mod test {
 
         assert_eq!(
             Duration::from_days_unchecked(max_duration_days).as_millis(),
-            18446744073657600000 // Precision lost due to ms -> day conversion
+            18_446_744_073_657_600_000 // Precision lost due to ms -> day conversion
         );
         let result =
             std::panic::catch_unwind(|| Duration::from_days_unchecked(max_duration_days + 1));
@@ -464,10 +462,10 @@ mod test {
     #[case("1m", 60)]
     #[case("1h", 3600)]
     #[case("70m", 4200)]
-    #[case("15d2m2s", 1296122)]
-    #[case("15d2m2s600ms", 1296122)]
-    #[case("15d2m2s1000ms", 1296123)]
-    #[case("213503982334d", 18446744073657600)]
+    #[case("15d2m2s", 1_296_122)]
+    #[case("15d2m2s600ms", 1_296_122)]
+    #[case("15d2m2s1000ms", 1_296_123)]
+    #[case("213503982334d", 18_446_744_073_657_600)]
     fn parse_as_secs(#[case] input: &str, #[case] output: u64) {
         let dur: Duration = input.parse().expect("valid duration input must parse");
         assert_eq!(dur.as_secs(), output);
@@ -479,10 +477,10 @@ mod test {
     #[case("1ä", DurationParseError::ParseUnitError { unit: "ä".into() })]
     #[case(" ", DurationParseError::UnexpectedCharacter { chr: ' ' })]
     #[case("", DurationParseError::EmptyInput)]
-    #[case("213503982335d", DurationParseError::Overflow { input: "213503982335d".to_string(), value: 213503982335_u128, unit: DurationUnit::Days })]
+    #[case("213503982335d", DurationParseError::Overflow { input: "213503982335d".to_string(), value: 213_503_982_335_u128, unit: DurationUnit::Days })]
     fn parse_invalid(#[case] input: &str, #[case] expected_err: DurationParseError) {
         let err = Duration::from_str(input).expect_err("invalid duration input must not parse");
-        assert_eq!(err, expected_err)
+        assert_eq!(err, expected_err);
     }
 
     #[rstest]
@@ -493,7 +491,7 @@ mod test {
         #[case] expected_err: DurationParseError,
     ) {
         let err = Duration::from_str(input).expect_err("invalid duration input must produce error");
-        assert_eq!(err, expected_err)
+        assert_eq!(err, expected_err);
     }
 
     #[rstest]
@@ -518,7 +516,7 @@ mod test {
         }
 
         let s: S = serde_yaml::from_str("dur: 15d2m2s").expect("valid duration must deserialize");
-        assert_eq!(s.dur.as_secs(), 1296122);
+        assert_eq!(s.dur.as_secs(), 1_296_122);
     }
 
     #[test]

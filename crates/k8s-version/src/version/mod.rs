@@ -18,7 +18,7 @@ static VERSION_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 
 /// Error variants which can be encountered when creating a new [`Version`] from
 /// unparsed input.
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum ParseVersionError {
     #[snafu(display(
         "invalid version format. Input is empty, contains non-ASCII characters or contains more than 63 characters"
@@ -153,16 +153,16 @@ mod test {
     #[case("", ParseVersionError::InvalidFormat)]
     fn invalid_version(#[case] input: &str, #[case] error: ParseVersionError) {
         let err = Version::from_str(input).expect_err("invalid Kubernetes version");
-        assert_eq!(err, error)
+        assert_eq!(err, error);
     }
 
     #[apply(ord_cases)]
     fn ord(input: Version, other: Version, expected: Ordering) {
-        assert_eq!(input.cmp(&other), expected)
+        assert_eq!(input.cmp(&other), expected);
     }
 
     #[apply(ord_cases)]
     fn partial_ord(input: Version, other: Version, expected: Ordering) {
-        assert_eq!(input.partial_cmp(&other), Some(expected))
+        assert_eq!(input.partial_cmp(&other), Some(expected));
     }
 }

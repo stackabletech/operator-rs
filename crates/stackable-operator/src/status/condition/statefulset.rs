@@ -36,7 +36,7 @@ impl StatefulSetConditionBuilder {
             let current_status = Self::stateful_set_available(sts);
 
             if current_status != ClusterConditionStatus::True {
-                unavailable_resources.push(sts.name_any())
+                unavailable_resources.push(sts.name_any());
             }
 
             available = cmp::max(available, current_status);

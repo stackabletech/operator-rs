@@ -20,7 +20,7 @@ pub enum Error {
 }
 
 /// Connection settings for a [MySQL](https://www.mysql.com/) database.
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MysqlConnection {
     /// Hostname or IP address of the MySQL server.

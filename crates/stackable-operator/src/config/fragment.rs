@@ -1,3 +1,4 @@
+#![allow(clippy::doc_link_with_quotes)]
 //! Fragments are partially validated parts of a product configuration. For example, mandatory values may be missing.
 //! Fragments may be [`validate`]d and turned into their ["full"](`FromFragment`) type.
 //!
@@ -5,7 +6,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::{Display, Write},
-    hash::Hash,
+    hash::{BuildHasher, Hash},
 };
 
 use k8s_openapi::api::core::v1::PodTemplateSpec;
@@ -23,7 +24,7 @@ use crate::role_utils::{Role, RoleGroup};
 /// Constructed internally in [`validate`]
 pub struct Validator<'a> {
     ident: Option<&'a dyn Display>,
-    parent: Option<&'a Validator<'a>>,
+    parent: Option<&'a Self>,
 }
 
 impl Validator<'_> {
@@ -134,7 +135,7 @@ impl<T: Atomic> FromFragment for T {
         fragment.ok_or_else(|| validator.error_required())
     }
 }
-impl<K, V: FromFragment> FromFragment for HashMap<K, V>
+impl<K, V: FromFragment, S: BuildHasher + Default> FromFragment for HashMap<K, V, S>
 where
     K: Eq + Hash + Display,
 {
@@ -192,8 +193,8 @@ impl<T: FromFragment> FromFragment for Option<T> {
     }
 }
 impl FromFragment for PodTemplateSpec {
-    type Fragment = PodTemplateSpec;
-    type RequiredFragment = PodTemplateSpec;
+    type Fragment = Self;
+    type RequiredFragment = Self;
 
     fn from_fragment(
         fragment: Self::Fragment,

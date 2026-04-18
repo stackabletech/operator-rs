@@ -44,11 +44,11 @@
 //! let opa_config: &OpaConfig = cluster.spec.opa.as_ref().unwrap();
 //!
 //! assert_eq!(
-//!     opa_config.document_url(&cluster, Some("allow"), OpaApiVersion::V1),
+//!     opa_config.document_url(&cluster, Some("allow"), &OpaApiVersion::V1),
 //!     "v1/data/test/allow".to_string()
 //! );
 //! assert_eq!(
-//!     opa_config.full_document_url(&cluster, "http://localhost:8081", None, OpaApiVersion::V1),
+//!     opa_config.full_document_url(&cluster, "http://localhost:8081", None, &OpaApiVersion::V1),
 //!     "http://localhost:8081/v1/data/test".to_string()
 //! );
 //! ```
@@ -141,7 +141,7 @@ impl OpaConfig {
         &self,
         resource: &T,
         rule: Option<&str>,
-        api_version: OpaApiVersion,
+        api_version: &OpaApiVersion,
     ) -> String
     where
         T: ResourceExt,
@@ -182,21 +182,19 @@ impl OpaConfig {
         resource: &T,
         opa_base_url: &str,
         rule: Option<&str>,
-        api_version: OpaApiVersion,
+        api_version: &OpaApiVersion,
     ) -> String
     where
         T: ResourceExt,
     {
         if opa_base_url.ends_with('/') {
             format!(
-                "{}{}",
-                opa_base_url,
+                "{opa_base_url}{}",
                 self.document_url(resource, rule, api_version)
             )
         } else {
             format!(
-                "{}/{}",
-                opa_base_url,
+                "{opa_base_url}/{}",
                 self.document_url(resource, rule, api_version)
             )
         }
@@ -226,7 +224,7 @@ impl OpaConfig {
         client: &Client,
         resource: &T,
         rule: Option<&str>,
-        api_version: OpaApiVersion,
+        api_version: &OpaApiVersion,
     ) -> Result<String>
     where
         T: Resource<Scope = NamespaceResourceScope>,
@@ -286,7 +284,7 @@ mod tests {
     const OPA_BASE_URL_WITH_SLASH: &str = "http://opa:8081/";
     const OPA_BASE_URL_WITHOUT_SLASH: &str = "http://opa:8081";
 
-    const V1: OpaApiVersion = OpaApiVersion::V1;
+    const V1: &OpaApiVersion = &OpaApiVersion::V1;
 
     #[test]
     fn document_url_with_package_name() {
@@ -371,7 +369,7 @@ mod tests {
     fn build_opa_config(package: Option<&str>) -> OpaConfig {
         OpaConfig {
             config_map_name: "opa".to_string(),
-            package: package.map(|p| p.to_string()),
+            package: package.map(ToString::to_string),
         }
     }
 
@@ -403,11 +401,8 @@ mod tests {
             package: Some("///kafka.authz".to_owned()),
         };
 
-        let document_url = opa_config.document_url(
-            &k8s_openapi::api::core::v1::Pod::default(),
-            None,
-            OpaApiVersion::V1,
-        );
-        assert_eq!(document_url, "v1/data/kafka/authz")
+        let document_url =
+            opa_config.document_url(&k8s_openapi::api::core::v1::Pod::default(), None, V1);
+        assert_eq!(document_url, "v1/data/kafka/authz");
     }
 }

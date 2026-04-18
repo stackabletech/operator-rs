@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    hash::BuildHasher,
+};
 
 use k8s_openapi::api::core::v1::EnvVar;
 use product_config::{ProductConfigManager, PropertyValidationResult, types::PropertyNameKind};
@@ -7,7 +10,10 @@ use serde::Serialize;
 use snafu::{ResultExt, Snafu};
 use tracing::{debug, error, warn};
 
-use crate::role_utils::{CommonConfiguration, Role};
+use crate::{
+    config_overrides::KeyValueOverridesProvider,
+    role_utils::{CommonConfiguration, Role},
+};
 
 pub const CONFIG_OVERRIDE_FILE_HEADER_KEY: &str = "FILE_HEADER";
 pub const CONFIG_OVERRIDE_FILE_FOOTER_KEY: &str = "FILE_FOOTER";
@@ -171,27 +177,30 @@ pub fn config_for_role_and_group<'a>(
 /// - `roles`: A map keyed by role names. The value is a tuple of a vector of `PropertyNameKind`
 ///   like (Cli, Env or Files) and [`crate::role_utils::Role`] with a boxed [`Configuration`].
 #[allow(clippy::type_complexity)]
-pub fn transform_all_roles_to_config<T, U, ProductSpecificCommonConfig>(
-    resource: &T::Configurable,
-    roles: HashMap<
+pub fn transform_all_roles_to_config<Config, ConfigOverrides, RoleConfig, CommonConfig, S>(
+    resource: &Config::Configurable,
+    roles: &HashMap<
         String,
         (
             Vec<PropertyNameKind>,
-            Role<T, U, ProductSpecificCommonConfig>,
+            Role<Config, ConfigOverrides, RoleConfig, CommonConfig>,
         ),
+        S,
     >,
 ) -> Result<RoleConfigByPropertyKind>
 where
-    T: Configuration,
-    U: Default + JsonSchema + Serialize,
-    ProductSpecificCommonConfig: Default + JsonSchema + Serialize,
+    Config: Configuration,
+    RoleConfig: Default + JsonSchema + Serialize,
+    CommonConfig: Default + JsonSchema + Serialize,
+    ConfigOverrides: Default + JsonSchema + Serialize + KeyValueOverridesProvider,
+    S: BuildHasher,
 {
     let mut result = HashMap::new();
 
-    for (role_name, (property_name_kinds, role)) in &roles {
+    for (role_name, (property_name_kinds, role)) in roles {
         let role_properties =
             transform_role_to_config(resource, role_name, role, property_name_kinds)?;
-        result.insert(role_name.to_string(), role_properties);
+        result.insert(role_name.clone(), role_properties);
     }
 
     Ok(result)
@@ -220,7 +229,7 @@ pub fn validate_all_roles_and_groups_config(
     let mut result = HashMap::new();
 
     for (role, role_group) in role_config {
-        let role_entry = result.entry(role.to_string()).or_insert(HashMap::new());
+        let role_entry = result.entry(role.clone()).or_insert_with(HashMap::new);
 
         for (group, properties_by_kind) in role_group {
             role_entry.insert(
@@ -305,7 +314,7 @@ fn process_validation_result(
     let mut properties = BTreeMap::new();
     let mut collected_errors = Vec::new();
 
-    for (key, result) in validation_result.iter() {
+    for (key, result) in validation_result {
         match result {
             PropertyValidationResult::Default(value) => {
                 debug!(
@@ -380,22 +389,23 @@ fn process_validation_result(
 /// - `role_name`      - The name of the role.
 /// - `role`           - The role for which to transform the configuration parameters.
 /// - `property_kinds` - Used as "buckets" to partition the configuration properties by.
-fn transform_role_to_config<T, U, ProductSpecificCommonConfig>(
-    resource: &T::Configurable,
+fn transform_role_to_config<Config, ConfigOverrides, RoleConfig, CommonConfig>(
+    resource: &Config::Configurable,
     role_name: &str,
-    role: &Role<T, U, ProductSpecificCommonConfig>,
+    role: &Role<Config, ConfigOverrides, RoleConfig, CommonConfig>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<RoleGroupConfigByPropertyKind>
 where
-    T: Configuration,
-    U: Default + JsonSchema + Serialize,
-    ProductSpecificCommonConfig: Default + JsonSchema + Serialize,
+    Config: Configuration,
+    RoleConfig: Default + JsonSchema + Serialize,
+    CommonConfig: Default + JsonSchema + Serialize,
+    ConfigOverrides: Default + JsonSchema + Serialize + KeyValueOverridesProvider,
 {
     let mut result = HashMap::new();
 
     // Properties from the role have the lowest priority, so they are computed first...
     let role_properties = parse_role_config(resource, role_name, &role.config, property_kinds)?;
-    let role_overrides = parse_role_overrides(&role.config, property_kinds)?;
+    let role_overrides = parse_role_overrides(&role.config, property_kinds);
 
     // for each role group ...
     for (role_group_name, role_group) in &role.role_groups {
@@ -420,7 +430,7 @@ where
         }
 
         // ... compute the role group overrides and merge them into `role_group_properties_merged`.
-        let role_group_overrides = parse_role_overrides(&role_group.config, property_kinds)?;
+        let role_group_overrides = parse_role_overrides(&role_group.config, property_kinds);
         for (property_kind, property_overrides) in role_group_overrides {
             role_group_properties_merged
                 .entry(property_kind)
@@ -444,14 +454,14 @@ where
 /// - `role_name`      - Not used directly but passed on to the `Configuration::compute_*` calls.
 /// - `config`         - The configuration properties to partition.
 /// - `property_kinds` - The "buckets" used to partition the configuration properties.
-fn parse_role_config<T, ProductSpecificCommonConfig>(
-    resource: &<T as Configuration>::Configurable,
+fn parse_role_config<Config, CommonConfig, ConfigOverrides>(
+    resource: &<Config as Configuration>::Configurable,
     role_name: &str,
-    config: &CommonConfiguration<T, ProductSpecificCommonConfig>,
+    config: &CommonConfiguration<Config, CommonConfig, ConfigOverrides>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
-    T: Configuration,
+    Config: Configuration,
 {
     let mut result = HashMap::new();
     for property_kind in property_kinds {
@@ -474,18 +484,19 @@ where
     Ok(result)
 }
 
-fn parse_role_overrides<T, ProductSpecificCommonConfig>(
-    config: &CommonConfiguration<T, ProductSpecificCommonConfig>,
+fn parse_role_overrides<Config, CommonConfig, ConfigOverrides>(
+    config: &CommonConfiguration<Config, CommonConfig, ConfigOverrides>,
     property_kinds: &[PropertyNameKind],
-) -> Result<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
+) -> HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>
 where
-    T: Configuration,
+    Config: Configuration,
+    ConfigOverrides: KeyValueOverridesProvider,
 {
     let mut result = HashMap::new();
     for property_kind in property_kinds {
         match property_kind {
             PropertyNameKind::File(file) => {
-                result.insert(property_kind.clone(), parse_file_overrides(config, file)?)
+                result.insert(property_kind.clone(), parse_file_overrides(config, file))
             }
             PropertyNameKind::Env => result.insert(
                 property_kind.clone(),
@@ -508,26 +519,18 @@ where
         };
     }
 
-    Ok(result)
+    result
 }
 
-fn parse_file_overrides<T, ProductSpecificCommonConfig>(
-    config: &CommonConfiguration<T, ProductSpecificCommonConfig>,
+fn parse_file_overrides<Config, CommonConfig, ConfigOverrides>(
+    config: &CommonConfiguration<Config, CommonConfig, ConfigOverrides>,
     file: &str,
-) -> Result<BTreeMap<String, Option<String>>>
+) -> BTreeMap<String, Option<String>>
 where
-    T: Configuration,
+    Config: Configuration,
+    ConfigOverrides: KeyValueOverridesProvider,
 {
-    let mut final_overrides: BTreeMap<String, Option<String>> = BTreeMap::new();
-
-    // For Conf files only process overrides that match our file name
-    if let Some(config) = config.config_overrides.get(file) {
-        for (key, value) in config {
-            final_overrides.insert(key.clone(), Some(value.clone()));
-        }
-    }
-
-    Ok(final_overrides)
+    config.config_overrides.get_key_value_overrides(file)
 }
 
 /// Extract the environment variables of a rolegroup config into a vector of EnvVars.
@@ -570,8 +573,8 @@ where
 ///     env_vars_from_rolegroup_config(&rolegroup_config)
 /// );
 /// ```
-pub fn env_vars_from_rolegroup_config(
-    rolegroup_config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+pub fn env_vars_from_rolegroup_config<S: BuildHasher>(
+    rolegroup_config: &HashMap<PropertyNameKind, BTreeMap<String, String>, S>,
 ) -> Vec<EnvVar> {
     env_vars_from(
         rolegroup_config
@@ -591,7 +594,7 @@ pub fn env_vars_from_rolegroup_config(
 ///     product_config_utils::env_vars_from, role_utils::CommonConfiguration,
 /// };
 ///
-/// let common_config = CommonConfiguration::<(), ()> {
+/// let common_config = CommonConfiguration::<(), (), ()> {
 ///     env_overrides: [("VAR".to_string(), "value".to_string())]
 ///         .into_iter()
 ///         .collect(),
@@ -670,13 +673,15 @@ pub fn insert_or_update_env_vars(env_vars: &[EnvVar], env_overrides: &[EnvVar]) 
     let mut combined = BTreeMap::new();
 
     for env_var in env_vars.iter().chain(env_overrides) {
-        combined.insert(env_var.name.to_owned(), env_var.to_owned());
+        combined.insert(env_var.name.clone(), env_var.to_owned());
     }
 
     combined.into_values().collect()
 }
 
 #[cfg(test)]
+#[expect(clippy::unnecessary_wraps)]
+#[expect(clippy::fn_params_excessive_bools)]
 mod tests {
     macro_rules! collection {
         // map-like
@@ -693,9 +698,30 @@ mod tests {
 
     use k8s_openapi::api::core::v1::PodTemplateSpec;
     use rstest::*;
+    use schemars::JsonSchema;
+    use serde::{Deserialize, Serialize};
 
     use super::*;
-    use crate::role_utils::{GenericProductSpecificCommonConfig, Role, RoleGroup};
+    use crate::{
+        config_overrides::{KeyValueConfigOverrides, KeyValueOverridesProvider},
+        role_utils::{GenericCommonConfig, Role, RoleGroup},
+    };
+
+    /// Test-only config overrides type that wraps per-file key-value overrides.
+    #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+    struct TestConfigOverrides {
+        #[serde(flatten)]
+        files: HashMap<String, KeyValueConfigOverrides>,
+    }
+
+    impl KeyValueOverridesProvider for TestConfigOverrides {
+        fn get_key_value_overrides(&self, file: &str) -> BTreeMap<String, Option<String>> {
+            self.files
+                .get(file)
+                .map(KeyValueConfigOverrides::as_product_config_overrides)
+                .unwrap_or_default()
+        }
+    }
 
     const ROLE_GROUP: &str = "role_group";
 
@@ -735,7 +761,7 @@ mod tests {
         ) -> Result<BTreeMap<String, Option<String>>> {
             let mut result = BTreeMap::new();
             if let Some(env) = &self.env {
-                result.insert("env".to_string(), Some(env.to_string()));
+                result.insert("env".to_string(), Some(env.clone()));
             }
             Ok(result)
         }
@@ -747,7 +773,7 @@ mod tests {
         ) -> Result<BTreeMap<String, Option<String>>> {
             let mut result = BTreeMap::new();
             if let Some(cli) = &self.cli {
-                result.insert("cli".to_string(), Some(cli.to_string()));
+                result.insert("cli".to_string(), Some(cli.clone()));
             }
             Ok(result)
         }
@@ -760,7 +786,7 @@ mod tests {
         ) -> Result<BTreeMap<String, Option<String>>> {
             let mut result = BTreeMap::new();
             if let Some(conf) = &self.conf {
-                result.insert("file".to_string(), Some(conf.to_string()));
+                result.insert("file".to_string(), Some(conf.clone()));
             }
             Ok(result)
         }
@@ -776,27 +802,24 @@ mod tests {
 
     fn build_common_config(
         test_config: Option<Box<TestConfig>>,
-        config_overrides: Option<HashMap<String, HashMap<String, String>>>,
+        config_overrides: Option<TestConfigOverrides>,
         env_overrides: Option<HashMap<String, String>>,
         cli_overrides: Option<BTreeMap<String, String>>,
-    ) -> CommonConfiguration<Box<TestConfig>, GenericProductSpecificCommonConfig> {
+    ) -> CommonConfiguration<Box<TestConfig>, GenericCommonConfig, TestConfigOverrides> {
         CommonConfiguration {
             config: test_config.unwrap_or_default(),
             config_overrides: config_overrides.unwrap_or_default(),
             env_overrides: env_overrides.unwrap_or_default(),
             cli_overrides: cli_overrides.unwrap_or_default(),
             pod_overrides: PodTemplateSpec::default(),
-            product_specific_common_config: GenericProductSpecificCommonConfig::default(),
+            product_specific_common_config: GenericCommonConfig::default(),
         }
     }
 
-    fn build_config_override(
-        file_name: &str,
-        property: &str,
-    ) -> Option<HashMap<String, HashMap<String, String>>> {
-        Some(
-            collection!( file_name.to_string() => collection!( property.to_string() => property.to_string())),
-        )
+    fn build_config_override(file_name: &str, property: &str) -> Option<TestConfigOverrides> {
+        Some(TestConfigOverrides {
+            files: collection!( file_name.to_string() => KeyValueConfigOverrides { overrides: collection!( property.to_string() => property.to_string()) }),
+        })
     }
 
     fn build_env_override(property: &str) -> Option<HashMap<String, String>> {
@@ -807,12 +830,13 @@ mod tests {
         Some(collection! {property.to_string() => property.to_string()})
     }
 
+    #[expect(clippy::too_many_lines)]
     fn build_role_and_group(
         role_config: bool,
         group_config: bool,
         role_overrides: bool,
         group_overrides: bool,
-    ) -> Role<Box<TestConfig>, TestRoleConfig> {
+    ) -> Role<Box<TestConfig>, TestConfigOverrides, TestRoleConfig> {
         let role_group = ROLE_GROUP.to_string();
         let file_name = "foo.conf";
 
@@ -824,7 +848,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -841,7 +865,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -855,7 +879,7 @@ mod tests {
                     None,
                     None,
                 ),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -872,7 +896,7 @@ mod tests {
                     None,
                     None,
                 ),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -889,7 +913,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -906,7 +930,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
@@ -919,7 +943,7 @@ mod tests {
                     None,
                     None,
                 ),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -937,7 +961,7 @@ mod tests {
                     None,
                     None,
                 ),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
@@ -950,7 +974,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -967,7 +991,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -979,7 +1003,7 @@ mod tests {
             },
             (false, true, false, true) => Role {
                 config: CommonConfiguration::default(),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -991,7 +1015,7 @@ mod tests {
             },
             (false, true, false, false) => Role {
                 config: CommonConfiguration::default(),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -1008,7 +1032,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -1025,7 +1049,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
@@ -1033,7 +1057,7 @@ mod tests {
             },
             (false, false, false, true) => Role {
                 config: CommonConfiguration::default(),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -1045,7 +1069,7 @@ mod tests {
             },
             (false, false, false, false) => Role {
                 config: CommonConfiguration::default(),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
@@ -1245,16 +1269,16 @@ mod tests {
         BTreeMap::from([
             ("cli".to_string(), GROUP_CLI_OVERRIDE.to_string()),
         ]),
-        HashMap::from([
-            ("file".to_string(), HashMap::from([
+        TestConfigOverrides { files: HashMap::from([
+            ("file".to_string(), KeyValueConfigOverrides { overrides: BTreeMap::from([
                 ("file".to_string(), ROLE_CONF_OVERRIDE.to_string())
-            ]))
-        ]),
-        HashMap::from([
-            ("file".to_string(), HashMap::from([
+            ]) })
+        ]) },
+        TestConfigOverrides { files: HashMap::from([
+            ("file".to_string(), KeyValueConfigOverrides { overrides: BTreeMap::from([
                 ("file".to_string(), GROUP_CONF_OVERRIDE.to_string())
-            ]))
-        ]),
+            ]) })
+        ]) },
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
@@ -1278,12 +1302,12 @@ mod tests {
             ("cli".to_string(), ROLE_CLI_OVERRIDE.to_string()),
         ]),
         BTreeMap::from([]),
-        HashMap::from([
-            ("file".to_string(), HashMap::from([
+        TestConfigOverrides { files: HashMap::from([
+            ("file".to_string(), KeyValueConfigOverrides { overrides: BTreeMap::from([
                 ("file".to_string(), ROLE_CONF_OVERRIDE.to_string())
-            ]))
-        ]),
-        HashMap::from([]),
+            ]) })
+        ]) },
+        TestConfigOverrides::default(),
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
@@ -1303,8 +1327,8 @@ mod tests {
         HashMap::from([]),
         BTreeMap::from([]),
         BTreeMap::from([]),
-        HashMap::from([]),
-        HashMap::from([]),
+        TestConfigOverrides::default(),
+        TestConfigOverrides::default(),
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
@@ -1324,21 +1348,21 @@ mod tests {
         #[case] group_env_override: HashMap<String, String>,
         #[case] role_cli_override: BTreeMap<String, String>,
         #[case] group_cli_override: BTreeMap<String, String>,
-        #[case] role_conf_override: HashMap<String, HashMap<String, String>>,
-        #[case] group_conf_override: HashMap<String, HashMap<String, String>>,
+        #[case] role_conf_override: TestConfigOverrides,
+        #[case] group_conf_override: TestConfigOverrides,
         #[case] expected: HashMap<
             String,
             HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>,
         >,
     ) {
-        let role: Role<Box<TestConfig>, TestRoleConfig> = Role {
+        let role: Role<Box<TestConfig>, TestConfigOverrides, TestRoleConfig> = Role {
             config: build_common_config(
                 build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
                 Some(role_conf_override),
                 Some(role_env_override),
                 Some(role_cli_override),
             ),
-            role_config: Default::default(),
+            role_config: TestRoleConfig::default(),
             role_groups: collection! {"role_group".to_string() => RoleGroup {
                 replicas: Some(1),
                 config: build_common_config(
@@ -1428,7 +1452,10 @@ mod tests {
         #[allow(clippy::type_complexity)]
         let roles: HashMap<
             String,
-            (Vec<PropertyNameKind>, Role<Box<TestConfig>, TestRoleConfig>),
+            (
+                Vec<PropertyNameKind>,
+                Role<Box<TestConfig>, TestConfigOverrides, TestRoleConfig>,
+            ),
         > = collection! {
             role_1.to_string() => (vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env], Role {
             config: build_common_config(
@@ -1437,7 +1464,7 @@ mod tests {
                 None,
                 None,
             ),
-            role_config: Default::default(),
+            role_config: TestRoleConfig::default(),
             role_groups: collection! {role_group_1.to_string() => RoleGroup {
                 replicas: Some(1),
                 config: build_common_config(
@@ -1464,7 +1491,7 @@ mod tests {
                 None,
                 None,
             ),
-            role_config: Default::default(),
+            role_config: TestRoleConfig::default(),
             role_groups: collection! {role_group_1.to_string() => RoleGroup {
                 replicas: Some(1),
                 config: build_common_config(
@@ -1504,12 +1531,13 @@ mod tests {
             }
         }};
 
-        let all_config = transform_all_roles_to_config(&String::new(), roles).unwrap();
+        let all_config = transform_all_roles_to_config(&String::new(), &roles).unwrap();
 
         assert_eq!(all_config, expected);
     }
 
     #[test]
+    #[expect(clippy::too_many_lines)]
     fn test_validate_all_roles_and_groups_config() {
         let role_1 = "role_1";
         let role_2 = "role_2";
@@ -1525,11 +1553,14 @@ mod tests {
         #[allow(clippy::type_complexity)]
         let roles: HashMap<
             String,
-            (Vec<PropertyNameKind>, Role<Box<TestConfig>, TestRoleConfig>),
+            (
+                Vec<PropertyNameKind>,
+                Role<Box<TestConfig>, TestConfigOverrides, TestRoleConfig>,
+            ),
         > = collection! {
             role_1.to_string() => (vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env], Role {
                 config: CommonConfiguration::default(),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {
                     role_group_1.to_string() => RoleGroup {
                         replicas: Some(1),
@@ -1544,7 +1575,7 @@ mod tests {
             ),
             role_2.to_string() => (vec![PropertyNameKind::File(file_name.to_string())], Role {
                 config: CommonConfiguration::default(),
-                role_config: Default::default(),
+                role_config: TestRoleConfig::default(),
                 role_groups: collection! {
                     role_group_2.to_string() => RoleGroup {
                         replicas: Some(1),
@@ -1559,7 +1590,7 @@ mod tests {
             ),
         };
 
-        let role_config = transform_all_roles_to_config(&String::new(), roles).unwrap();
+        let role_config = transform_all_roles_to_config(&String::new(), &roles).unwrap();
 
         let config = &format!(
             "

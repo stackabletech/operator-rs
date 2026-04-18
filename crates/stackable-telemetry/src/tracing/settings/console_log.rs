@@ -5,7 +5,7 @@ use tracing::level_filters::LevelFilter;
 use super::{Settings, SettingsBuilder, SettingsToggle};
 
 /// Configure specific settings for the console log subscriber.
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub enum ConsoleLogSettings {
     /// Console subscriber disabled.
     #[default]
@@ -45,8 +45,8 @@ pub enum Format {
 impl SettingsToggle for ConsoleLogSettings {
     fn is_enabled(&self) -> bool {
         match self {
-            ConsoleLogSettings::Disabled => false,
-            ConsoleLogSettings::Enabled { .. } => true,
+            Self::Disabled => false,
+            Self::Enabled { .. } => true,
         }
     }
 }
@@ -90,21 +90,21 @@ impl From<SettingsBuilder> for ConsoleLogSettingsBuilder {
 
 impl From<Settings> for ConsoleLogSettings {
     fn from(common_settings: Settings) -> Self {
-        ConsoleLogSettings::Enabled {
+        Self::Enabled {
             common_settings,
-            log_format: Default::default(),
+            log_format: Format::default(),
         }
     }
 }
 
 impl<T> From<Option<T>> for ConsoleLogSettings
 where
-    T: Into<ConsoleLogSettings>,
+    T: Into<Self>,
 {
     fn from(settings: Option<T>) -> Self {
         match settings {
             Some(settings) => settings.into(),
-            None => ConsoleLogSettings::default(),
+            None => Self::default(),
         }
     }
 }
@@ -116,22 +116,23 @@ impl From<(&'static str, LevelFilter)> for ConsoleLogSettings {
                 environment_variable: value.0,
                 default_level: value.1,
             },
-            log_format: Default::default(),
+            log_format: Format::default(),
         }
     }
 }
 
 impl From<(&'static str, LevelFilter, bool)> for ConsoleLogSettings {
     fn from(value: (&'static str, LevelFilter, bool)) -> Self {
-        match value.2 {
-            true => Self::Enabled {
+        if value.2 {
+            Self::Enabled {
                 common_settings: Settings {
                     environment_variable: value.0,
                     default_level: value.1,
                 },
-                log_format: Default::default(),
-            },
-            false => Self::Disabled,
+                log_format: Format::default(),
+            }
+        } else {
+            Self::Disabled
         }
     }
 }

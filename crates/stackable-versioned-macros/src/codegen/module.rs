@@ -57,7 +57,7 @@ impl Module {
                         errors.handle(Container::new_enum(item_enum, &versions))
                     {
                         containers.push(container);
-                    };
+                    }
                 }
                 Item::Struct(item_struct) => {
                     let experimental_conversion_tracking = module_attributes
@@ -123,7 +123,7 @@ impl Module {
                     )
                     .with_span(&disallowed_item),
                 ),
-            };
+            }
         }
 
         errors.finish_with(Self {

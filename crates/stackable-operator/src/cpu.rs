@@ -11,7 +11,7 @@ use snafu::{ResultExt, Snafu};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum Error {
     #[snafu(display(
         "unsupported precision {value:?}. Kubernetes doesn't allow you to specify CPU resources with a precision finer than 1m. Because of this, it's useful to specify CPU units less than 1.0 or 1000m using the milliCPU form; for example, 5m rather than 0.005"
@@ -37,7 +37,7 @@ pub enum Error {
 /// A CPU quantity cannot have a precision finer than 'm' (millis) in Kubernetes.
 /// So we use that as our internal representation (see:
 /// `<https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-cpu>`).
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub struct CpuQuantity {
     millis: usize,
 }
@@ -93,9 +93,10 @@ impl<'de> Deserialize<'de> for CpuQuantity {
 
 impl Display for CpuQuantity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.millis < 1000 {
-            true => write!(f, "{}m", self.millis),
-            false => write!(f, "{}", self.as_cpu_count()),
+        if self.millis < 1000 {
+            write!(f, "{}m", self.millis)
+        } else {
+            write!(f, "{}", self.as_cpu_count())
         }
     }
 }
@@ -149,7 +150,7 @@ impl From<CpuQuantity> for Quantity {
 
 impl From<&CpuQuantity> for Quantity {
     fn from(quantity: &CpuQuantity) -> Self {
-        Quantity(format!("{}", quantity.as_cpu_count()))
+        Self(format!("{}", quantity.as_cpu_count()))
     }
 }
 
@@ -169,22 +170,22 @@ impl TryFrom<Quantity> for CpuQuantity {
     }
 }
 
-impl Add<CpuQuantity> for CpuQuantity {
-    type Output = CpuQuantity;
+impl Add<Self> for CpuQuantity {
+    type Output = Self;
 
-    fn add(self, rhs: CpuQuantity) -> Self::Output {
-        CpuQuantity::from_millis(self.millis + rhs.millis)
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::from_millis(self.millis + rhs.millis)
     }
 }
 
-impl AddAssign<CpuQuantity> for CpuQuantity {
-    fn add_assign(&mut self, rhs: CpuQuantity) {
+impl AddAssign<Self> for CpuQuantity {
+    fn add_assign(&mut self, rhs: Self) {
         self.millis += rhs.millis;
     }
 }
 
 impl Mul<usize> for CpuQuantity {
-    type Output = CpuQuantity;
+    type Output = Self;
 
     fn mul(self, rhs: usize) -> Self::Output {
         Self {
@@ -200,7 +201,7 @@ impl MulAssign<usize> for CpuQuantity {
 }
 
 impl Mul<f32> for CpuQuantity {
-    type Output = CpuQuantity;
+    type Output = Self;
 
     fn mul(self, rhs: f32) -> Self::Output {
         Self {
@@ -209,10 +210,10 @@ impl Mul<f32> for CpuQuantity {
     }
 }
 
-impl Div<CpuQuantity> for CpuQuantity {
+impl Div<Self> for CpuQuantity {
     type Output = f32;
 
-    fn div(self, rhs: CpuQuantity) -> Self::Output {
+    fn div(self, rhs: Self) -> Self::Output {
         self.millis as f32 / rhs.millis as f32
     }
 }
@@ -225,7 +226,7 @@ impl MulAssign<f32> for CpuQuantity {
 
 impl Sum for CpuQuantity {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.fold(CpuQuantity { millis: 0 }, CpuQuantity::add)
+        iter.fold(Self { millis: 0 }, Self::add)
     }
 }
 
@@ -267,7 +268,7 @@ mod tests {
     #[case(CpuQuantity::from_millis(2000), "2")]
     #[case(CpuQuantity::from_millis(1000), "1")]
     fn to_string(#[case] cpu: CpuQuantity, #[case] expected: &str) {
-        assert_eq!(cpu.to_string(), expected)
+        assert_eq!(cpu.to_string(), expected);
     }
 
     #[rstest]

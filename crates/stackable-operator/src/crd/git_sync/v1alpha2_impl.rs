@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{collections::BTreeMap, fmt::Write as _, path::PathBuf};
 
 use k8s_openapi::api::core::v1::{
     Container, EmptyDirVolumeSource, EnvVar, EnvVarSource, SecretKeySelector, Volume, VolumeMount,
@@ -104,6 +104,7 @@ impl GitSyncResources {
     }
 
     /// Creates `GitSyncResources` from the given `GitSync` specifications.
+    #[expect(clippy::too_many_lines)]
     pub fn new(
         git_syncs: &[GitSync],
         resolved_product_image: &ResolvedProductImage,
@@ -111,8 +112,8 @@ impl GitSyncResources {
         extra_volume_mounts: &[VolumeMount],
         log_volume_name: &str,
         container_log_config: &ContainerLogConfig,
-    ) -> Result<GitSyncResources, Error> {
-        let mut resources = GitSyncResources::default();
+    ) -> Result<Self, Error> {
+        let mut resources = Self::default();
 
         for (i, git_sync) in git_syncs.iter().enumerate() {
             let mut env_vars = vec![];
@@ -120,12 +121,12 @@ impl GitSyncResources {
             if let Some(Credentials::BasicAuthSecretName(basic_auth_secret_name)) =
                 &git_sync.credentials
             {
-                env_vars.push(GitSyncResources::env_var_from_secret(
+                env_vars.push(Self::env_var_from_secret(
                     "GITSYNC_USERNAME",
                     basic_auth_secret_name,
                     "user",
                 ));
-                env_vars.push(GitSyncResources::env_var_from_secret(
+                env_vars.push(Self::env_var_from_secret(
                     "GITSYNC_PASSWORD",
                     basic_auth_secret_name,
                     "password",
@@ -338,7 +339,7 @@ impl GitSyncResources {
     ) -> String {
         let internal_args = BTreeMap::from([
             ("--repo".to_string(), git_sync.repo.as_str().to_owned()),
-            ("--ref".to_string(), git_sync.branch.to_owned()),
+            ("--ref".to_string(), git_sync.branch.clone()),
             ("--depth".to_string(), git_sync.depth.to_string()),
             (
                 "--period".to_string(),
@@ -430,7 +431,7 @@ impl GitSyncResources {
                 log_config,
             ));
             shell_script.push('\n');
-        };
+        }
 
         let git_sync_command = format!("/stackable/git-sync {args_string}");
 
@@ -438,12 +439,14 @@ impl GitSyncResources {
             shell_script.push_str(&git_sync_command);
         } else {
             // Run the git-sync command in the background
-            shell_script.push_str(&format!(
+            write!(
+                shell_script,
                 "{COMMON_BASH_TRAP_FUNCTIONS}
 prepare_signal_handlers
 {git_sync_command} &
 wait_for_termination $!"
-            ))
+            )
+            .expect("We can always write to a String");
         }
 
         shell_script
@@ -516,6 +519,7 @@ mod tests {
     }
 
     #[test]
+    #[expect(clippy::too_many_lines)]
     fn test_multiple_git_syncs() {
         let git_sync_spec = r#"
           # GitSync with defaults
@@ -801,7 +805,7 @@ volumeMounts:
         assert_eq!(3, git_sync_resources.git_sync_init_containers.len());
 
         assert_eq!(
-            r#"args:
+            r"args:
 - |-
   mkdir --parents /stackable/log/git-sync-0-init && exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2)
   /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git' --link=current --one-time=true --period=20s --ref=main --repo=https://github.com/stackabletech/repo1 --root=/tmp/git
@@ -833,12 +837,12 @@ volumeMounts:
   name: log-volume
 - mountPath: /mnt/extra-volume
   name: extra-volume
-"#,
+",
             serde_yaml::to_string(&git_sync_resources.git_sync_init_containers.first()).unwrap()
         );
 
         assert_eq!(
-            r#"args:
+            r"args:
 - |-
   mkdir --parents /stackable/log/git-sync-1-init && exec > >(tee /stackable/log/git-sync-1-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-1-init/container.stderr.log >&2)
   /stackable/git-sync --depth=3 --git-config='safe.directory:/tmp/git,http.sslCAInfo:/tmp/ca-cert/ca.crt' --link=current --one-time=true --period=60s --ref=trunk --repo=https://github.com/stackabletech/repo2 --rev=HEAD --root=/tmp/git
@@ -875,12 +879,12 @@ volumeMounts:
   name: log-volume
 - mountPath: /mnt/extra-volume
   name: extra-volume
-"#,
+",
             serde_yaml::to_string(&git_sync_resources.git_sync_init_containers.get(1)).unwrap()
         );
 
         assert_eq!(
-            r#"args:
+            r"args:
 - |-
   mkdir --parents /stackable/log/git-sync-2-init && exec > >(tee /stackable/log/git-sync-2-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-2-init/container.stderr.log >&2)
   /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git,key:value,safe.directory:/safe-dir' --link=current --one-time=true --period=20s --ref=feat/git-sync --repo=https://github.com/stackabletech/repo3 --root=/tmp/git
@@ -912,7 +916,7 @@ volumeMounts:
   name: log-volume
 - mountPath: /mnt/extra-volume
   name: extra-volume
-"#,
+",
             serde_yaml::to_string(&git_sync_resources.git_sync_init_containers.get(2)).unwrap()
         );
 
@@ -990,6 +994,7 @@ name: content-from-git-2
     }
 
     #[test]
+    #[expect(clippy::too_many_lines)]
     fn test_git_sync_ssh() {
         let git_sync_spec = r#"
           # GitSync using SSH
@@ -1115,7 +1120,7 @@ volumeMounts:
         assert_eq!(1, git_sync_resources.git_sync_init_containers.len());
 
         assert_eq!(
-            r#"args:
+            r"args:
 - |-
   mkdir --parents /stackable/log/git-sync-0-init && exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2)
   /stackable/git-sync --depth=3 --git-config='safe.directory:/tmp/git,http.sslCAInfo:/tmp/ca-cert/ca.crt' --link=current --one-time=true --period=60s --ref=trunk --repo=ssh://git@github.com/stackabletech/repo.git --rev=HEAD --root=/tmp/git
@@ -1151,7 +1156,7 @@ volumeMounts:
   name: extra-volume
 - mountPath: /stackable/gitssh-0
   name: ssh-keys-info-0
-"#,
+",
             serde_yaml::to_string(&git_sync_resources.git_sync_init_containers.first()).unwrap()
         );
 
@@ -1196,6 +1201,7 @@ secret:
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn test_git_sync_ca_cert() {
         let git_sync_spec = r#"
           # GitSync using SSH
@@ -1319,7 +1325,7 @@ volumeMounts:
         assert_eq!(1, git_sync_resources.git_sync_init_containers.len());
 
         assert_eq!(
-            r#"args:
+            r"args:
 - |-
   mkdir --parents /stackable/log/git-sync-0-init && exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2)
   /stackable/git-sync --depth=3 --git-config='http.sslCAInfo:/stackable/gitca-0/ca.crt,safe.directory:/tmp/git' --link=current --one-time=true --period=60s --ref=trunk --repo=ssh://git@github.com/stackabletech/repo.git --rev=HEAD --root=/tmp/git
@@ -1351,7 +1357,7 @@ volumeMounts:
   name: extra-volume
 - mountPath: /stackable/gitca-0
   name: ca-cert-0
-"#,
+",
             serde_yaml::to_string(&git_sync_resources.git_sync_init_containers.first()).unwrap()
         );
 
@@ -1409,109 +1415,109 @@ name: ca-cert-0
     // https with tls/null --> deactivate: Ok
     #[case(
         "https://github.com/stackabletech/repo1",
-        r#"
+        "
   tls: null
-    "#,
+    ",
         true
     )]
     // https with no tls --> defaults to webPki: Ok
     #[case(
         "https://github.com/stackabletech/repo1",
-        r#"
-    "#,
+        "
+    ",
         true
     )]
     // http with no tls --> defaults to webPki: Error
     #[case(
         "http://github.com/stackabletech/repo1",
-        r#"
-    "#,
+        "
+    ",
         false
     )]
     // https with tls/None: Ok
     #[case(
         "https://github.com/stackabletech/repo1",
-        r#"
+        "
   tls:
     verification:
       none: {}
-    "#,
+    ",
         true
     )]
     // https with tls/None: Error
     #[case(
         "http://github.com/stackabletech/repo1",
-        r#"
+        "
   tls:
-    "#,
+    ",
         true
     )]
     // ssh with tls/secret: Ok
     #[case(
         "ssh://git@github.com/stackabletech/repo.git",
-        r#"
+        "
   tls:
     verification:
       server:
         caCert:
           secretClass: git-tls-ca
-    "#,
+    ",
         true
     )]
     // https with tls/secret: Ok
     #[case(
         "https://github.com/stackabletech/repo1",
-        r#"
+        "
   tls:
     verification:
       server:
         caCert:
           secretClass: another-ca
-    "#,
+    ",
         true
     )]
     // https with tls/webPki: Ok
     #[case(
         "https://github.com/stackabletech/repo1",
-        r#"
+        "
   tls:
     verification:
       server:
         caCert:
           webPki: {}
-    "#,
+    ",
         true
     )]
     // http with tls/webPki: Error
     #[case(
         "http://github.com/stackabletech/repo1",
-        r#"
+        "
   tls:
     verification:
       server:
         caCert:
           webPki: {}
-    "#,
+    ",
         false
     )]
     // http with tls/secret: Error
     #[case(
         "http://github.com/stackabletech/repo1",
-        r#"
+        "
   tls:
     verification:
       server:
         caCert:
           secretClass: http-ca
-    "#,
+    ",
         false
     )]
     fn test_git_sync_tls_scheme(#[case] repo: &str, #[case] tls: &str, #[case] expect_ok: bool) {
         let git_sync_spec = format!(
-            r#"
+            "
 - repo: {repo}
   {tls}
-          "#
+          "
         );
 
         let git_syncs: Vec<GitSync> = yaml_from_str_singleton_map(&git_sync_spec).unwrap();

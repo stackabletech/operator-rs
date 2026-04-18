@@ -463,7 +463,7 @@ impl SpanExt for Span {
                 "set parent span context based on context extracted from request headers"
             );
 
-            Span::current().add_link(new_parent.span().span_context().clone());
+            Self::current().add_link(new_parent.span().span_context().clone());
             span.add_link(Context::current().span().span_context().to_owned());
             let _ = span.set_parent(new_parent);
         }
@@ -480,7 +480,7 @@ impl SpanExt for Span {
             // will NOT be recorded as a number but as a string. This is likely
             // an issue in the tracing-opentelemetry crate.
             span.record(semconv::trace::SERVER_ADDRESS, host)
-                .record(semconv::trace::SERVER_PORT, port as i64);
+                .record(semconv::trace::SERVER_PORT, i64::from(port));
         }
 
         // Setting fields according to the HTTP server semantic conventions
@@ -498,7 +498,7 @@ impl SpanExt for Span {
                 // likely an issue in the tracing-opentelemetry crate.
                 span.record(
                     semconv::trace::CLIENT_PORT,
-                    client_socket_address.port() as i64,
+                    i64::from(client_socket_address.port()),
                 );
             }
         }
@@ -544,7 +544,7 @@ impl SpanExt for Span {
         // in the tracing-opentelemetry crate.
         self.record(
             semconv::trace::HTTP_RESPONSE_STATUS_CODE,
-            status_code.as_u16() as i64,
+            i64::from(status_code.as_u16()),
         );
 
         // Only set the span status to "Error" when we encountered an server
@@ -558,7 +558,7 @@ impl SpanExt for Span {
         }
 
         let mut injector = HeaderInjector::new(response.headers_mut());
-        injector.inject_context(&Span::current().context());
+        injector.inject_context(&Self::current().context());
     }
 
     fn finalize_with_error<E>(&self, error: &mut E)

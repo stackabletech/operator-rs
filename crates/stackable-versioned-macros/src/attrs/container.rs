@@ -85,6 +85,7 @@ pub struct StructCrdArguments {
 //
 // TODO (@Techassi): This should eventually get replaced by directly using what `kube_derive` offers,
 // but that requires an upstream restructure I'm planning to do soon(ish).
+#[expect(clippy::struct_field_names)]
 #[derive(Clone, Debug, FromMeta)]
 pub struct Scale {
     pub spec_replicas_path: String,

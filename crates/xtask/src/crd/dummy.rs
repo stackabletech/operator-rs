@@ -1,8 +1,11 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use stackable_operator::{
     commons::resources::{JvmHeapLimits, Resources},
     config::fragment::Fragment,
-    crd::git_sync::v1alpha2::GitSync,
+    config_overrides::{JsonConfigOverrides, KeyValueConfigOverrides, KeyValueOverridesProvider},
+    crd::{authentication, authentication::oidc, git_sync::v1alpha2::GitSync},
     database_connections::{
         databases::{
             derby::DerbyConnection, mysql::MysqlConnection, postgresql::PostgresqlConnection,
@@ -21,6 +24,44 @@ use stackable_operator::{
     versioned::versioned,
 };
 use strum::EnumIter;
+
+/// Typed config override strategies for Dummy config files.
+///
+/// Demonstrates both JSON-formatted (`config.json`) and key-value-formatted
+/// (`dummy.properties`) config file overrides.
+#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[schemars(crate = "stackable_operator::schemars")]
+#[serde(rename_all = "camelCase")]
+pub struct DummyConfigOverrides {
+    /// Overrides for the `config.json` file.
+    #[serde(
+        default,
+        rename = "config.json",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub config_json: Option<JsonConfigOverrides>,
+
+    /// Overrides for the `dummy.properties` file.
+    #[serde(
+        default,
+        rename = "dummy.properties",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub dummy_properties: Option<KeyValueConfigOverrides>,
+}
+
+impl KeyValueOverridesProvider for DummyConfigOverrides {
+    fn get_key_value_overrides(&self, file: &str) -> BTreeMap<String, Option<String>> {
+        match file {
+            "dummy.properties" => self
+                .dummy_properties
+                .as_ref()
+                .map(KeyValueConfigOverrides::as_product_config_overrides)
+                .unwrap_or_default(),
+            _ => BTreeMap::new(),
+        }
+    }
+}
 
 #[versioned(
     version(name = "v1alpha1"),
@@ -43,7 +84,7 @@ pub mod versioned {
     #[schemars(crate = "stackable_operator::schemars")]
     #[serde(rename_all = "camelCase")]
     pub struct DummyClusterSpec {
-        nodes: Option<Role<ProductConfigFragment>>,
+        nodes: Option<Role<ProductConfigFragment, DummyConfigOverrides>>,
 
         // Not versioned yet
         stackable_affinity: stackable_operator::commons::affinity::StackableAffinity,
@@ -66,8 +107,9 @@ pub mod versioned {
         pub object_overrides: ObjectOverrides,
 
         // Already versioned
-        client_authentication_details:
-            stackable_operator::crd::authentication::core::v1alpha1::ClientAuthenticationDetails,
+        client_authentication_details: authentication::core::v1alpha1::ClientAuthenticationDetails<
+            oidc::v1alpha1::ClientAuthenticationMethodOption,
+        >,
     }
 
     #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]
@@ -120,7 +162,7 @@ pub mod versioned {
         UserInfoFetcher,
     }
 
-    #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+    #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
     #[serde(rename_all = "camelCase")]
     #[schemars(crate = "stackable_operator::schemars")]
     pub enum DummyDatabaseConnection {

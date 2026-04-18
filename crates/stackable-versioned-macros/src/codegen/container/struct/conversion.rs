@@ -292,14 +292,11 @@ impl Struct {
         &self,
         next_version: &VersionDefinition,
         mod_gen_ctx: ModuleGenerationContext<'_>,
-    ) -> Option<TokenStream> {
-        let json_paths = self
-            .fields
+    ) -> TokenStream {
+        self.fields
             .iter()
             .filter_map(|f| f.generate_for_json_path(next_version, mod_gen_ctx))
-            .collect();
-
-        Some(json_paths)
+            .collect()
     }
 
     pub(super) fn needs_tracking(&self, version: &VersionDefinition) -> bool {
@@ -341,7 +338,7 @@ impl Struct {
         let convert_object_error = quote! { #versioned_path::ConvertObjectError };
 
         // Generate conversion paths and the match arms for these paths
-        let match_arms = self.generate_conversion_match_arms(versions, mod_gen_ctx, spec_gen_ctx);
+        let match_arms = Self::generate_conversion_match_arms(versions, mod_gen_ctx, spec_gen_ctx);
 
         // TODO (@Techassi): Make this a feature, drop the option from the macro arguments
         // Generate tracing attributes and events if tracing is enabled
@@ -350,7 +347,7 @@ impl Struct {
             convert_objects_instrumentation,
             invalid_conversion_review_event,
             try_convert_instrumentation,
-        } = self.generate_conversion_tracing(mod_gen_ctx, spec_gen_ctx);
+        } = Self::generate_conversion_tracing(mod_gen_ctx, spec_gen_ctx);
 
         // Generate doc comments
         let conversion_review_reference =
@@ -691,7 +688,6 @@ impl Struct {
     }
 
     fn generate_conversion_match_arms(
-        &self,
         versions: &[VersionDefinition],
         mod_gen_ctx: ModuleGenerationContext<'_>,
         spec_gen_ctx: &SpecGenerationContext<'_>,
@@ -764,7 +760,6 @@ impl Struct {
     }
 
     fn generate_conversion_tracing(
-        &self,
         mod_gen_ctx: ModuleGenerationContext<'_>,
         spec_gen_ctx: &SpecGenerationContext<'_>,
     ) -> TracingTokens {

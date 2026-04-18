@@ -41,7 +41,7 @@ impl<'a> HeaderInjector<'a> {
     /// [1]: opentelemetry::propagation::TextMapPropagator
     pub fn inject_context(&mut self, cx: &Context) {
         opentelemetry::global::get_text_map_propagator(|propagator| {
-            propagator.inject_context(cx, self)
-        })
+            propagator.inject_context(cx, self);
+        });
     }
 }

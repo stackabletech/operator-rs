@@ -56,7 +56,7 @@ mod merge;
 /// or the `stackable_operator` crate is renamed.
 #[proc_macro_derive(Merge, attributes(merge))]
 pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    merge::derive(parse_macro_input!(input)).into()
+    merge::derive(&parse_macro_input!(input)).into()
 }
 
 /// Creates a [fragment type](index.html) for the given type, and implements [`FromFragment`](trait.FromFragment.html).
@@ -145,5 +145,5 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// Enums are not currently supported.
 #[proc_macro_derive(Fragment, attributes(fragment, fragment_attrs))]
 pub fn derive_fragment(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    fragment::derive(parse_macro_input!(input)).into()
+    fragment::derive(&parse_macro_input!(input)).into()
 }

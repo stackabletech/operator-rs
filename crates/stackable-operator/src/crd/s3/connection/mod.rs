@@ -140,9 +140,14 @@ mod tests {
     use url::Url;
 
     use super::*;
-    use crate::commons::{
-        secret_class::SecretClassVolume,
-        tls_verification::{CaCert, Tls, TlsClientDetails, TlsServerVerification, TlsVerification},
+    use crate::{
+        commons::{
+            secret_class::SecretClassVolume,
+            tls_verification::{
+                CaCert, Tls, TlsClientDetails, TlsServerVerification, TlsVerification,
+            },
+        },
+        crd::s3::v1alpha1::{Region, S3AccessStyle},
     };
 
     // We can't test the correct resolve, as we can't mock the k8s API.
@@ -151,10 +156,10 @@ mod tests {
         let s3 = ResolvedConnection {
             host: "minio".parse().unwrap(),
             port: None,
-            access_style: Default::default(),
+            access_style: S3AccessStyle::default(),
             credentials: None,
             tls: TlsClientDetails { tls: None },
-            region: Default::default(),
+            region: Region::default(),
         };
         let (volumes, mounts) = s3.volumes_and_mounts().unwrap();
 
@@ -168,7 +173,7 @@ mod tests {
         let s3 = ResolvedConnection {
             host: "s3-eu-central-2.ionoscloud.com".parse().unwrap(),
             port: None,
-            access_style: Default::default(),
+            access_style: S3AccessStyle::default(),
             credentials: Some(SecretClassVolume {
                 secret_class: "ionos-s3-credentials".to_string(),
                 scope: None,
@@ -180,7 +185,7 @@ mod tests {
                     }),
                 }),
             },
-            region: Default::default(),
+            region: Region::default(),
         };
         let (mut volumes, mut mounts) = s3.volumes_and_mounts().unwrap();
 
@@ -232,14 +237,14 @@ mod tests {
         let s3 = ResolvedConnection {
             host: "minio".parse().unwrap(),
             port: Some(1234),
-            access_style: Default::default(),
+            access_style: S3AccessStyle::default(),
             credentials: None,
             tls: TlsClientDetails {
                 tls: Some(Tls {
                     verification: TlsVerification::None {},
                 }),
             },
-            region: Default::default(),
+            region: Region::default(),
         };
         let (volumes, mounts) = s3.volumes_and_mounts().unwrap();
 

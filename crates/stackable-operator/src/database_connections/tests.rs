@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, ops::Deref};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -26,8 +26,10 @@ enum DummyJdbcConnection {
     Generic(GenericJdbcDatabaseConnection),
 }
 
-impl DummyJdbcConnection {
-    fn as_jdbc_database_connection(&self) -> &dyn JdbcDatabaseConnection {
+impl Deref for DummyJdbcConnection {
+    type Target = dyn JdbcDatabaseConnection;
+
+    fn deref(&self) -> &Self::Target {
         match self {
             Self::Postgresql(p) => p,
             Self::Generic(g) => g,
@@ -44,8 +46,10 @@ enum DummyCeleryConnection {
     Generic(GenericCeleryDatabaseConnection),
 }
 
-impl DummyCeleryConnection {
-    fn as_celery_database_connection(&self) -> &dyn CeleryDatabaseConnection {
+impl Deref for DummyCeleryConnection {
+    type Target = dyn CeleryDatabaseConnection;
+
+    fn deref(&self) -> &Self::Target {
         match self {
             Self::Postgresql(p) => p,
             Self::Redis(r) => r,
@@ -66,7 +70,6 @@ fn test_dummy_jdbc_database_usage() {
     });
     // Apply actual config
     let jdbc_connection_details = dummy_jdbc_connection
-        .as_jdbc_database_connection()
         .jdbc_connection_details("persistence")
         .unwrap();
     let mut container_builder = ContainerBuilder::new("my-container").unwrap();
@@ -100,7 +103,6 @@ fn test_dummy_celery_database_usage() {
     });
     // Apply actual config
     let celery_connection_details = dummy_celery_connection
-        .as_celery_database_connection()
         .celery_connection_details_with_templating(
             "worker_queue",
             &TemplatingMechanism::BashEnvSubstitution,

@@ -152,16 +152,16 @@ impl Container {
         ctx: ModuleGenerationContext<'a>,
     ) -> ContainerTokens<'a> {
         match self {
-            Container::Struct(s) => s.generate_tokens(versions, ctx),
-            Container::Enum(e) => e.generate_tokens(versions, ctx),
+            Self::Struct(s) => s.generate_tokens(versions, ctx),
+            Self::Enum(e) => e.generate_tokens(versions, ctx),
         }
     }
 
     /// Returns the original ident of the container.
     pub fn get_original_ident(&self) -> &Ident {
         match &self {
-            Container::Struct(s) => s.common.idents.original.as_ident(),
-            Container::Enum(e) => e.common.idents.original.as_ident(),
+            Self::Struct(s) => s.common.idents.original.as_ident(),
+            Self::Enum(e) => e.common.idents.original.as_ident(),
         }
     }
 }
@@ -218,15 +218,16 @@ impl KubernetesIdents {
         let parameter = kind.as_parameter_ident();
 
         Self {
-            parameter,
-            version,
-            status,
             kind,
+            status,
+            version,
+            parameter,
         }
     }
 }
 
 #[derive(Debug)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct ContainerOptions {
     pub skip_from: bool,
     pub skip_object_from: bool,

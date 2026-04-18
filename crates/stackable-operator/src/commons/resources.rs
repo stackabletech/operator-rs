@@ -30,6 +30,9 @@
 //!     role_utils::Role,
 //! };
 //!
+//! #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+//! pub struct ProductConfigOverrides {}
+//!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, Serialize)]
 //! #[kube(
 //!     group = "product.stackable.tech",
@@ -46,7 +49,7 @@
 //! #[serde(rename_all = "camelCase")]
 //! pub struct ProductSpec {
 //!     #[serde(default, skip_serializing_if = "Option::is_none")]
-//!     pub nodes: Option<Role<ProductConfigFragment>>,
+//!     pub nodes: Option<Role<ProductConfigFragment, ProductConfigOverrides>>,
 //! }
 //!
 //! #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]
@@ -557,9 +560,9 @@ mod tests {
     #[case::no_access(
         "test",
         None,
-        r#"
-        capacity: 10Gi"#,
-        r#"
+        r"
+        capacity: 10Gi",
+        r"
         apiVersion: v1
         kind: PersistentVolumeClaim
         metadata:
@@ -567,14 +570,14 @@ mod tests {
         spec:
             resources:
                 requests:
-                    storage: 10Gi"#
+                    storage: 10Gi"
     )]
     #[case::access_readmany(
         "test2",
         Some(vec!["ReadWriteMany"]),
-        r#"
-        capacity: 100Gi"#,
-        r#"
+        r"
+        capacity: 100Gi",
+        r"
         apiVersion: v1
         kind: PersistentVolumeClaim
         metadata:
@@ -584,14 +587,14 @@ mod tests {
                 - ReadWriteMany
             resources:
                 requests:
-                    storage: 100Gi"#
+                    storage: 100Gi"
     )]
     #[case::multiple_accessmodes(
         "testtest",
         Some(vec!["ReadWriteMany", "ReadOnlyMany"]),
-        r#"
-        capacity: 200Gi"#,
-        r#"
+        r"
+        capacity: 200Gi",
+        r"
         apiVersion: v1
         kind: PersistentVolumeClaim
         metadata:
@@ -602,15 +605,15 @@ mod tests {
                 - ReadOnlyMany
             resources:
                 requests:
-                    storage: 200Gi"#
+                    storage: 200Gi"
     )]
     #[case::storage_class(
         "test",
         None,
-        r#"
+        r"
         capacity: 10Gi
-        storageClass: CustomClass"#,
-        r#"
+        storageClass: CustomClass",
+        r"
         apiVersion: v1
         kind: PersistentVolumeClaim
         metadata:
@@ -619,18 +622,18 @@ mod tests {
             storageClassName: CustomClass
             resources:
                 requests:
-                    storage: 10Gi"#
+                    storage: 10Gi"
     )]
     #[case::selector(
         "test",
         None,
-        r#"
+        r"
         capacity: 10Gi
         storageClass: CustomClass
         selectors:
             matchLabels:
-                nodeType: directstorage"#,
-        r#"
+                nodeType: directstorage",
+        r"
         apiVersion: v1
         kind: PersistentVolumeClaim
         metadata:
@@ -642,7 +645,7 @@ mod tests {
                     storage: 10Gi
             selector:
                 matchLabels:
-                    nodeType: directstorage"#
+                    nodeType: directstorage"
     )]
     fn build_pvc(
         #[case] name: String,
@@ -665,40 +668,40 @@ mod tests {
 
     #[rstest]
     #[case::only_memlimits(
-        r#"
+        r"
         memory:
-            limit: 1Gi"#,
-        r#"
+            limit: 1Gi",
+        r"
         limits:
             memory: 1Gi
         requests:
-            memory: 1Gi"#
+            memory: 1Gi"
     )]
     #[case::only_cpulimits(
-        r#"
+        r"
         cpu:
             min: 1000
-            max: 2000"#,
-        r#"
+            max: 2000",
+        r"
         limits:
             cpu: 2000
         requests:
-            cpu: 1000"#
+            cpu: 1000"
     )]
     #[case::mem_and_cpu_limits(
-        r#"
+        r"
         cpu:
             min: 1000
             max: 2000
         memory:
-            limit: 20Gi"#,
-        r#"
+            limit: 20Gi",
+        r"
         limits:
             memory: 20Gi
             cpu: 2000
         requests:
             memory: 20Gi
-            cpu: 1000"#
+            cpu: 1000"
     )]
     fn into_resourcelimits(#[case] input: String, #[case] expected: String) {
         let input_resources_fragment: ResourcesFragment<TestStorageConfig> =

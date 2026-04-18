@@ -24,7 +24,7 @@ pub struct ResourceRequirementsBuilder<CR, CL, MR, ML> {
 
 impl ResourceRequirementsBuilder<(), (), (), ()> {
     pub fn new() -> Self {
-        ResourceRequirementsBuilder::default()
+        Self::default()
     }
 }
 
@@ -98,11 +98,11 @@ impl<MR, ML> ResourceRequirementsBuilder<Quantity, (), MR, ML> {
     }
 }
 
-impl<CR, CL, ML> ResourceRequirementsBuilder<CL, CR, (), ML> {
+impl<CR, CL, ML> ResourceRequirementsBuilder<CR, CL, (), ML> {
     pub fn with_memory_request(
         self,
         request: impl Into<String>,
-    ) -> ResourceRequirementsBuilder<CL, CR, Quantity, ML> {
+    ) -> ResourceRequirementsBuilder<CR, CL, Quantity, ML> {
         let Self {
             cpu_request,
             cpu_limit,
@@ -124,7 +124,7 @@ impl<CR, CL, ML> ResourceRequirementsBuilder<CL, CR, (), ML> {
         self,
         request: impl Into<String>,
         factor: f32,
-    ) -> memory::Result<ResourceRequirementsBuilder<CL, CR, Quantity, Quantity>> {
+    ) -> memory::Result<ResourceRequirementsBuilder<CR, CL, Quantity, Quantity>> {
         let request = MemoryQuantity::from_str(&request.into())?;
         let limit = request * factor;
 
@@ -168,7 +168,7 @@ impl<CR, CL> ResourceRequirementsBuilder<CR, CL, Quantity, ()> {
     }
 }
 
-impl<CL, CR, ML, MR> ResourceRequirementsBuilder<CL, CR, ML, MR> {
+impl<CR, CL, MR, ML> ResourceRequirementsBuilder<CR, CL, MR, ML> {
     pub fn with_resource(
         mut self,
         rr_type: ResourceRequirementsType,
@@ -185,21 +185,18 @@ impl<CL, CR, ML, MR> ResourceRequirementsBuilder<CL, CR, ML, MR> {
 
         let resource = resource.to_string();
 
-        match self.other.get_mut(&resource) {
-            Some(types) => {
-                if types.contains_key(&rr_type) {
-                    warn!(
-                        "resource {} for '{}' already set, not overwriting",
-                        rr_type, resource
-                    );
-                }
+        if let Some(types) = self.other.get_mut(&resource) {
+            if types.contains_key(&rr_type) {
+                warn!(
+                    "resource {} for '{}' already set, not overwriting",
+                    rr_type, resource
+                );
+            }
 
-                types.insert(rr_type, Quantity(quantity.into()));
-            }
-            None => {
-                let types = BTreeMap::from([(rr_type, Quantity(quantity.into()))]);
-                self.other.insert(resource, types);
-            }
+            types.insert(rr_type, Quantity(quantity.into()));
+        } else {
+            let types = BTreeMap::from([(rr_type, Quantity(quantity.into()))]);
+            self.other.insert(resource, types);
         }
 
         self
@@ -286,6 +283,6 @@ mod tests {
             .with_resource(ResourceRequirementsType::Requests, "nvidia.com/gpu", "1")
             .build();
 
-        assert_eq!(rr, resources)
+        assert_eq!(rr, resources);
     }
 }

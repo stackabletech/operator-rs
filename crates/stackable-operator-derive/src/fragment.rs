@@ -105,7 +105,7 @@ struct FragmentField {
     attrs: Vec<Attribute>,
 }
 
-pub fn derive(input: DeriveInput) -> TokenStream {
+pub fn derive(input: &DeriveInput) -> TokenStream {
     let FragmentInput {
         ident,
         data,
@@ -117,7 +117,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 fragment: fragment_mod,
                 result: result_mod,
             },
-    } = match FragmentInput::from_derive_input(&input) {
+    } = match FragmentInput::from_derive_input(input) {
         Ok(input) => input,
         Err(err) => return err.write_errors(),
     };

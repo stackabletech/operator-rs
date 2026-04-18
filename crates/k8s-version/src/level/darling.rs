@@ -17,9 +17,9 @@ mod tests {
 
     use super::*;
 
-    fn parse_meta(tokens: proc_macro2::TokenStream) -> ::std::result::Result<syn::Meta, String> {
+    fn parse_meta(tokens: &proc_macro2::TokenStream) -> syn::Meta {
         let attribute: syn::Attribute = syn::parse_quote!(#[#tokens]);
-        Ok(attribute.meta)
+        attribute.meta
     }
 
     #[rstest]
@@ -27,7 +27,7 @@ mod tests {
     #[case(quote!(ignore = "alpha1"), Level::Alpha(1))]
     #[case(quote!(ignore = "beta1"), Level::Beta(1))]
     fn from_meta(#[case] input: proc_macro2::TokenStream, #[case] expected: Level) {
-        let meta = parse_meta(input).expect("valid attribute tokens");
+        let meta = parse_meta(&input);
         let version = Level::from_meta(&meta).expect("level must parse from attribute");
         assert_eq!(version, expected);
     }

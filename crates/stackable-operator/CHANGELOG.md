@@ -4,19 +4,46 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.110.1] - 2026-04-16
+
+### Added
+
+- Derive `strum::AsRefStr` for `ClientAuthenticationMethod` ([#1197]).
+
+[#1197]: https://github.com/stackabletech/operator-rs/pull/1197
+
+## [0.110.0] - 2026-04-10
+
 ### Added
 
 - Add generic database connection mechanism ([#1163]).
+- Add `config_overrides` module with `KeyValueOverridesProvider` trait, enabling
+  structured config file formats (e.g. JSON) in addition to key-value overrides ([#1177]).
+- Add `Scaler` CRD ([#1190], [#1195]).
 
 ### Changed
 
 - BREAKING: Change signature of `ContainerBuilder::add_env_vars` from `Vec<EnvVar>` to `IntoIterator<Item = EnvVar>` ([#1163]).
 - BREAKING: Remove `EXPERIMENTAL_` prefix in `CONFIG_OVERRIDE_FILE_HEADER_KEY` and `CONFIG_OVERRIDE_FILE_FOOTER_KEY` ([#1191]).
-- BREAKING: Bump `kube` from a custom version (`fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5`, which is between `3.0.1` and `3.1.0` and was needed to pull in schema fixes) to `3.1.0`. This means that the CRD schema generation bugs [#1934](https://github.com/kube-rs/kube/pull/1934) and [#1942](https://github.com/kube-rs/kube/pull/1942) are fixed ([#1192]).
+- BREAKING: Bump `kube` from a custom version (`fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5`, which is between `3.0.1` and `3.1.0`
+  and was needed to pull in schema fixes) to `3.1.0`. This means that the CRD schema generation bugs
+  [#1934](https://github.com/kube-rs/kube/pull/1934) and [#1942](https://github.com/kube-rs/kube/pull/1942) are fixed ([#1192]).
+- BREAKING: Add `ConfigOverrides` type parameter to `CommonConfiguration`, `Role` and `RoleGroup`.
+  The `config_overrides` field is now generic instead of `HashMap<String, HashMap<String, String>>` ([#1177]).
+- BREAKING: In [#1178] the `clientAuthenticationMethod` was added to the `ClientAuthenticationOptions` struct,
+  resulting it to show up in all product CRDs. even those that don't support configuring the client authentication method.
+  With this change, operators need to opt-in to the `clientAuthenticationMethod` field by using the new
+  `ClientAuthenticationMethodOption` struct for the generic type `ProductSpecificClientAuthenticationOptions` on
+  `ClientAuthenticationOptions`. That way the struct definitions (as well as docs etc.) remain in stackable-operator,
+  but operators can decide if they want to offer support for this field or not ([#1194]).
 
 [#1163]: https://github.com/stackabletech/operator-rs/pull/1163
+[#1177]: https://github.com/stackabletech/operator-rs/pull/1177
+[#1190]: https://github.com/stackabletech/operator-rs/pull/1190
 [#1191]: https://github.com/stackabletech/operator-rs/pull/1191
 [#1192]: https://github.com/stackabletech/operator-rs/pull/1192
+[#1194]: https://github.com/stackabletech/operator-rs/pull/1194
+[#1195]: https://github.com/stackabletech/operator-rs/pull/1195
 
 ## [0.109.0] - 2026-04-07
 
@@ -41,6 +68,13 @@ All notable changes to this project will be documented in this file.
 
   Additionally, `SecretClassVolume::to_volume` and `SecretClassVolume::to_ephemeral_volume_source`
   also take the same new argument.
+- BREAKING: `OpaConfig::full_document_url` now takes `&OpaApiVersion` instead of `OpaApiVersion` ([#1186]).
+- BREAKING: `EndOfSupportChecker::new` now takes `&EndOfSupportOptions` instead of `EndOfSupportOptions` ([#1186]).
+- BREAKING: `Labels::recommended` now takes `&ObjectLabels<R>` instead of `ObjectLabels<R>` ([#1186]).
+- BREAKING: `transform_all_roles_to_config` now takes `&HashMap<..., S>` by reference and requires generic `S: BuildHasher` ([#1186]).
+- BREAKING: `env_vars_from_rolegroup_config` now requires generic `S: BuildHasher` for the HashMap parameter ([#1186]).
+- BREAKING: `FromFragment` impl for `HashMap` now requires `S: BuildHasher + Default` ([#1186]).
+- BREAKING: `Merge` impl for `HashMap` now requires `S: BuildHasher` ([#1186]).
 
 ### Removed
 
@@ -51,6 +85,7 @@ All notable changes to this project will be documented in this file.
 [#1165]: https://github.com/stackabletech/operator-rs/pull/1165
 [#1178]: https://github.com/stackabletech/operator-rs/pull/1178
 [#1182]: https://github.com/stackabletech/operator-rs/pull/1182
+[#1186]: https://github.com/stackabletech/operator-rs/pull/1186
 [#1187]: https://github.com/stackabletech/operator-rs/pull/1187
 [#1189]: https://github.com/stackabletech/operator-rs/pull/1189
 

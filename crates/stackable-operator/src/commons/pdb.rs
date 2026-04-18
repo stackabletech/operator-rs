@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Learn more in the
 /// [allowed Pod disruptions documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/operations/pod_disruptions).
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PdbConfig {
     /// Whether a PodDisruptionBudget should be written out for this role.

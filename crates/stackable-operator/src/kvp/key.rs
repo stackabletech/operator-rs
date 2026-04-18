@@ -22,7 +22,7 @@ static KEY_NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 /// This error will be returned if the input is empty, the parser encounters
 /// multiple prefixes or any deeper errors occur during key prefix and key name
 /// parsing.
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum KeyError {
     /// Indicates that the input is empty. The key must at least contain a name.
     /// The prefix is optional.
@@ -169,7 +169,7 @@ impl Key {
 }
 
 /// The error type for key prefix parsing/validation operations.
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum KeyPrefixError {
     /// Indicates that the key prefix segment is empty, which is not permitted
     /// when the key indicates that a prefix is present (via a slash). This
@@ -249,12 +249,12 @@ where
     T: AsRef<str>,
 {
     fn eq(&self, other: &T) -> bool {
-        self.deref() == other.as_ref()
+        &**self == other.as_ref()
     }
 }
 
 /// The error type for key name parsing/validation operations.
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum KeyNameError {
     /// Indicates that the key name segment is empty. The key name is required
     /// and therefore cannot be empty.
@@ -333,7 +333,7 @@ where
     T: AsRef<str>,
 {
     fn eq(&self, other: &T) -> bool {
-        self.deref() == other.as_ref()
+        &**self == other.as_ref()
     }
 }
 
@@ -417,7 +417,7 @@ mod test {
             .prefix()
             .is_some_and(|prefix| *prefix == "app.kubernetes.io");
 
-        assert_eq!(is_valid, expected)
+        assert_eq!(is_valid, expected);
     }
 
     #[rstest]

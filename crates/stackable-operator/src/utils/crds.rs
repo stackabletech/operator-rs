@@ -57,12 +57,12 @@ mod tests {
 
     #[test]
     fn valid_pod_override_with_labels() {
-        let input = r#"
+        let input = r"
           podOverrides:
             metadata:
               labels:
                 my-custom-label: super-important-label
-        "#;
+        ";
 
         serde_yaml::from_str::<Test>(input).expect("Failed to parse valid podOverride");
     }
@@ -109,12 +109,12 @@ mod tests {
 
     #[test]
     fn invalid_pod_override_missing_container_name() {
-        let input = r#"
+        let input = r"
           podOverrides:
             spec:
               containers:
                 - image: oci.stackable.tech/sdp/nifi:1.23.2-stackable23.11.0
-        "#;
+        ";
 
         // FIXME: Ideally we would require the names of the containers to be set. We had users using podOverrides
         // without setting the name of the container and wondering why it didn't work.

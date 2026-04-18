@@ -13,7 +13,7 @@ use crate::{
 /// Connection settings for a [Redis](https://redis.io/) instance.
 ///
 /// Redis is commonly used as a Celery message broker or result backend (e.g. for Apache Airflow).
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RedisConnection {
     /// Hostname or IP address of the Redis server.

@@ -102,6 +102,7 @@ where
         JsonSchema,
         Merge,
         PartialEq,
+        Eq,
         Serialize
     ),
     merge(path_overrides(merge = "crate::config::merge")),
@@ -127,7 +128,7 @@ pub enum ContainerLogConfigChoice {
     Automatic(AutomaticContainerLogConfig),
 }
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, Merge, PartialEq, Serialize, Educe)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, Merge, PartialEq, Eq, Serialize, Educe)]
 #[educe(Default)]
 #[merge(path_overrides(merge = "crate::config::merge"))]
 #[serde(untagged)]
@@ -171,6 +172,7 @@ impl FromFragment for ContainerLogConfigChoice {
         JsonSchema,
         Merge,
         PartialEq,
+        Eq,
         Serialize
     ),
     merge(path_overrides(merge = "crate::config::merge")),
@@ -192,6 +194,7 @@ pub struct CustomContainerLogConfig {
         JsonSchema,
         Merge,
         PartialEq,
+        Eq,
         Serialize
     ),
     merge(path_overrides(merge = "crate::config::merge")),
@@ -207,7 +210,16 @@ pub struct ConfigMapLogConfig {
 #[derive(Clone, Debug, Default, Eq, Fragment, JsonSchema, PartialEq)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
-    derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize),
+    derive(
+        Clone,
+        Debug,
+        Default,
+        Deserialize,
+        JsonSchema,
+        PartialEq,
+        Eq,
+        Serialize
+    ),
     serde(rename_all = "camelCase")
 )]
 pub struct AutomaticContainerLogConfig {
@@ -248,7 +260,7 @@ impl AutomaticContainerLogConfig {
     pub fn root_log_level(&self) -> LogLevel {
         self.loggers
             .get(Self::ROOT_LOGGER)
-            .map(|root| root.level.to_owned())
+            .map(|root| root.level)
             .unwrap_or_default()
     }
 }
@@ -264,6 +276,7 @@ impl AutomaticContainerLogConfig {
         Deserialize,
         JsonSchema,
         PartialEq,
+        Eq,
         Merge,
         Serialize
     ),
@@ -288,6 +301,7 @@ pub struct LoggerConfig {
         JsonSchema,
         Merge,
         PartialEq,
+        Eq,
         Serialize
     ),
     merge(path_overrides(merge = "crate::config::merge")),
@@ -334,13 +348,12 @@ impl LogLevel {
     /// Convert the log level to a string understood by Vector
     pub fn to_vector_literal(&self) -> String {
         match self {
-            LogLevel::TRACE => "trace",
-            LogLevel::DEBUG => "debug",
-            LogLevel::INFO => "info",
-            LogLevel::WARN => "warn",
-            LogLevel::ERROR => "error",
-            LogLevel::FATAL => "error",
-            LogLevel::NONE => "off",
+            Self::TRACE => "trace",
+            Self::DEBUG => "debug",
+            Self::INFO => "info",
+            Self::WARN => "warn",
+            Self::ERROR | Self::FATAL => "error",
+            Self::NONE => "off",
         }
         .into()
     }
@@ -348,13 +361,12 @@ impl LogLevel {
     /// Convert the log level to a string understood by logback
     pub fn to_logback_literal(&self) -> String {
         match self {
-            LogLevel::TRACE => "TRACE",
-            LogLevel::DEBUG => "DEBUG",
-            LogLevel::INFO => "INFO",
-            LogLevel::WARN => "WARN",
-            LogLevel::ERROR => "ERROR",
-            LogLevel::FATAL => "ERROR",
-            LogLevel::NONE => "OFF",
+            Self::TRACE => "TRACE",
+            Self::DEBUG => "DEBUG",
+            Self::INFO => "INFO",
+            Self::WARN => "WARN",
+            Self::ERROR | Self::FATAL => "ERROR",
+            Self::NONE => "OFF",
         }
         .into()
     }
@@ -362,13 +374,13 @@ impl LogLevel {
     /// Convert the log level to a string understood by log4j
     pub fn to_log4j_literal(&self) -> String {
         match self {
-            LogLevel::TRACE => "TRACE",
-            LogLevel::DEBUG => "DEBUG",
-            LogLevel::INFO => "INFO",
-            LogLevel::WARN => "WARN",
-            LogLevel::ERROR => "ERROR",
-            LogLevel::FATAL => "FATAL",
-            LogLevel::NONE => "OFF",
+            Self::TRACE => "TRACE",
+            Self::DEBUG => "DEBUG",
+            Self::INFO => "INFO",
+            Self::WARN => "WARN",
+            Self::ERROR => "ERROR",
+            Self::FATAL => "FATAL",
+            Self::NONE => "OFF",
         }
         .into()
     }
@@ -382,13 +394,9 @@ impl LogLevel {
     // based on https://www.openpolicyagent.org/docs/latest/cli/#options-10 opa has only log levels {debug,info,error}
     pub fn to_opa_literal(&self) -> String {
         match self {
-            LogLevel::TRACE => "debug",
-            LogLevel::DEBUG => "debug",
-            LogLevel::INFO => "info",
-            LogLevel::WARN => "error",
-            LogLevel::ERROR => "error",
-            LogLevel::FATAL => "error",
-            LogLevel::NONE => "error",
+            Self::TRACE | Self::DEBUG => "debug",
+            Self::INFO => "info",
+            Self::WARN | Self::ERROR | Self::FATAL | Self::NONE => "error",
         }
         .into()
     }
@@ -396,13 +404,12 @@ impl LogLevel {
     /// Convert the log level to a Python expression
     pub fn to_python_expression(&self) -> String {
         match self {
-            LogLevel::TRACE => "logging.DEBUG",
-            LogLevel::DEBUG => "logging.DEBUG",
-            LogLevel::INFO => "logging.INFO",
-            LogLevel::WARN => "logging.WARNING",
-            LogLevel::ERROR => "logging.ERROR",
-            LogLevel::FATAL => "logging.CRITICAL",
-            LogLevel::NONE => "logging.CRITICAL + 1",
+            Self::TRACE | Self::DEBUG => "logging.DEBUG",
+            Self::INFO => "logging.INFO",
+            Self::WARN => "logging.WARNING",
+            Self::ERROR => "logging.ERROR",
+            Self::FATAL => "logging.CRITICAL",
+            Self::NONE => "logging.CRITICAL + 1",
         }
         .into()
     }
@@ -568,6 +575,7 @@ mod tests {
     }
 
     #[test]
+    #[expect(clippy::too_many_lines)]
     fn merge_automatic_container_log_config_fragment() {
         // no overriding log level + no default log level -> no log level
         assert_eq!(

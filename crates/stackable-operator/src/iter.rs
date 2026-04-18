@@ -136,8 +136,6 @@ mod tests {
 
     #[test]
     fn try_from_iter_success() {
-        let iter = [1, 2, 3, 4];
-
         #[derive(Debug, PartialEq)]
         struct Sum(usize);
 
@@ -146,17 +144,16 @@ mod tests {
 
             fn try_from_iter<I: IntoIterator<Item = usize>>(iter: I) -> Result<Self, Self::Error> {
                 let sum = iter.into_iter().sum();
-                Ok(Sum(sum))
+                Ok(Self(sum))
             }
         }
 
+        let iter = [1, 2, 3, 4];
         assert_eq!(Sum(10), Sum::try_from_iter(iter).unwrap());
     }
 
     #[test]
     fn try_from_iter_error() {
-        let iter = ["1", "2", "3", "-4"];
-
         #[derive(Debug, PartialEq)]
         struct Sum(usize);
 
@@ -177,6 +174,7 @@ mod tests {
             }
         }
 
+        let iter = ["1", "2", "3", "-4"];
         assert!(Sum::try_from_iter(iter).is_err());
     }
 }

@@ -37,7 +37,7 @@ impl DaemonSetConditionBuilder {
             let current_status = Self::daemon_set_available(ds);
 
             if current_status != ClusterConditionStatus::True {
-                unavailable_resources.push(ds.name_any())
+                unavailable_resources.push(ds.name_any());
             }
 
             available = cmp::max(available, current_status);

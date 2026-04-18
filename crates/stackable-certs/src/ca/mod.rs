@@ -415,7 +415,7 @@ where
     /// Kubernetes [`Secret`]. Common keys are `ca.crt` and `ca.key`.
     #[instrument(name = "create_certificate_authority_from_k8s_secret", skip(secret))]
     pub fn from_secret(
-        secret: Secret,
+        secret: &Secret,
         key_certificate: &str,
         key_private_key: &str,
     ) -> Result<Self, SecretError<S::Error>> {
@@ -424,19 +424,19 @@ where
         }
 
         let data = secret.data.as_ref().with_context(|| NoSecretDataSnafu {
-            secret: ObjectRef::from_obj(&secret),
+            secret: ObjectRef::from_obj(secret),
         })?;
 
         debug!("retrieving certificate data from secret via key {key_certificate:?}");
         let certificate_data =
             data.get(key_certificate)
                 .with_context(|| NoCertificateDataSnafu {
-                    secret: ObjectRef::from_obj(&secret),
+                    secret: ObjectRef::from_obj(secret),
                 })?;
 
         let certificate = x509_cert::Certificate::load_pem_chain(&certificate_data.0)
             .with_context(|_| ReadChainSnafu {
-                secret: ObjectRef::from_obj(&secret),
+                secret: ObjectRef::from_obj(secret),
             })?
             .remove(0);
 
@@ -444,7 +444,7 @@ where
         let private_key_data =
             data.get(key_private_key)
                 .with_context(|| NoPrivateKeyDataSnafu {
-                    secret: ObjectRef::from_obj(&secret),
+                    secret: ObjectRef::from_obj(secret),
                 })?;
 
         let private_key_data =
@@ -472,7 +472,7 @@ where
         key_private_key: &str,
         client: Client,
     ) -> Result<Self, SecretError<S::Error>> {
-        let secret_api = Api::namespaced(client, &secret_ref.namespace);
+        let secret_api: Api<Secret> = Api::namespaced(client, &secret_ref.namespace);
         let secret = secret_api
             .get(&secret_ref.name)
             .await
@@ -480,7 +480,7 @@ where
                 secret_ref: secret_ref.to_owned(),
             })?;
 
-        Self::from_secret(secret, key_certificate, key_private_key)
+        Self::from_secret(&secret, key_certificate, key_private_key)
     }
 
     /// Returns the ca certificate.

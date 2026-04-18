@@ -64,6 +64,7 @@ impl VersionedVariant {
         let original_attributes = &self.original_attributes;
         let fields = &self.fields;
 
+        #[allow(clippy::single_match_else)]
         match &self.changes {
             // NOTE (@Techassi): `unwrap_or_else` used instead of `expect`.
             // See: https://rust-lang.github.io/rust-clippy/master/index.html#expect_fun_call
@@ -146,6 +147,7 @@ impl VersionedVariant {
         let from_fields = self.generate_from_fields();
         let for_fields = self.generate_for_fields();
 
+        #[allow(clippy::single_match_else)]
         match &self.changes {
             Some(changes) => {
                 let next_change = changes.get_expect(&next_version.inner);

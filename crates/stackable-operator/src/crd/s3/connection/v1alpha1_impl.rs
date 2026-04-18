@@ -64,7 +64,7 @@ impl ConnectionSpec {
         let mut url = Url::parse(&endpoint).context(ParseS3EndpointSnafu { endpoint })?;
 
         if self.tls.uses_tls() {
-            url.set_scheme("https").map_err(|_| {
+            url.set_scheme("https").map_err(|()| {
                 SetS3EndpointSchemeSnafu {
                     scheme: "https".to_string(),
                     endpoint: url.clone(),
@@ -79,7 +79,7 @@ impl ConnectionSpec {
     /// Returns the port to be used, which is either user configured or defaulted based upon TLS usage
     pub fn port(&self) -> u16 {
         self.port
-            .unwrap_or(if self.tls.uses_tls() { 443 } else { 80 })
+            .unwrap_or_else(|| if self.tls.uses_tls() { 443 } else { 80 })
     }
 
     /// This functions adds

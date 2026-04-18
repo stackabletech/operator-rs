@@ -8,6 +8,7 @@ pub mod authentication;
 pub mod git_sync;
 pub mod listener;
 pub mod s3;
+pub mod scaler;
 
 /// A reference to a product cluster (for example, a `ZookeeperCluster`)
 ///
@@ -32,7 +33,7 @@ impl<K: kube::Resource> ClusterRef<K> {
     pub fn to_named(name: &str, namespace: Option<&str>) -> Self {
         Self {
             name: Some(name.into()),
-            namespace: namespace.map(|ns| ns.into()),
+            namespace: namespace.map(Into::into),
             _kind: PhantomData,
         }
     }

@@ -151,7 +151,7 @@ impl CertificateResolver {
                 .generate_ecdsa_leaf_certificate(
                     "Leaf",
                     "webhook",
-                    subject_alternative_dns_names.iter().map(|san| san.as_str()),
+                    subject_alternative_dns_names.iter().map(String::as_str),
                     WEBHOOK_CERTIFICATE_LIFETIME,
                 )
                 .context(GenerateLeafCertificateSnafu)?;

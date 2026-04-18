@@ -1,0 +1,154 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: scalers.autoscaling.stackable.tech
+spec:
+  group: autoscaling.stackable.tech
+  names:
+    categories: []
+    kind: Scaler
+    plural: scalers
+    shortNames: []
+    singular: scaler
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns: []
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Auto-generated derived type for ScalerSpec via `CustomResource`
+        properties:
+          spec:
+            properties:
+              replicas:
+                description: |-
+                  Desired replica count.
+
+                  Written by the horizontal pod autoscaling mechanism via the /scale subresource.
+
+                  NOTE: This and other replica fields)use a [`u16`] instead of a [`i32`] used by
+                  [`k8s_openapi`] types to force a non-negative replica count. All [`u16`]s can be
+                  converted losslessly to [`i32`]s where needed.
+
+                  Upstream issues:
+
+                  - https://github.com/kubernetes/kubernetes/issues/105533
+                  - https://github.com/Arnavion/k8s-openapi/issues/136
+                format: uint16
+                maximum: 65535.0
+                minimum: 0.0
+                type: integer
+            required:
+            - replicas
+            type: object
+          status:
+            description: Status of a StackableScaler.
+            nullable: true
+            properties:
+              lastTransitionTime:
+                description: Timestamp indicating when the scaler state last transitioned.
+                format: date-time
+                type: string
+              replicas:
+                description: |-
+                  The current total number of replicas targeted by the managed StatefulSet.
+
+                  Exposed via the `/scale` subresource for horizontal pod autoscaling consumption.
+                format: uint16
+                maximum: 65535.0
+                minimum: 0.0
+                type: integer
+              selector:
+                description: Label selector string for HPA pod counting. Written at `.status.selector`.
+                nullable: true
+                type: string
+              state:
+                description: The current state of the scaler state machine.
+                oneOf:
+                - required:
+                  - idle
+                - required:
+                  - preScaling
+                - required:
+                  - scaling
+                - required:
+                  - postScaling
+                - required:
+                  - failed
+                properties:
+                  failed:
+                    description: |-
+                      A hook returned an error.
+
+                      The scaler stays here until the user applies the [`Annotation::autoscaling_retry`] annotation
+                      to trigger a reset to [`ScalerState::Idle`].
+                    properties:
+                      failedIn:
+                        description: Which stage produced the error.
+                        enum:
+                        - PreScaling
+                        - Scaling
+                        - PostScaling
+                        type: string
+                      reason:
+                        description: Human-readable error message from the hook.
+                        type: string
+                    required:
+                    - failedIn
+                    - reason
+                    type: object
+                  idle:
+                    description: No scaling operation is in progress.
+                    type: object
+                  postScaling:
+                    description: |-
+                      Running the `post_scale` hook (e.g. cluster rebalance).
+
+                      This stage additionally tracks the previous replica count to be able derive the direction
+                      of the scaling operation.
+                    properties:
+                      previousReplicas:
+                        format: uint16
+                        maximum: 65535.0
+                        minimum: 0.0
+                        type: integer
+                    required:
+                    - previousReplicas
+                    type: object
+                  preScaling:
+                    description: Running the `pre_scale` hook (e.g. data offload).
+                    type: object
+                  scaling:
+                    description: |-
+                      Waiting for the StatefulSet to converge to the new replica count.
+
+                      This stage additionally tracks the previous replica count to be able derive the direction
+                      of the scaling operation.
+                    properties:
+                      previousReplicas:
+                        format: uint16
+                        maximum: 65535.0
+                        minimum: 0.0
+                        type: integer
+                    required:
+                    - previousReplicas
+                    type: object
+                type: object
+            required:
+            - lastTransitionTime
+            - replicas
+            - state
+            type: object
+        required:
+        - spec
+        title: Scaler
+        type: object
+    served: true
+    storage: true
+    subresources:
+      scale:
+        labelSelectorPath: .status.selector
+        specReplicasPath: .spec.replicas
+        statusReplicasPath: .status.replicas
+      status: {}

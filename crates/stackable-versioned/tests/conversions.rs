@@ -22,7 +22,7 @@ fn pass() {
             "File {path:?} should be converted successfully"
         );
         assert_eq!(request.request.unwrap().uid, response.uid);
-    })
+    });
 }
 
 #[test]
@@ -46,5 +46,5 @@ fn fail() {
         if let Some(request) = &request.request {
             assert_eq!(request.uid, response.uid);
         }
-    })
+    });
 }

@@ -144,11 +144,11 @@ pub enum ClusterResourceApplyStrategy {
 impl From<&ClusterOperation> for ClusterResourceApplyStrategy {
     fn from(commons_spec: &ClusterOperation) -> Self {
         if commons_spec.reconciliation_paused {
-            ClusterResourceApplyStrategy::ReconciliationPaused
+            Self::ReconciliationPaused
         } else if commons_spec.stopped {
-            ClusterResourceApplyStrategy::ClusterStopped
+            Self::ClusterStopped
         } else {
-            ClusterResourceApplyStrategy::Default
+            Self::Default
         }
     }
 }
@@ -205,10 +205,8 @@ impl ClusterResourceApplyStrategy {
     /// Indicates if orphaned resources should be deleted depending on the strategy.
     const fn delete_orphans(&self) -> bool {
         match self {
-            ClusterResourceApplyStrategy::NoApply
-            | ClusterResourceApplyStrategy::ReconciliationPaused => false,
-            ClusterResourceApplyStrategy::ClusterStopped
-            | ClusterResourceApplyStrategy::Default => true,
+            Self::NoApply | Self::ReconciliationPaused => false,
+            Self::ClusterStopped | Self::Default => true,
         }
     }
 }
@@ -234,7 +232,7 @@ impl ClusterResource for Job {
 impl ClusterResource for StatefulSet {
     fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
         match strategy {
-            ClusterResourceApplyStrategy::ClusterStopped => StatefulSet {
+            ClusterResourceApplyStrategy::ClusterStopped => Self {
                 spec: Some(StatefulSetSpec {
                     replicas: Some(0),
                     ..self.spec.unwrap_or_default()
@@ -257,18 +255,14 @@ impl ClusterResource for StatefulSet {
 impl ClusterResource for DaemonSet {
     fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
         match strategy {
-            ClusterResourceApplyStrategy::ClusterStopped => DaemonSet {
+            ClusterResourceApplyStrategy::ClusterStopped => Self {
                 spec: Some(DaemonSetSpec {
                     template: PodTemplateSpec {
                         spec: Some(PodSpec {
-                            node_selector: Some(
-                                [(
-                                    "stackable.tech/do-not-schedule".to_string(),
-                                    "cluster-stopped".to_string(),
-                                )]
-                                .into_iter()
-                                .collect::<BTreeMap<String, String>>(),
-                            ),
+                            node_selector: Some(BTreeMap::from([(
+                                "stackable.tech/do-not-schedule".to_string(),
+                                "cluster-stopped".to_string(),
+                            )])),
                             ..self
                                 .spec
                                 .clone()
@@ -299,7 +293,7 @@ impl ClusterResource for DaemonSet {
 impl ClusterResource for Deployment {
     fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
         match strategy {
-            ClusterResourceApplyStrategy::ClusterStopped => Deployment {
+            ClusterResourceApplyStrategy::ClusterStopped => Self {
                 spec: Some(DeploymentSpec {
                     replicas: Some(0),
                     ..self.spec.unwrap_or_default()
@@ -509,7 +503,7 @@ impl<'a> ClusterResources<'a> {
             operator_name: operator_name.into(),
             controller_name: controller_name.into(),
             manager: format_full_controller_name(operator_name, controller_name),
-            resource_ids: Default::default(),
+            resource_ids: HashSet::default(),
             apply_strategy,
             object_overrides,
         })
@@ -739,7 +733,7 @@ impl<'a> ClusterResources<'a> {
                         T::plural(&()),
                         ClusterResources::print_resources(&orphaned_resources),
                     );
-                    for resource in orphaned_resources.iter() {
+                    for resource in &orphaned_resources {
                         client
                             .delete(resource)
                             .await
@@ -798,17 +792,17 @@ impl<'a> ClusterResources<'a> {
                 LabelSelectorRequirement {
                     key: K8S_APP_INSTANCE_KEY.into(),
                     operator: "In".into(),
-                    values: Some(vec![self.app_instance.to_owned()]),
+                    values: Some(vec![self.app_instance.clone()]),
                 },
                 LabelSelectorRequirement {
                     key: K8S_APP_NAME_KEY.into(),
                     operator: "In".into(),
-                    values: Some(vec![self.app_name.to_owned()]),
+                    values: Some(vec![self.app_name.clone()]),
                 },
                 LabelSelectorRequirement {
                     key: K8S_APP_MANAGED_BY_KEY.into(),
                     operator: "In".into(),
-                    values: Some(vec![self.manager.to_owned()]),
+                    values: Some(vec![self.manager.clone()]),
                 },
             ]),
             ..Default::default()

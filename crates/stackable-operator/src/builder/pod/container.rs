@@ -67,9 +67,9 @@ pub struct ContainerBuilder {
 impl ContainerBuilder {
     pub fn new(name: &str) -> Result<Self> {
         Self::validate_container_name(name)?;
-        Ok(ContainerBuilder {
+        Ok(Self {
             name: name.to_string(),
-            ..ContainerBuilder::default()
+            ..Self::default()
         })
     }
 
@@ -83,7 +83,7 @@ impl ContainerBuilder {
         self
     }
 
-    /// Adds the following container attributes from a [ResolvedProductImage]:
+    /// Adds the following container attributes from a [`ResolvedProductImage`]:
     /// * image
     /// * image_pull_policy
     pub fn image_from_product_image(&mut self, product_image: &ResolvedProductImage) -> &mut Self {
@@ -118,7 +118,7 @@ impl ContainerBuilder {
     pub fn add_env_var_from_field_path(
         &mut self,
         name: impl Into<String>,
-        field_path: FieldPathEnvVar,
+        field_path: &FieldPathEnvVar,
     ) -> &mut Self {
         self.add_env_var_from_source(
             name,
@@ -308,13 +308,15 @@ impl ContainerBuilder {
 
     pub fn lifecycle_post_start(&mut self, post_start: LifecycleHandler) -> &mut Self {
         self.lifecycle
-            .get_or_insert(Lifecycle::default())
+            .get_or_insert_with(Lifecycle::default)
             .post_start = Some(post_start);
         self
     }
 
     pub fn lifecycle_pre_stop(&mut self, pre_stop: LifecycleHandler) -> &mut Self {
-        self.lifecycle.get_or_insert(Lifecycle::default()).pre_stop = Some(pre_stop);
+        self.lifecycle
+            .get_or_insert_with(Lifecycle::default)
+            .pre_stop = Some(pre_stop);
         self
     }
 
@@ -374,9 +376,9 @@ pub struct ContainerPortBuilder {
 
 impl ContainerPortBuilder {
     pub fn new(container_port: i32) -> Self {
-        ContainerPortBuilder {
+        Self {
             container_port,
-            ..ContainerPortBuilder::default()
+            ..Self::default()
         }
     }
 
@@ -425,11 +427,11 @@ pub enum FieldPathEnvVar {
 impl fmt::Display for FieldPathEnvVar {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            FieldPathEnvVar::Name => write!(f, "metadata.name"),
-            FieldPathEnvVar::Namespace => write!(f, "metadata.namespace"),
-            FieldPathEnvVar::UID => write!(f, "metadata.uid"),
-            FieldPathEnvVar::Labels(name) => write!(f, "metadata.labels['{name}']"),
-            FieldPathEnvVar::Annotations(name) => write!(f, "metadata.annotations['{name}']"),
+            Self::Name => write!(f, "metadata.name"),
+            Self::Namespace => write!(f, "metadata.namespace"),
+            Self::UID => write!(f, "metadata.uid"),
+            Self::Labels(name) => write!(f, "metadata.labels['{name}']"),
+            Self::Annotations(name) => write!(f, "metadata.annotations['{name}']"),
         }
     }
 }
@@ -590,12 +592,12 @@ mod tests {
             assert_eq!(
                 source.to_string(),
                 "input is 64 bytes long but must be no more than 63"
-            )
+            );
         }
         // One characters shorter name is valid
         let max_len_container_name: String = long_container_name.chars().skip(1).collect();
         assert_eq!(max_len_container_name.len(), 63);
-        assert!(ContainerBuilder::new(&max_len_container_name).is_ok())
+        assert!(ContainerBuilder::new(&max_len_container_name).is_ok());
     }
 
     #[test]
@@ -647,7 +649,7 @@ mod tests {
             .resources(resources.clone())
             .build();
 
-        assert_eq!(container.resources, Some(resources))
+        assert_eq!(container.resources, Some(resources));
     }
 
     /// Panics if given container builder constructor result is not [Err] with error message

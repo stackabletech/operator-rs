@@ -34,7 +34,7 @@ pub enum Error {
 ///
 /// However, there is one special handling needed:
 ///
-/// We can't mark Secrets as immutable, as this caused problems, see https://github.com/stackabletech/issues/issues/843.
+/// We can't mark Secrets as immutable, as this caused problems, see <https://github.com/stackabletech/issues/issues/843>.
 /// As Secrets have been created as immutable up to SDP release 26.3.0, we need to delete the, to be
 /// able to re-create them as mutable. This function detects old (immutable) Secrets and re-creates
 /// them as mutable. The contents of the Secret will be kept to prevent unnecessary Secret content

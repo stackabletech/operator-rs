@@ -59,7 +59,7 @@ impl AuthenticationProvider {
     /// Returns the port to be used, which is either user configured or defaulted based upon TLS usage
     pub fn port(&self) -> u16 {
         self.port
-            .unwrap_or(if self.tls.uses_tls() { 636 } else { 389 })
+            .unwrap_or_else(|| if self.tls.uses_tls() { 636 } else { 389 })
     }
 
     /// This functions adds
@@ -160,7 +160,7 @@ impl FieldNames {
 
 impl Default for FieldNames {
     fn default() -> Self {
-        FieldNames {
+        Self {
             uid: Self::default_uid(),
             group: Self::default_group(),
             given_name: Self::default_given_name(),
@@ -205,7 +205,7 @@ mod tests {
 
     #[test]
     fn full() {
-        let input = r#"
+        let input = r"
             hostname: my.ldap.server
             port: 42
             searchBase: ou=users,dc=example,dc=org
@@ -216,7 +216,7 @@ mod tests {
                 server:
                   caCert:
                     secretClass: ldap-ca-cert
-        "#;
+        ";
         let ldap: AuthenticationProvider = yaml_from_str_singleton_map(input).unwrap();
 
         assert_eq!(ldap.port(), 42);
