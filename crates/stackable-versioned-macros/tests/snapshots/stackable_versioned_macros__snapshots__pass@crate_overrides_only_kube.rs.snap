@@ -421,3 +421,27 @@ impl FooVersion {
         }
     }
 }
+#[cfg(test)]
+#[test]
+fn FooSpec_roundtrip_down_up() {
+    ::stackable_versioned::test_utils::test_roundtrip::<
+        v1::FooSpec,
+    >(
+        stringify!(Foo),
+        "foo.example.org/v1",
+        "foo.example.org/v1alpha1",
+        Foo::try_convert,
+    );
+}
+#[cfg(test)]
+#[test]
+fn FooSpec_roundtrip_up_down() {
+    ::stackable_versioned::test_utils::test_roundtrip::<
+        v1alpha1::FooSpec,
+    >(
+        stringify!(Foo),
+        "foo.example.org/v1alpha1",
+        "foo.example.org/v1",
+        Foo::try_convert,
+    );
+}

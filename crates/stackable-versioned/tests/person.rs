@@ -95,9 +95,9 @@ impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::PersonSpec
                 },
             },
             Self {
-                username: "".to_string(),
+                username: String::new(),
                 socials: v1alpha1::Socials {
-                    email: "".to_owned(),
+                    email: String::new(),
                 },
             },
         ]
