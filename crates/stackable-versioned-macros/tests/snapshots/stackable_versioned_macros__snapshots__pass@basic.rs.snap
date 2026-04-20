@@ -434,3 +434,17 @@ impl FooVersion {
         }
     }
 }
+#[cfg(test)]
+#[test]
+fn FooSpec_roundtrip_down_up() {
+    ::stackable_versioned::test_utils::test_roundtrip::<
+        v1::FooSpec,
+    >(stringify!(Foo), "stackable.tech/v1", "stackable.tech/v1alpha1", Foo::try_convert);
+}
+#[cfg(test)]
+#[test]
+fn FooSpec_roundtrip_up_down() {
+    ::stackable_versioned::test_utils::test_roundtrip::<
+        v1alpha1::FooSpec,
+    >(stringify!(Foo), "stackable.tech/v1alpha1", "stackable.tech/v1", Foo::try_convert);
+}
