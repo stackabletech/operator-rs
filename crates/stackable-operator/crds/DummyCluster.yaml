@@ -1781,8 +1781,9 @@ spec:
                 properties:
                   custom:
                     description: |-
-                      Overwrite the docker image.
-                      Specify the full docker image name, e.g. `oci.stackable.tech/sdp/superset:1.4.1-stackable2.1.0`
+                      Overwrite the container image.
+
+                      Specify the full container image name, e.g. `oci.stackable.tech/sdp/superset:1.4.1-stackable2.1.0`
                     type: string
                   productVersion:
                     description: Version of the product, e.g. `1.4.1`.
@@ -1808,15 +1809,29 @@ spec:
                       type: object
                     nullable: true
                     type: array
-                  repo:
-                    description: Name of the docker repo, e.g. `oci.stackable.tech/sdp`
+                  registry:
+                    description: |-
+                      The container image registry, e.g. `oci.stackable.tech`.
+
+                      If not specified, the operator will use the image registry provided via the operator
+                      environment options.
+                    nullable: true
+                    type: string
+                  repository:
+                    description: |-
+                      The repository on the container image registry where the container image is located, e.g.
+                      `sdp/airflow`.
+
+                      If not specified, the operator will use the image registry provided via the operator
+                      environment options.
                     nullable: true
                     type: string
                   stackableVersion:
                     description: |-
                       Stackable version of the product, e.g. `23.4`, `23.4.1` or `0.0.0-dev`.
-                      If not specified, the operator will use its own version, e.g. `23.4.1`.
-                      When using a nightly operator or a pr version, it will use the nightly `0.0.0-dev` image.
+
+                      If not specified, the operator will use its own version, e.g. `23.4.1`. When using a nightly
+                      operator or a PR version, it will use the nightly `0.0.0-dev` image.
                     nullable: true
                     type: string
                 type: object
