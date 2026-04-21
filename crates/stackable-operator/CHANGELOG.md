@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- BREAKING: Add two required CLI arguments and env vars to set image registry and repository ([#1199]):
+  - `IMAGE_REGISTRY` (`--image-registry`):  Sets the image registry which should be used by the
+    operator to construct image names for provisioned containers, eg. `oci.example.org`.
+  - `IMAGE_REPOSITORY` (`--image-repository`): Sets the image repository which should be used by the
+    operator to construct image names for provisioned containers, eg. `my/repository/to/operator`.
+
+### Changed
+
+- BREAKING: The product image selection mechanism via `ProductImage::resolve` now takes three
+  parameters instead of two. The new parameters are: `image_registry`, `image_repository`, and
+  `operator_version`.
+- BREAKING: The product image selection CRD interface splits up the `repo` key into `registry` and
+  `repository` for more clarity and consistency ([#1199]).
+
+[#1199]: https://github.com/stackabletech/operator-rs/pull/1199
+
 ## [0.110.1] - 2026-04-16
 
 ### Added
