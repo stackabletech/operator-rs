@@ -166,6 +166,17 @@ impl Annotation {
             .expect("autoscaling retry annotation must be valid");
         Self(kvp)
     }
+
+    /// Constructs a `secrets.stackable.tech/backend.autotls.cert.lifetime` annotation.
+    pub fn auto_tls_cert_domain_components_in_subject_dn(
+        enabled: bool,
+    ) -> Result<Self, AnnotationError> {
+        let kvp = KeyValuePair::try_from((
+            "secrets.stackable.tech/backend.autotls.cert.domain-components-in-subject-dn",
+            enabled.to_string(),
+        ))?;
+        Ok(Self(kvp))
+    }
 }
 
 /// A validated set/list of Kubernetes annotations.
