@@ -73,10 +73,6 @@ impl DerbyConnection {
     ///
     /// Druid actually starts a Derby instance, which listens on `127.0.0.1:1527`. The schema seems
     /// to be the filesystem location.
-    ///
-    /// As stackable-operator generates a (correct) URL in the form
-    /// `jdbc:derby:/tmp/foo/bar.db;create=true`, this function converts it to
-    /// `jdbc:derby://dummy-host-for-druid:1234/tmp/foo/bar.db;create=true`
     pub fn jdbc_connection_details_with_host_part(
         &self,
         unique_database_name: &str,
