@@ -199,8 +199,9 @@ impl ProductImage {
                     }
                 };
 
-                // Trim the start to ensure no double slashes are produced below
-                let image_name = image_name.trim_start_matches('/');
+                // Trim leading ans trailing whitespace and also trim the start to ensure no double
+                // slashes are produced below
+                let image_name = image_name.trim().trim_start_matches('/');
                 let app_version = format!("{product_version}-stackable{stackable_version}");
                 let app_version_label_value = Self::prepare_app_version_label_value(&app_version)?;
                 let image = format!("{image_repository}/{image_name}:{app_version}");
