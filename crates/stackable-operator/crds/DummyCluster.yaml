@@ -1781,9 +1781,9 @@ spec:
                 properties:
                   custom:
                     description: |-
-                      Overwrite the container image.
+                      Provide a custom container image.
 
-                      Specify the full container image name, e.g. `oci.stackable.tech/sdp/superset:1.4.1-stackable2.1.0`
+                      Specify the full container image name, e.g. `oci.example.tech/namespace/superset:1.4.1-my-tag`
                     type: string
                   productVersion:
                     description: Version of the product, e.g. `1.4.1`.
@@ -1809,18 +1809,10 @@ spec:
                       type: object
                     nullable: true
                     type: array
-                  registry:
-                    description: |-
-                      The container image registry, e.g. `oci.stackable.tech`.
-
-                      If not specified, the operator will use the image registry provided via the operator
-                      environment options.
-                    nullable: true
-                    type: string
-                  repository:
+                  repo:
                     description: |-
                       The repository on the container image registry where the container image is located, e.g.
-                      `sdp/airflow`.
+                      `oci.example.com/namespace`.
 
                       If not specified, the operator will use the image registry provided via the operator
                       environment options.
