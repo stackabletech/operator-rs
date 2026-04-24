@@ -73,7 +73,7 @@ impl DerbyConnection {
     ///
     /// Druid actually starts a Derby instance, which listens on `127.0.0.1:1527`. The schema seems
     /// to be the filesystem location.
-    pub fn jdbc_connection_details_with_host_part(
+    pub fn jdbc_connection_details_for_network_access(
         &self,
         unique_database_name: &str,
         host_part: &str,

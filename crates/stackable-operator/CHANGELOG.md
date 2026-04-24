@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Derive `strum::AsRefStr` for `ClientAuthenticationMethod` ([#1197]).
-- Add `DerbyConnection::jdbc_connection_details_with_host_part` helper ([#1200]).
+- Add `DerbyConnection::jdbc_connection_details_for_network_access` helper ([#1200]).
 
 [#1197]: https://github.com/stackabletech/operator-rs/pull/1197
 [#1200]: https://github.com/stackabletech/operator-rs/pull/1200
