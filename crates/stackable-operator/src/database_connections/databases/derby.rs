@@ -49,14 +49,10 @@ impl JdbcDatabaseConnection for DerbyConnection {
         unique_database_name: &str,
         _templating_mechanism: &TemplatingMechanism,
     ) -> Result<JdbcDatabaseConnectionDetails, crate::database_connections::Error> {
-        let location = self.location.as_ref_or_else(|| {
-            PathBuf::from(format!("/tmp/derby/{unique_database_name}/derby.db"))
-        });
-        let location = location.to_str().with_context(|| NonUtf8LocationSnafu {
-            location: location.to_path_buf(),
-        })?;
-        let connection_url = format!("jdbc:derby:{location};create=true",);
-        let connection_url = connection_url.parse().context(ParseConnectionUrlSnafu)?;
+        let location = self.location(unique_database_name)?;
+        let connection_url = format!("jdbc:derby:{location};create=true")
+            .parse()
+            .context(ParseConnectionUrlSnafu)?;
 
         Ok(JdbcDatabaseConnectionDetails {
             driver: DERBY_JDBC_DRIVER_CLASS.to_owned(),
@@ -64,5 +60,50 @@ impl JdbcDatabaseConnection for DerbyConnection {
             username_env: None,
             password_env: None,
         })
+    }
+}
+
+impl DerbyConnection {
+    /// Returns the JDBC connection URL in a format such as
+    /// `jdbc:derby://localhost:1527//opt/var/druid_state/derby;create=true`.
+    ///
+    /// E.g. according to the [Druid docs](https://druid.apache.org/docs/latest/design/metadata-storage/#derby)
+    /// we should configure something like
+    /// `jdbc:derby://localhost:1527//opt/var/druid_state/derby;create=true`.
+    ///
+    /// Druid actually starts a Derby instance, which listens on `127.0.0.1:1527`. The schema seems
+    /// to be the filesystem location.
+    pub fn jdbc_connection_details_for_network_access(
+        &self,
+        unique_database_name: &str,
+        host_part: &str,
+    ) -> Result<JdbcDatabaseConnectionDetails, crate::database_connections::Error> {
+        let location = self.location(unique_database_name)?;
+        let connection_url = format!("jdbc:derby://{host_part}/{location};create=true")
+            .parse()
+            .context(ParseConnectionUrlSnafu)?;
+
+        Ok(JdbcDatabaseConnectionDetails {
+            driver: DERBY_JDBC_DRIVER_CLASS.to_owned(),
+            connection_url,
+            username_env: None,
+            password_env: None,
+        })
+    }
+
+    /// Returns the configured [`Self::location`] or a sensible default value
+    fn location(
+        &self,
+        unique_database_name: &str,
+    ) -> Result<String, crate::database_connections::Error> {
+        let location = self.location.as_ref_or_else(|| {
+            PathBuf::from(format!("/tmp/derby/{unique_database_name}/derby.db"))
+        });
+        Ok(location
+            .to_str()
+            .with_context(|| NonUtf8LocationSnafu {
+                location: location.to_path_buf(),
+            })?
+            .to_owned())
     }
 }
