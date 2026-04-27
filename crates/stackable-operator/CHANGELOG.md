@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.111.0] - 2026-04-27
+
 ### Added
 
 - BREAKING: Add CLI argument and env var to set the image repository used to construct final product

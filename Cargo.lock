@@ -2988,7 +2988,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.110.1"
+version = "0.111.0"
 dependencies = [
  "base64",
  "clap",
@@ -3085,7 +3085,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "insta",
  "k8s-openapi",
@@ -3100,7 +3100,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned-macros"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "convert_case",
  "convert_case_extras",
