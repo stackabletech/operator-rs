@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-04-27
+
 ### Added
 
 - BREAKING: The `versioned` macro now automatically generates tests to test roundtrip converts for
