@@ -144,14 +144,42 @@ impl SecurityContextBuilder {
     }
 }
 
-#[derive(Clone, Default)]
+/// A builder to construct a [`PodSecurityContext`].
+///
+/// # Basic usage
+///
+/// ```
+/// use stackable_operator::builder::pod::security::PodSecurityContextBuilder;
+///
+/// let _ = PodSecurityContextBuilder::with_stackable_defaults()
+///     // Configure any arbitrary fields
+///     .run_as_user(1234)
+///     .build();
+/// ```
+#[derive(Clone, Debug)]
 pub struct PodSecurityContextBuilder {
     pod_security_context: PodSecurityContext,
 }
 
 impl PodSecurityContextBuilder {
-    pub fn new() -> Self {
-        Self::default()
+    /// Construct a new [`PodSecurityContextBuilder`] that is pre-filled with Stackable's defaults.
+    pub fn with_stackable_defaults() -> Self {
+        Self {
+            pod_security_context: Self::stackable_default_pod_security_context(),
+        }
+    }
+
+    /// The Stackable's defaults for a [`PodSecurityContext`].
+    ///
+    /// It is recommended to use the [`PodSecurityContextBuilder::with_stackable_defaults`] instead
+    /// (if possible).
+    pub fn stackable_default_pod_security_context() -> PodSecurityContext {
+        todo!("Lars needs to define the exact settings he wants");
+
+        PodSecurityContext {
+            run_as_non_root: Some(true),
+            ..Default::default()
+        }
     }
 
     pub fn build(&self) -> PodSecurityContext {
@@ -173,8 +201,8 @@ impl PodSecurityContextBuilder {
         self
     }
 
-    pub fn run_as_non_root(&mut self) -> &mut Self {
-        self.pod_security_context.run_as_non_root = Some(true);
+    pub fn run_as_non_root(&mut self, non_root: bool) -> &mut Self {
+        self.pod_security_context.run_as_non_root = Some(non_root);
         self
     }
 
@@ -381,13 +409,13 @@ mod tests {
 
     #[test]
     fn security_context_builder() {
-        let mut builder = PodSecurityContextBuilder::new();
+        let mut builder = PodSecurityContextBuilder::with_stackable_defaults();
         let context = builder
             .fs_group(1000)
             .fs_group_change_policy("policy")
             .run_as_user(1001)
             .run_as_group(1001)
-            .run_as_non_root()
+            .run_as_non_root(true)
             .supplemental_groups(&[1002, 1003])
             .se_linux_level("level")
             .se_linux_role("role")
