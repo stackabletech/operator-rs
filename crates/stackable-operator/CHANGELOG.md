@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Derive `Clone` for `OperatorEnvironmentOptions` ([#1203]).
+
+[#1203]: https://github.com/stackabletech/operator-rs/pull/1203
+
 ## [0.111.0] - 2026-04-27
 
 ### Added
