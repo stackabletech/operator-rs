@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Eq, clap::Parser)]
+#[derive(Clone, Debug, PartialEq, Eq, clap::Parser)]
 #[command(next_help_heading = "Environment Options")]
 pub struct OperatorEnvironmentOptions {
     /// The namespace the operator is running in, usually `stackable-operators`.
