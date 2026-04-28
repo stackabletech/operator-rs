@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: `PodSecurityContextBuilder::new` was removed in favor of `PodSecurityContextBuilder::with_stackable_defaults`.
+  This function already sets up some defaults we want to use across the platform.
+- BREAKING: `PodSecurityContextBuilder::run_as_non_root` now takes a `bool` instead of assuming consumers always want to set it to `true`.
+  This is needed to allow users setting it to `false` in case the new `with_stackable_defaults` functions set's it to `true`.
+
 ## [0.111.1] - 2026-04-28
 
 ### Added
