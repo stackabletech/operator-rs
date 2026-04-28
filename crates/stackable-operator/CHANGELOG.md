@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.111.1] - 2026-04-28
+
 ### Added
 
 - Derive `Clone` for `OperatorEnvironmentOptions` ([#1203]).
