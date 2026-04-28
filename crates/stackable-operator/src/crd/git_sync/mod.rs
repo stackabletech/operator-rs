@@ -64,6 +64,9 @@ pub mod versioned {
         pub git_sync_conf: BTreeMap<String, String>,
 
         /// An optional secret used for git access.
+        //
+        // FIXME: The roundtrip looses data when private keys are used.
+        // See https://github.com/stackabletech/issues/issues/849 for details.
         #[versioned(changed(
             since = "v1alpha2",
             from_name = "credentials_secret",
