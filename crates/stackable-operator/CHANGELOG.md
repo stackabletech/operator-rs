@@ -6,9 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: Use `serde_json::Value` instead of `String` for user-provided JSON configOverrides. This changed is marked as breaking, as it causes a breaking change to the CRD ([#XXXX]).
+- BREAKING: Use `serde_json::Value` instead of `String` for user-provided JSON configOverrides. This changed is marked as breaking, as it causes a breaking change to the CRD ([#1206]).
 
-[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+[#1206]: https://github.com/stackabletech/operator-rs/pull/1206
 
 ## [0.111.1] - 2026-04-28
 
