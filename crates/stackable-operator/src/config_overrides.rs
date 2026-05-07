@@ -26,9 +26,6 @@ pub enum Error {
         source: serde_json::Error,
         index: usize,
     },
-
-    #[snafu(display("failed to parse user-provided JSON content"))]
-    ParseUserProvidedJson { source: serde_json::Error },
 }
 
 /// Trait that allows the product config pipeline to extract flat key-value
@@ -89,8 +86,33 @@ pub enum JsonConfigOverrides {
     /// `{"op": "add", "path": "/0/happy", "value": true}`
     JsonPatches(Vec<String>),
 
-    /// Override the entire config file with the specified String.
-    UserProvided(String),
+    /// Override the entire config file with the specified JSON document.
+    ///
+    /// Please note that you can in-line JSON into YAML as follows:
+    ///
+    /// ```yaml
+    /// # ... other YAML content
+    /// userProvided: {
+    ///   "myString": "test",
+    ///   "myList": ["test"],
+    ///   "myBool": true,
+    ///   "my": {"nested.field.with.dots": 42}
+    /// }
+    /// ```
+    ///
+    /// As an alternative you can also stick to YAML:
+    ///
+    /// ```yaml
+    /// # ... other YAML content
+    /// userProvided:
+    ///   myString: test
+    ///   myList: [test]
+    ///   myBool: true
+    ///   my:
+    ///     nested.field.with.dots: 42
+    /// ```
+    #[schemars(schema_with = "raw_object_schema")]
+    UserProvided(serde_json::Value),
 }
 
 impl JsonConfigOverrides {
@@ -123,18 +145,18 @@ impl JsonConfigOverrides {
                 json_patch::patch(&mut doc, &operations).context(ApplyJsonPatchSnafu)?;
                 Ok(doc)
             }
-            Self::UserProvided(content) => {
-                serde_json::from_str(content).context(ParseUserProvidedJsonSnafu)
-            }
+            Self::UserProvided(content) => Ok(content.clone()),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
     use serde_json::json;
 
     use super::*;
+    use crate::utils::yaml_from_str_singleton_map;
 
     #[test]
     fn json_merge_patch_add_and_overwrite_fields() {
@@ -244,28 +266,14 @@ mod tests {
     #[test]
     fn user_provided_ignores_base() {
         let base = json!({"foo": "bar"});
-        let content = "{\"custom\": true}";
+        let content = json!({"custom": true});
 
-        let overrides = JsonConfigOverrides::UserProvided(content.to_owned());
+        let overrides = JsonConfigOverrides::UserProvided(content);
 
         let result = overrides
             .apply(&base)
             .expect("user provided should succeed");
         assert_eq!(result, json!({"custom": true}));
-    }
-
-    #[test]
-    fn user_provided_invalid_json_returns_error() {
-        let base = json!({"foo": "bar"});
-
-        let overrides = JsonConfigOverrides::UserProvided("not valid json".to_owned());
-
-        let result = overrides.apply(&base);
-        assert!(
-            matches!(result.unwrap_err(), Error::ParseUserProvidedJson { source } if source.to_string()
-                    == "expected ident at line 1 column 2"),
-            "invalid JSON should return an error"
-        );
     }
 
     #[test]
@@ -280,5 +288,44 @@ mod tests {
         assert_eq!(result.len(), 2);
         assert_eq!(result.get("key1"), Some(&Some("value1".to_owned())));
         assert_eq!(result.get("key2"), Some(&Some("value2".to_owned())));
+    }
+
+    #[rstest]
+    #[case::inline_json(
+        r#"
+# ... other YAML content
+userProvided: {
+  "myString": "test",
+  "myList": ["test"],
+  "myBool": true,
+  "my": {"nested.field.with.dots": 42}
+}
+"#
+    )]
+    #[case::inline_yaml(
+        "
+# ... other YAML content
+userProvided:
+  myString: test
+  myList: [test]
+  myBool: true
+  my:
+    nested.field.with.dots: 42
+"
+    )]
+    fn parse_user_provided_json(#[case] yaml: String) {
+        let expected = json!({
+            "myString": "test",
+            "myList": ["test"],
+            "myBool": true,
+            "my": {"nested.field.with.dots": 42}
+        });
+        let json_config_overrides: JsonConfigOverrides =
+            yaml_from_str_singleton_map(&yaml).unwrap();
+
+        match json_config_overrides {
+            JsonConfigOverrides::UserProvided(value) => assert_eq!(value, expected),
+            _ => panic!("JsonConfigOverrides must be of type UserProvided"),
+        }
     }
 }
