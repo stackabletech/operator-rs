@@ -1,22 +1,19 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::LazyLock};
 
 use clap::ValueEnum;
-use lazy_static::lazy_static;
 use properties::PropertiesEscaper;
 use xml::XmlEscaper;
 
 mod properties;
 mod xml;
 
-lazy_static! {
-    // Yes, we could use `strum` for that, but we try to keep the dependencies minimal.
-    pub static ref KNOWN_FILE_TYPES: HashMap<String, FileType> = {
-        let mut types = HashMap::new();
-        types.insert("properties".to_owned(), FileType::Properties);
-        types.insert("xml".to_owned(), FileType::Xml);
-        types
-    };
-}
+// Yes, we could use `strum` for that, but we try to keep the dependencies minimal.
+pub static KNOWN_FILE_TYPES: LazyLock<HashMap<String, FileType>> = LazyLock::new(|| {
+    let mut types = HashMap::new();
+    types.insert("properties".to_owned(), FileType::Properties);
+    types.insert("xml".to_owned(), FileType::Xml);
+    types
+});
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum FileType {

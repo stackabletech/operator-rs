@@ -29,13 +29,15 @@ fn test_file_templating(#[files("tests/resources/**/*.in")] test_file_in: PathBu
 
 fn set_example_envs(example_dir: &Path) {
     // SAFETY: We only use a single thread to set this env vars
-    env::set_var("ENV_TEST", "foo");
-    env::set_var("ENV_TEST_USERNAME", "example user");
-    env::set_var("ENV_TEST_PASSWORD", "admin-pw= withSpace$%\"' &&} §");
-    env::set_var("ENV_TEST_PASSWORD_ENV_NAME", "ENV_TEST_PASSWORD");
+    unsafe {
+        env::set_var("ENV_TEST", "foo");
+        env::set_var("ENV_TEST_USERNAME", "example user");
+        env::set_var("ENV_TEST_PASSWORD", "admin-pw= withSpace$%\"' &&} §");
+        env::set_var("ENV_TEST_PASSWORD_ENV_NAME", "ENV_TEST_PASSWORD");
 
-    env::set_var("FILE_TEST_42_FILE", example_dir.join("42"));
-    env::set_var("FILE_TEST_42_FILE_ENV_NAME", "FILE_TEST_42_FILE");
+        env::set_var("FILE_TEST_42_FILE", example_dir.join("42"));
+        env::set_var("FILE_TEST_42_FILE_ENV_NAME", "FILE_TEST_42_FILE");
+    }
 }
 
 /// Returns the directory where the files reside

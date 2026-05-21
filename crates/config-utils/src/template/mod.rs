@@ -8,8 +8,8 @@ use std::{
 use snafu::{OptionExt, ResultExt, Snafu};
 
 use crate::{
-    file_types::{FileType, KNOWN_FILE_TYPES},
     ENV_VAR_END_PATTERN, ENV_VAR_START_PATTERNS, FILE_END_PATTERN, FILE_START_PATTERNS,
+    file_types::{FileType, KNOWN_FILE_TYPES},
 };
 
 pub mod cli_args;
@@ -28,7 +28,9 @@ pub enum Error {
     #[snafu(display("Failed to convert file name {file_name:?} to string"))]
     ConvertFileNameToString { file_name: PathBuf },
 
-    #[snafu(display("The extension {extension} is not known, can not determine file type. Please specify the file type manually."))]
+    #[snafu(display(
+        "The extension {extension} is not known, can not determine file type. Please specify the file type manually."
+    ))]
     ExtensionUnkown { extension: String },
 
     #[snafu(display("Failed to create temporary file {tmp_file_name:?}"))]

@@ -2,7 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.3.0] - 2026-05-19
+
+### Changed
+
+- Bump `clap` to 4.6 and Rust to 1.95.0 ([#13]).
+- Replace `lazy_static` with `std::sync::LazyLock` ([#13]).
+
+[#13]: https://github.com/stackabletech/config-utils/pull/13
 
 ## [0.2.0] - 2024-06-25
 
