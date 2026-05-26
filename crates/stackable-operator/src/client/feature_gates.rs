@@ -30,12 +30,7 @@ impl Client {
             .await
             .context(PerformRawRequestSnafu)?;
 
-        response
-            .lines()
-            .filter(|l| l.starts_with("kubernetes_feature_enabled"))
-            .map(FeatureGate::from_str)
-            .collect::<Result<Vec<FeatureGate>, _>>()
-            .map_err(|error| ParseFeatureGateSnafu { error }.build())
+        FeatureGate::parse_from_metrics(&response)
     }
 
     /// Retrieves enabled feature gates.
@@ -94,6 +89,18 @@ impl FromStr for FeatureGate {
 }
 
 impl FeatureGate {
+    pub const METRIC_NAME: &str = "kubernetes_feature_enabled";
+
+    /// Enumerates the complete body line-by-line and parses the relevant feature gate metrics.
+    #[allow(clippy::result_large_err)]
+    fn parse_from_metrics(body: &str) -> Result<Vec<Self>> {
+        body.lines()
+            .filter(|l| l.starts_with(Self::METRIC_NAME))
+            .map(Self::from_str)
+            .collect::<Result<Vec<Self>, _>>()
+            .map_err(|error| ParseFeatureGateSnafu { error }.build())
+    }
+
     /// Parses a feature gate from the line-based `/metrics` response.
     ///
     /// This function expects feature gates to be passed as individual lines.
@@ -134,7 +141,7 @@ impl FeatureGate {
 
     /// Parses (and removes) the well-known, static metric name.
     fn parse_metric_name(input: &mut &str) -> winnow::Result<()> {
-        "kubernetes_feature_enabled".void().parse_next(input)
+        Self::METRIC_NAME.void().parse_next(input)
     }
 
     /// Parses and collects a list of labels contained within `{` and `}`.
@@ -208,6 +215,7 @@ pub enum FeatureStage {
 
 #[cfg(test)]
 mod tests {
+    use indoc::indoc;
     use rstest::rstest;
 
     use super::*;
@@ -230,13 +238,37 @@ mod tests {
         }
     }
 
-    #[rstest]
-    #[case(r#"kubernetes_feature_enabled{name="APIResponseCompression",stage="BETA"} 1"#)]
-    #[case(r#"kubernetes_feature_enabled{name="APIServingWithRoutine",stage="ALPHA"} 0"#)]
-    #[case(r#"kubernetes_feature_enabled{name="AggregatedDiscoveryRemoveBetaType",stage="DEPRECATED"} 1"#)]
-    #[case(r#"kubernetes_feature_enabled{name="AnyVolumeDataSource",stage=""} 1"#)]
-    fn parse_feature_gate_valid(#[case] input: &str) {
-        assert!(FeatureGate::from_str(input).is_ok())
+    #[test]
+    fn parse_feature_gates() {
+        // This snippet is a combination of
+        //
+        // - kubectl get --raw /metrics | head
+        // - kubectl get --raw /metrics | grep kubernetes_feature_enabled | head
+        let response = indoc! {r#"
+            # HELP aggregator_discovery_aggregation_count_total [ALPHA] Counter of number of times discovery was aggregated
+            # TYPE aggregator_discovery_aggregation_count_total counter
+            aggregator_discovery_aggregation_count_total 614
+            # HELP aggregator_unavailable_apiservice [ALPHA] Gauge of APIServices which are marked as unavailable broken down by APIService name.
+            # TYPE aggregator_unavailable_apiservice gauge
+            aggregator_unavailable_apiservice{name="v1."} 0
+            aggregator_unavailable_apiservice{name="v1.admissionregistration.k8s.io"} 0
+            aggregator_unavailable_apiservice{name="v1.apiextensions.k8s.io"} 0
+            aggregator_unavailable_apiservice{name="v1.apps"} 0
+            aggregator_unavailable_apiservice{name="v1.authentication.k8s.io"} 0
+            # ...
+            # HELP kubernetes_feature_enabled [BETA] This metric records the data about the stage and enablement of a k8s feature.
+            # TYPE kubernetes_feature_enabled gauge
+            kubernetes_feature_enabled{name="APIResponseCompression",stage="BETA"} 1
+            kubernetes_feature_enabled{name="APIServerIdentity",stage="BETA"} 1
+            kubernetes_feature_enabled{name="APIServerTracing",stage="BETA"} 1
+            kubernetes_feature_enabled{name="APIServingWithRoutine",stage="ALPHA"} 0
+            kubernetes_feature_enabled{name="AggregatedDiscoveryRemoveBetaType",stage="DEPRECATED"} 1
+            kubernetes_feature_enabled{name="AllAlpha",stage="ALPHA"} 0
+            kubernetes_feature_enabled{name="AllBeta",stage="BETA"} 0
+            kubernetes_feature_enabled{name="AllowDNSOnlyNodeCSR",stage="DEPRECATED"} 0
+        "#};
+
+        assert!(FeatureGate::parse_from_metrics(response).is_ok());
     }
 
     #[rstest]
@@ -247,6 +279,6 @@ mod tests {
     #[case("kubernetes_feature_enabled{} 0")]
     #[case("")]
     fn parse_feature_gate_invalid(#[case] input: &str) {
-        assert!(FeatureGate::from_str(input).is_err())
+        assert!(FeatureGate::from_str(input).is_err());
     }
 }
