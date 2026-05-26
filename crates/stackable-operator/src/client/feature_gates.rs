@@ -208,6 +208,9 @@ pub enum FeatureStage {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
+    use super::*;
     use crate::client::{initialize_operator, tests::test_cluster_info_opts};
 
     #[tokio::test]
@@ -225,5 +228,25 @@ mod tests {
         for feature_gate in feature_gates {
             println!("{feature_gate:?}");
         }
+    }
+
+    #[rstest]
+    #[case(r#"kubernetes_feature_enabled{name="APIResponseCompression",stage="BETA"} 1"#)]
+    #[case(r#"kubernetes_feature_enabled{name="APIServingWithRoutine",stage="ALPHA"} 0"#)]
+    #[case(r#"kubernetes_feature_enabled{name="AggregatedDiscoveryRemoveBetaType",stage="DEPRECATED"} 1"#)]
+    #[case(r#"kubernetes_feature_enabled{name="AnyVolumeDataSource",stage=""} 1"#)]
+    fn parse_feature_gate_valid(#[case] input: &str) {
+        assert!(FeatureGate::from_str(input).is_ok())
+    }
+
+    #[rstest]
+    #[case(r#"kubernetes_feature_disabled{name="AggregatedDiscoveryRemoveBetaType",stage="DEPRECATED"} 1"#)]
+    #[case(r#"kubernetes_feature_enabled{name="APIResponseCompression",stage="GAMMA"} 1"#)]
+    #[case(r#"kubernetes_feature_enabled{name="APIResponseCompression"} 1"#)]
+    #[case(r#"kubernetes_feature_enabled{="APIResponseCompression",="ALPHA"} 1"#)]
+    #[case("kubernetes_feature_enabled{} 0")]
+    #[case("")]
+    fn parse_feature_gate_invalid(#[case] input: &str) {
+        assert!(FeatureGate::from_str(input).is_err())
     }
 }
