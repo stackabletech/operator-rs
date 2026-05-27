@@ -599,6 +599,30 @@ pub(crate) mod versioned {
             }
         }
     }
+    #[cfg(test)]
+    #[test]
+    fn FooSpec_roundtrip_down_up() {
+        ::stackable_versioned::test_utils::test_roundtrip::<
+            v2alpha1::FooSpec,
+        >(
+            stringify!(Foo),
+            "foo.example.org/v2alpha1",
+            "foo.example.org/v1alpha1",
+            Foo::try_convert,
+        );
+    }
+    #[cfg(test)]
+    #[test]
+    fn FooSpec_roundtrip_up_down() {
+        ::stackable_versioned::test_utils::test_roundtrip::<
+            v1alpha1::FooSpec,
+        >(
+            stringify!(Foo),
+            "foo.example.org/v1alpha1",
+            "foo.example.org/v2alpha1",
+            Foo::try_convert,
+        );
+    }
     #[derive(::core::fmt::Debug)]
     pub enum Bar {
         V1Alpha1(v1alpha1::Bar),
@@ -875,5 +899,29 @@ pub(crate) mod versioned {
                 }
             }
         }
+    }
+    #[cfg(test)]
+    #[test]
+    fn BarSpec_roundtrip_down_up() {
+        ::stackable_versioned::test_utils::test_roundtrip::<
+            v2alpha1::BarSpec,
+        >(
+            stringify!(Bar),
+            "bar.example.org/v2alpha1",
+            "bar.example.org/v1alpha1",
+            Bar::try_convert,
+        );
+    }
+    #[cfg(test)]
+    #[test]
+    fn BarSpec_roundtrip_up_down() {
+        ::stackable_versioned::test_utils::test_roundtrip::<
+            v1alpha1::BarSpec,
+        >(
+            stringify!(Bar),
+            "bar.example.org/v1alpha1",
+            "bar.example.org/v2alpha1",
+            Bar::try_convert,
+        );
     }
 }

@@ -4,13 +4,50 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `Client::{get_feature_gates,get_enabled_feature_gates,get_disabled_feature_gates}` associated
+  functions to retrieve all, enabled, or disabled feature gates from the Kubernetes apiserver ([#1207]).
+
+### Changed
+
+- BREAKING: Use `serde_json::Value` instead of `String` for user-provided JSON `configOverrides`. This change is marked as breaking, as it causes a breaking change to the CRDs ([#1206]).
+
+[#1206]: https://github.com/stackabletech/operator-rs/pull/1206
+[#1207]: https://github.com/stackabletech/operator-rs/pull/1207
+
+## [0.111.1] - 2026-04-28
+
+### Added
+
+- Derive `Clone` for `OperatorEnvironmentOptions` ([#1203]).
+
+[#1203]: https://github.com/stackabletech/operator-rs/pull/1203
+
+## [0.111.0] - 2026-04-27
+
+### Added
+
+- BREAKING: Add CLI argument and env var to set the image repository used to construct final product
+  image names: `IMAGE_REPOSITORY` (`--image-repository`), eg. `oci.example.org/my/namespace` ([#1199]).
+
+### Changed
+
+- BREAKING: The product image selection mechanism via `ProductImage::resolve` now takes three
+  parameters instead of two. The new parameters are: `image_name`, `image_repository`, and
+  `operator_version` ([#1199]).
+
+[#1199]: https://github.com/stackabletech/operator-rs/pull/1199
+
 ## [0.110.1] - 2026-04-16
 
 ### Added
 
 - Derive `strum::AsRefStr` for `ClientAuthenticationMethod` ([#1197]).
+- Add `DerbyConnection::jdbc_connection_details_for_network_access` helper ([#1200]).
 
 [#1197]: https://github.com/stackabletech/operator-rs/pull/1197
+[#1200]: https://github.com/stackabletech/operator-rs/pull/1200
 
 ## [0.110.0] - 2026-04-10
 

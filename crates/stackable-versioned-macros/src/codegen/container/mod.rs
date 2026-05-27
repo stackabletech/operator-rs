@@ -20,6 +20,7 @@ mod r#enum;
 mod r#struct;
 
 /// Contains common container data shared between structs and enums.
+#[derive(Debug)]
 pub struct CommonContainerData {
     /// Original attributes placed on the container, like `#[derive()]` or `#[cfg()]`.
     pub original_attributes: Vec<Attribute>,

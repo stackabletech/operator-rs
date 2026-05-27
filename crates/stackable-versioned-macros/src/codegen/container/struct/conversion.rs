@@ -3,7 +3,7 @@ use std::{borrow::Cow, cmp::Ordering};
 use indoc::formatdoc;
 use itertools::Itertools as _;
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::parse_quote;
 
 use crate::{
@@ -525,6 +525,71 @@ impl Struct {
                 }
             }
         })
+    }
+
+    pub(super) fn generate_conversion_roundtrip_test(
+        &self,
+        versions: &[VersionDefinition],
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+        spec_gen_ctx: &SpecGenerationContext<'_>,
+    ) -> TokenStream {
+        let versioned_path = &*mod_gen_ctx.crates.versioned;
+        let struct_ident = &self.common.idents.original;
+        let kind_ident = &spec_gen_ctx.kubernetes_idents.kind;
+
+        let api_versions = spec_gen_ctx
+            .version_strings
+            .iter()
+            .map(|version| {
+                format!(
+                    "{group}/{version}",
+                    group = &spec_gen_ctx.kubernetes_arguments.group
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let earliest_version_module_ident = &versions
+            .first()
+            .expect("there must be at least one version present")
+            .idents
+            .module;
+        let latest_version_module_ident = &versions
+            .last()
+            .expect("there must be at least one version present")
+            .idents
+            .module;
+        let earliest_api_version = api_versions
+            .first()
+            .expect("there must be at least one version present");
+        let latest_api_version = api_versions
+            .last()
+            .expect("there must be at least one version present");
+        let test_function_down_up = format_ident!("{struct_ident}_roundtrip_down_up");
+        let test_function_up_down = format_ident!("{struct_ident}_roundtrip_up_down");
+
+        quote! {
+            #[cfg(test)]
+            #[test]
+            fn #test_function_down_up() {
+                #versioned_path::test_utils::test_roundtrip::<#latest_version_module_ident::#struct_ident>(
+                    stringify!(#kind_ident),
+                    #latest_api_version,
+                    #earliest_api_version,
+                    #kind_ident::try_convert,
+                );
+            }
+
+            #[cfg(test)]
+            #[test]
+            fn #test_function_up_down() {
+                #versioned_path::test_utils::test_roundtrip::<#earliest_version_module_ident::#struct_ident>(
+                    stringify!(#kind_ident),
+                    #earliest_api_version,
+                    #latest_api_version,
+                    #kind_ident::try_convert,
+                );
+            }
+        }
     }
 
     pub(super) fn generate_from_json_object_fn(

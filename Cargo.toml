@@ -86,6 +86,7 @@ tracing-opentelemetry = "0.32.0"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json"] }
 trybuild = "1.0.99"
 url = { version = "2.5.2", features = ["serde"] }
+winnow = "1.0.3"
 x509-cert = { version = "0.2.5", features = ["builder"] }
 zeroize = "1.8.1"
 

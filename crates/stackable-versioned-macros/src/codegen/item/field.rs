@@ -17,6 +17,7 @@ use crate::{
     utils::{ItemIdentExt, ItemIdents},
 };
 
+#[derive(Debug)]
 pub struct VersionedField {
     pub original_attributes: Vec<Attribute>,
     pub changes: Option<BTreeMap<Version, ItemStatus>>,

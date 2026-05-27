@@ -119,3 +119,22 @@ pub mod versioned {
         pub service_overrides: Service,
     }
 }
+
+#[cfg(test)]
+impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::ListenerClassSpec {
+    fn roundtrip_test_data() -> Vec<Self> {
+        crate::utils::yaml_from_str_singleton_map(indoc::indoc! {"
+          - serviceType: ClusterIP
+          - serviceType: NodePort
+          - serviceType: LoadBalancer
+          - serviceType: ClusterIP
+            loadBalancerAllocateNodePorts: false
+            loadBalancerClass: foo
+            serviceAnnotations:
+              foo: bar
+            serviceExternalTrafficPolicy: Local
+            preferredAddressType: HostnameConservative
+        "})
+        .expect("Failed to parse ListenerClassSpec YAML")
+    }
+}

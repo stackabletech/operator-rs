@@ -42,32 +42,41 @@ pub struct ProductImage {
 #[serde(rename_all = "camelCase")]
 #[serde(untagged)]
 pub enum ProductImageSelection {
-    // Order matters!
+    // NOTE: Order matters!
     // The variants will be tried from top to bottom
-    Custom(ProductImageCustom),
-    StackableVersion(ProductImageStackableVersion),
+    Custom(CustomProductImage),
+    Auto(AutoProductImage),
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ProductImageCustom {
-    /// Overwrite the docker image.
-    /// Specify the full docker image name, e.g. `oci.stackable.tech/sdp/superset:1.4.1-stackable2.1.0`
+pub struct CustomProductImage {
+    /// Provide a custom container image.
+    ///
+    /// Specify the full container image name, e.g. `oci.example.tech/namespace/superset:1.4.1-my-tag`
     custom: String,
+
     /// Version of the product, e.g. `1.4.1`.
     product_version: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ProductImageStackableVersion {
+pub struct AutoProductImage {
     /// Version of the product, e.g. `1.4.1`.
     product_version: String,
+
     /// Stackable version of the product, e.g. `23.4`, `23.4.1` or `0.0.0-dev`.
-    /// If not specified, the operator will use its own version, e.g. `23.4.1`.
-    /// When using a nightly operator or a pr version, it will use the nightly `0.0.0-dev` image.
+    ///
+    /// If not specified, the operator will use its own version, e.g. `23.4.1`. When using a nightly
+    /// operator or a PR version, it will use the nightly `0.0.0-dev` image.
     stackable_version: Option<String>,
-    /// Name of the docker repo, e.g. `oci.stackable.tech/sdp`
+
+    /// The repository on the container image registry where the container image is located, e.g.
+    /// `oci.example.com/namespace`.
+    ///
+    /// If not specified, the operator will use the image registry provided via the operator
+    /// environment options.
     repo: Option<String>,
 }
 
@@ -106,44 +115,74 @@ pub enum PullPolicy {
 }
 
 impl ProductImage {
-    /// `image_base_name` should be base of the image name in the container image registry, e.g. `trino`.
-    /// `operator_version` needs to be the full operator version and a valid semver string.
-    /// Accepted values are `23.7.0`, `0.0.0-dev` or `0.0.0-pr123`. Other variants are not supported.
+    /// Resolves the product image to be used for containers.
+    ///
+    /// ### Parameters
+    ///
+    /// - `image_name`: The final part of the complete image reference, the name of the image.
+    ///   Example values: `airflow` or `nginx`.
+    /// - `image_repository`: The default repository consisting of a registry host and path. This
+    ///   value should come from the operator environment options, which are provided via Helm for
+    ///   example. Example value: `oci.example.org/my/namespace`.
+    /// - `operator_version`: The version must be the full operator version and a valid semver
+    ///   string. Accepted values are `23.7.0`, `0.0.0-dev` or `0.0.0-pr123`. Other variants are not
+    ///   supported.
+    ///
+    /// ### Resolve mechanism
+    ///
+    /// The final product image is resolved in one of two ways defined by the [`ProductImageSelection`]:
+    ///
+    /// 1. When [`ProductImageSelection::Auto`] is selected by the user, the final product image
+    ///    will be constructed based on the (user) provided values.
+    /// 2. When [`ProductImageSelection::Custom`] is selected by the user, the final product image
+    ///    will be the exact value specified by the user.
+    //
+    // NOTE (@Techassi): The operator_version should probably be a Semver instead of a plain string
     pub fn resolve(
         &self,
-        image_base_name: &str,
+        image_name: &str,
+        image_repository: &str,
         operator_version: &str,
     ) -> Result<ResolvedProductImage, Error> {
         let image_pull_policy = self.pull_policy.as_ref().to_string();
         let pull_secrets = self.pull_secrets.clone();
 
-        let product_version = self.product_version().to_owned();
-
         match &self.image_selection {
-            ProductImageSelection::Custom(image_selection) => {
-                let image = ImageRef::parse(&image_selection.custom);
-                let image_tag_or_hash = image
+            ProductImageSelection::Custom(CustomProductImage {
+                custom,
+                product_version,
+            }) => {
+                let image_ref = ImageRef::parse(custom);
+                let image_tag_or_hash = image_ref
                     .tag
-                    .or(image.hash)
+                    .or(image_ref.hash)
                     .unwrap_or_else(|| "latest".to_string());
 
                 let app_version = format!("{product_version}-{image_tag_or_hash}");
                 let app_version_label_value = Self::prepare_app_version_label_value(&app_version)?;
 
                 Ok(ResolvedProductImage {
-                    product_version,
+                    product_version: product_version.to_owned(),
                     app_version_label_value,
-                    image: image_selection.custom.clone(),
+                    image: custom.to_owned(),
                     image_pull_policy,
                     pull_secrets,
                 })
             }
-            ProductImageSelection::StackableVersion(image_selection) => {
-                let repo = image_selection
-                    .repo
+            ProductImageSelection::Auto(AutoProductImage {
+                product_version,
+                stackable_version,
+                repo,
+            }) => {
+                let image_repository = repo
                     .as_deref()
-                    .unwrap_or(STACKABLE_DOCKER_REPO);
-                let stackable_version = match &image_selection.stackable_version {
+                    .unwrap_or(image_repository)
+                    // Remove and leading and trailing whitespace
+                    .trim()
+                    // Trim the end to ensure no double slashes are produced below
+                    .trim_end_matches('/');
+
+                let stackable_version = match stackable_version {
                     Some(stackable_version) => stackable_version,
                     None => {
                         if operator_version.starts_with("0.0.0-pr") {
@@ -159,13 +198,16 @@ impl ProductImage {
                         }
                     }
                 };
-                let image = format!(
-                    "{repo}/{image_base_name}:{product_version}-stackable{stackable_version}",
-                );
+
+                // Trim leading ans trailing whitespace and also trim the start to ensure no double
+                // slashes are produced below
+                let image_name = image_name.trim().trim_start_matches('/');
                 let app_version = format!("{product_version}-stackable{stackable_version}");
                 let app_version_label_value = Self::prepare_app_version_label_value(&app_version)?;
+                let image = format!("{image_repository}/{image_name}:{app_version}");
+
                 Ok(ResolvedProductImage {
-                    product_version,
+                    product_version: product_version.to_owned(),
                     app_version_label_value,
                     image,
                     image_pull_policy,
@@ -180,11 +222,11 @@ impl ProductImage {
     /// automatically, e.g. from the LTS release line.
     pub fn product_version(&self) -> &str {
         match &self.image_selection {
-            ProductImageSelection::Custom(ProductImageCustom {
+            ProductImageSelection::Custom(CustomProductImage {
                 product_version: pv,
                 ..
             })
-            | ProductImageSelection::StackableVersion(ProductImageStackableVersion {
+            | ProductImageSelection::Auto(AutoProductImage {
                 product_version: pv,
                 ..
             }) => pv,
@@ -214,8 +256,9 @@ mod tests {
     use super::*;
 
     #[rstest]
-    #[case::stackable_version_without_stackable_version_stable_version(
-        "superset",
+    #[case::auto_with_leading_slash_in_name(
+        "/superset",
+        "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         productVersion: 1.4.1
@@ -228,8 +271,24 @@ mod tests {
             pull_secrets: None,
         }
     )]
-    #[case::stackable_version_without_stackable_version_nightly(
+    #[case::auto_without_stackable_version_stable_version(
         "superset",
+        "oci.stackable.tech/sdp",
+        "23.7.42",
+        r"
+        productVersion: 1.4.1
+        ",
+        ResolvedProductImage {
+            image: "oci.stackable.tech/sdp/superset:1.4.1-stackable23.7.42".to_string(),
+            app_version_label_value: "1.4.1-stackable23.7.42".parse().expect("static app version label is always valid"),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::auto_without_stackable_version_nightly(
+        "superset",
+        "oci.stackable.tech/sdp",
         "0.0.0-dev",
         r"
         productVersion: 1.4.1
@@ -242,8 +301,9 @@ mod tests {
             pull_secrets: None,
         }
     )]
-    #[case::stackable_version_without_stackable_version_pr_version(
+    #[case::auto_without_stackable_version_pr_version(
         "superset",
+        "oci.stackable.tech/sdp",
         "0.0.0-pr123",
         r"
         productVersion: 1.4.1
@@ -256,8 +316,9 @@ mod tests {
             pull_secrets: None,
         }
     )]
-    #[case::stackable_version_without_repo(
+    #[case::auto_without_repo(
         "superset",
+        "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         productVersion: 1.4.1
@@ -271,16 +332,34 @@ mod tests {
             pull_secrets: None,
         }
     )]
-    #[case::stackable_version_with_repo(
-        "trino",
+    #[case::auto_with_repository(
+        "superset",
+        "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         productVersion: 1.4.1
         stackableVersion: 2.1.0
-        repo: my.corp/myteam/stackable
+        repo: quay.io/stackable
         ",
         ResolvedProductImage {
-            image: "my.corp/myteam/stackable/trino:1.4.1-stackable2.1.0".to_string(),
+            image: "quay.io/stackable/superset:1.4.1-stackable2.1.0".to_string(),
+            app_version_label_value: "1.4.1-stackable2.1.0".parse().expect("static app version label is always valid"),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::auto_with_repository_trailing_slash(
+        "superset",
+        "oci.stackable.tech/sdp",
+        "23.7.42",
+        r"
+        productVersion: 1.4.1
+        stackableVersion: 2.1.0
+        repo: quay.io/stackable/
+        ",
+        ResolvedProductImage {
+            image: "quay.io/stackable/superset:1.4.1-stackable2.1.0".to_string(),
             app_version_label_value: "1.4.1-stackable2.1.0".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
@@ -289,6 +368,7 @@ mod tests {
     )]
     #[case::custom_without_tag(
         "superset",
+        "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         custom: my.corp/myteam/stackable/superset
@@ -304,6 +384,7 @@ mod tests {
     )]
     #[case::custom_with_tag(
         "superset",
+        "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
@@ -319,6 +400,7 @@ mod tests {
     )]
     #[case::custom_with_colon_in_repo_and_without_tag(
         "superset",
+        "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         custom: 127.0.0.1:8080/myteam/stackable/superset
@@ -334,6 +416,7 @@ mod tests {
     )]
     #[case::custom_with_colon_in_repo_and_with_tag(
         "superset",
+        "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         custom: 127.0.0.1:8080/myteam/stackable/superset:latest-and-greatest
@@ -349,6 +432,7 @@ mod tests {
     )]
     #[case::custom_with_hash_in_repo_and_without_tag(
         "superset",
+        "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         custom: oci.stackable.tech/sdp/superset@sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb8c42f76efc1098
@@ -364,6 +448,7 @@ mod tests {
     )]
     #[case::custom_takes_precedence(
         "superset",
+        "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
@@ -380,6 +465,7 @@ mod tests {
     )]
     #[case::pull_policy_if_not_present(
         "superset",
+        "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
@@ -396,6 +482,7 @@ mod tests {
     )]
     #[case::pull_policy_always(
         "superset",
+        "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
@@ -412,6 +499,7 @@ mod tests {
     )]
     #[case::pull_policy_never(
         "superset",
+        "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
@@ -428,6 +516,7 @@ mod tests {
     )]
     #[case::pull_secrets(
         "superset",
+        "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
@@ -446,14 +535,15 @@ mod tests {
         }
     )]
     fn resolved_image_pass(
-        #[case] image_base_name: String,
+        #[case] image_name: String,
+        #[case] image_repository: String,
         #[case] operator_version: String,
         #[case] input: String,
         #[case] expected: ResolvedProductImage,
     ) {
         let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
         let resolved_product_image = product_image
-            .resolve(&image_base_name, &operator_version)
+            .resolve(&image_name, &image_repository, &operator_version)
             .expect("Illegal test input");
 
         assert_eq!(resolved_product_image, expected);

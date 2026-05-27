@@ -105,3 +105,16 @@ pub enum FailedInState {
     /// The `post_scale` hook returned an error.
     PostScaling,
 }
+
+#[cfg(test)]
+impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::ScalerSpec {
+    fn roundtrip_test_data() -> Vec<Self> {
+        crate::utils::yaml_from_str_singleton_map(indoc::indoc! {"
+          - replicas: 0
+          - replicas: 1
+          - replicas: 42
+          - replicas: 65535
+        "})
+        .expect("Failed to parse ScalerSpec YAML")
+    }
+}

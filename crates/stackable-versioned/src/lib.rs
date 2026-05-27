@@ -42,6 +42,10 @@ use snafu::{ErrorCompat, Snafu};
 // Re-export
 pub use stackable_versioned_macros::versioned;
 
+// We can not put this behind `#[cfg(test)]`, as it seems like the `test` flag is not enabled, when
+// a *dependant* crate compiles tests.
+pub mod test_utils;
+
 /// A value-to-value conversion that consumes the input value while tracking changes via a
 /// Kubernetes status.
 ///
