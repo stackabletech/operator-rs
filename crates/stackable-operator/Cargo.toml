@@ -9,8 +9,9 @@ repository.workspace = true
 
 [features]
 default = ["crds"]
-full = ["crds", "certs", "time", "webhook", "kube-ws"]
+full = ["client-feature-gates", "crds", "certs", "time", "webhook", "kube-ws"]
 
+client-feature-gates = ["dep:winnow"]
 crds = ["dep:stackable-versioned"]
 certs = ["dep:stackable-certs"]
 time = ["stackable-shared/time"]
@@ -54,7 +55,7 @@ tracing.workspace = true
 tracing-appender.workspace = true
 tracing-subscriber.workspace = true
 url.workspace = true
-winnow.workspace = true
+winnow = { workspace = true, optional = true }
 
 [dev-dependencies]
 indoc.workspace = true

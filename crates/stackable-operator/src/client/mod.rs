@@ -24,7 +24,8 @@ use crate::{
     utils::cluster_info::{KubernetesClusterInfo, KubernetesClusterInfoOptions},
 };
 
-mod feature_gates;
+#[cfg(feature = "client-feature-gates")]
+pub mod feature_gates;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -92,15 +93,18 @@ pub enum Error {
         source: crate::utils::cluster_info::Error,
     },
 
+    #[cfg(feature = "client-feature-gates")]
     #[snafu(display("failed to create raw {method} request"))]
     CreateRawRequest {
         source: http::Error,
         method: http::Method,
     },
 
+    #[cfg(feature = "client-feature-gates")]
     #[snafu(display("failed to perform raw request"))]
     PerformRawRequest { source: kube::Error },
 
+    #[cfg(feature = "client-feature-gates")]
     #[snafu(display("failed to parse feature gate: {error}"))]
     ParseFeatureGate { error: String },
 }

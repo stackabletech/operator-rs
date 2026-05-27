@@ -14,7 +14,7 @@ use crate::client::{
 impl Client {
     /// Retrieves and parses all feature gates via a raw request to the `/metrics` endpoint.
     ///
-    /// This list of feature gates in combination with [`KubeClient::apiserver_version`] can be used
+    /// This list of feature gates in combination with [`kube::Client::apiserver_version`] can be used
     /// to enable gated behaviour.
     pub async fn get_feature_gates(&self) -> Result<Vec<FeatureGate>> {
         let request =
