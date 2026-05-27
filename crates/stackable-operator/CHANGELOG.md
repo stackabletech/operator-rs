@@ -8,6 +8,8 @@ All notable changes to this project will be documented in this file.
 
 - Add `Client::{get_feature_gates,get_enabled_feature_gates,get_disabled_feature_gates}` associated
   functions to retrieve all, enabled, or disabled feature gates from the Kubernetes apiserver ([#1207]).
+- Support the annotation `secrets.stackable.tech/backend.autotls.cert.domain-components-in-subject-dn`
+  in the `SecretOperatorVolumeSourceBuilder` ([#1209]).
 
 ### Changed
 
@@ -15,6 +17,7 @@ All notable changes to this project will be documented in this file.
 
 [#1206]: https://github.com/stackabletech/operator-rs/pull/1206
 [#1207]: https://github.com/stackabletech/operator-rs/pull/1207
+[#1209]: https://github.com/stackabletech/operator-rs/pull/1209
 
 ## [0.111.1] - 2026-04-28
 

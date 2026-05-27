@@ -402,10 +402,9 @@ impl SecretOperatorVolumeSourceBuilder {
         }
 
         if let Some(enabled) = self.auto_tls_cert_domain_components_in_subject_dn {
-            annotations.insert(
-                Annotation::auto_tls_cert_domain_components_in_subject_dn(enabled)
-                    .context(ParseAnnotationSnafu)?,
-            );
+            annotations.insert(Annotation::auto_tls_cert_domain_components_in_subject_dn(
+                enabled,
+            ));
         }
 
         Ok(EphemeralVolumeSource {
