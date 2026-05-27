@@ -1,3 +1,5 @@
+//! Provides additional functionality on top of [`kube::Client`].
+
 use std::{
     convert::TryFrom,
     fmt::{Debug, Display},

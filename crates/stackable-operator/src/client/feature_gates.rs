@@ -1,3 +1,5 @@
+//! Provides functions and types to retrieve feature gates from the Kubernetes apiserver.
+
 use std::{collections::HashMap, str::FromStr};
 
 use snafu::{OptionExt as _, ResultExt as _, Snafu};
