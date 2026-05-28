@@ -3,10 +3,11 @@ use std::collections::BTreeMap;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use stackable_operator::{
+use tracing::warn;
+
+use crate::{
     config::merge::Merge, k8s_openapi::DeepMerge, schemars, utils::crds::raw_object_schema,
 };
-use tracing::warn;
 
 // Variant of [`stackable_operator::config_overrides::KeyValueConfigOverrides`] that implements
 // Merge
@@ -15,6 +16,7 @@ use tracing::warn;
 /// This is backwards-compatible with the existing flat key-value YAML format
 /// used by `HashMap<String, String>`.
 #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, Merge, PartialEq, Serialize)]
+#[merge(path_overrides(merge = "crate::config::merge"))]
 pub struct KeyValueConfigOverrides {
     #[serde(flatten)]
     pub overrides: BTreeMap<String, Option<String>>,
@@ -96,31 +98,31 @@ impl Default for JsonConfigOverrides {
         // `JsonConfigOverrides::Sequence(vec![])`. As this is exposed as the default in the CRD,
         // an empty JSON merge patch is returned, because JSON merge patches are the preferred way
         // to override the configuration.
-        JsonConfigOverrides::JsonMergePatch(json!({}))
+        Self::JsonMergePatch(json!({}))
     }
 }
 
 impl Merge for JsonConfigOverrides {
     fn merge(&mut self, defaults: &Self) {
-        let mut sequence = if let JsonConfigOverrides::Sequence(sequence) = self {
+        let mut sequence = if let Self::Sequence(sequence) = self {
             sequence.clone()
         } else {
             vec![self.clone()]
         };
 
-        if let JsonConfigOverrides::Sequence(base) = defaults {
+        if let Self::Sequence(base) = defaults {
             sequence.extend(base.clone());
         } else {
             sequence.push(defaults.clone());
         }
 
-        *self = JsonConfigOverrides::Sequence(sequence);
+        *self = Self::Sequence(sequence);
     }
 }
 
 impl From<KeyValueConfigOverrides> for JsonConfigOverrides {
     fn from(value: KeyValueConfigOverrides) -> Self {
-        JsonConfigOverrides::JsonMergePatch(value.overrides.into_iter().collect())
+        Self::JsonMergePatch(value.overrides.into_iter().collect())
     }
 }
 
@@ -132,32 +134,40 @@ impl From<KeyValueConfigOverrides> for JsonConfigOverrides {
 ///
 /// Example for key-value pairs:
 ///
-///     stringProperty: new value
-///     booleanProperty: "true"
+/// ```yaml
+/// stringProperty: new value
+/// booleanProperty: "true"
+/// ```
 ///
 /// Example for a JSON merge patch:
 ///
-///     jsonMergePatch:
-///       stringProperty: new value
-///       booleanProperty: true
-///       nestedProperty:
-///         key: value
+/// ```yaml
+/// jsonMergePatch:
+///   stringProperty: new value
+///   booleanProperty: true
+///   nestedProperty:
+///     key: value
+/// ```
 ///
 /// Example for a JSON patch:
 ///
-///     jsonPatch:
-///       - op: replace
-///         path: /stringProperty
-///         value: new value
+/// ```yaml
+/// jsonPatch:
+///   - op: replace
+///     path: /stringProperty
+///     value: new value
+/// ```
 ///
 /// Example for a JSON object:
 ///
-///     userProvided:
-///       stringProperty: new value
-///       booleanProperty: true
-///       nestedProperty:
-///         key: value
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+/// ```yaml
+/// userProvided:
+///   stringProperty: new value
+///   booleanProperty: true
+///   nestedProperty:
+///     key: value
+/// ```
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(untagged)]
 #[schemars(schema_with = "raw_object_schema")]
 pub enum JsonOrKeyValueConfigOverrides {
@@ -196,9 +206,9 @@ impl Merge for JsonOrKeyValueConfigOverrides {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use stackable_operator::config::merge;
 
     use super::*;
+    use crate::config::merge;
 
     #[test]
     fn test_json_config_overrides_apply() {

@@ -36,7 +36,7 @@ futures.workspace = true
 http.workspace = true
 indexmap.workspace = true
 jiff.workspace = true
-json-patch.workspace = true
+json-patch = { workspace = true, features = ["schemars"] }
 k8s-openapi.workspace = true
 kube.workspace = true
 product-config.workspace = true
