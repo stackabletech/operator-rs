@@ -1490,6 +1490,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f300e415e2134745ef75f04562dd0145405c2f7fd92065db029ac4b16b57fe90"
 dependencies = [
  "jsonptr",
+ "schemars",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
