@@ -114,7 +114,7 @@ impl ResourceNames {
 #[cfg(test)]
 mod tests {
     use super::{ClusterName, RoleGroupName, RoleName};
-    use crate::framework::{
+    use crate::v2::{
         role_group_utils::{QualifiedRoleGroupName, ResourceNames},
         types::kubernetes::{ConfigMapName, ListenerName, ServiceName, StatefulSetName},
     };

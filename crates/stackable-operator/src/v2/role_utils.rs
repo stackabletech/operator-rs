@@ -4,15 +4,6 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use stackable_operator::{
-    config::{
-        fragment::{self, FromFragment},
-        merge::{self, Merge, merge},
-    },
-    k8s_openapi::{DeepMerge, api::core::v1::PodTemplateSpec},
-    role_utils::{CommonConfiguration, Role, RoleGroup},
-    schemars::{self, JsonSchema},
-};
 
 use super::{
     builder::pod::container::EnvVarSet,
@@ -20,6 +11,15 @@ use super::{
         kubernetes::{ClusterRoleName, RoleBindingName, ServiceAccountName},
         operator::{ClusterName, ProductName},
     },
+};
+use crate::{
+    config::{
+        fragment::{self, FromFragment},
+        merge::{self, Merge, merge},
+    },
+    k8s_openapi::{DeepMerge, api::core::v1::PodTemplateSpec},
+    role_utils::{CommonConfiguration, Role, RoleGroup},
+    schemars::{self, JsonSchema},
 };
 
 // Variant of [`stackable_operator::role_utils::GenericCommonConfig`] that implements [`Merge`]
@@ -201,21 +201,21 @@ mod tests {
 
     use rstest::*;
     use serde::Serialize;
-    use stackable_operator::{
+
+    use super::ResourceNames;
+    use crate::{
         config::{fragment::Fragment, merge::Merge},
         k8s_openapi::api::core::v1::PodTemplateSpec,
         kube::api::ObjectMeta,
         role_utils::{CommonConfiguration, GenericRoleConfig, Role, RoleGroup},
         schemars::{self, JsonSchema},
-    };
-
-    use super::ResourceNames;
-    use crate::framework::{
-        config_overrides::KeyValueConfigOverrides,
-        role_utils::with_validated_config,
-        types::{
-            kubernetes::{ClusterRoleName, RoleBindingName, ServiceAccountName},
-            operator::{ClusterName, ProductName},
+        v2::{
+            config_overrides::KeyValueConfigOverrides,
+            role_utils::with_validated_config,
+            types::{
+                kubernetes::{ClusterRoleName, RoleBindingName, ServiceAccountName},
+                operator::{ClusterName, ProductName},
+            },
         },
     };
 

@@ -3,6 +3,8 @@ use crate::v2::types::kubernetes::Uid;
 pub mod builder;
 pub mod config_overrides;
 pub mod macros;
+pub mod role_group_utils;
+pub mod role_utils;
 pub mod types;
 
 /// Has a non-empty name
