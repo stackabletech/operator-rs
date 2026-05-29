@@ -73,7 +73,10 @@ impl Regex {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
+/// use std::str::FromStr;
+///
+/// use stackable_operator::attributed_string_type;
 /// attributed_string_type! {
 ///     ConfigMapName,
 ///     "The name of a ConfigMap",
@@ -451,7 +454,8 @@ macro_rules! attributed_string_type {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
+/// use stackable_operator::v2::macros::attributed_string_type::min;
 /// assert_eq!(2, min(2, 3));
 /// assert_eq!(4, min(5, 4));
 /// assert_eq!(1, min(1, 1));
@@ -466,7 +470,8 @@ pub const fn min(x: usize, y: usize) -> usize {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
+/// use stackable_operator::{attributed_string_type, v2::macros::attributed_string_type::max};
 /// assert_eq!(3, max(2, 3));
 /// assert_eq!(5, max(5, 4));
 /// assert_eq!(1, max(1, 1));

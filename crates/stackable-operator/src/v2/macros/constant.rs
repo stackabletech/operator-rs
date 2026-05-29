@@ -4,7 +4,11 @@
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
+/// use std::str::FromStr;
+///
+/// use stackable_operator::constant;
+/// use stackable_operator::v2::types::kubernetes::VolumeName;
 /// constant!(DATA_VOLUME_NAME: VolumeName = "data");
 /// constant!(pub CONFIG_VOLUME_NAME: VolumeName = "config");
 /// ```
