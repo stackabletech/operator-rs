@@ -1,9 +1,10 @@
 //! Kubernetes (resource) names
 use std::str::FromStr;
 
-use stackable_operator::validation::{RFC_1123_LABEL_MAX_LENGTH, RFC_1123_SUBDOMAIN_MAX_LENGTH};
-
-use crate::attributed_string_type;
+use crate::{
+    attributed_string_type,
+    validation::{RFC_1123_LABEL_MAX_LENGTH, RFC_1123_SUBDOMAIN_MAX_LENGTH},
+};
 
 attributed_string_type! {
     ConfigMapName,

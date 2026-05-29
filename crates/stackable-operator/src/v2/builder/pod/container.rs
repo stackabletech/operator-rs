@@ -5,13 +5,13 @@ use std::{
 };
 
 use snafu::Snafu;
-use stackable_operator::{
-    builder::pod::container::{ContainerBuilder, FieldPathEnvVar},
-    k8s_openapi::api::core::v1::{ConfigMapKeySelector, EnvVar, EnvVarSource, ObjectFieldSelector},
-};
 use strum::{EnumDiscriminants, IntoStaticStr};
 
-use crate::framework::types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName};
+use crate::{
+    builder::pod::container::{ContainerBuilder, FieldPathEnvVar},
+    k8s_openapi::api::core::v1::{ConfigMapKeySelector, EnvVar, EnvVarSource, ObjectFieldSelector},
+    v2::types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName},
+};
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
@@ -38,7 +38,7 @@ impl EnvVarName {
     ///
     /// Use this only with constant names that are also tested in unit tests!
     pub fn from_str_unsafe(s: &str) -> Self {
-        EnvVarName::from_str(s).expect("should be a valid environment variable name")
+        Self::from_str(s).expect("should be a valid environment variable name")
     }
 }
 
@@ -84,7 +84,7 @@ impl EnvVarSet {
     /// Moves all [`EnvVar`]s from the given set into this one.
     ///
     /// [`EnvVar`]s with the same name are overridden.
-    pub fn merge(mut self, mut env_var_set: EnvVarSet) -> Self {
+    pub fn merge(mut self, mut env_var_set: Self) -> Self {
         self.0.append(&mut env_var_set.0);
 
         self
@@ -124,7 +124,7 @@ impl EnvVarSet {
     /// Adds an environment variable with the given name and field path to this set
     ///
     /// An [`EnvVar`] with the same name is overridden.
-    pub fn with_field_path(mut self, name: &EnvVarName, field_path: FieldPathEnvVar) -> Self {
+    pub fn with_field_path(mut self, name: &EnvVarName, field_path: &FieldPathEnvVar) -> Self {
         self.0.insert(
             name.clone(),
             EnvVar {
@@ -191,17 +191,16 @@ impl IntoIterator for EnvVarSet {
 mod tests {
     use std::str::FromStr;
 
-    use stackable_operator::{
+    use super::{EnvVarName, EnvVarSet};
+    use crate::{
         builder::pod::container::FieldPathEnvVar,
         k8s_openapi::api::core::v1::{
             ConfigMapKeySelector, EnvVar, EnvVarSource, ObjectFieldSelector,
         },
-    };
-
-    use super::{EnvVarName, EnvVarSet};
-    use crate::framework::{
-        builder::pod::container::new_container_builder,
-        types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName},
+        v2::{
+            builder::pod::container::new_container_builder,
+            types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName},
+        },
     };
 
     #[test]
@@ -253,7 +252,7 @@ mod tests {
                 &EnvVarName::from_str_unsafe("ENV2"),
                 "value2 from env_var_set2",
             )
-            .with_field_path(&EnvVarName::from_str_unsafe("ENV3"), FieldPathEnvVar::Name)
+            .with_field_path(&EnvVarName::from_str_unsafe("ENV3"), &FieldPathEnvVar::Name)
             .with_value(
                 &EnvVarName::from_str_unsafe("ENV4"),
                 "value4 from env_var_set2",
@@ -335,7 +334,7 @@ mod tests {
     #[test]
     fn test_envvarset_with_field_path() {
         let env_var_set = EnvVarSet::new()
-            .with_field_path(&EnvVarName::from_str_unsafe("ENV"), FieldPathEnvVar::Name);
+            .with_field_path(&EnvVarName::from_str_unsafe("ENV"), &FieldPathEnvVar::Name);
 
         assert_eq!(
             Some(&EnvVar {

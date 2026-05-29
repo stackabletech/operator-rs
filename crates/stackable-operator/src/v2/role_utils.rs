@@ -4,7 +4,15 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use stackable_operator::{
+
+use super::{
+    builder::pod::container::EnvVarSet,
+    types::{
+        kubernetes::{ClusterRoleName, RoleBindingName, ServiceAccountName},
+        operator::{ClusterName, ProductName},
+    },
+};
+use crate::{
     config::{
         fragment::{self, FromFragment},
         merge::{self, Merge, merge},
@@ -14,16 +22,8 @@ use stackable_operator::{
     schemars::{self, JsonSchema},
 };
 
-use super::{
-    builder::pod::container::EnvVarSet,
-    types::{
-        kubernetes::{ClusterRoleName, RoleBindingName, ServiceAccountName},
-        operator::{ClusterName, ProductName},
-    },
-};
-
 // Variant of [`stackable_operator::role_utils::GenericCommonConfig`] that implements [`Merge`]
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, Eq, PartialEq, Serialize)]
 pub struct GenericCommonConfig {}
 
 impl Merge for GenericCommonConfig {
@@ -93,7 +93,7 @@ where
                 role_group.config.pod_overrides.clone(),
             ),
             product_specific_common_config: merged_product_specific_common_config(
-                role.config.product_specific_common_config.clone(),
+                &role.config.product_specific_common_config,
                 role_group.config.product_specific_common_config.clone(),
             ),
         },
@@ -138,11 +138,11 @@ fn merged_pod_overrides(
     merged_pod_overrides
 }
 
-fn merged_product_specific_common_config<T>(role_config: T, role_group_config: T) -> T
+fn merged_product_specific_common_config<T>(role_config: &T, role_group_config: T) -> T
 where
     T: Merge,
 {
-    merge(role_group_config, &role_config)
+    merge(role_group_config, role_config)
 }
 
 /// Type-safe names for role resources
@@ -201,26 +201,30 @@ mod tests {
 
     use rstest::*;
     use serde::Serialize;
-    use stackable_operator::{
+
+    use super::ResourceNames;
+    use crate::{
         config::{fragment::Fragment, merge::Merge},
         k8s_openapi::api::core::v1::PodTemplateSpec,
         kube::api::ObjectMeta,
         role_utils::{CommonConfiguration, GenericRoleConfig, Role, RoleGroup},
         schemars::{self, JsonSchema},
-    };
-
-    use super::ResourceNames;
-    use crate::framework::{
-        config_overrides::KeyValueConfigOverrides,
-        role_utils::with_validated_config,
-        types::{
-            kubernetes::{ClusterRoleName, RoleBindingName, ServiceAccountName},
-            operator::{ClusterName, ProductName},
+        v2::{
+            config_overrides::KeyValueConfigOverrides,
+            role_utils::with_validated_config,
+            types::{
+                kubernetes::{ClusterRoleName, RoleBindingName, ServiceAccountName},
+                operator::{ClusterName, ProductName},
+            },
         },
     };
 
     #[derive(Debug, Fragment, PartialEq)]
-    #[fragment_attrs(derive(Clone, Debug, Default, Merge, PartialEq))]
+    #[fragment(path_overrides(fragment = "crate::config::fragment"))]
+    #[fragment_attrs(
+        derive(Clone, Debug, Default, Merge, Eq, PartialEq),
+        merge(path_overrides(merge = "crate::config::merge"))
+    )]
     struct Config {
         property: String,
     }
@@ -242,6 +246,7 @@ mod tests {
     }
 
     #[derive(Clone, Debug, Default, JsonSchema, Merge, PartialEq, Serialize)]
+    #[merge(path_overrides(merge = "crate::config::merge"))]
     struct CommonConfig {
         property: Option<String>,
     }
@@ -334,7 +339,7 @@ mod tests {
                 replicas: Some(3)
             }),
             result.ok()
-        )
+        );
     }
 
     #[test]
@@ -352,7 +357,7 @@ mod tests {
         let result: Result<RoleGroup<Config, _, _>, _> =
             with_validated_config(&role_group, &role, &default_config);
 
-        assert!(result.is_err())
+        assert!(result.is_err());
     }
 
     #[test]

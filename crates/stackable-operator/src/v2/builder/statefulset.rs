@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
 
-use stackable_operator::kvp::Annotations;
-
-use crate::framework::types::kubernetes::{ConfigMapName, SecretName};
+use crate::{
+    kvp::Annotations,
+    v2::types::kubernetes::{ConfigMapName, SecretName},
+};
 
 /// Creates `restarter.stackable.tech/ignore-configmap.{i}` annotations for each given ConfigMap.
 ///

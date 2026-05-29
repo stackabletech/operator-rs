@@ -3,7 +3,7 @@ use strum::{EnumDiscriminants, IntoStaticStr};
 
 /// Maximum length of label values
 ///
-/// Duplicates the private constant [`stackable_operator::kvp::LABEL_VALUE_MAX_LEN`]
+/// Duplicates the private constant [`crate::kvp::LABEL_VALUE_MAX_LEN`]
 pub const MAX_LABEL_VALUE_LENGTH: usize = 63;
 
 #[derive(Debug, EnumDiscriminants, Snafu)]
@@ -23,24 +23,16 @@ pub enum Error {
     RegexNotMatched { value: String, regex: &'static str },
 
     #[snafu(display("not a valid label value"))]
-    InvalidLabelValue {
-        source: stackable_operator::kvp::LabelValueError,
-    },
+    InvalidLabelValue { source: crate::kvp::LabelValueError },
 
     #[snafu(display("not a valid label name as defined in RFC 1035"))]
-    InvalidRfc1035LabelName {
-        source: stackable_operator::validation::Errors,
-    },
+    InvalidRfc1035LabelName { source: crate::validation::Errors },
 
     #[snafu(display("not a valid DNS subdomain name as defined in RFC 1123"))]
-    InvalidRfc1123DnsSubdomainName {
-        source: stackable_operator::validation::Errors,
-    },
+    InvalidRfc1123DnsSubdomainName { source: crate::validation::Errors },
 
     #[snafu(display("not a valid label name as defined in RFC 1123"))]
-    InvalidRfc1123LabelName {
-        source: stackable_operator::validation::Errors,
-    },
+    InvalidRfc1123LabelName { source: crate::validation::Errors },
 
     #[snafu(display("not a valid UUID"))]
     InvalidUid { source: uuid::Error },
@@ -63,14 +55,14 @@ pub enum Regex {
 
 impl Regex {
     /// Combine this regular expression with the given one.
-    pub const fn combine(self, other: Regex) -> Regex {
+    pub const fn combine(self, other: Self) -> Self {
         match (self, other) {
-            (_, Regex::MatchAll) => self,
-            (Regex::MatchAll, _) => other,
+            (_, Self::MatchAll) => self,
+            (Self::MatchAll, _) => other,
             // It is hard to combine two regular expressions and nearly impossible to do this in a
             // const context. Fortunately, for most of the data types, only one regular expression
             // is set.
-            _ => Regex::Unknown,
+            _ => Self::Unknown,
         }
     }
 }
@@ -82,6 +74,9 @@ impl Regex {
 /// # Examples
 ///
 /// ```rust
+/// use std::str::FromStr;
+///
+/// use stackable_operator::attributed_string_type;
 /// attributed_string_type! {
 ///     ConfigMapName,
 ///     "The name of a ConfigMap",
@@ -106,10 +101,10 @@ macro_rules! attributed_string_type {
             /// The regular expression
             ///
             /// This field is not meant to be used outside of this macro.
-            pub const REGEX: $crate::framework::macros::attributed_string_type::Regex = attributed_string_type!(@regex $($attribute)*);
+            pub const REGEX: $crate::v2::macros::attributed_string_type::Regex = attributed_string_type!(@regex $($attribute)*);
         }
 
-        impl stackable_operator::config::merge::Atomic for $name {}
+        impl $crate::config::merge::Atomic for $name {}
 
         impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -136,7 +131,7 @@ macro_rules! attributed_string_type {
         }
 
         impl std::str::FromStr for $name {
-            type Err = $crate::framework::macros::attributed_string_type::Error;
+            type Err = $crate::v2::macros::attributed_string_type::Error;
 
             fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
                 // ResultExt::context is used on most but not all usages of this macro
@@ -169,13 +164,13 @@ macro_rules! attributed_string_type {
         }
 
         // The JsonSchema implementation requires `max_length`.
-        impl stackable_operator::schemars::JsonSchema for $name {
+        impl $crate::schemars::JsonSchema for $name {
             fn schema_name() -> std::borrow::Cow<'static, str> {
                 std::stringify!($name).into()
             }
 
-            fn json_schema(_generator: &mut stackable_operator::schemars::generate::SchemaGenerator) -> stackable_operator::schemars::Schema {
-                stackable_operator::schemars::json_schema!({
+            fn json_schema(_generator: &mut $crate::schemars::generate::SchemaGenerator) -> $crate::schemars::Schema {
+                $crate::schemars::json_schema!({
                     "type": "string",
                     "minLength": $name::MIN_LENGTH,
                     "maxLength": if $name::MAX_LENGTH != usize::MAX {
@@ -185,7 +180,7 @@ macro_rules! attributed_string_type {
                         None
                     },
                     "pattern": match $name::REGEX {
-                        $crate::framework::macros::attributed_string_type::Regex::Expression(regex) => Some(regex),
+                        $crate::v2::macros::attributed_string_type::Regex::Expression(regex) => Some(regex),
                         _ => None
                     }
                 })
@@ -214,7 +209,7 @@ macro_rules! attributed_string_type {
         let length = $s.len() as usize;
         snafu::ensure!(
             length >= $name::MIN_LENGTH,
-            $crate::framework::macros::attributed_string_type::MinimumLengthNotMetSnafu {
+            $crate::v2::macros::attributed_string_type::MinimumLengthNotMetSnafu {
                 length,
                 min_length: $name::MIN_LENGTH,
             }
@@ -224,36 +219,36 @@ macro_rules! attributed_string_type {
         let length = $s.len() as usize;
         snafu::ensure!(
             length <= $name::MAX_LENGTH,
-            $crate::framework::macros::attributed_string_type::LengthExceededSnafu {
+            $crate::v2::macros::attributed_string_type::LengthExceededSnafu {
                 length,
                 max_length: $name::MAX_LENGTH,
             }
         );
     };
     (@from_str $name:ident, $s:expr, (regex = $regex:expr)) => {
-        let regex = regex::Regex::new($regex).context($crate::framework::macros::attributed_string_type::InvalidRegexSnafu)?;
+        let regex = regex::Regex::new($regex).context($crate::v2::macros::attributed_string_type::InvalidRegexSnafu)?;
         snafu::ensure!(
             regex.is_match($s),
-            $crate::framework::macros::attributed_string_type::RegexNotMatchedSnafu {
+            $crate::v2::macros::attributed_string_type::RegexNotMatchedSnafu {
                 value: $s,
                 regex: $regex
             }
         );
     };
     (@from_str $name:ident, $s:expr, is_rfc_1035_label_name) => {
-        stackable_operator::validation::is_lowercase_rfc_1035_label($s).context($crate::framework::macros::attributed_string_type::InvalidRfc1035LabelNameSnafu)?;
+        $crate::validation::is_lowercase_rfc_1035_label($s).context($crate::v2::macros::attributed_string_type::InvalidRfc1035LabelNameSnafu)?;
     };
     (@from_str $name:ident, $s:expr, is_rfc_1123_dns_subdomain_name) => {
-        stackable_operator::validation::is_lowercase_rfc_1123_subdomain($s).context($crate::framework::macros::attributed_string_type::InvalidRfc1123DnsSubdomainNameSnafu)?;
+        $crate::validation::is_lowercase_rfc_1123_subdomain($s).context($crate::v2::macros::attributed_string_type::InvalidRfc1123DnsSubdomainNameSnafu)?;
     };
     (@from_str $name:ident, $s:expr, is_rfc_1123_label_name) => {
-        stackable_operator::validation::is_lowercase_rfc_1123_label($s).context($crate::framework::macros::attributed_string_type::InvalidRfc1123LabelNameSnafu)?;
+        $crate::validation::is_lowercase_rfc_1123_label($s).context($crate::v2::macros::attributed_string_type::InvalidRfc1123LabelNameSnafu)?;
     };
     (@from_str $name:ident, $s:expr, is_valid_label_value) => {
-        stackable_operator::kvp::LabelValue::from_str($s).context($crate::framework::macros::attributed_string_type::InvalidLabelValueSnafu)?;
+        $crate::kvp::LabelValue::from_str($s).context($crate::v2::macros::attributed_string_type::InvalidLabelValueSnafu)?;
     };
     (@from_str $name:ident, $s:expr, is_uid) => {
-        uuid::Uuid::try_parse($s).context($crate::framework::macros::attributed_string_type::InvalidUidSnafu)?;
+        uuid::Uuid::try_parse($s).context($crate::v2::macros::attributed_string_type::InvalidUidSnafu)?;
     };
 
     // MIN_LENGTH
@@ -263,7 +258,7 @@ macro_rules! attributed_string_type {
         0
     };
     (@min_length (min_length = $min_length:expr) $($attribute:tt)*) => {
-        $crate::framework::macros::attributed_string_type::max(
+        $crate::v2::macros::attributed_string_type::max(
             $min_length,
             attributed_string_type!(@min_length $($attribute)*)
         )
@@ -277,31 +272,31 @@ macro_rules! attributed_string_type {
         attributed_string_type!(@min_length $($attribute)*)
     };
     (@min_length is_rfc_1035_label_name $($attribute:tt)*) => {
-        $crate::framework::macros::attributed_string_type::max(
+        $crate::v2::macros::attributed_string_type::max(
             1,
             attributed_string_type!(@min_length $($attribute)*)
         )
     };
     (@min_length is_rfc_1123_dns_subdomain_name $($attribute:tt)*) => {
-        $crate::framework::macros::attributed_string_type::max(
+        $crate::v2::macros::attributed_string_type::max(
             1,
             attributed_string_type!(@min_length $($attribute)*)
         )
     };
     (@min_length is_rfc_1123_label_name $($attribute:tt)*) => {
-        $crate::framework::macros::attributed_string_type::max(
+        $crate::v2::macros::attributed_string_type::max(
             1,
             attributed_string_type!(@min_length $($attribute)*)
         )
     };
     (@min_length is_valid_label_value $($attribute:tt)*) => {
-        $crate::framework::macros::attributed_string_type::max(
+        $crate::v2::macros::attributed_string_type::max(
             1,
             attributed_string_type!(@min_length $($attribute)*)
         )
     };
     (@min_length is_uid $($attribute:tt)*) => {
-        $crate::framework::macros::attributed_string_type::max(
+        $crate::v2::macros::attributed_string_type::max(
             uuid::fmt::Hyphenated::LENGTH,
             attributed_string_type!(@min_length $($attribute)*)
         )
@@ -318,7 +313,7 @@ macro_rules! attributed_string_type {
         attributed_string_type!(@max_length $($attribute)*)
     };
     (@max_length (max_length = $max_length:expr) $($attribute:tt)*) => {
-        $crate::framework::macros::attributed_string_type::min(
+        $crate::v2::macros::attributed_string_type::min(
             $max_length,
             attributed_string_type!(@max_length $($attribute)*)
         )
@@ -328,31 +323,31 @@ macro_rules! attributed_string_type {
         attributed_string_type!(@max_length $($attribute)*)
     };
     (@max_length is_rfc_1035_label_name $($attribute:tt)*) => {
-        $crate::framework::macros::attributed_string_type::min(
-            stackable_operator::validation::RFC_1035_LABEL_MAX_LENGTH,
+        $crate::v2::macros::attributed_string_type::min(
+            $crate::validation::RFC_1035_LABEL_MAX_LENGTH,
             attributed_string_type!(@max_length $($attribute)*)
         )
     };
     (@max_length is_rfc_1123_dns_subdomain_name $($attribute:tt)*) => {
-        $crate::framework::macros::attributed_string_type::min(
-            stackable_operator::validation::RFC_1123_SUBDOMAIN_MAX_LENGTH,
+        $crate::v2::macros::attributed_string_type::min(
+            $crate::validation::RFC_1123_SUBDOMAIN_MAX_LENGTH,
             attributed_string_type!(@max_length $($attribute)*)
         )
     };
     (@max_length is_rfc_1123_label_name $($attribute:tt)*) => {
-        $crate::framework::macros::attributed_string_type::min(
-            stackable_operator::validation::RFC_1123_LABEL_MAX_LENGTH,
+        $crate::v2::macros::attributed_string_type::min(
+            $crate::validation::RFC_1123_LABEL_MAX_LENGTH,
             attributed_string_type!(@max_length $($attribute)*)
         )
     };
     (@max_length is_valid_label_value $($attribute:tt)*) => {
-        $crate::framework::macros::attributed_string_type::min(
-            $crate::framework::macros::attributed_string_type::MAX_LABEL_VALUE_LENGTH,
+        $crate::v2::macros::attributed_string_type::min(
+            $crate::v2::macros::attributed_string_type::MAX_LABEL_VALUE_LENGTH,
             attributed_string_type!(@max_length $($attribute)*)
         )
     };
     (@max_length is_uid $($attribute:tt)*) => {
-        $crate::framework::macros::attributed_string_type::min(
+        $crate::v2::macros::attributed_string_type::min(
             uuid::fmt::Hyphenated::LENGTH,
             attributed_string_type!(@max_length $($attribute)*)
         )
@@ -362,7 +357,7 @@ macro_rules! attributed_string_type {
 
     (@regex) => {
         // Everything is allowed if there is no other regular expression.
-        $crate::framework::macros::attributed_string_type::Regex::MatchAll
+        $crate::v2::macros::attributed_string_type::Regex::MatchAll
     };
     (@regex (min_length = $min_length:expr) $($attribute:tt)*) => {
         // min_length has no influence on the regular expression.
@@ -373,31 +368,31 @@ macro_rules! attributed_string_type {
         attributed_string_type!(@regex $($attribute)*)
     };
     (@regex (regex = $regex:expr) $($attribute:tt)*) => {
-        $crate::framework::macros::attributed_string_type::Regex::Expression($regex)
+        $crate::v2::macros::attributed_string_type::Regex::Expression($regex)
             .combine(attributed_string_type!(@regex $($attribute)*))
     };
     (@regex is_rfc_1035_label_name $($attribute:tt)*) => {
         // see https://github.com/kubernetes/kubernetes/blob/v1.35.0/staging/src/k8s.io/apimachinery/pkg/util/validation/validation.go#L228
-        $crate::framework::macros::attributed_string_type::Regex::Expression("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+        $crate::v2::macros::attributed_string_type::Regex::Expression("^[a-z]([-a-z0-9]*[a-z0-9])?$")
             .combine(attributed_string_type!(@regex $($attribute)*))
     };
     (@regex is_rfc_1123_dns_subdomain_name $($attribute:tt)*) => {
         // see https://github.com/kubernetes/kubernetes/blob/v1.35.0/staging/src/k8s.io/apimachinery/pkg/util/validation/validation.go#L193
-        $crate::framework::macros::attributed_string_type::Regex::Expression("^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$")
+        $crate::v2::macros::attributed_string_type::Regex::Expression("^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$")
             .combine(attributed_string_type!(@regex $($attribute)*))
     };
     (@regex is_rfc_1123_label_name $($attribute:tt)*) => {
         // see https://github.com/kubernetes/kubernetes/blob/v1.35.0/staging/src/k8s.io/apimachinery/pkg/util/validation/validation.go#L163
-        $crate::framework::macros::attributed_string_type::Regex::Expression("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
+        $crate::v2::macros::attributed_string_type::Regex::Expression("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
             .combine(attributed_string_type!(@regex $($attribute)*))
     };
     (@regex is_valid_label_value $($attribute:tt)*) => {
-        // regular expression from stackable_operator::kvp::label::LABEL_VALUE_REGEX
-        $crate::framework::macros::attributed_string_type::Regex::Expression("^[a-z0-9A-Z]([a-z0-9A-Z-_.]*[a-z0-9A-Z]+)?$")
+        // regular expression from crate::kvp::label::LABEL_VALUE_REGEX
+        $crate::v2::macros::attributed_string_type::Regex::Expression("^[a-z0-9A-Z]([a-z0-9A-Z-_.]*[a-z0-9A-Z]+)?$")
             .combine(attributed_string_type!(@regex $($attribute)*))
     };
     (@regex is_uid $($attribute:tt)*) => {
-        $crate::framework::macros::attributed_string_type::Regex::Expression("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+        $crate::v2::macros::attributed_string_type::Regex::Expression("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
             .combine(attributed_string_type!(@regex $($attribute)*))
     };
 
@@ -432,7 +427,7 @@ macro_rules! attributed_string_type {
             pub const IS_VALID_LABEL_VALUE: bool = true;
         }
 
-        impl $crate::framework::NameIsValidLabelValue for $name {
+        impl $crate::v2::NameIsValidLabelValue for $name {
             fn to_label_value(&self) -> String {
                 self.0.clone()
             }
@@ -460,6 +455,7 @@ macro_rules! attributed_string_type {
 /// # Examples
 ///
 /// ```rust
+/// use stackable_operator::v2::macros::attributed_string_type::min;
 /// assert_eq!(2, min(2, 3));
 /// assert_eq!(4, min(5, 4));
 /// assert_eq!(1, min(1, 1));
@@ -475,6 +471,7 @@ pub const fn min(x: usize, y: usize) -> usize {
 /// # Examples
 ///
 /// ```rust
+/// use stackable_operator::{attributed_string_type, v2::macros::attributed_string_type::max};
 /// assert_eq!(3, max(2, 3));
 /// assert_eq!(5, max(5, 4));
 /// assert_eq!(1, max(1, 1));
@@ -490,11 +487,13 @@ mod tests {
     use std::str::FromStr;
 
     use serde_json::{Number, Value, json};
-    use stackable_operator::schemars::{JsonSchema, SchemaGenerator};
     use uuid::uuid;
 
     use super::{ErrorDiscriminants, Regex};
-    use crate::framework::NameIsValidLabelValue;
+    use crate::{
+        schemars::{JsonSchema, SchemaGenerator},
+        v2::NameIsValidLabelValue,
+    };
 
     attributed_string_type! {
         MinLengthWithoutConstraintsTest,

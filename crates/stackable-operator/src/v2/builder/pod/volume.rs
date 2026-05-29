@@ -1,10 +1,8 @@
-use stackable_operator::{
+use crate::{
     builder::pod::volume::ListenerOperatorVolumeSourceBuilder,
-    k8s_openapi::api::core::v1::PersistentVolumeClaim, kvp::Labels,
-};
-
-use crate::framework::types::kubernetes::{
-    ListenerClassName, ListenerName, PersistentVolumeClaimName,
+    k8s_openapi::api::core::v1::PersistentVolumeClaim,
+    kvp::Labels,
+    v2::types::kubernetes::{ListenerClassName, ListenerName, PersistentVolumeClaimName},
 };
 
 /// Infallible variant of [`stackable_operator::builder::pod::volume::ListenerReference`]
@@ -14,18 +12,14 @@ pub enum ListenerReference {
     Listener(ListenerName),
 }
 
-impl From<&ListenerReference> for stackable_operator::builder::pod::volume::ListenerReference {
+impl From<&ListenerReference> for crate::builder::pod::volume::ListenerReference {
     fn from(value: &ListenerReference) -> Self {
         match value {
             ListenerReference::ListenerClass(listener_class_name) => {
-                stackable_operator::builder::pod::volume::ListenerReference::ListenerClass(
-                    listener_class_name.to_string(),
-                )
+                Self::ListenerClass(listener_class_name.to_string())
             }
             ListenerReference::Listener(listener_name) => {
-                stackable_operator::builder::pod::volume::ListenerReference::ListenerName(
-                    listener_name.to_string(),
-                )
+                Self::ListenerName(listener_name.to_string())
             }
         }
     }
