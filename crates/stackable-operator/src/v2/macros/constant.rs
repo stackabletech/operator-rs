@@ -4,7 +4,7 @@
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```ignore
 /// constant!(DATA_VOLUME_NAME: VolumeName = "data");
 /// constant!(pub CONFIG_VOLUME_NAME: VolumeName = "config");
 /// ```

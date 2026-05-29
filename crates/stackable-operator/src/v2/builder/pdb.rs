@@ -59,7 +59,7 @@ mod tests {
 
     impl Cluster {
         fn new() -> Self {
-            Cluster {
+            Self {
                 object_meta: ObjectMeta {
                     name: Some("cluster-name".to_owned()),
                     uid: Some("a6b89911-d48e-4328-88d6-b9251226583d".to_owned()),

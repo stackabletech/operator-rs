@@ -222,8 +222,8 @@ mod tests {
     #[derive(Debug, Fragment, PartialEq)]
     #[fragment(path_overrides(fragment = "crate::config::fragment"))]
     #[fragment_attrs(
-        derive(Clone, Debug, Default, Merge, PartialEq),
-        merge(path_overrides(merge = "crate::config::merge")),
+        derive(Clone, Debug, Default, Merge, Eq, PartialEq),
+        merge(path_overrides(merge = "crate::config::merge"))
     )]
     struct Config {
         property: String,
@@ -339,7 +339,7 @@ mod tests {
                 replicas: Some(3)
             }),
             result.ok()
-        )
+        );
     }
 
     #[test]
@@ -357,7 +357,7 @@ mod tests {
         let result: Result<RoleGroup<Config, _, _>, _> =
             with_validated_config(&role_group, &role, &default_config);
 
-        assert!(result.is_err())
+        assert!(result.is_err());
     }
 
     #[test]

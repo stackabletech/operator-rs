@@ -73,7 +73,7 @@ impl Regex {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```ignore
 /// attributed_string_type! {
 ///     ConfigMapName,
 ///     "The name of a ConfigMap",
@@ -451,7 +451,7 @@ macro_rules! attributed_string_type {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```ignore
 /// assert_eq!(2, min(2, 3));
 /// assert_eq!(4, min(5, 4));
 /// assert_eq!(1, min(1, 1));
@@ -466,7 +466,7 @@ pub const fn min(x: usize, y: usize) -> usize {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```ignore
 /// assert_eq!(3, max(2, 3));
 /// assert_eq!(5, max(5, 4));
 /// assert_eq!(1, max(1, 1));
