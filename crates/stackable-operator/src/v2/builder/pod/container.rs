@@ -11,7 +11,7 @@ use stackable_operator::{
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
-use crate::framework::types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName};
+use crate::v2::types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName};
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
