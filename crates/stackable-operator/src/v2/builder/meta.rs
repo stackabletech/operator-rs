@@ -1,9 +1,9 @@
-use stackable_operator::{
+use crate::{
     builder::meta::OwnerReferenceBuilder,
-    k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference, kube::Resource,
+    k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference,
+    kube::Resource,
+    v2::{HasName, HasUid},
 };
-
-use crate::framework::{HasName, HasUid};
 
 /// Infallible variant of
 /// [`stackable_operator::builder::meta::ObjectMetaBuilder::ownerreference_from_resource`]
@@ -32,12 +32,11 @@ pub fn ownerreference_from_resource(
 mod tests {
     use std::borrow::Cow;
 
-    use stackable_operator::{
+    use crate::{
         k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference},
         kube::Resource,
+        v2::{HasName, HasUid, Uid, builder::meta::ownerreference_from_resource},
     };
-
-    use crate::framework::{HasName, HasUid, Uid, builder::meta::ownerreference_from_resource};
 
     struct Cluster {
         object_meta: ObjectMeta,

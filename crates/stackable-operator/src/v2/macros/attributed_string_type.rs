@@ -55,14 +55,14 @@ pub enum Regex {
 
 impl Regex {
     /// Combine this regular expression with the given one.
-    pub const fn combine(self, other: Regex) -> Regex {
+    pub const fn combine(self, other: Self) -> Self {
         match (self, other) {
-            (_, Regex::MatchAll) => self,
-            (Regex::MatchAll, _) => other,
+            (_, Self::MatchAll) => self,
+            (Self::MatchAll, _) => other,
             // It is hard to combine two regular expressions and nearly impossible to do this in a
             // const context. Fortunately, for most of the data types, only one regular expression
             // is set.
-            _ => Regex::Unknown,
+            _ => Self::Unknown,
         }
     }
 }
@@ -101,7 +101,7 @@ macro_rules! attributed_string_type {
             pub const REGEX: $crate::v2::macros::attributed_string_type::Regex = attributed_string_type!(@regex $($attribute)*);
         }
 
-        impl crate::config::merge::Atomic for $name {}
+        impl $crate::config::merge::Atomic for $name {}
 
         impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -161,13 +161,13 @@ macro_rules! attributed_string_type {
         }
 
         // The JsonSchema implementation requires `max_length`.
-        impl crate::schemars::JsonSchema for $name {
+        impl $crate::schemars::JsonSchema for $name {
             fn schema_name() -> std::borrow::Cow<'static, str> {
                 std::stringify!($name).into()
             }
 
-            fn json_schema(_generator: &mut crate::schemars::generate::SchemaGenerator) -> crate::schemars::Schema {
-                crate::schemars::json_schema!({
+            fn json_schema(_generator: &mut $crate::schemars::generate::SchemaGenerator) -> $crate::schemars::Schema {
+                $crate::schemars::json_schema!({
                     "type": "string",
                     "minLength": $name::MIN_LENGTH,
                     "maxLength": if $name::MAX_LENGTH != usize::MAX {
@@ -233,16 +233,16 @@ macro_rules! attributed_string_type {
         );
     };
     (@from_str $name:ident, $s:expr, is_rfc_1035_label_name) => {
-        crate::validation::is_lowercase_rfc_1035_label($s).context($crate::v2::macros::attributed_string_type::InvalidRfc1035LabelNameSnafu)?;
+        $crate::validation::is_lowercase_rfc_1035_label($s).context($crate::v2::macros::attributed_string_type::InvalidRfc1035LabelNameSnafu)?;
     };
     (@from_str $name:ident, $s:expr, is_rfc_1123_dns_subdomain_name) => {
-        crate::validation::is_lowercase_rfc_1123_subdomain($s).context($crate::v2::macros::attributed_string_type::InvalidRfc1123DnsSubdomainNameSnafu)?;
+        $crate::validation::is_lowercase_rfc_1123_subdomain($s).context($crate::v2::macros::attributed_string_type::InvalidRfc1123DnsSubdomainNameSnafu)?;
     };
     (@from_str $name:ident, $s:expr, is_rfc_1123_label_name) => {
-        crate::validation::is_lowercase_rfc_1123_label($s).context($crate::v2::macros::attributed_string_type::InvalidRfc1123LabelNameSnafu)?;
+        $crate::validation::is_lowercase_rfc_1123_label($s).context($crate::v2::macros::attributed_string_type::InvalidRfc1123LabelNameSnafu)?;
     };
     (@from_str $name:ident, $s:expr, is_valid_label_value) => {
-        crate::kvp::LabelValue::from_str($s).context($crate::v2::macros::attributed_string_type::InvalidLabelValueSnafu)?;
+        $crate::kvp::LabelValue::from_str($s).context($crate::v2::macros::attributed_string_type::InvalidLabelValueSnafu)?;
     };
     (@from_str $name:ident, $s:expr, is_uid) => {
         uuid::Uuid::try_parse($s).context($crate::v2::macros::attributed_string_type::InvalidUidSnafu)?;
@@ -321,19 +321,19 @@ macro_rules! attributed_string_type {
     };
     (@max_length is_rfc_1035_label_name $($attribute:tt)*) => {
         $crate::v2::macros::attributed_string_type::min(
-            crate::validation::RFC_1035_LABEL_MAX_LENGTH,
+            $crate::validation::RFC_1035_LABEL_MAX_LENGTH,
             attributed_string_type!(@max_length $($attribute)*)
         )
     };
     (@max_length is_rfc_1123_dns_subdomain_name $($attribute:tt)*) => {
         $crate::v2::macros::attributed_string_type::min(
-            crate::validation::RFC_1123_SUBDOMAIN_MAX_LENGTH,
+            $crate::validation::RFC_1123_SUBDOMAIN_MAX_LENGTH,
             attributed_string_type!(@max_length $($attribute)*)
         )
     };
     (@max_length is_rfc_1123_label_name $($attribute:tt)*) => {
         $crate::v2::macros::attributed_string_type::min(
-            crate::validation::RFC_1123_LABEL_MAX_LENGTH,
+            $crate::validation::RFC_1123_LABEL_MAX_LENGTH,
             attributed_string_type!(@max_length $($attribute)*)
         )
     };

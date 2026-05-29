@@ -21,13 +21,13 @@ impl std::fmt::Display for Port {
 
 impl From<u16> for Port {
     fn from(value: u16) -> Self {
-        Port(value)
+        Self(value)
     }
 }
 
 impl From<Port> for i32 {
     fn from(value: Port) -> Self {
-        value.0 as i32
+        Self::from(value.0)
     }
 }
 
@@ -35,7 +35,7 @@ impl TryFrom<i32> for Port {
     type Error = Error;
 
     fn try_from(value: i32) -> Result<Self, Self::Error> {
-        Ok(Port(
+        Ok(Self(
             u16::try_from(value).context(ConvertToPortNumberSnafu)?,
         ))
     }

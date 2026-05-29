@@ -1,12 +1,11 @@
-use stackable_operator::{
+use crate::{
     builder::pdb::PodDisruptionBudgetBuilder,
     k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector,
     kube::{Resource, api::ObjectMeta},
-};
-
-use crate::framework::{
-    HasName, HasUid, NameIsValidLabelValue,
-    types::operator::{ControllerName, OperatorName, ProductName, RoleName},
+    v2::{
+        HasName, HasUid, NameIsValidLabelValue,
+        types::operator::{ControllerName, OperatorName, ProductName, RoleName},
+    },
 };
 
 /// Infallible variant of
@@ -35,7 +34,7 @@ pub fn pod_disruption_budget_builder_with_role(
 mod tests {
     use std::borrow::Cow;
 
-    use stackable_operator::{
+    use crate::{
         k8s_openapi::{
             api::policy::v1::{PodDisruptionBudget, PodDisruptionBudgetSpec},
             apimachinery::pkg::{
@@ -44,14 +43,13 @@ mod tests {
             },
         },
         kube::Resource,
-    };
-
-    use crate::framework::{
-        HasName, HasUid, NameIsValidLabelValue,
-        builder::pdb::pod_disruption_budget_builder_with_role,
-        types::{
-            kubernetes::Uid,
-            operator::{ControllerName, OperatorName, ProductName, RoleName},
+        v2::{
+            HasName, HasUid, NameIsValidLabelValue,
+            builder::pdb::pod_disruption_budget_builder_with_role,
+            types::{
+                kubernetes::Uid,
+                operator::{ControllerName, OperatorName, ProductName, RoleName},
+            },
         },
     };
 

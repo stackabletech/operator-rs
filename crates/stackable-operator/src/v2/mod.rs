@@ -1,5 +1,6 @@
 use crate::v2::types::kubernetes::Uid;
 
+pub mod builder;
 pub mod config_overrides;
 pub mod macros;
 pub mod types;
