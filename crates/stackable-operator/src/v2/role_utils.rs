@@ -23,7 +23,7 @@ use crate::{
 };
 
 // Variant of [`stackable_operator::role_utils::GenericCommonConfig`] that implements [`Merge`]
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, Eq, PartialEq, Serialize)]
 pub struct GenericCommonConfig {}
 
 impl Merge for GenericCommonConfig {
@@ -93,7 +93,7 @@ where
                 role_group.config.pod_overrides.clone(),
             ),
             product_specific_common_config: merged_product_specific_common_config(
-                role.config.product_specific_common_config.clone(),
+                &role.config.product_specific_common_config,
                 role_group.config.product_specific_common_config.clone(),
             ),
         },
@@ -138,11 +138,11 @@ fn merged_pod_overrides(
     merged_pod_overrides
 }
 
-fn merged_product_specific_common_config<T>(role_config: T, role_group_config: T) -> T
+fn merged_product_specific_common_config<T>(role_config: &T, role_group_config: T) -> T
 where
     T: Merge,
 {
-    merge(role_group_config, &role_config)
+    merge(role_group_config, role_config)
 }
 
 /// Type-safe names for role resources
@@ -220,7 +220,11 @@ mod tests {
     };
 
     #[derive(Debug, Fragment, PartialEq)]
-    #[fragment_attrs(derive(Clone, Debug, Default, Merge, PartialEq))]
+    #[fragment(path_overrides(fragment = "crate::config::fragment"))]
+    #[fragment_attrs(
+        derive(Clone, Debug, Default, Merge, PartialEq),
+        merge(path_overrides(merge = "crate::config::merge")),
+    )]
     struct Config {
         property: String,
     }
@@ -242,6 +246,7 @@ mod tests {
     }
 
     #[derive(Clone, Debug, Default, JsonSchema, Merge, PartialEq, Serialize)]
+    #[merge(path_overrides(merge = "crate::config::merge"))]
     struct CommonConfig {
         property: Option<String>,
     }

@@ -252,7 +252,7 @@ mod tests {
                 &EnvVarName::from_str_unsafe("ENV2"),
                 "value2 from env_var_set2",
             )
-            .with_field_path(&EnvVarName::from_str_unsafe("ENV3"), FieldPathEnvVar::Name)
+            .with_field_path(&EnvVarName::from_str_unsafe("ENV3"), &FieldPathEnvVar::Name)
             .with_value(
                 &EnvVarName::from_str_unsafe("ENV4"),
                 "value4 from env_var_set2",
@@ -334,7 +334,7 @@ mod tests {
     #[test]
     fn test_envvarset_with_field_path() {
         let env_var_set = EnvVarSet::new()
-            .with_field_path(&EnvVarName::from_str_unsafe("ENV"), FieldPathEnvVar::Name);
+            .with_field_path(&EnvVarName::from_str_unsafe("ENV"), &FieldPathEnvVar::Name);
 
         assert_eq!(
             Some(&EnvVar {
