@@ -1,5 +1,6 @@
 use hickory_resolver::{
-    TokioResolver, name_server::TokioConnectionProvider, system_conf::read_system_conf,
+    TokioResolver, net::runtime::TokioRuntimeProvider, proto::rr::RData,
+    system_conf::read_system_conf,
 };
 use local_ip_address::list_afinet_netifas;
 use serde::Serialize;
@@ -31,11 +32,19 @@ static GLOBAL_DNS_RESOLVER: LazyLock<Option<TokioResolver>> = LazyLock::new(|| {
     };
     resolver_opts.timeout = Duration::from_secs(5);
 
-    Some(
-        TokioResolver::builder_with_config(resolver_config, TokioConnectionProvider::default())
-            .with_options(resolver_opts)
-            .build(),
-    )
+    match TokioResolver::builder_with_config(resolver_config, TokioRuntimeProvider::default())
+        .with_options(resolver_opts)
+        .build()
+    {
+        Ok(resolver) => Some(resolver),
+        Err(err) => {
+            tracing::error!(
+                error = &err as &dyn std::error::Error,
+                "failed to build DNS resolver, DNS lookups will be skipped"
+            );
+            None
+        }
+    }
 });
 
 /// Captures all system network information, including network interfaces,
@@ -89,8 +98,12 @@ impl SystemNetworkInfo {
             .filter_map(|(ip, reverse_lookup)| match reverse_lookup {
                 Ok(result) => {
                     let hostnames = result
-                        .into_iter()
-                        .map(|ptr_record| ptr_record.to_utf8())
+                        .answers()
+                        .iter()
+                        .filter_map(|record| match &record.data {
+                            RData::PTR(ptr) => Some(ptr.0.to_utf8()),
+                            _ => None,
+                        })
                         .collect();
                     tracing::info!(%ip, ?hostnames, "performed reverse DNS lookup for IP");
                     Some((ip, hostnames))

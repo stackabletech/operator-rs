@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-19
+
+### Changed
+
+- Bump `hickory-resolver` to 0.26, `sysinfo` to 0.39 and Rust to 1.95.0 ([#63]).
+
+[#63]: https://github.com/stackabletech/containerdebug/pull/63
+
 ### Fixed
 
 - Don't log ANSI escape sequences if stdout is a file ([#59]).
