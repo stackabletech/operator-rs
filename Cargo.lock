@@ -3041,7 +3041,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-shared"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "jiff",
  "k8s-openapi",
@@ -3058,7 +3058,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-telemetry"
-version = "0.6.3"
+version = "0.6.4"
 dependencies = [
  "axum",
  "clap",
