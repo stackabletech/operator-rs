@@ -205,16 +205,6 @@ where
     /// validity, this function offers complete control over these parameters.
     /// If this level of control is not needed, use [`CertificateAuthority::new`]
     /// instead.
-    //
-    // SAFETY: We purposefully allow the `clippy::unwrap_in_result` lint below in this function.
-    // We can use expect here, because the subject name is defined as a constant which must be able
-    // to be parsed.
-    //
-    // FIXME (@Techassi): This attribute can be used on individual unwrap and expect calls since
-    // Rust 1.91.0. We should move this attribute to not contaminate an unnecessarily large scope
-    // once we bump the toolchain to 1.91.0.
-    // See https://github.com/rust-lang/rust-clippy/pull/15445
-    #[allow(clippy::unwrap_in_result)]
     #[instrument(name = "create_certificate_authority_with", skip(signing_key_pair))]
     pub fn new_with(signing_key_pair: S, serial_number: u64, validity: Duration) -> Result<Self> {
         let serial_number = SerialNumber::from(serial_number);
@@ -223,6 +213,10 @@ where
         // We don't allow customization of the CA subject by callers. Every CA
         // created by us should contain the same subject consisting a common set
         // of distinguished names (DNs).
+        // SAFETY: We purposefully allow the `clippy::unwrap_in_result` lint below.
+        // We can use expect here, because the subject name is defined as a constant which must be
+        // able to be parsed.
+        #[allow(clippy::unwrap_in_result)]
         let subject = Name::from_str(SDP_ROOT_CA_SUBJECT)
             .expect("the constant SDP_ROOT_CA_SUBJECT must be a valid subject");
 

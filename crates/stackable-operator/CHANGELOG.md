@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `Client::{get_feature_gates,get_enabled_feature_gates,get_disabled_feature_gates}` associated
+  functions to retrieve all, enabled, or disabled feature gates from the Kubernetes apiserver ([#1207], [#1208]).
+
+### Changed
+
+- BREAKING: Use `serde_json::Value` instead of `String` for user-provided JSON `configOverrides`. This change is marked as breaking, as it causes a breaking change to the CRDs ([#1206]).
+
+[#1206]: https://github.com/stackabletech/operator-rs/pull/1206
+[#1207]: https://github.com/stackabletech/operator-rs/pull/1207
+[#1208]: https://github.com/stackabletech/operator-rs/pull/1208
+
 ## [0.111.1] - 2026-04-28
 
 ### Added

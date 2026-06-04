@@ -53,17 +53,13 @@ pub struct Version {
 impl FromStr for Version {
     type Err = ParseVersionError;
 
-    // SAFETY: We purposefully allow the `clippy::unwrap_in_result` lint below in this function.
-    // We can use expect here, because the correct match label must be used.
-    //
-    // FIXME (@Techassi): This attribute can be used on individual unwrap and expect calls since
-    // Rust 1.91.0. We should move this attribute to not contaminate an unnecessarily large scope
-    // once we bump the toolchain to 1.91.0.
-    // See https://github.com/rust-lang/rust-clippy/pull/15445
     #[allow(clippy::unwrap_in_result)]
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let captures = VERSION_REGEX.captures(input).context(InvalidFormatSnafu)?;
 
+        // SAFETY: We purposefully allow the `clippy::unwrap_in_result` lint below.
+        // We can use expect here, because the correct match label must be used.
+        #[allow(clippy::unwrap_in_result)]
         let major = captures
             .name("major")
             .expect("internal error: check that the correct match label is specified")

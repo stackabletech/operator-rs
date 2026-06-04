@@ -1,3 +1,5 @@
+//! Provides additional functionality on top of [`kube::Client`].
+
 use std::{
     convert::TryFrom,
     fmt::{Debug, Display},
@@ -23,6 +25,9 @@ use crate::{
     kvp::LabelSelectorExt,
     utils::cluster_info::{KubernetesClusterInfo, KubernetesClusterInfoOptions},
 };
+
+#[cfg(feature = "client-feature-gates")]
+pub mod feature_gates;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -89,6 +94,21 @@ pub enum Error {
     NewKubeletClusterInfo {
         source: crate::utils::cluster_info::Error,
     },
+
+    #[cfg(feature = "client-feature-gates")]
+    #[snafu(display("failed to create raw {method} request"))]
+    CreateRawRequest {
+        source: http::Error,
+        method: http::Method,
+    },
+
+    #[cfg(feature = "client-feature-gates")]
+    #[snafu(display("failed to perform raw request"))]
+    PerformRawRequest { source: kube::Error },
+
+    #[cfg(feature = "client-feature-gates")]
+    #[snafu(display("failed to parse feature gate: {error}"))]
+    ParseFeatureGate { error: String },
 }
 
 /// This `Client` can be used to access Kubernetes.
@@ -708,7 +728,7 @@ mod tests {
 
     use crate::utils::cluster_info::KubernetesClusterInfoOptions;
 
-    fn test_cluster_info_opts() -> KubernetesClusterInfoOptions {
+    pub(super) fn test_cluster_info_opts() -> KubernetesClusterInfoOptions {
         KubernetesClusterInfoOptions {
             // We have to hard-code a made-up cluster domain,
             // since kubernetes_node_name (probably) won't be a valid Node that we can query.
