@@ -13,32 +13,31 @@ use std::{
 use snafu::{ResultExt, Snafu};
 
 /// Errors which can occur when using this module
-#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Snafu)]
 pub enum FlaskAppConfigWriterError {
     #[snafu(display("failed to convert '{value}' into a identifier"))]
-    ConvertIdentifierError { value: String },
+    ConvertIdentifier { value: String },
 
     #[snafu(display("failed to convert '{value}' into a boolean literal"))]
-    ConvertBoolLiteralError {
+    ConvertBoolLiteral {
         value: String,
         source: ParseBoolError,
     },
 
     #[snafu(display("failed to convert '{value}' into an integer literal"))]
-    ConvertIntLiteralError {
+    ConvertIntLiteral {
         value: String,
         source: ParseIntError,
     },
 
     #[snafu(display("failed to convert '{value}' into an ASCII string literal"))]
-    ConvertStringLiteralError { value: String },
+    ConvertStringLiteral { value: String },
 
     #[snafu(display("failed to convert '{value}' into a Python expression"))]
-    ConvertExpressionError { value: String },
+    ConvertExpression { value: String },
 
     #[snafu(display("Configuration cannot be written."))]
-    WriteConfigError { source: io::Error },
+    WriteConfig { source: io::Error },
 }
 
 /// Mapping from configuration options to Python types.
