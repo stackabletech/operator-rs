@@ -1,8 +1,4 @@
 //! Writers for Hadoop XML config files and Java `.properties` files.
-//!
-//! Originally part of the `product-config` crate's `writer` module; previously
-//! vendored into the individual operators, now provided here as the shared home so
-//! operators do not depend on `product-config` for rendering.
 
 use std::{fmt::Write as _, io::Write};
 
