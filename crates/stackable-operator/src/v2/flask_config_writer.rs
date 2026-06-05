@@ -1,12 +1,5 @@
 //! Writer for Flask App configurations (Python config files).
 //!
-//! Originally `product_config::flask_app_config_writer`; previously vendored into
-//! airflow- and superset-operator, now provided here as the shared home so operators
-//! do not depend on the `product-config` crate. Applications based on the Flask App
-//! Builder (e.g. Apache Airflow, Apache Superset) use configuration files written in
-//! Python. This writer only covers top-level assignments of a few primitive types and
-//! expressions — it is not a general Python code generator.
-//!
 //! Primitive types are escaped accordingly. Python expressions are written as-is;
 //! invalid expressions produce invalid configuration files. Config overrides that do
 //! not map to a known option are treated as plain expressions.
@@ -20,8 +13,6 @@ use std::{
 use snafu::{ResultExt, Snafu};
 
 /// Errors which can occur when using this module
-// Variant names share the `Error` suffix; kept as-is from the vendored
-// `product_config::flask_app_config_writer` source.
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Snafu)]
 pub enum FlaskAppConfigWriterError {
