@@ -6,7 +6,7 @@ use crate::{
 };
 
 /// Infallible variant of
-/// [`stackable_operator::builder::meta::ObjectMetaBuilder::ownerreference_from_resource`]
+/// [`crate::builder::meta::ObjectMetaBuilder::ownerreference_from_resource`]
 pub fn ownerreference_from_resource(
     resource: &(impl Resource<DynamicType = ()> + HasName + HasUid),
     block_owner_deletion: Option<bool>,

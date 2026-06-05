@@ -22,7 +22,7 @@ use crate::{
     schemars::{self, JsonSchema},
 };
 
-// Variant of [`stackable_operator::role_utils::GenericCommonConfig`] that implements [`Merge`]
+// Variant of [`crate::role_utils::GenericCommonConfig`] that implements [`Merge`]
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Eq, PartialEq, Serialize)]
 pub struct GenericCommonConfig {}
 
@@ -30,7 +30,7 @@ impl Merge for GenericCommonConfig {
     fn merge(&mut self, _defaults: &Self) {}
 }
 
-/// Variant of [`stackable_operator::role_utils::RoleGroup`] that is easier to work with
+/// Variant of [`crate::role_utils::RoleGroup`] that is easier to work with
 ///
 /// Differences are:
 /// * `replicas` is non-optional.
