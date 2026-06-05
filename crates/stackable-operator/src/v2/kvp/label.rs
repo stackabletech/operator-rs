@@ -1,12 +1,11 @@
-use stackable_operator::{
+use crate::{
     kube::Resource,
     kvp::{Labels, ObjectLabels},
-};
-
-use crate::framework::{
-    HasName, NameIsValidLabelValue,
-    types::operator::{
-        ControllerName, OperatorName, ProductName, ProductVersion, RoleGroupName, RoleName,
+    v2::{
+        HasName, NameIsValidLabelValue,
+        types::operator::{
+            ControllerName, OperatorName, ProductName, ProductVersion, RoleGroupName, RoleName,
+        },
     },
 };
 
@@ -69,15 +68,15 @@ pub fn role_group_selector(
 mod tests {
     use std::{borrow::Cow, collections::BTreeMap};
 
-    use stackable_operator::{
-        k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta, kube::Resource,
-    };
-
-    use crate::framework::{
-        HasName, NameIsValidLabelValue,
-        kvp::label::{recommended_labels, role_group_selector, role_selector},
-        types::operator::{
-            ControllerName, OperatorName, ProductName, ProductVersion, RoleGroupName, RoleName,
+    use crate::{
+        k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta,
+        kube::Resource,
+        v2::{
+            HasName, NameIsValidLabelValue,
+            kvp::label::{recommended_labels, role_group_selector, role_selector},
+            types::operator::{
+                ControllerName, OperatorName, ProductName, ProductVersion, RoleGroupName, RoleName,
+            },
         },
     };
 
@@ -87,7 +86,7 @@ mod tests {
 
     impl Cluster {
         fn new() -> Self {
-            Cluster {
+            Self {
                 object_meta: ObjectMeta {
                     name: Some("cluster-name".to_owned()),
                     ..ObjectMeta::default()

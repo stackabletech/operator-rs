@@ -1,15 +1,12 @@
-use stackable_operator::{
-    cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
-    deep_merger::ObjectOverrides,
-    k8s_openapi::api::core::v1::ObjectReference,
-};
-
 use super::types::{
     kubernetes::{NamespaceName, Uid},
     operator::{ClusterName, ControllerName, OperatorName, ProductName},
 };
-use crate::framework::{
-    NameIsValidLabelValue, macros::attributed_string_type::MAX_LABEL_VALUE_LENGTH,
+use crate::{
+    cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
+    deep_merger::ObjectOverrides,
+    k8s_openapi::api::core::v1::ObjectReference,
+    v2::{NameIsValidLabelValue, macros::attributed_string_type::MAX_LABEL_VALUE_LENGTH},
 };
 
 /// Infallible variant of [`stackable_operator::cluster_resources::ClusterResources::new`]

@@ -3,12 +3,14 @@
 use std::str::FromStr;
 
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::kube::runtime::reflector::Lookup;
 use strum::{EnumDiscriminants, IntoStaticStr};
 
-use crate::framework::types::{
-    kubernetes::{NamespaceName, Uid},
-    operator::ClusterName,
+use crate::{
+    kube::runtime::reflector::Lookup,
+    v2::types::{
+        kubernetes::{NamespaceName, Uid},
+        operator::ClusterName,
+    },
 };
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
@@ -25,17 +27,17 @@ pub enum Error {
 
     #[snafu(display("failed to set the cluster name"))]
     ParseClusterName {
-        source: crate::framework::macros::attributed_string_type::Error,
+        source: crate::v2::macros::attributed_string_type::Error,
     },
 
     #[snafu(display("failed to set the namespace"))]
     ParseNamespace {
-        source: crate::framework::macros::attributed_string_type::Error,
+        source: crate::v2::macros::attributed_string_type::Error,
     },
 
     #[snafu(display("failed to set the UID"))]
     ParseUid {
-        source: crate::framework::macros::attributed_string_type::Error,
+        source: crate::v2::macros::attributed_string_type::Error,
     },
 }
 
@@ -67,13 +69,15 @@ pub fn get_uid(resource: &impl Lookup) -> Result<Uid> {
 
 #[cfg(test)]
 mod tests {
-    use stackable_operator::kube::runtime::reflector::Lookup;
     use uuid::uuid;
 
     use super::{ErrorDiscriminants, get_cluster_name, get_namespace, get_uid};
-    use crate::framework::types::{
-        kubernetes::{NamespaceName, Uid},
-        operator::ClusterName,
+    use crate::{
+        kube::runtime::reflector::Lookup,
+        v2::types::{
+            kubernetes::{NamespaceName, Uid},
+            operator::ClusterName,
+        },
     };
 
     #[derive(Debug, Default)]
