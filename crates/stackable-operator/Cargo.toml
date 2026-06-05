@@ -36,6 +36,7 @@ educe.workspace = true
 futures.workspace = true
 http.workspace = true
 indexmap.workspace = true
+java-properties.workspace = true
 jiff.workspace = true
 json-patch = { workspace = true, features = ["schemars"] }
 k8s-openapi.workspace = true
@@ -57,6 +58,7 @@ tracing-subscriber.workspace = true
 url.workspace = true
 uuid.workspace = true
 winnow = { workspace = true, optional = true }
+xml.workspace = true
 
 [dev-dependencies]
 indoc.workspace = true
