@@ -23,7 +23,7 @@ pub enum Error {
     ParseEnvVarName { env_var_name: String },
 }
 
-/// Infallible variant of [`stackable_operator::builder::pod::container::ContainerBuilder::new`]
+/// Infallible variant of [`crate::builder::pod::container::ContainerBuilder::new`]
 pub fn new_container_builder(container_name: &ContainerName) -> ContainerBuilder {
     ContainerBuilder::new(container_name.as_ref()).expect("should be a valid container name")
 }

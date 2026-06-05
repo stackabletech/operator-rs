@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-/// Infallible variant of [`stackable_operator::kvp::Labels::recommended`]
+/// Infallible variant of [`crate::kvp::Labels::recommended`]
 pub fn recommended_labels(
     owner: &(impl Resource + HasName + NameIsValidLabelValue),
     product_name: &ProductName,
@@ -34,7 +34,7 @@ pub fn recommended_labels(
     )
 }
 
-/// Infallible variant of [`stackable_operator::kvp::Labels::role_selector`]
+/// Infallible variant of [`crate::kvp::Labels::role_selector`]
 pub fn role_selector(
     owner: &(impl Resource + HasName + NameIsValidLabelValue),
     product_name: &ProductName,
@@ -48,7 +48,7 @@ pub fn role_selector(
     .expect("Labels should be created because all given parameters produce valid label values")
 }
 
-/// Infallible variant of [`stackable_operator::kvp::Labels::role_group_selector`]
+/// Infallible variant of [`crate::kvp::Labels::role_group_selector`]
 pub fn role_group_selector(
     owner: &(impl Resource + HasName + NameIsValidLabelValue),
     product_name: &ProductName,

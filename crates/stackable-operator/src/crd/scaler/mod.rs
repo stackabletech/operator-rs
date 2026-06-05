@@ -31,8 +31,8 @@ pub mod versioned {
         ///
         /// Upstream issues:
         ///
-        /// - https://github.com/kubernetes/kubernetes/issues/105533
-        /// - https://github.com/Arnavion/k8s-openapi/issues/136
+        /// - <https://github.com/kubernetes/kubernetes/issues/105533>
+        /// - <https://github.com/Arnavion/k8s-openapi/issues/136>
         pub replicas: u16,
     }
 }

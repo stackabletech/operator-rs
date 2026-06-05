@@ -2,8 +2,10 @@ use crate::v2::types::kubernetes::Uid;
 
 pub mod builder;
 pub mod cluster_resources;
+pub mod config_file_writer;
 pub mod config_overrides;
 pub mod controller_utils;
+pub mod flask_config_writer;
 pub mod kvp;
 pub mod macros;
 pub mod product_logging;

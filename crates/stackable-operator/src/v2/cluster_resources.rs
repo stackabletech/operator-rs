@@ -9,7 +9,7 @@ use crate::{
     v2::{NameIsValidLabelValue, macros::attributed_string_type::MAX_LABEL_VALUE_LENGTH},
 };
 
-/// Infallible variant of [`stackable_operator::cluster_resources::ClusterResources::new`]
+/// Infallible variant of [`crate::cluster_resources::ClusterResources::new`]
 #[allow(clippy::too_many_arguments)]
 pub fn cluster_resources_new<'a>(
     product_name: &ProductName,

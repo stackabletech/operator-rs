@@ -9,7 +9,7 @@ use crate::{
     config::merge::Merge, k8s_openapi::DeepMerge, schemars, utils::crds::raw_object_schema,
 };
 
-// Variant of [`stackable_operator::config_overrides::KeyValueConfigOverrides`] that implements
+// Variant of [`crate::config_overrides::KeyValueConfigOverrides`] that implements
 // Merge
 /// Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 ///
@@ -22,7 +22,7 @@ pub struct KeyValueConfigOverrides {
     pub overrides: BTreeMap<String, Option<String>>,
 }
 
-// Variant of [`stackable_operator::config_overrides::JsonConfigOverrides`] with the following
+// Variant of [`crate::config_overrides::JsonConfigOverrides`] with the following
 // changes:
 // - Implements Default
 // - Implements Merge by using a Sequence variant which is not exposed in the CRD
@@ -63,7 +63,7 @@ pub enum JsonConfigOverrides {
 }
 
 impl JsonConfigOverrides {
-    // Infallible variant of [`stackable_operator::config_overrides::JsonConfigOverrides::apply`]
+    // Infallible variant of [`crate::config_overrides::JsonConfigOverrides::apply`]
     pub fn apply(&self, base: &serde_json::Value) -> serde_json::Value {
         match self {
             Self::JsonMergePatch(patch) => {
