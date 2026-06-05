@@ -1,16 +1,15 @@
-use stackable_operator::{
+use crate::{
     kube::Resource,
     kvp::{Labels, ObjectLabels},
-};
-
-use crate::framework::{
-    HasName, NameIsValidLabelValue,
-    types::operator::{
-        ControllerName, OperatorName, ProductName, ProductVersion, RoleGroupName, RoleName,
+    v2::{
+        HasName, NameIsValidLabelValue,
+        types::operator::{
+            ControllerName, OperatorName, ProductName, ProductVersion, RoleGroupName, RoleName,
+        },
     },
 };
 
-/// Infallible variant of [`stackable_operator::kvp::Labels::recommended`]
+/// Infallible variant of [`crate::kvp::Labels::recommended`]
 pub fn recommended_labels(
     owner: &(impl Resource + HasName + NameIsValidLabelValue),
     product_name: &ProductName,
@@ -35,7 +34,7 @@ pub fn recommended_labels(
     )
 }
 
-/// Infallible variant of [`stackable_operator::kvp::Labels::role_selector`]
+/// Infallible variant of [`crate::kvp::Labels::role_selector`]
 pub fn role_selector(
     owner: &(impl Resource + HasName + NameIsValidLabelValue),
     product_name: &ProductName,
@@ -49,7 +48,7 @@ pub fn role_selector(
     .expect("Labels should be created because all given parameters produce valid label values")
 }
 
-/// Infallible variant of [`stackable_operator::kvp::Labels::role_group_selector`]
+/// Infallible variant of [`crate::kvp::Labels::role_group_selector`]
 pub fn role_group_selector(
     owner: &(impl Resource + HasName + NameIsValidLabelValue),
     product_name: &ProductName,
@@ -69,15 +68,15 @@ pub fn role_group_selector(
 mod tests {
     use std::{borrow::Cow, collections::BTreeMap};
 
-    use stackable_operator::{
-        k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta, kube::Resource,
-    };
-
-    use crate::framework::{
-        HasName, NameIsValidLabelValue,
-        kvp::label::{recommended_labels, role_group_selector, role_selector},
-        types::operator::{
-            ControllerName, OperatorName, ProductName, ProductVersion, RoleGroupName, RoleName,
+    use crate::{
+        k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta,
+        kube::Resource,
+        v2::{
+            HasName, NameIsValidLabelValue,
+            kvp::label::{recommended_labels, role_group_selector, role_selector},
+            types::operator::{
+                ControllerName, OperatorName, ProductName, ProductVersion, RoleGroupName, RoleName,
+            },
         },
     };
 
@@ -87,7 +86,7 @@ mod tests {
 
     impl Cluster {
         fn new() -> Self {
-            Cluster {
+            Self {
                 object_meta: ObjectMeta {
                     name: Some("cluster-name".to_owned()),
                     ..ObjectMeta::default()

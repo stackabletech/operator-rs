@@ -1,9 +1,12 @@
 use std::{fmt::Display, str::FromStr};
 
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::{
+use strum::{EnumDiscriminants, IntoStaticStr};
+
+use crate::{
     builder::pod::{container::FieldPathEnvVar, resources::ResourceRequirementsBuilder},
     commons::product_image_selection::ResolvedProductImage,
+    constant,
     k8s_openapi::api::core::v1::{Container, VolumeMount},
     product_logging::{
         framework::VECTOR_CONFIG_FILE,
@@ -12,12 +15,7 @@ use stackable_operator::{
             ContainerLogConfigChoice, CustomContainerLogConfig, LogLevel, Logging,
         },
     },
-};
-use strum::{EnumDiscriminants, IntoStaticStr};
-
-use crate::{
-    constant,
-    framework::{
+    v2::{
         builder::pod::container::{EnvVarName, EnvVarSet, new_container_builder},
         role_group_utils,
         types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName, VolumeName},
@@ -54,7 +52,7 @@ pub enum Error {
 
     #[snafu(display("failed to parse the container name"))]
     ParseContainerName {
-        source: crate::framework::macros::attributed_string_type::Error,
+        source: crate::v2::macros::attributed_string_type::Error,
     },
 }
 
@@ -63,7 +61,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// Validated [`ContainerLogConfigChoice`]
 ///
 /// The ConfigMap name in the Custom variant is valid.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ValidatedContainerLogConfigChoice {
     Automatic(AutomaticContainerLogConfig),
     Custom(ConfigMapName),
@@ -72,7 +70,7 @@ pub enum ValidatedContainerLogConfigChoice {
 /// Validated [`ContainerLogConfigChoice`] for the Vector container
 ///
 /// It includes the discovery ConfigMap name of the Vector aggregator.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VectorContainerLogConfig {
     pub log_config: ValidatedContainerLogConfigChoice,
     pub vector_aggregator_config_map_name: ConfigMapName,
@@ -81,14 +79,14 @@ pub struct VectorContainerLogConfig {
 /// Validates the log configuration of the container
 pub fn validate_logging_configuration_for_container<T>(
     logging: &Logging<T>,
-    container: T,
+    container: &T,
 ) -> Result<ValidatedContainerLogConfigChoice>
 where
     T: Clone + Display + Ord,
 {
     let container_log_config_choice = logging
         .containers
-        .get(&container)
+        .get(container)
         .and_then(|container_log_config| container_log_config.choice.as_ref())
         // This should never happen because default configurations should have been set for all
         // containers.
@@ -111,6 +109,7 @@ where
 }
 
 /// Builds the Vector container
+#[expect(clippy::too_many_lines)]
 pub fn vector_container(
     container_name: &ContainerName,
     image: &ResolvedProductImage,
@@ -152,7 +151,7 @@ pub fn vector_container(
         .with_value(&EnvVarName::from_str_unsafe("LOG_DIR"), STACKABLE_LOG_DIR)
         .with_field_path(
             &EnvVarName::from_str_unsafe("NAMESPACE"),
-            FieldPathEnvVar::Namespace,
+            &FieldPathEnvVar::Namespace,
         )
         .with_value(
             &EnvVarName::from_str_unsafe("ROLE_GROUP_NAME"),
@@ -235,27 +234,26 @@ pub fn vector_container(
 mod tests {
     use std::str::FromStr;
 
-    use pretty_assertions::assert_eq;
     use serde_json::json;
-    use stackable_operator::{
+
+    use super::{
+        ErrorDiscriminants, ValidatedContainerLogConfigChoice, VectorContainerLogConfig,
+        validate_logging_configuration_for_container, vector_container,
+    };
+    use crate::{
         commons::product_image_selection::ResolvedProductImage,
         kvp::LabelValue,
         product_logging::spec::{
             AutomaticContainerLogConfig, ConfigMapLogConfig, ContainerLogConfig,
             ContainerLogConfigChoice, CustomContainerLogConfig, Logging,
         },
-    };
-
-    use super::{
-        ErrorDiscriminants, ValidatedContainerLogConfigChoice, VectorContainerLogConfig,
-        validate_logging_configuration_for_container, vector_container,
-    };
-    use crate::framework::{
-        builder::pod::container::{EnvVarName, EnvVarSet},
-        role_group_utils,
-        types::{
-            kubernetes::{ConfigMapName, ContainerName, VolumeName},
-            operator::{ClusterName, RoleGroupName, RoleName},
+        v2::{
+            builder::pod::container::{EnvVarName, EnvVarSet},
+            role_group_utils,
+            types::{
+                kubernetes::{ConfigMapName, ContainerName, VolumeName},
+                operator::{ClusterName, RoleGroupName, RoleName},
+            },
         },
     };
 
@@ -276,7 +274,7 @@ mod tests {
 
         assert_eq!(
             ValidatedContainerLogConfigChoice::Automatic(AutomaticContainerLogConfig::default()),
-            validate_logging_configuration_for_container(&logging, "container")
+            validate_logging_configuration_for_container(&logging, &"container")
                 .expect("should be a valid log config")
         );
     }
@@ -302,7 +300,7 @@ mod tests {
             ValidatedContainerLogConfigChoice::Custom(ConfigMapName::from_str_unsafe(
                 "valid-config-map-name"
             )),
-            validate_logging_configuration_for_container(&logging, "container")
+            validate_logging_configuration_for_container(&logging, &"container")
                 .expect("should be a valid log config")
         );
     }
@@ -320,7 +318,7 @@ mod tests {
 
         assert_eq!(
             Err(ErrorDiscriminants::GetContainerLogConfiguration),
-            validate_logging_configuration_for_container(&logging_without_container, "container")
+            validate_logging_configuration_for_container(&logging_without_container, &"container")
                 .map_err(ErrorDiscriminants::from)
         );
 
@@ -328,7 +326,7 @@ mod tests {
             Err(ErrorDiscriminants::GetContainerLogConfiguration),
             validate_logging_configuration_for_container(
                 &logging_without_container_log_config_choice,
-                "container"
+                &"container"
             )
             .map_err(ErrorDiscriminants::from)
         );
@@ -353,12 +351,13 @@ mod tests {
 
         assert_eq!(
             Err(ErrorDiscriminants::ParseContainerName),
-            validate_logging_configuration_for_container(&logging, "container")
+            validate_logging_configuration_for_container(&logging, &"container")
                 .map_err(ErrorDiscriminants::from)
         );
     }
 
     #[test]
+    #[expect(clippy::too_many_lines)]
     fn test_vector_container() {
         let image = ResolvedProductImage {
             product_version: "1.0.0".to_owned(),
