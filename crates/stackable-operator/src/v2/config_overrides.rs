@@ -15,9 +15,6 @@ use crate::{
 // Variant of [`crate::config_overrides::KeyValueConfigOverrides`] that implements
 // Merge
 /// Flat key-value overrides for `*.properties`, Hadoop XML, etc.
-///
-/// This is backwards-compatible with the existing flat key-value YAML format
-/// used by `HashMap<String, String>`.
 #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 pub struct KeyValueConfigOverrides {
     #[serde(flatten)]
