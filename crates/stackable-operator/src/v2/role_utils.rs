@@ -260,7 +260,7 @@ mod tests {
         let mut cli_overrides = BTreeMap::new();
 
         if let Some(value) = override_value {
-            config_file_overrides.insert("property".to_owned(), Some(value.to_owned()));
+            config_file_overrides.insert("property".to_owned(), value.to_owned());
             env_overrides.insert("PROPERTY".to_owned(), value.to_owned());
             cli_overrides.insert("--property".to_owned(), value.to_owned());
         }
