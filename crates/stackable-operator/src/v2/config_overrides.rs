@@ -1,4 +1,7 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::{BTreeMap, btree_map},
+    mem,
+};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -12,14 +15,54 @@ use crate::{
 // Variant of [`crate::config_overrides::KeyValueConfigOverrides`] that implements
 // Merge
 /// Flat key-value overrides for `*.properties`, Hadoop XML, etc.
-///
-/// This is backwards-compatible with the existing flat key-value YAML format
-/// used by `HashMap<String, String>`.
-#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, Merge, PartialEq, Serialize)]
-#[merge(path_overrides(merge = "crate::config::merge"))]
+#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 pub struct KeyValueConfigOverrides {
     #[serde(flatten)]
-    pub overrides: BTreeMap<String, Option<String>>,
+    pub overrides: BTreeMap<String, String>,
+}
+
+impl<'a> KeyValueConfigOverrides {
+    pub fn iter(&'a self) -> btree_map::Iter<'a, String, String> {
+        self.into_iter()
+    }
+}
+
+impl Merge for KeyValueConfigOverrides {
+    fn merge(&mut self, defaults: &Self) {
+        let mut overrides = defaults.overrides.clone();
+        overrides.extend(mem::take(&mut self.overrides));
+        self.overrides = overrides;
+    }
+}
+
+impl IntoIterator for KeyValueConfigOverrides {
+    type IntoIter = btree_map::IntoIter<String, String>;
+    type Item = (String, String);
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.overrides.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a KeyValueConfigOverrides {
+    type IntoIter = btree_map::Iter<'a, String, String>;
+    type Item = (&'a String, &'a String);
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.overrides.iter()
+    }
+}
+
+impl<K, V, const N: usize> From<[(K, V); N]> for KeyValueConfigOverrides
+where
+    K: Into<String>,
+    V: Into<String>,
+{
+    fn from(value: [(K, V); N]) -> Self {
+        Self {
+            overrides: value.map(|(k, v)| (k.into(), v.into())).into(),
+        }
+    }
 }
 
 // Variant of [`crate::config_overrides::JsonConfigOverrides`] with the following
@@ -398,7 +441,7 @@ mod tests {
     #[test]
     fn test_json_config_overrides_from_key_value_config_overrides() {
         let key_value_config_overrides = KeyValueConfigOverrides {
-            overrides: [("key".to_owned(), Some("value".to_owned()))].into(),
+            overrides: [("key".to_owned(), "value".to_owned())].into(),
         };
 
         let actual_json_config_overrides: JsonConfigOverrides = key_value_config_overrides.into();
@@ -413,7 +456,7 @@ mod tests {
     fn test_json_config_overrides_from_json_or_key_value_config_overrides() {
         let key_value_config_overrides =
             JsonOrKeyValueConfigOverrides::KeyValue(KeyValueConfigOverrides {
-                overrides: [("key".to_owned(), Some("value".to_owned()))].into(),
+                overrides: [("key".to_owned(), "value".to_owned())].into(),
             });
 
         let actual_json_config_overrides: JsonConfigOverrides = key_value_config_overrides.into();
@@ -427,11 +470,11 @@ mod tests {
     #[test]
     fn test_json_or_key_value_config_overrides_merge() {
         let base = JsonOrKeyValueConfigOverrides::KeyValue(KeyValueConfigOverrides {
-            overrides: [("key".to_owned(), Some("base".to_owned()))].into(),
+            overrides: [("key".to_owned(), "base".to_owned())].into(),
         });
 
         let patch = JsonOrKeyValueConfigOverrides::KeyValue(KeyValueConfigOverrides {
-            overrides: [("key".to_owned(), Some("patch".to_owned()))].into(),
+            overrides: [("key".to_owned(), "patch".to_owned())].into(),
         });
 
         // The merge implementation internally converts KeyValueConfigOverrides to
