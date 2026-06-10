@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     builder::pod::container::EnvVarSet,
+    jvm_argument_overrides::JvmArgumentOverrides,
     types::{
         kubernetes::{ClusterRoleName, RoleBindingName, ServiceAccountName},
         operator::{ClusterName, ProductName},
@@ -23,11 +24,21 @@ use crate::{
 };
 
 // Variant of [`crate::role_utils::GenericCommonConfig`] that implements [`Merge`]
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, Eq, Merge, PartialEq, Serialize)]
+#[merge(path_overrides(merge = "crate::config::merge"))]
 pub struct GenericCommonConfig {}
 
-impl Merge for GenericCommonConfig {
-    fn merge(&mut self, _defaults: &Self) {}
+// Variant of [`crate::role_utils::JavaCommonConfig`] that implements [`Merge`]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, Merge, PartialEq, Eq, Serialize)]
+#[merge(path_overrides(merge = "crate::config::merge"))]
+#[serde(rename_all = "camelCase")]
+pub struct JavaCommonConfig {
+    /// Allows overriding JVM arguments.
+    //
+    /// Please read on the [JVM argument overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#jvm-argument-overrides)
+    /// for details on the usage.
+    #[serde(default)]
+    pub jvm_argument_overrides: JvmArgumentOverrides,
 }
 
 /// Variant of [`crate::role_utils::RoleGroup`] that is easier to work with
