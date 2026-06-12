@@ -97,6 +97,22 @@ impl ResourceNames {
             .expect("should be a valid Service name")
     }
 
+    pub fn metrics_service_name(&self) -> ServiceName {
+        const SUFFIX: &str = "-metrics";
+
+        // compile-time checks
+        const _: () = assert!(
+            QualifiedRoleGroupName::MAX_LENGTH + SUFFIX.len() <= ServiceName::MAX_LENGTH,
+            "The string `<cluster_name>-<role_name>-<role_group_name>-metrics` must not exceed the \
+            limit of Service names."
+        );
+        let _ = QualifiedRoleGroupName::IS_RFC_1035_LABEL_NAME;
+        let _ = QualifiedRoleGroupName::IS_VALID_LABEL_VALUE;
+
+        ServiceName::from_str(&format!("{}{SUFFIX}", self.qualified_role_group_name()))
+            .expect("should be a valid Service name")
+    }
+
     pub fn listener_name(&self) -> ListenerName {
         // compile-time checks
         const _: () = assert!(
@@ -144,6 +160,10 @@ mod tests {
         assert_eq!(
             ServiceName::from_str_unsafe("test-cluster-data-nodes-ssd-storage-headless"),
             resource_names.headless_service_name()
+        );
+        assert_eq!(
+            ServiceName::from_str_unsafe("test-cluster-data-nodes-ssd-storage-metrics"),
+            resource_names.metrics_service_name()
         );
         assert_eq!(
             ListenerName::from_str_unsafe("test-cluster-data-nodes-ssd-storage"),
