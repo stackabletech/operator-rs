@@ -26,9 +26,12 @@ attributed_string_type! {
     ClusterName,
     "The name of a cluster/stacklet",
     "my-opensearch-cluster",
-    // Suffixes are added to produce resource names. According compile-time checks ensure that
-    // max_length cannot be set higher.
-    (max_length = 24),
+    // Suffixes are added to produce resource names.
+    //
+    // 40 characters for cluster names should be sufficient and still allow the operators to append
+    // custom suffixes to build resource names. Increasing this value could break existing operator
+    // code.
+    (max_length = 40),
     is_rfc_1035_label_name,
     is_valid_label_value
 }
@@ -51,10 +54,6 @@ attributed_string_type! {
     RoleGroupName,
     "The name of a role-group name",
     "cluster-manager",
-    // The role-group name is used to produce resource names. To make sure that all resource names
-    // are valid, max_length is restricted. Compile-time checks ensure that max_length cannot be
-    // set higher if not other names like the RoleName are set lower accordingly.
-    (max_length = 16),
     is_rfc_1123_label_name,
     is_valid_label_value
 }
@@ -63,10 +62,6 @@ attributed_string_type! {
     RoleName,
     "The name of a role name",
     "nodes",
-    // The role name is used to produce resource names. To make sure that all resource names are
-    // valid, max_length is restricted. Compile-time checks ensure that max_length cannot be set
-    // higher if not other names like the RoleGroupName are set lower accordingly.
-    (max_length = 10),
     is_rfc_1123_label_name,
     is_valid_label_value
 }
