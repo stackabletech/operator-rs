@@ -132,8 +132,7 @@ impl ResourceNames {
         // compile-time check
         const _: () = assert!(
             QualifiedRoleGroupName::MAX_LENGTH <= ConfigMapName::MAX_LENGTH,
-            "The string `<cluster_name>-<role_name>-<role_group_name>` must not exceed the limit of \
-            ConfigMap names."
+            "The string `<qualified_role_group_name>` must not exceed the limit of ConfigMap names."
         );
         let _ = QualifiedRoleGroupName::IS_RFC_1123_SUBDOMAIN_NAME;
 
@@ -145,8 +144,8 @@ impl ResourceNames {
         // compile-time checks
         const _: () = assert!(
             QualifiedRoleGroupName::MAX_LENGTH <= StatefulSetName::MAX_LENGTH,
-            "The string `<cluster_name>-<role_name>-<role_group_name>` must not exceed the \
-            limit of StatefulSet names."
+            "The string `<qualified_role_group_name>` must not exceed the limit of StatefulSet \
+            names."
         );
         let _ = QualifiedRoleGroupName::IS_RFC_1123_LABEL_NAME;
         let _ = QualifiedRoleGroupName::IS_VALID_LABEL_VALUE;
@@ -161,8 +160,8 @@ impl ResourceNames {
         // compile-time checks
         const _: () = assert!(
             QualifiedRoleGroupName::MAX_LENGTH + SUFFIX.len() <= ServiceName::MAX_LENGTH,
-            "The string `<cluster_name>-<role_name>-<role_group_name>-headless` must not exceed the \
-            limit of Service names."
+            "The string `<qualified_role_group_name>-headless` must not exceed the limit of \
+            Service names."
         );
         let _ = QualifiedRoleGroupName::IS_RFC_1035_LABEL_NAME;
         let _ = QualifiedRoleGroupName::IS_VALID_LABEL_VALUE;
@@ -175,8 +174,7 @@ impl ResourceNames {
         // compile-time checks
         const _: () = assert!(
             QualifiedRoleGroupName::MAX_LENGTH <= ListenerName::MAX_LENGTH,
-            "The string `<cluster_name>-<role_name>-<role_group_name>` must not exceed the limit of \
-            Listener names."
+            "The string `<qualified_role_group_name>` must not exceed the limit of Listener names."
         );
         let _ = QualifiedRoleGroupName::IS_RFC_1123_SUBDOMAIN_NAME;
 
