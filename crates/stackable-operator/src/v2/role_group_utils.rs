@@ -77,6 +77,7 @@ impl ResourceNames {
             "{}-{}-{}",
             self.cluster_name, self.role_name, self.role_group_name,
         );
+        // `concatenated_name` contains only ASCII characters.
         let sanitized_name = Self::ensure_max_length(
             concatenated_name,
             QualifiedRoleGroupName::MAX_LENGTH,
@@ -92,8 +93,12 @@ impl ResourceNames {
     ///
     /// # Panics
     ///
-    /// Panics if `max_length < 1 /* character */ + 1 /* dash */ + hash_length`.
+    /// Panics if `resource_name` contains non-ASCII characters or if
+    /// `max_length < 1 /* character */ + 1 /* dash */ + hash_length`.
+    ///
+    /// Kubernetes object names cannot contain non-ASCII characters.
     fn ensure_max_length(resource_name: String, max_length: usize, hash_length: usize) -> String {
+        assert!(resource_name.is_ascii());
         assert!(max_length >= 1 /* character */ + 1 /* dash */ + hash_length);
 
         if resource_name.len() <= max_length {
