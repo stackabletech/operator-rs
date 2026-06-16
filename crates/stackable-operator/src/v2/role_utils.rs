@@ -44,12 +44,11 @@ pub struct JavaCommonConfig {
 /// Variant of [`crate::role_utils::RoleGroup`] that is easier to work with
 ///
 /// Differences are:
-/// * `replicas` is non-optional.
 /// * `config` is flattened.
 /// * The [`HashMap`] in `env_overrides` is replaced with an [`EnvVarSet`].
 #[derive(Clone, Debug, PartialEq)]
 pub struct RoleGroupConfig<Config, CommonConfig, ConfigOverrides> {
-    pub replicas: u16,
+    pub replicas: Option<u16>,
     pub config: Config,
     pub config_overrides: ConfigOverrides,
     pub env_overrides: EnvVarSet,
