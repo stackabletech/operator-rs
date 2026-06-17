@@ -17,7 +17,9 @@ axum = { version = "0.8.1", features = ["http2"] }
 base64 = "0.22"
 clap = { version = "4.5.17", features = ["derive", "cargo", "env"] }
 const_format = "0.2.33"
-# Cannot be updated until x509-cert uses a newer version
+# Pinned to the old RustCrypto generation: const-oid 0.10 requires x509-cert 0.3,
+# which is not released yet. Tracking: https://github.com/RustCrypto/formats/issues/1289
+# See also the rand/rand_core and sha2/signature pins below.
 const-oid = { version = "0.9.6", features = ["db"] }
 convert_case = "0.11.0"
 convert_case_extras = "0.2.0"
@@ -54,7 +56,10 @@ pin-project = "1.1.5"
 prettyplease = "0.2.22"
 proc-macro2 = "1.0.86"
 quote = "1.0.37"
-# Cannot be updated until x509-cert uses a newer version
+# Pinned to the old RustCrypto generation: rand_core 0.9+ (and the matching rand) pulls
+# in the new digest/signature ecosystem that rsa 0.9 and x509-cert 0.2 do not support yet.
+# Bumping splits the graph into duplicate, incompatible crate versions.
+# Unblocked once rsa 0.10 (currently in RC) lands: https://github.com/RustCrypto/RSA
 rand = "0.9.0"
 rand_core = "0.6.4"
 regex = "1.12.4"
@@ -66,6 +71,9 @@ semver = "1.0.23"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
 serde_yaml = "0.9.34" # This is the last available version, see https://github.com/dtolnay/serde-yaml/releases/tag/0.9.34 for details
+# Pinned to the old RustCrypto generation (digest 0.10 / signature 2.x): sha2 0.11 uses
+# digest 0.11 and signature 3.0, which rsa 0.9 and x509-cert 0.2 do not support yet.
+# Unblocked once rsa 0.10 (currently in RC) lands: https://github.com/RustCrypto/RSA
 sha2 = { version = "0.10.8", features = ["oid"] }
 signature = "2.2.0"
 snafu = "0.9.1"
