@@ -239,12 +239,10 @@ impl ProductImage {
                                 "operator is built by pull request, using dev build of product image"
                             );
                             (override_version, PullPolicy::default())
+                        } else if *auto_update {
+                            (operator_version.floating(), PullPolicy::Always)
                         } else {
-                            if *auto_update {
-                                (operator_version.floating(), PullPolicy::Always)
-                            } else {
-                                (operator_version.to_string(), PullPolicy::default())
-                            }
+                            (operator_version.to_string(), PullPolicy::default())
                         }
                     }
                 };
