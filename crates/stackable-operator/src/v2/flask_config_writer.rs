@@ -78,8 +78,8 @@ impl PythonType {
             && value
                 .chars()
                 .next()
-                .filter(|c| !c.is_ascii_digit())
-                .is_some()
+                .as_ref()
+                .is_some_and(|c| !c.is_ascii_digit())
         {
             Ok(value.to_string())
         } else {
@@ -141,8 +141,7 @@ where
         // If an option cannot be mapped to a Python type then it is a config override and treated
         // as Python expression.
         let content = O::from_str(name)
-            .map(|option| option.python_type())
-            .unwrap_or(PythonType::Expression)
+            .map_or(PythonType::Expression, |option| option.python_type())
             .convert_to_python(value)?;
 
         writeln!(writer, "{variable} = {content}").context(WriteConfigSnafu)?;
