@@ -54,8 +54,6 @@ pub struct RoleGroupConfig<Config, CommonConfig, ConfigOverrides> {
     pub env_overrides: EnvVarSet,
     pub cli_overrides: BTreeMap<String, String>,
     pub pod_overrides: PodTemplateSpec,
-    // allow(dead_code) is not necessary anymore when moved to operator-rs
-    #[allow(dead_code)]
     pub product_specific_common_config: CommonConfig,
 }
 
