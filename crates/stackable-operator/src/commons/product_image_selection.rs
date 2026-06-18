@@ -1,4 +1,3 @@
-
 use dockerfile_parser::ImageRef;
 use k8s_openapi::api::core::v1::LocalObjectReference;
 use schemars::JsonSchema;
