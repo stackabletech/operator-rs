@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Add `Client::{get_feature_gates,get_enabled_feature_gates,get_disabled_feature_gates}` associated
   functions to retrieve all, enabled, or disabled feature gates from the Kubernetes apiserver ([#1207], [#1208]).
+- Add a new `v2` module that provides more type-safe variants of the existing functions ([#1225]).
 
 ### Changed
 
@@ -16,6 +17,7 @@ All notable changes to this project will be documented in this file.
 [#1206]: https://github.com/stackabletech/operator-rs/pull/1206
 [#1207]: https://github.com/stackabletech/operator-rs/pull/1207
 [#1208]: https://github.com/stackabletech/operator-rs/pull/1208
+[#1225]: https://github.com/stackabletech/operator-rs/pull/1225
 
 ## [0.111.1] - 2026-04-28
 
