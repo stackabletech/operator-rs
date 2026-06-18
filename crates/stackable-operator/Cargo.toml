@@ -44,7 +44,7 @@ product-config.workspace = true
 rand.workspace = true
 regex.workspace = true
 schemars.workspace = true
-semver.workspace = true
+semver = { workspace = true, features = ["serde"] }
 serde_json.workspace = true
 serde_yaml.workspace = true
 serde.workspace = true

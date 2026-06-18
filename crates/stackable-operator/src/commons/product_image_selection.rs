@@ -1,9 +1,10 @@
+
 use dockerfile_parser::ImageRef;
 use k8s_openapi::api::core::v1::LocalObjectReference;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
-use strum::AsRefStr;
+use stackable_shared::semver::VersionExt;
 
 use crate::kvp::{LABEL_VALUE_MAX_LEN, LabelValue, LabelValueError};
 
@@ -32,7 +33,7 @@ pub struct ProductImage {
 
     #[serde(default)]
     /// [Pull policy](https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy) used when pulling the image.
-    pull_policy: PullPolicy,
+    pull_policy: Option<PullPolicy>,
 
     /// [Image pull secrets](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod) to pull images from a private registry.
     pull_secrets: Option<Vec<LocalObjectReference>>,
@@ -66,11 +67,32 @@ pub struct AutoProductImage {
     /// Version of the product, e.g. `1.4.1`.
     product_version: String,
 
-    /// Stackable version of the product, e.g. `23.4`, `23.4.1` or `0.0.0-dev`.
+    /// Stackable version of the product, e.g. `26.7.0` or `0.0.0-dev`.
     ///
-    /// If not specified, the operator will use its own version, e.g. `23.4.1`. When using a nightly
+    /// If not specified, the operator will use its own version, e.g. `26.7.1`. When using a nightly
     /// operator or a PR version, it will use the nightly `0.0.0-dev` image.
-    stackable_version: Option<String>,
+    #[schemars(with = "Option::<String>")]
+    stackable_version: Option<semver::Version>,
+
+    /// Automatically update the product image. Defaults to `false`.
+    ///
+    /// This mechanism utilizes a floating image tag which always refers to the latest patch version
+    /// in the current release line. The current release line is either automatically derived, or
+    /// can be overridden via `stackableVersion`.
+    ///
+    /// It should be noted that when this field is set to `true`, the operator uses `Always` as the
+    /// pull policy for product images. If set to `false`, `IfNotPresent` is used. Explicitly
+    /// setting `pullPolicy` takes precedence.
+    ///
+    /// ### Examples
+    ///
+    /// - The `stackableVersion` field is not set, the operator falls back to its own version, eg.
+    ///   26.7.0. If this field is set to `true`, the `26.7` floating tag will be used for product
+    ///   images, else, `26.7.0` will be used.
+    /// - The `stackableVersion` field is set to `26.3.0`. If this field is set to `true`, the
+    ///   `26.3` floating tag will be used for product images, else, `26.3.0` will be used.
+    #[serde(default)]
+    auto_update: bool,
 
     /// The repository on the container image registry where the container image is located, e.g.
     /// `oci.example.com/namespace`.
@@ -98,18 +120,28 @@ pub struct ResolvedProductImage {
     pub pull_secrets: Option<Vec<LocalObjectReference>>,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize, AsRefStr)]
-#[serde(rename = "PascalCase")]
-/// We default to `Always`, as we use floating tags for our release lines.
-/// This means the tag 23.4 starts of pointing to the same image 23.4.0 does, but switches to 23.4.1 after the releases of 23.4.1.
+/// TODO: Update comment
 ///
 /// ### See
 ///
 /// - <https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy>
 /// - <https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/core/types.go#L2291-L2300>
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Eq,
+    JsonSchema,
+    PartialEq,
+    Serialize,
+    strum::AsRefStr,
+    strum::Display,
+)]
+#[serde(rename = "PascalCase")]
 pub enum PullPolicy {
-    IfNotPresent,
     #[default]
+    IfNotPresent,
     Always,
     Never,
 }
@@ -137,14 +169,14 @@ impl ProductImage {
     /// 2. When [`ProductImageSelection::Custom`] is selected by the user, the final product image
     ///    will be the exact value specified by the user.
     //
-    // NOTE (@Techassi): The operator_version should probably be a Semver instead of a plain string
+    // FIXME (@Techassi): Make this take self instead of &self
     pub fn resolve(
         &self,
         image_name: &str,
         image_repository: &str,
-        operator_version: &str,
+        operator_version: &semver::Version,
     ) -> Result<ResolvedProductImage, Error> {
-        let image_pull_policy = self.pull_policy.as_ref().to_string();
+        let image_pull_policy = self.pull_policy.clone();
         let pull_secrets = self.pull_secrets.clone();
 
         match &self.image_selection {
@@ -165,13 +197,14 @@ impl ProductImage {
                     product_version: product_version.to_owned(),
                     app_version_label_value,
                     image: custom.to_owned(),
-                    image_pull_policy,
+                    image_pull_policy: image_pull_policy.unwrap_or_default().to_string(),
                     pull_secrets,
                 })
             }
             ProductImageSelection::Auto(AutoProductImage {
-                product_version,
                 stackable_version,
+                product_version,
+                auto_update,
                 repo,
             }) => {
                 let image_repository = repo
@@ -182,19 +215,36 @@ impl ProductImage {
                     // Trim the end to ensure no double slashes are produced below
                     .trim_end_matches('/');
 
-                let stackable_version = match stackable_version {
-                    Some(stackable_version) => stackable_version,
+                let (stackable_version, pull_policy): (String, PullPolicy) = match stackable_version
+                {
+                    Some(stackable_version) => {
+                        if *auto_update {
+                            (stackable_version.floating(), PullPolicy::Always)
+                        } else {
+                            (stackable_version.to_string(), PullPolicy::default())
+                        }
+                    }
                     None => {
-                        if operator_version.starts_with("0.0.0-pr") {
-                            let override_version = "0.0.0-dev";
+                        // NOTE (@Techassi): This is kinda ugly, but there is no better way to achieve
+                        // the previous behaviour with this was just a string.
+                        if operator_version.major == 0
+                            && operator_version.minor == 0
+                            && operator_version.patch == 0
+                            && operator_version.pre.starts_with("pr")
+                        {
+                            let override_version = "0.0.0-dev".to_owned();
                             tracing::warn!(
-                                operator_version,
+                                %operator_version,
                                 override_version,
                                 "operator is built by pull request, using dev build of product image"
                             );
-                            override_version
+                            (override_version, PullPolicy::default())
                         } else {
-                            operator_version
+                            if *auto_update {
+                                (operator_version.floating(), PullPolicy::Always)
+                            } else {
+                                (operator_version.to_string(), PullPolicy::default())
+                            }
                         }
                     }
                 };
@@ -210,7 +260,7 @@ impl ProductImage {
                     product_version: product_version.to_owned(),
                     app_version_label_value,
                     image,
-                    image_pull_policy,
+                    image_pull_policy: image_pull_policy.unwrap_or(pull_policy).to_string(),
                     pull_secrets,
                 })
             }
@@ -267,7 +317,7 @@ mod tests {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable23.7.42".to_string(),
             app_version_label_value: "1.4.1-stackable23.7.42".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "Always".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
         }
     )]
@@ -282,7 +332,7 @@ mod tests {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable23.7.42".to_string(),
             app_version_label_value: "1.4.1-stackable23.7.42".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "Always".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
         }
     )]
@@ -297,7 +347,7 @@ mod tests {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable0.0.0-dev".to_string(),
             app_version_label_value: "1.4.1-stackable0.0.0-dev".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "Always".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
         }
     )]
@@ -312,7 +362,7 @@ mod tests {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable0.0.0-dev".to_string(),
             app_version_label_value: "1.4.1-stackable0.0.0-dev".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "Always".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
         }
     )]
@@ -328,7 +378,7 @@ mod tests {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable2.1.0".to_string(),
             app_version_label_value: "1.4.1-stackable2.1.0".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "Always".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
         }
     )]
@@ -345,7 +395,7 @@ mod tests {
             image: "quay.io/stackable/superset:1.4.1-stackable2.1.0".to_string(),
             app_version_label_value: "1.4.1-stackable2.1.0".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "Always".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
         }
     )]
@@ -362,8 +412,58 @@ mod tests {
             image: "quay.io/stackable/superset:1.4.1-stackable2.1.0".to_string(),
             app_version_label_value: "1.4.1-stackable2.1.0".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "Always".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
+        }
+    )]
+    #[case::auto_with_auth_update(
+        "superset",
+        "oci.stackable.tech/sdp",
+        "23.7.42",
+        r"
+        productVersion: 1.4.1
+        autoUpdate: true
+        ",
+        ResolvedProductImage {
+            image: "oci.stackable.tech/sdp/superset:1.4.1-stackable23.7".to_owned(),
+            app_version_label_value: "1.4.1-stackable23.7".parse().expect("static app version label is always valid"),
+            product_version: "1.4.1".to_owned(),
+            image_pull_policy: "Always".to_owned(),
+            pull_secrets: None
+        }
+    )]
+    #[case::auto_with_auth_update_and_stackable_version(
+        "superset",
+        "oci.stackable.tech/sdp",
+        "23.7.42",
+        r"
+        productVersion: 1.4.1
+        stackableVersion: 2.1.0
+        autoUpdate: true
+        ",
+        ResolvedProductImage {
+            image: "oci.stackable.tech/sdp/superset:1.4.1-stackable2.1".to_owned(),
+            app_version_label_value: "1.4.1-stackable2.1".parse().expect("static app version label is always valid"),
+            product_version: "1.4.1".to_owned(),
+            image_pull_policy: "Always".to_owned(),
+            pull_secrets: None
+        }
+    )]
+    #[case::auto_with_auth_update_and_pull_policy(
+        "superset",
+        "oci.stackable.tech/sdp",
+        "23.7.42",
+        r"
+        productVersion: 1.4.1
+        pullPolicy: IfNotPresent
+        autoUpdate: true
+        ",
+        ResolvedProductImage {
+            image: "oci.stackable.tech/sdp/superset:1.4.1-stackable23.7".to_owned(),
+            app_version_label_value: "1.4.1-stackable23.7".parse().expect("static app version label is always valid"),
+            product_version: "1.4.1".to_owned(),
+            image_pull_policy: "IfNotPresent".to_owned(),
+            pull_secrets: None
         }
     )]
     #[case::custom_without_tag(
@@ -378,7 +478,7 @@ mod tests {
             image: "my.corp/myteam/stackable/superset".to_string(),
             app_version_label_value: "1.4.1-latest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "Always".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
         }
     )]
@@ -394,7 +494,7 @@ mod tests {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
             app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "Always".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
         }
     )]
@@ -410,7 +510,7 @@ mod tests {
             image: "127.0.0.1:8080/myteam/stackable/superset".to_string(),
             app_version_label_value: "1.4.1-latest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "Always".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
         }
     )]
@@ -426,7 +526,7 @@ mod tests {
             image: "127.0.0.1:8080/myteam/stackable/superset:latest-and-greatest".to_string(),
             app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "Always".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
         }
     )]
@@ -442,7 +542,7 @@ mod tests {
             image: "oci.stackable.tech/sdp/superset@sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb8c42f76efc1098".to_string(),
             app_version_label_value: "1.4.1-sha256-85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "Always".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
         }
     )]
@@ -459,7 +559,7 @@ mod tests {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
             app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "Always".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
         }
     )]
@@ -542,6 +642,7 @@ mod tests {
         #[case] expected: ResolvedProductImage,
     ) {
         let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
+        let operator_version = operator_version.parse().expect("invalid operator version");
         let resolved_product_image = product_image
             .resolve(&image_name, &image_repository, &operator_version)
             .expect("Illegal test input");
