@@ -12,12 +12,12 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: Use `serde_json::Value` instead of `String` for user-provided JSON `configOverrides`. This change is marked as breaking, as it causes a breaking change to the CRDs ([#1206]).
-- BREAKING: Bump to kube `4.0.0`, k8s-openapi `0.28.0` and enable the Kubernetes 1.36 feature ([#XXXX]).
+- BREAKING: Bump to kube `4.0.0`, k8s-openapi `0.28.0` and enable the Kubernetes 1.36 feature ([#1224]).
 
 [#1206]: https://github.com/stackabletech/operator-rs/pull/1206
 [#1207]: https://github.com/stackabletech/operator-rs/pull/1207
 [#1208]: https://github.com/stackabletech/operator-rs/pull/1208
-[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+[#1224]: https://github.com/stackabletech/operator-rs/pull/1224
 
 ## [0.111.1] - 2026-04-28
 
