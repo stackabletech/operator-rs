@@ -9,11 +9,12 @@ repository.workspace = true
 
 [features]
 default = ["crds"]
-full = ["client-feature-gates", "crds", "certs", "time", "webhook", "kube-ws"]
+full = ["client-feature-gates", "crds", "certs", "test-support", "time", "webhook", "kube-ws"]
 
 client-feature-gates = ["dep:winnow"]
 crds = ["dep:stackable-versioned"]
 certs = ["dep:stackable-certs"]
+test-support = []
 time = ["stackable-shared/time"]
 webhook = ["dep:stackable-webhook"]
 kube-ws = ["kube/ws"]

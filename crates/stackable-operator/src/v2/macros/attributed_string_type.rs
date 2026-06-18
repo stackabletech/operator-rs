@@ -187,7 +187,7 @@ macro_rules! attributed_string_type {
             }
         }
 
-        #[cfg(test)]
+        #[cfg(any(feature = "test-support", test))]
         impl $name {
             #[allow(dead_code)]
             pub fn from_str_unsafe(s: &str) -> Self {
