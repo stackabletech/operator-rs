@@ -1,6 +1,5 @@
 use std::{
     collections::{BTreeMap, btree_map},
-    fmt::Display,
     str::FromStr,
 };
 
@@ -8,6 +7,7 @@ use snafu::Snafu;
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
+    attributed_string_type,
     builder::pod::container::{ContainerBuilder, FieldPathEnvVar},
     k8s_openapi::api::core::v1::{ConfigMapKeySelector, EnvVar, EnvVarSource, ObjectFieldSelector},
     v2::types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName},
@@ -28,40 +28,13 @@ pub fn new_container_builder(container_name: &ContainerName) -> ContainerBuilder
     ContainerBuilder::new(container_name.as_ref()).expect("should be a valid container name")
 }
 
-// TODO Use attributed_string_type instead
-/// Validated environment variable name
-#[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct EnvVarName(String);
-
-impl EnvVarName {
-    /// Creates an [`EnvVarName`] from the given string and panics if the validation failed
-    ///
-    /// Use this only with constant names that are also tested in unit tests!
-    pub fn from_str_unsafe(s: &str) -> Self {
-        Self::from_str(s).expect("should be a valid environment variable name")
-    }
-}
-
-impl Display for EnvVarName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl FromStr for EnvVarName {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // The length of environment variable names seems not to be restricted.
-
-        if !s.is_empty() && s.chars().all(|c| matches!(c, ' '..='<' | '>'..='~')) {
-            Ok(Self(s.to_owned()))
-        } else {
-            Err(Error::ParseEnvVarName {
-                env_var_name: s.to_owned(),
-            })
-        }
-    }
+attributed_string_type! {
+    EnvVarName,
+    "The name of an environment variable",
+    "MY_ENV_VAR",
+    (min_length = 1),
+    (regex = "^[ -<>-~]+$")
+    // The maximum length of environment variable names seems not to be restricted.
 }
 
 /// A set of [`EnvVar`]s

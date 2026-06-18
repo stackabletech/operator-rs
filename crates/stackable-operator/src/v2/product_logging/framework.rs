@@ -42,7 +42,17 @@ pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
 constant!(VECTOR_AGGREGATOR_CM_KEY: ConfigMapKey = "ADDRESS");
 
 // Copy of the private constant `stackable_operator::product_logging::framework::VECTOR_AGGREGATOR_ADDRESS`
-constant!(VECTOR_AGGREGATOR_ENV_NAME: EnvVarName = "VECTOR_AGGREGATOR_ADDRESS");
+constant!(ENV_VAR_NAME_VECTOR_AGGREGATOR_ADDRESS: EnvVarName = "VECTOR_AGGREGATOR_ADDRESS");
+
+constant!(ENV_VAR_NAME_CLUSTER_NAME: EnvVarName = "CLUSTER_NAME");
+constant!(ENV_VAR_NAME_DATA_DIR: EnvVarName = "DATA_DIR");
+constant!(ENV_VAR_NAME_LOG_DIR: EnvVarName = "LOG_DIR");
+constant!(ENV_VAR_NAME_NAMESPACE: EnvVarName = "NAMESPACE");
+constant!(ENV_VAR_NAME_ROLE_GROUP_NAME: EnvVarName = "ROLE_GROUP_NAME");
+constant!(ENV_VAR_NAME_ROLE_NAME: EnvVarName = "ROLE_NAME");
+constant!(ENV_VAR_NAME_VECTOR_CONFIG_YAML: EnvVarName = "VECTOR_CONFIG_YAML");
+constant!(ENV_VAR_NAME_VECTOR_FILE_LOG_LEVEL: EnvVarName = "VECTOR_FILE_LOG_LEVEL");
+constant!(ENV_VAR_NAME_VECTOR_LOG: EnvVarName = "VECTOR_LOG");
 
 #[derive(Debug, EnumDiscriminants, Snafu)]
 #[strum_discriminants(derive(IntoStaticStr))]
@@ -109,7 +119,6 @@ where
 }
 
 /// Builds the Vector container
-#[expect(clippy::too_many_lines)]
 pub fn vector_container(
     container_name: &ContainerName,
     image: &ResolvedProductImage,
@@ -140,44 +149,32 @@ pub fn vector_container(
         };
 
     let env_vars = EnvVarSet::new()
+        .with_value(&ENV_VAR_NAME_CLUSTER_NAME, &resource_names.cluster_name)
         .with_value(
-            &EnvVarName::from_str_unsafe("CLUSTER_NAME"),
-            &resource_names.cluster_name,
-        )
-        .with_value(
-            &EnvVarName::from_str_unsafe("DATA_DIR"),
+            &ENV_VAR_NAME_DATA_DIR,
             format!("{STACKABLE_LOG_DIR}/{VECTOR_STATE_DIR}"),
         )
-        .with_value(&EnvVarName::from_str_unsafe("LOG_DIR"), STACKABLE_LOG_DIR)
-        .with_field_path(
-            &EnvVarName::from_str_unsafe("NAMESPACE"),
-            &FieldPathEnvVar::Namespace,
-        )
+        .with_value(&ENV_VAR_NAME_LOG_DIR, STACKABLE_LOG_DIR)
+        .with_field_path(&ENV_VAR_NAME_NAMESPACE, &FieldPathEnvVar::Namespace)
         .with_value(
-            &EnvVarName::from_str_unsafe("ROLE_GROUP_NAME"),
+            &ENV_VAR_NAME_ROLE_GROUP_NAME,
             &resource_names.role_group_name,
         )
-        .with_value(
-            &EnvVarName::from_str_unsafe("ROLE_NAME"),
-            &resource_names.role_name,
-        )
+        .with_value(&ENV_VAR_NAME_ROLE_NAME, &resource_names.role_name)
         .with_config_map_key_ref(
-            &VECTOR_AGGREGATOR_ENV_NAME,
+            &ENV_VAR_NAME_VECTOR_AGGREGATOR_ADDRESS,
             &vector_container_log_config.vector_aggregator_config_map_name,
             &VECTOR_AGGREGATOR_CM_KEY,
         )
         .with_value(
-            &EnvVarName::from_str_unsafe("VECTOR_CONFIG_YAML"),
+            &ENV_VAR_NAME_VECTOR_CONFIG_YAML,
             format!("{STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE}"),
         )
         .with_value(
-            &EnvVarName::from_str_unsafe("VECTOR_FILE_LOG_LEVEL"),
+            &ENV_VAR_NAME_VECTOR_FILE_LOG_LEVEL,
             vector_file_log_level.to_vector_literal(),
         )
-        .with_value(
-            &EnvVarName::from_str_unsafe("VECTOR_LOG"),
-            log_level.to_vector_literal(),
-        )
+        .with_value(&ENV_VAR_NAME_VECTOR_LOG, log_level.to_vector_literal())
         .merge(extra_env_vars);
 
     let resources = ResourceRequirementsBuilder::new()
@@ -237,7 +234,11 @@ mod tests {
     use serde_json::json;
 
     use super::{
-        ErrorDiscriminants, ValidatedContainerLogConfigChoice, VectorContainerLogConfig,
+        ENV_VAR_NAME_CLUSTER_NAME, ENV_VAR_NAME_DATA_DIR, ENV_VAR_NAME_LOG_DIR,
+        ENV_VAR_NAME_NAMESPACE, ENV_VAR_NAME_ROLE_GROUP_NAME, ENV_VAR_NAME_ROLE_NAME,
+        ENV_VAR_NAME_VECTOR_AGGREGATOR_ADDRESS, ENV_VAR_NAME_VECTOR_CONFIG_YAML,
+        ENV_VAR_NAME_VECTOR_FILE_LOG_LEVEL, ENV_VAR_NAME_VECTOR_LOG, ErrorDiscriminants,
+        VECTOR_AGGREGATOR_CM_KEY, ValidatedContainerLogConfigChoice, VectorContainerLogConfig,
         validate_logging_configuration_for_container, vector_container,
     };
     use crate::{
@@ -256,6 +257,22 @@ mod tests {
             },
         },
     };
+
+    #[test]
+    fn test_constants() {
+        // Test that dereferencing the constants does not panic.
+        let _ = VECTOR_AGGREGATOR_CM_KEY;
+        let _ = ENV_VAR_NAME_VECTOR_AGGREGATOR_ADDRESS;
+        let _ = ENV_VAR_NAME_CLUSTER_NAME;
+        let _ = ENV_VAR_NAME_DATA_DIR;
+        let _ = ENV_VAR_NAME_LOG_DIR;
+        let _ = ENV_VAR_NAME_NAMESPACE;
+        let _ = ENV_VAR_NAME_ROLE_GROUP_NAME;
+        let _ = ENV_VAR_NAME_ROLE_NAME;
+        let _ = ENV_VAR_NAME_VECTOR_CONFIG_YAML;
+        let _ = ENV_VAR_NAME_VECTOR_FILE_LOG_LEVEL;
+        let _ = ENV_VAR_NAME_VECTOR_LOG;
+    }
 
     #[test]
     fn test_validate_logging_configuration_for_container_ok_automatic_log_config() {
