@@ -17,7 +17,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Auto-generated derived type for DummyClusterSpec via `CustomResource`
+        description: A DummyCluster is a test-only resource used by operator-rs to exercise CRD generation. It is not backed by a real operator.
         properties:
           spec:
             properties:

@@ -53,6 +53,8 @@ pub struct ContainerSkipArguments {
 /// - `scale`: Configure the scale subresource for horizontal pod autoscaling integration.
 /// - `shortname`: Set a shortname for the CR object. This can be specified multiple
 ///   times.
+/// - `doc`: Override the root description of the generated CRD. If not set, kube
+///   generates a generic one automatically.
 /// - `skip`: Controls skipping parts of the generation.
 #[derive(Clone, Debug, FromMeta)]
 pub struct StructCrdArguments {
@@ -71,7 +73,7 @@ pub struct StructCrdArguments {
     pub shortnames: Vec<String>,
     // category
     // selectable
-    // doc
+    pub doc: Option<String>,
     // annotation
     // label
 }

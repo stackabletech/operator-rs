@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add support to provide a `#[versioned(crd(doc = "..."))]` argument to override the root
+  description of the generated CRD, which otherwise defaults to a generic auto-generated
+  string ([#1228]).
+
+[#1228]: https://github.com/stackabletech/operator-rs/pull/1228
+
 ## [0.10.0] - 2026-04-27
 
 ### Added
