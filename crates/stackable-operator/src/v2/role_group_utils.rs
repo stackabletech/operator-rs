@@ -3,7 +3,9 @@ use std::str::FromStr;
 use sha2::{Digest, Sha256};
 
 use super::types::{
-    kubernetes::{ConfigMapName, ListenerName, ServiceName, StatefulSetName},
+    kubernetes::{
+        ConfigMapName, DaemonSetName, DeploymentName, ListenerName, ServiceName, StatefulSetName,
+    },
     operator::{ClusterName, RoleGroupName, RoleName},
 };
 use crate::attributed_string_type;
@@ -145,6 +147,31 @@ impl ResourceNames {
             .expect("should be a valid ConfigMap name")
     }
 
+    pub fn daemon_set_name(&self) -> DaemonSetName {
+        // compile-time checks
+        const _: () = assert!(
+            QualifiedRoleGroupName::MAX_LENGTH <= DaemonSetName::MAX_LENGTH,
+            "The string `<qualified_role_group_name>` must not exceed the limit of DaemonSet names."
+        );
+        let _ = QualifiedRoleGroupName::IS_RFC_1123_SUBDOMAIN_NAME;
+
+        DaemonSetName::from_str(self.qualified_role_group_name().as_ref())
+            .expect("should be a valid DaemonSet name")
+    }
+
+    pub fn deployment_name(&self) -> DeploymentName {
+        // compile-time checks
+        const _: () = assert!(
+            QualifiedRoleGroupName::MAX_LENGTH <= DeploymentName::MAX_LENGTH,
+            "The string `<qualified_role_group_name>` must not exceed the limit of Deployment \
+            names."
+        );
+        let _ = QualifiedRoleGroupName::IS_RFC_1123_LABEL_NAME;
+
+        DeploymentName::from_str(self.qualified_role_group_name().as_ref())
+            .expect("should be a valid Deployment name")
+    }
+
     pub fn stateful_set_name(&self) -> StatefulSetName {
         // compile-time checks
         const _: () = assert!(
@@ -209,7 +236,10 @@ mod tests {
     use super::{ClusterName, RoleGroupName, RoleName};
     use crate::v2::{
         role_group_utils::{QualifiedRoleGroupName, ResourceNames},
-        types::kubernetes::{ConfigMapName, ListenerName, ServiceName, StatefulSetName},
+        types::kubernetes::{
+            ConfigMapName, DaemonSetName, DeploymentName, ListenerName, ServiceName,
+            StatefulSetName,
+        },
     };
 
     #[test]
@@ -229,6 +259,14 @@ mod tests {
         assert_eq!(
             ConfigMapName::from_str_unsafe("test-cluster-data-nodes-ssd-storage"),
             resource_names.role_group_config_map()
+        );
+        assert_eq!(
+            DaemonSetName::from_str_unsafe("test-cluster-data-nodes-ssd-storage"),
+            resource_names.daemon_set_name()
+        );
+        assert_eq!(
+            DeploymentName::from_str_unsafe("test-cluster-data-nodes-ssd-storage"),
+            resource_names.deployment_name()
         );
         assert_eq!(
             StatefulSetName::from_str_unsafe("test-cluster-data-nodes-ssd-storage"),

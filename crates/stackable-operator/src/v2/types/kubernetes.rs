@@ -42,6 +42,24 @@ attributed_string_type! {
 }
 
 attributed_string_type! {
+    DaemonSetName,
+    "The name of a DaemonSet",
+    "secret-operator-csi-node-driver",
+    is_rfc_1123_dns_subdomain_name
+}
+
+attributed_string_type! {
+    DeploymentName,
+    "The name of a Deployment",
+    "nginx",
+    // The name of a Deployment must be a lowercase RFC 1123 DNS subdomain name. But the name is
+    // also used in Pod names and hostnames. Therefore, Kubernetes recommends to use only RFC 1123
+    // label names which are a subset of subdomain names (63 characters instead of 253) to avoid
+    // surprising behavior.
+    is_rfc_1123_label_name
+}
+
+attributed_string_type! {
     Hostname,
     "A hostname",
     "example.com",
@@ -163,9 +181,10 @@ attributed_string_type! {
 #[cfg(test)]
 mod tests {
     use super::{
-        ClusterRoleName, ConfigMapKey, ConfigMapName, ContainerName, Hostname, ListenerClassName,
-        ListenerName, NamespaceName, PersistentVolumeClaimName, RoleBindingName, SecretClassName,
-        SecretKey, SecretName, ServiceAccountName, ServiceName, StatefulSetName, Uid, VolumeName,
+        ClusterRoleName, ConfigMapKey, ConfigMapName, ContainerName, DaemonSetName, DeploymentName,
+        Hostname, ListenerClassName, ListenerName, NamespaceName, PersistentVolumeClaimName,
+        RoleBindingName, SecretClassName, SecretKey, SecretName, ServiceAccountName, ServiceName,
+        StatefulSetName, Uid, VolumeName,
     };
 
     #[test]
@@ -174,6 +193,8 @@ mod tests {
         ConfigMapKey::test_example();
         ContainerName::test_example();
         ClusterRoleName::test_example();
+        DaemonSetName::test_example();
+        DeploymentName::test_example();
         Hostname::test_example();
         ListenerName::test_example();
         ListenerClassName::test_example();
