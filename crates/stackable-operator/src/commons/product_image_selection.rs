@@ -152,9 +152,10 @@ pub enum PullPolicy {
 impl PullPolicy {
     /// Returns the appropriate [`PullPolicy`] based on if a floating tag is used.
     fn from_is_floating_tag(is_floating_tag: bool) -> Self {
-        match is_floating_tag {
-            true => Self::Always,
-            false => Self::IfNotPresent,
+        if is_floating_tag {
+            Self::Always
+        } else {
+            Self::IfNotPresent
         }
     }
 }
