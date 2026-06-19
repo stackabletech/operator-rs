@@ -1751,6 +1751,21 @@ spec:
                           nullable: true
                           type: integer
                       type: object
+                    description: |-
+                      The set of role groups for this role, keyed by their name.
+
+                      A role group is a subset of the replicas of a role that share the same configuration,
+                      allowing finer-grained control than the role level. This is useful to e.g. schedule groups
+                      onto different classes of nodes or into different regions, or to run them with different
+                      settings. Configuration set on a role group is merged on top of the role-level `config`,
+                      with the more specific role group values taking precedence.
+
+                      Every role needs at least one role group. A role with a single role group conventionally
+                      names it `default`.
+
+                      Read the
+                      [roles and role groups concept documentation](https://docs.stackable.tech/home/nightly/concepts/roles-and-role-groups)
+                      for more details.
                     type: object
                 required:
                 - roleGroups
