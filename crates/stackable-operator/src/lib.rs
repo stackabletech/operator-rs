@@ -33,6 +33,7 @@ pub mod role_utils;
 pub mod status;
 pub mod test_utils;
 pub mod utils;
+pub mod v2;
 pub mod validation;
 
 // External re-exports
