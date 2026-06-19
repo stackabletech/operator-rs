@@ -1831,27 +1831,6 @@ spec:
                   Consult the [Product image selection documentation](https://docs.stackable.tech/home/nightly/concepts/product_image_selection)
                   for details.
                 properties:
-                  autoUpdate:
-                    default: false
-                    description: |-
-                      Automatically update the product image. Defaults to `false`.
-
-                      This mechanism utilizes a floating image tag which always refers to the latest patch version
-                      in the current release line. The current release line is either automatically derived, or
-                      can be overridden via `stackableVersion`.
-
-                      It should be noted that when this field is set to `true`, the operator uses `Always` as the
-                      pull policy for product images. If set to `false`, `IfNotPresent` is used. Explicitly
-                      setting `pullPolicy` takes precedence.
-
-                      ### Examples
-
-                      - The `stackableVersion` field is not set, the operator falls back to its own version, eg.
-                        26.7.0. If this field is set to `true`, the `26.7` floating tag will be used for product
-                        images, else, `26.7.0` will be used.
-                      - The `stackableVersion` field is set to `26.3.0`. If this field is set to `true`, the
-                        `26.3` floating tag will be used for product images, else, `26.3.0` will be used.
-                    type: boolean
                   custom:
                     description: |-
                       Provide a custom container image.
@@ -1900,6 +1879,32 @@ spec:
                       operator or a PR version, it will use the nightly `0.0.0-dev` image.
                     nullable: true
                     type: string
+                  useFloatingTag:
+                    default: false
+                    description: |-
+                      Use a floating tag for the product image. Defaults to `false`.
+
+                      This mechanism utilizes a floating image tag which always refers to the latest patch version
+                      in the current release line. The current release line is either automatically derived by the
+                      operator based on its own version, or can be overridden with `stackableVersion`.
+
+                      A potential newer image is only pulled when Pods are rotated or their containers are
+                      restarted. Pods are NOT rotated and containers are NOT restarted automatically when a new
+                      image is available. This behaviour makes this a passive update mechanism, rather than an
+                      active one.
+
+                      It should be noted that when this field is set to `true`, the operator uses `Always` as the
+                      pull policy for product images. If set to `false`, `IfNotPresent` is used. Explicitly
+                      setting `pullPolicy` takes precedence.
+
+                      ### Examples
+
+                      - The `stackableVersion` field is not set, the operator falls back to its own version, eg.
+                        26.7.0. If this field is set to `true`, the `26.7` floating tag will be used for product
+                        images, else, `26.7.0` will be used.
+                      - The `stackableVersion` field is set to `26.3.0`. If this field is set to `true`, the
+                        `26.3` floating tag will be used for product images, else, `26.3.0` will be used.
+                    type: boolean
                 type: object
               secretClassVolume:
                 properties:

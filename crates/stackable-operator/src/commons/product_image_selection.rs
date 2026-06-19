@@ -3,7 +3,7 @@ use k8s_openapi::api::core::v1::LocalObjectReference;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
-use stackable_shared::semver::VersionExt;
+use stackable_shared::semver::{VersionExt, ZERO_ZERO_ZERO_DEV};
 
 use crate::kvp::{LABEL_VALUE_MAX_LEN, LabelValue, LabelValueError};
 
@@ -73,11 +73,16 @@ pub struct AutoProductImage {
     #[schemars(with = "Option::<String>")]
     stackable_version: Option<semver::Version>,
 
-    /// Automatically update the product image. Defaults to `false`.
+    /// Use a floating tag for the product image. Defaults to `false`.
     ///
     /// This mechanism utilizes a floating image tag which always refers to the latest patch version
-    /// in the current release line. The current release line is either automatically derived, or
-    /// can be overridden via `stackableVersion`.
+    /// in the current release line. The current release line is either automatically derived by the
+    /// operator based on its own version, or can be overridden with `stackableVersion`.
+    ///
+    /// A potential newer image is only pulled when Pods are rotated or their containers are
+    /// restarted. Pods are NOT rotated and containers are NOT restarted automatically when a new
+    /// image is available. This behaviour makes this a passive update mechanism, rather than an
+    /// active one.
     ///
     /// It should be noted that when this field is set to `true`, the operator uses `Always` as the
     /// pull policy for product images. If set to `false`, `IfNotPresent` is used. Explicitly
@@ -91,7 +96,7 @@ pub struct AutoProductImage {
     /// - The `stackableVersion` field is set to `26.3.0`. If this field is set to `true`, the
     ///   `26.3` floating tag will be used for product images, else, `26.3.0` will be used.
     #[serde(default)]
-    auto_update: bool,
+    use_floating_tag: bool,
 
     /// The repository on the container image registry where the container image is located, e.g.
     /// `oci.example.com/namespace`.
@@ -126,9 +131,9 @@ pub struct ResolvedProductImage {
 /// - <https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy>
 /// - <https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/core/types.go#L2291-L2300>
 #[derive(
+    Copy,
     Clone,
     Debug,
-    Default,
     Deserialize,
     Eq,
     JsonSchema,
@@ -139,10 +144,19 @@ pub struct ResolvedProductImage {
 )]
 #[serde(rename = "PascalCase")]
 pub enum PullPolicy {
-    #[default]
     IfNotPresent,
     Always,
     Never,
+}
+
+impl PullPolicy {
+    /// Returns the appropriate [`PullPolicy`] based on if a floating tag is used.
+    fn from_is_floating_tag(is_floating_tag: bool) -> Self {
+        match is_floating_tag {
+            true => Self::Always,
+            false => Self::IfNotPresent,
+        }
+    }
 }
 
 impl ProductImage {
@@ -175,35 +189,45 @@ impl ProductImage {
         image_repository: &str,
         operator_version: &semver::Version,
     ) -> Result<ResolvedProductImage, Error> {
-        let image_pull_policy = self.pull_policy.clone();
-        let pull_secrets = self.pull_secrets.clone();
+        let Self {
+            image_selection,
+            pull_policy,
+            pull_secrets,
+        } = self;
 
-        match &self.image_selection {
+        // Keep track if a tag we consider floating is used. Currently, 0.0.0-dev, latest and YY.MM
+        // (like 26.7) tags are considered floating.
+        let mut is_floating_tag = false;
+
+        match image_selection {
             ProductImageSelection::Custom(CustomProductImage {
                 custom,
                 product_version,
             }) => {
                 let image_ref = ImageRef::parse(custom);
-                let image_tag_or_hash = image_ref
-                    .tag
-                    .or(image_ref.hash)
-                    .unwrap_or_else(|| "latest".to_string());
+                let image_tag_or_hash = image_ref.tag.or(image_ref.hash).unwrap_or_else(|| {
+                    is_floating_tag = true;
+                    "latest".to_owned()
+                });
 
                 let app_version = format!("{product_version}-{image_tag_or_hash}");
                 let app_version_label_value = Self::prepare_app_version_label_value(&app_version)?;
+                let image_pull_policy = pull_policy
+                    .unwrap_or_else(|| PullPolicy::from_is_floating_tag(is_floating_tag))
+                    .to_string();
 
                 Ok(ResolvedProductImage {
                     product_version: product_version.to_owned(),
-                    app_version_label_value,
+                    pull_secrets: pull_secrets.clone(),
                     image: custom.to_owned(),
-                    image_pull_policy: image_pull_policy.unwrap_or_default().to_string(),
-                    pull_secrets,
+                    app_version_label_value,
+                    image_pull_policy,
                 })
             }
             ProductImageSelection::Auto(AutoProductImage {
                 stackable_version,
                 product_version,
-                auto_update,
+                use_floating_tag,
                 repo,
             }) => {
                 let image_repository = repo
@@ -214,36 +238,50 @@ impl ProductImage {
                     // Trim the end to ensure no double slashes are produced below
                     .trim_end_matches('/');
 
-                let (stackable_version, pull_policy): (String, PullPolicy) = match stackable_version
-                {
-                    Some(stackable_version) => {
-                        if *auto_update {
-                            (stackable_version.floating(), PullPolicy::Always)
-                        } else {
-                            (stackable_version.to_string(), PullPolicy::default())
-                        }
-                    }
+                let stackable_version = match stackable_version {
+                    Some(version) => version,
                     None => {
-                        // NOTE (@Techassi): This is kinda ugly, but there is no better way to achieve
-                        // the previous behaviour with this was just a string.
                         if operator_version.major == 0
                             && operator_version.minor == 0
                             && operator_version.patch == 0
                             && operator_version.pre.starts_with("pr")
                         {
-                            let override_version = "0.0.0-dev".to_owned();
                             tracing::warn!(
                                 %operator_version,
-                                override_version,
-                                "operator is built by pull request, using dev build of product image"
+                                "operator is built by pull request, using {version} build of product image",
+                                version = *ZERO_ZERO_ZERO_DEV
                             );
-                            (override_version, PullPolicy::default())
-                        } else if *auto_update {
-                            (operator_version.floating(), PullPolicy::Always)
+
+                            is_floating_tag = true;
+                            &*ZERO_ZERO_ZERO_DEV
                         } else {
-                            (operator_version.to_string(), PullPolicy::default())
+                            operator_version
                         }
                     }
+                };
+
+                let stackable_version = if *use_floating_tag {
+                    is_floating_tag = true;
+                    stackable_version.floating()
+                } else {
+                    stackable_version.to_string()
+                };
+
+                let image_pull_policy = match pull_policy {
+                    Some(pull_policy) => {
+                        if is_floating_tag && *pull_policy != PullPolicy::Always {
+                            tracing::warn!(
+                                pull_policy.configured = %pull_policy,
+                                stackable_version,
+                                r#"product image pull policy is not "Always" but a floating tag is \
+                                used. This can lead to unexpected behaviour and it is recommended \
+                                to explicitly set the pull policy to "Always" or let the operator \
+                                derive it automatically by removing the pullPolicy field."#
+                            );
+                        }
+                        pull_policy.to_string()
+                    }
+                    None => PullPolicy::from_is_floating_tag(is_floating_tag).to_string(),
                 };
 
                 // Trim leading ans trailing whitespace and also trim the start to ensure no double
@@ -255,10 +293,10 @@ impl ProductImage {
 
                 Ok(ResolvedProductImage {
                     product_version: product_version.to_owned(),
+                    pull_secrets: pull_secrets.clone(),
                     app_version_label_value,
+                    image_pull_policy,
                     image,
-                    image_pull_policy: image_pull_policy.unwrap_or(pull_policy).to_string(),
-                    pull_secrets,
                 })
             }
         }
@@ -359,7 +397,7 @@ mod tests {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable0.0.0-dev".to_string(),
             app_version_label_value: "1.4.1-stackable0.0.0-dev".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "IfNotPresent".to_string(),
+            image_pull_policy: "Always".to_string(),
             pull_secrets: None,
         }
     )]
@@ -413,13 +451,13 @@ mod tests {
             pull_secrets: None,
         }
     )]
-    #[case::auto_with_auth_update(
+    #[case::auto_with_use_floating_tag(
         "superset",
         "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         productVersion: 1.4.1
-        autoUpdate: true
+        useFloatingTag: true
         ",
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable23.7".to_owned(),
@@ -429,14 +467,14 @@ mod tests {
             pull_secrets: None
         }
     )]
-    #[case::auto_with_auth_update_and_stackable_version(
+    #[case::auto_with_use_floating_tag_and_stackable_version(
         "superset",
         "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         productVersion: 1.4.1
         stackableVersion: 2.1.0
-        autoUpdate: true
+        useFloatingTag: true
         ",
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable2.1".to_owned(),
@@ -446,14 +484,14 @@ mod tests {
             pull_secrets: None
         }
     )]
-    #[case::auto_with_auth_update_and_pull_policy(
+    #[case::auto_with_use_floating_tag_and_pull_policy(
         "superset",
         "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         productVersion: 1.4.1
         pullPolicy: IfNotPresent
-        autoUpdate: true
+        useFloatingTag: true
         ",
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable23.7".to_owned(),
@@ -475,7 +513,7 @@ mod tests {
             image: "my.corp/myteam/stackable/superset".to_string(),
             app_version_label_value: "1.4.1-latest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "IfNotPresent".to_string(),
+            image_pull_policy: "Always".to_string(),
             pull_secrets: None,
         }
     )]
@@ -507,7 +545,7 @@ mod tests {
             image: "127.0.0.1:8080/myteam/stackable/superset".to_string(),
             app_version_label_value: "1.4.1-latest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "IfNotPresent".to_string(),
+            image_pull_policy: "Always".to_string(),
             pull_secrets: None,
         }
     )]
