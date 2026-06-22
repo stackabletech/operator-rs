@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.113.0] - 2026-06-22
+
 ### Added
 
 - Add documentation for the `roleGroups` field, which now shows up as a description in the generated CRDs ([#1227]).
