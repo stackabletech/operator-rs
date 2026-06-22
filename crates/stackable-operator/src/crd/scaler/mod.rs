@@ -17,6 +17,7 @@ pub mod versioned {
             status_replicas_path = ".status.replicas",
             label_selector_path = ".status.selector"
         ),
+        doc = "Controls the replica count of a Stackable component, integrating with the Kubernetes scale subresource to enable horizontal autoscaling.",
         namespaced
     ))]
     #[derive(Clone, Debug, PartialEq, Eq, CustomResource, Deserialize, Serialize, JsonSchema)]

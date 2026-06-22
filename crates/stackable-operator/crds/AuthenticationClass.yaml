@@ -17,7 +17,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Auto-generated derived type for AuthenticationClassSpec via `CustomResource`
+        description: The Stackable Platform uses the AuthenticationClass as a central mechanism to handle user authentication across supported products.
         properties:
           spec:
             description: |-

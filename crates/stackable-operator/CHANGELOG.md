@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add root descriptions to all CRDs defined in this crate (`AuthenticationClass`, `Listener`,
+  `ListenerClass`, `PodListeners`, `S3Bucket`, `S3Connection`, `Scaler`), now that the `versioned`
+  macro requires a `doc` argument ([#1228]).
+
+[#1228]: https://github.com/stackabletech/operator-rs/pull/1228
+
 ## [0.112.0] - 2026-06-22
 
 ### Added

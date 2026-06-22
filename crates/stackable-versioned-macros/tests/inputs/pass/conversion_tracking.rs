@@ -14,6 +14,7 @@ pub(crate) mod versioned {
     #[versioned(crd(
         group = "stackable.tech",
         status = FooStatus,
+        doc = "Test",
     ))]
     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
     pub(crate) struct FooSpec {

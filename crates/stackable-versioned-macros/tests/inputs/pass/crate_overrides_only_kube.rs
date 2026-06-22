@@ -11,7 +11,7 @@ use stackable_versioned::versioned;
 )]
 // ---
 pub mod versioned {
-    #[versioned(crd(group = "foo.example.org"))]
+    #[versioned(crd(group = "foo.example.org", doc = "Test"))]
     #[derive(
         Clone,
         Debug,

@@ -25,6 +25,7 @@ pub mod versioned {
         group = "s3.stackable.tech",
         kind = "S3Bucket",
         plural = "s3buckets",
+        doc = "S3 bucket specification containing the bucket name and an inlined or referenced connection specification.",
         namespaced
     ))]
     #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
