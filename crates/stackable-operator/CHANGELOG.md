@@ -4,10 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.112.0] - 2026-06-22
+
 ### Added
 
 - Add `Client::{get_feature_gates,get_enabled_feature_gates,get_disabled_feature_gates}` associated
   functions to retrieve all, enabled, or disabled feature gates from the Kubernetes apiserver ([#1207], [#1208]).
+- Add a new `v2` module that provides more type-safe variants of the existing functions ([#1225]).
+- Add documentation for the `roleGroups` field, which now shows up as a description in the generated CRDs ([#1227]).
 
 ### Changed
 
@@ -18,6 +22,8 @@ All notable changes to this project will be documented in this file.
 [#1207]: https://github.com/stackabletech/operator-rs/pull/1207
 [#1208]: https://github.com/stackabletech/operator-rs/pull/1208
 [#1224]: https://github.com/stackabletech/operator-rs/pull/1224
+[#1225]: https://github.com/stackabletech/operator-rs/pull/1225
+[#1227]: https://github.com/stackabletech/operator-rs/pull/1227
 
 ## [0.111.1] - 2026-04-28
 
