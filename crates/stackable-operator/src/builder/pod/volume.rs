@@ -315,9 +315,9 @@ impl SecretOperatorVolumeSourceBuilder {
 
     pub fn with_auto_tls_cert_domain_components_in_subject_dn(
         &mut self,
-        enabled: impl Into<bool>,
+        enabled: bool,
     ) -> &mut Self {
-        self.auto_tls_cert_domain_components_in_subject_dn = Some(enabled.into());
+        self.auto_tls_cert_domain_components_in_subject_dn = Some(enabled);
         self
     }
 
