@@ -52,7 +52,7 @@ pub mod versioned {
     #[versioned(crd(
         group = "listeners.stackable.tech",
         status = "v1alpha1::ListenerStatus",
-        doc = "Exposes a set of pods to the outside world.",
+        doc = "Exposes a set of Pods to the outside world.",
         namespaced
     ))]
     #[derive(
