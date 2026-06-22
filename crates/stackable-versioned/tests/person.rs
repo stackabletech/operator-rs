@@ -51,7 +51,7 @@ pub fn roundtrip_conversion_review(
     options(k8s(experimental_conversion_tracking))
 )]
 pub mod versioned {
-    #[versioned(crd(group = "test.stackable.tech", status = "PersonStatus"))]
+    #[versioned(crd(group = "test.stackable.tech", status = "PersonStatus", doc = "Test"))]
     #[derive(Clone, Debug, CustomResource, Deserialize, JsonSchema, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct PersonSpec {

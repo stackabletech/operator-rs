@@ -78,6 +78,7 @@ pub mod versioned {
         group = "dummy.stackable.tech",
         kind = "DummyCluster",
         status = "v1alpha1::DummyClusterStatus",
+        doc = "A DummyCluster is a test-only resource used by operator-rs to exercise CRD generation. It is not backed by a real operator.",
         namespaced,
     ))]
     #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]

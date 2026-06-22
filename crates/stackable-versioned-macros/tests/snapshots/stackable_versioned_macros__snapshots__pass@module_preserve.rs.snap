@@ -22,6 +22,7 @@ pub(crate) mod versioned {
             group = "foo.example.org",
             version = "v1alpha1",
             kind = "Foo",
+            doc = "Test",
             plural = "foos",
             namespaced
         )]
@@ -41,6 +42,7 @@ pub(crate) mod versioned {
             group = "bar.example.org",
             version = "v1alpha1",
             kind = "Bar",
+            doc = "Test",
             plural = "bars"
         )]
         pub struct BarSpec {
@@ -157,6 +159,7 @@ pub(crate) mod versioned {
             group = "foo.example.org",
             version = "v1",
             kind = "Foo",
+            doc = "Test",
             plural = "foos",
             namespaced
         )]
@@ -173,7 +176,13 @@ pub(crate) mod versioned {
             schemars::JsonSchema,
             kube::CustomResource,
         )]
-        #[kube(group = "bar.example.org", version = "v1", kind = "Bar", plural = "bars")]
+        #[kube(
+            group = "bar.example.org",
+            version = "v1",
+            kind = "Bar",
+            doc = "Test",
+            plural = "bars"
+        )]
         pub struct BarSpec {
             pub baz: String,
         }
@@ -291,6 +300,7 @@ pub(crate) mod versioned {
             group = "foo.example.org",
             version = "v2alpha1",
             kind = "Foo",
+            doc = "Test",
             plural = "foos",
             namespaced
         )]
@@ -312,6 +322,7 @@ pub(crate) mod versioned {
             group = "bar.example.org",
             version = "v2alpha1",
             kind = "Bar",
+            doc = "Test",
             plural = "bars"
         )]
         pub struct BarSpec {

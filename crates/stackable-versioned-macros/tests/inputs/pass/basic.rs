@@ -9,6 +9,7 @@ use stackable_versioned::versioned;
 pub(crate) mod versioned {
     #[versioned(crd(
         group = "stackable.tech",
+        doc = "Test",
         singular = "foo",
         plural = "foos",
         status = FooStatus,

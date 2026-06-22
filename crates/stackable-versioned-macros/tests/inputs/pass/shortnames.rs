@@ -3,7 +3,7 @@ use stackable_versioned::versioned;
 #[versioned(version(name = "v1alpha1"))]
 // ---
 pub(crate) mod versioned {
-    #[versioned(crd(group = "stackable.tech", shortname = "f", shortname = "fo"))]
+    #[versioned(crd(group = "stackable.tech", shortname = "f", shortname = "fo", doc = "Test"))]
     #[derive(
         Clone,
         Debug,

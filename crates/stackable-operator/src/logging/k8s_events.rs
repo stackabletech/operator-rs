@@ -48,7 +48,7 @@ pub async fn publish_controller_error_as_k8s_event<ReconcileErr, QueueErr>(
     };
 
     if let Err(err) = recorder
-        .publish(&error_to_event(error), &obj.clone().into())
+        .publish(&error_to_event(error), &(*obj.clone()).into())
         .await
     {
         tracing::error!(

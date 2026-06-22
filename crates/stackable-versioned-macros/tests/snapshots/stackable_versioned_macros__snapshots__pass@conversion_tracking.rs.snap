@@ -11,6 +11,7 @@ pub(crate) mod v1alpha1 {
         group = "stackable.tech",
         version = "v1alpha1",
         kind = "Foo",
+        doc = "Test",
         status = FooStatusWithChangedValues
     )]
     pub struct FooSpec {
@@ -112,6 +113,7 @@ pub(crate) mod v1beta1 {
         group = "stackable.tech",
         version = "v1beta1",
         kind = "Foo",
+        doc = "Test",
         status = FooStatusWithChangedValues
     )]
     pub struct FooSpec {
@@ -189,6 +191,7 @@ pub(crate) mod v1 {
         group = "stackable.tech",
         version = "v1",
         kind = "Foo",
+        doc = "Test",
         status = FooStatusWithChangedValues
     )]
     pub struct FooSpec {

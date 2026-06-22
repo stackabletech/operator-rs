@@ -18,6 +18,7 @@ pub(crate) mod v1alpha1 {
         group = "stackable.tech",
         version = "v1alpha1",
         kind = "Foo",
+        doc = "Test",
         shortname = "f",
         shortname = "fo"
     )]

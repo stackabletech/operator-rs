@@ -1,6 +1,6 @@
 [package]
 name = "stackable-telemetry"
-version = "0.6.3"
+version = "0.6.4"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -17,7 +17,7 @@ opentelemetry = { workspace = true, features = ["logs"] }
 opentelemetry-appender-tracing.workspace = true
 opentelemetry-otlp = { workspace = true, features = ["grpc-tonic", "gzip-tonic", "logs"] }
 opentelemetry-semantic-conventions.workspace = true
-opentelemetry_sdk = { workspace = true, features = ["logs", "rt-tokio", "spec_unstable_logs_enabled"] }
+opentelemetry_sdk = { workspace = true, features = ["logs", "rt-tokio"] }
 pin-project.workspace = true
 snafu.workspace = true
 strum.workspace = true
