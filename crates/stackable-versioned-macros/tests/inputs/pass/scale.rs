@@ -5,6 +5,7 @@ use stackable_versioned::versioned;
 pub(crate) mod versioned {
     #[versioned(crd(
         group = "stackable.tech",
+        doc = "Test",
         scale(
             spec_replicas_path = ".spec.replicas",
             status_replicas_path = ".status.replicas",

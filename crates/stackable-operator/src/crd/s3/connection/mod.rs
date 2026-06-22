@@ -35,6 +35,7 @@ pub mod versioned {
         group = "s3.stackable.tech",
         kind = "S3Connection",
         plural = "s3connections",
+        doc = "A reusable definition of a connection to an S3 endpoint.",
         namespaced
     ))]
     #[derive(CustomResource, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]

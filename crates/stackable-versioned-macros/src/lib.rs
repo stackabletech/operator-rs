@@ -329,6 +329,8 @@ mod utils;
 ///         // **Required.** Set the group of the CRD, usually the domain of the
 ///         // company, like `example.com`.
 ///         group = "example.com",
+///         // **Required.** Set the root description of the generated CRD.
+///         doc = "My custom resource.",
 ///         // Override the kind field of the CRD. This defaults to the struct
 ///         // name (without the `Spec` suffix). Overriding this value will also
 ///         // influence the names of other generated items, like the status
@@ -683,7 +685,7 @@ mod utils;
 /// # use serde::{Deserialize, Serialize};
 /// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
 /// mod versioned {
-///     #[versioned(crd(group = "example.com"))]
+///     #[versioned(crd(group = "example.com", doc = "My custom resource."))]
 ///     #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
 ///     pub struct FooSpec {
 ///         #[versioned(added(since = "v1beta1"))]
@@ -727,7 +729,7 @@ mod utils;
 /// mod versioned {
 ///     #[versioned(skip(merged_crd))] // Skip generation for specific specs
 ///
-/// #   #[versioned(crd(group = "example.com"))]
+/// #   #[versioned(crd(group = "example.com", doc = "My custom resource."))]
 /// #   #[derive(Clone, Debug, CustomResource, Deserialize, Serialize, JsonSchema)]
 ///     pub struct FooSpec {}
 /// }
@@ -754,7 +756,7 @@ mod utils;
 ///     version(name = "v1")
 /// )]
 /// mod versioned {
-///     #[versioned(crd(group = "example.com"))]
+///     #[versioned(crd(group = "example.com", doc = "My custom resource."))]
 ///     #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
 ///     pub struct FooSpec {
 ///         #[versioned(added(since = "v1beta1"))]
@@ -787,7 +789,7 @@ mod utils;
 /// mod versioned {
 ///     #[versioned(skip(try_convert))] // Skip generation for specific specs
 ///
-/// #   #[versioned(crd(group = "example.com"))]
+/// #   #[versioned(crd(group = "example.com", doc = "My custom resource."))]
 /// #   #[derive(Clone, Debug, CustomResource, Deserialize, Serialize, JsonSchema)]
 ///     pub struct FooSpec {}
 /// }
@@ -889,7 +891,7 @@ mod utils;
 ///     options(k8s(experimental_conversion_tracking))
 /// )]
 /// mod versioned {
-///     #[versioned(crd(group = "example.com"))]
+///     #[versioned(crd(group = "example.com", doc = "My custom resource."))]
 ///     #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
 ///     struct FooSpec {
 ///         bar: usize,

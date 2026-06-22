@@ -13,7 +13,7 @@ pub(crate) mod versioned {
         boom: Option<u16>,
     }
 
-    #[versioned(crd(group = "foo.example.org", plural = "foos", namespaced))]
+    #[versioned(crd(group = "foo.example.org", plural = "foos", doc = "Test", namespaced))]
     #[derive(
         Clone,
         Debug,
@@ -32,7 +32,7 @@ pub(crate) mod versioned {
         deprecated_foo: String,
     }
 
-    #[versioned(crd(group = "bar.example.org", plural = "bars"))]
+    #[versioned(crd(group = "bar.example.org", plural = "bars", doc = "Test"))]
     #[derive(
         Clone,
         Debug,

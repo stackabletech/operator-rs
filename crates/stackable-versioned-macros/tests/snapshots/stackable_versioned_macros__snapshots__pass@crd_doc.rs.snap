@@ -1,7 +1,7 @@
 ---
 source: crates/stackable-versioned-macros/src/lib.rs
 expression: formatted
-input_file: crates/stackable-versioned-macros/tests/inputs/pass/shortnames.rs
+input_file: crates/stackable-versioned-macros/tests/inputs/pass/crd_doc.rs
 ---
 #[automatically_derived]
 pub(crate) mod v1alpha1 {
@@ -18,9 +18,7 @@ pub(crate) mod v1alpha1 {
         group = "stackable.tech",
         version = "v1alpha1",
         kind = "Foo",
-        doc = "Test",
-        shortname = "f",
-        shortname = "fo"
+        doc = "A FooCluster, deployed and managed by the example operator."
     )]
     pub struct FooSpec {}
 }

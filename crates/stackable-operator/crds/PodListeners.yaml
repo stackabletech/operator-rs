@@ -17,7 +17,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Auto-generated derived type for PodListenersSpec via `CustomResource`
+        description: Informs users about Listeners that are bound by a given Pod.
         properties:
           spec:
             description: |-
