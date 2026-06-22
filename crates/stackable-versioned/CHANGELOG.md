@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-06-22
+
 ### Added
 
 - BREAKING: Add a required `#[versioned(crd(doc = "..."))]` argument that sets the root
