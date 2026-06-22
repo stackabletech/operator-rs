@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.112.0] - 2026-06-22
+
 ### Added
 
 - Add `Client::{get_feature_gates,get_enabled_feature_gates,get_disabled_feature_gates}` associated
