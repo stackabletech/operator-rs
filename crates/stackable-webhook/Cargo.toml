@@ -42,6 +42,8 @@ clap.workspace = true
 [lints]
 workspace = true
 
-# Only needed for tests, this is a false positive of "cargo udeps"
 [package.metadata.cargo-udeps.ignore]
-development = ["stackable-operator"]
+# We don't actually use this crate, but we need to enable the `trace` feature
+normal = ["tower-http"]
+# Only needed for tests, this is a false positive of "cargo udeps"
+development = ["tower-http", "stackable-operator"]
