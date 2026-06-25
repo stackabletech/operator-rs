@@ -4,7 +4,7 @@ use k8s_openapi::api::core::v1::{
 };
 
 /// A builder for [`SecurityContext`] objects (not to be confused with `PodSecurityContext`).
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct SecurityContextBuilder {
     security_context: SecurityContext,
 }
