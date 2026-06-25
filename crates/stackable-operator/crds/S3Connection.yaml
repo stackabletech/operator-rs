@@ -17,7 +17,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Auto-generated derived type for ConnectionSpec via `CustomResource`
+        description: A reusable definition of a connection to an S3 endpoint.
         properties:
           spec:
             description: |-

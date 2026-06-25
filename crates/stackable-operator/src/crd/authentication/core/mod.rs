@@ -36,6 +36,7 @@ pub mod versioned {
     #[versioned(crd(
         group = "authentication.stackable.tech",
         plural = "authenticationclasses",
+        doc = "The Stackable Platform uses the AuthenticationClass as a central mechanism to handle user authentication across supported products.",
     ))]
     #[derive(
         Clone,

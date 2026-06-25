@@ -133,7 +133,7 @@ pub enum Error {
 /// ## Builders
 ///
 /// When choosing the builder, there are two different styles to configure individual subscribers:
-/// Using the sophisticated [`SettingsBuilder`] or the simplified tuple style for basic
+/// Using the sophisticated [`SettingsBuilder`](settings::SettingsBuilder) or the simplified tuple style for basic
 /// configuration. Currently, three different subscribers are supported: console output, OTLP log
 /// export, and OTLP trace export.
 ///
@@ -173,9 +173,9 @@ pub enum Error {
 /// subscriber provides specific settings based on a common set of options. These options can be
 /// customized via the following methods:
 ///
-/// - [`SettingsBuilder::console_log_settings_builder`]
-/// - [`SettingsBuilder::otlp_log_settings_builder`]
-/// - [`SettingsBuilder::otlp_trace_settings_builder`]
+/// - [`SettingsBuilder::console_log_settings_builder`](settings::SettingsBuilder::console_log_settings_builder)
+/// - [`SettingsBuilder::otlp_log_settings_builder`](settings::SettingsBuilder::otlp_log_settings_builder)
+/// - [`SettingsBuilder::otlp_trace_settings_builder`](settings::SettingsBuilder::otlp_trace_settings_builder)
 ///
 /// ```
 /// # use stackable_telemetry::tracing::{Tracing, Error, settings::Settings};

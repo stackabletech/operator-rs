@@ -17,7 +17,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Auto-generated derived type for DummyClusterSpec via `CustomResource`
+        description: A DummyCluster is a test-only resource used by operator-rs to exercise CRD generation. It is not backed by a real operator.
         properties:
           spec:
             properties:
@@ -1007,8 +1007,34 @@ spec:
                               type: string
                             type: array
                           userProvided:
-                            description: Override the entire config file with the specified String.
-                            type: string
+                            description: |-
+                              Override the entire config file with the specified JSON document.
+
+                              Please note that you can in-line JSON into YAML as follows:
+
+                              ```yaml
+                              # ... other YAML content
+                              userProvided: {
+                                "myString": "test",
+                                "myList": ["test"],
+                                "myBool": true,
+                                "my": {"nested.field.with.dots": 42}
+                              }
+                              ```
+
+                              As an alternative you can also stick to YAML:
+
+                              ```yaml
+                              # ... other YAML content
+                              userProvided:
+                                myString: test
+                                myList: [test]
+                                myBool: true
+                                my:
+                                  nested.field.with.dots: 42
+                              ```
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
                         type: object
                       dummy.properties:
                         additionalProperties:
@@ -1659,8 +1685,34 @@ spec:
                                     type: string
                                   type: array
                                 userProvided:
-                                  description: Override the entire config file with the specified String.
-                                  type: string
+                                  description: |-
+                                    Override the entire config file with the specified JSON document.
+
+                                    Please note that you can in-line JSON into YAML as follows:
+
+                                    ```yaml
+                                    # ... other YAML content
+                                    userProvided: {
+                                      "myString": "test",
+                                      "myList": ["test"],
+                                      "myBool": true,
+                                      "my": {"nested.field.with.dots": 42}
+                                    }
+                                    ```
+
+                                    As an alternative you can also stick to YAML:
+
+                                    ```yaml
+                                    # ... other YAML content
+                                    userProvided:
+                                      myString: test
+                                      myList: [test]
+                                      myBool: true
+                                      my:
+                                        nested.field.with.dots: 42
+                                    ```
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
                               type: object
                             dummy.properties:
                               additionalProperties:
@@ -1699,6 +1751,21 @@ spec:
                           nullable: true
                           type: integer
                       type: object
+                    description: |-
+                      The set of role groups for this role, keyed by their name.
+
+                      A role group is a subset of the replicas of a role that share the same configuration,
+                      allowing finer-grained control than the role level. This is useful to e.g. schedule groups
+                      onto different classes of nodes or into different regions, or to run them with different
+                      settings. Configuration set on a role group is merged on top of the role-level `config`,
+                      with the more specific role group values taking precedence.
+
+                      Every role needs at least one role group. A role with a single role group conventionally
+                      names it `default`.
+
+                      Read the
+                      [roles and role groups concept documentation](https://docs.stackable.tech/home/nightly/concepts/roles-and-role-groups)
+                      for more details.
                     type: object
                 required:
                 - roleGroups

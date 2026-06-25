@@ -7,7 +7,7 @@ use stackable_versioned::versioned;
 )]
 // ---
 pub mod versioned {
-    #[versioned(crd(group = "stackable.tech", kind = "FooBar", namespaced))]
+    #[versioned(crd(group = "stackable.tech", kind = "FooBar", doc = "Test", namespaced))]
     #[derive(
         Clone,
         Debug,

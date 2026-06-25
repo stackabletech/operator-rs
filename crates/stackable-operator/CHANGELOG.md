@@ -6,10 +6,46 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: `PodSecurityContextBuilder::new` was removed in favor of `PodSecurityContextBuilder::with_stackable_defaults`.
+- BREAKING: `PodSecurityContextBuilder::new` was removed in favor of `PodSecurityContextBuilder::with_stackable_defaults` ([#XXXX]).
   This function already sets up some defaults we want to use across the platform.
-- BREAKING: `PodSecurityContextBuilder::run_as_non_root` now takes a `bool` instead of assuming consumers always want to set it to `true`.
+- BREAKING: `PodSecurityContextBuilder::run_as_non_root` now takes a `bool` instead of assuming consumers always want to set it to `true` ([#XXXX]).
   This is needed to allow users setting it to `false` in case the new `with_stackable_defaults` functions set's it to `true`.
+
+[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+
+## [0.113.0] - 2026-06-22
+
+### Added
+
+- Add documentation for the `roleGroups` field, which now shows up as a description in the generated CRDs ([#1227]).
+- Add root descriptions to all CRDs defined in this crate (`AuthenticationClass`, `Listener`,
+  `ListenerClass`, `PodListeners`, `S3Bucket`, `S3Connection`, `Scaler`), now that the `versioned`
+  macro requires a `doc` argument ([#1228]).
+
+### Changed
+
+- BREAKING: Bump to kube `4.0.0`, k8s-openapi `0.28.0` and enable the Kubernetes 1.36 feature ([#1224]).
+
+[#1224]: https://github.com/stackabletech/operator-rs/pull/1224
+[#1227]: https://github.com/stackabletech/operator-rs/pull/1227
+[#1228]: https://github.com/stackabletech/operator-rs/pull/1228
+
+## [0.112.0] - 2026-06-22
+
+### Added
+
+- Add `Client::{get_feature_gates,get_enabled_feature_gates,get_disabled_feature_gates}` associated
+  functions to retrieve all, enabled, or disabled feature gates from the Kubernetes apiserver ([#1207], [#1208]).
+- Add a new `v2` module that provides more type-safe variants of the existing functions ([#1225]).
+
+### Changed
+
+- BREAKING: Use `serde_json::Value` instead of `String` for user-provided JSON `configOverrides`. This change is marked as breaking, as it causes a breaking change to the CRDs ([#1206]).
+
+[#1206]: https://github.com/stackabletech/operator-rs/pull/1206
+[#1207]: https://github.com/stackabletech/operator-rs/pull/1207
+[#1208]: https://github.com/stackabletech/operator-rs/pull/1208
+[#1225]: https://github.com/stackabletech/operator-rs/pull/1225
 
 ## [0.111.1] - 2026-04-28
 
