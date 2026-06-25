@@ -168,12 +168,15 @@ impl PodSecurityContextBuilder {
     ///
     /// * `runAsNonRoot: true`
     pub fn with_stackable_defaults() -> Self {
-        Self {
-            pod_security_context: PodSecurityContext {
-                run_as_non_root: Some(true),
-                ..Default::default()
-            },
-        }
+        // We are using the builder functions to ensure that builder functions exist to override these settings.
+        let mut builder = Self {
+            pod_security_context: PodSecurityContext::default(),
+        };
+
+        // Reason: Running as root is bad
+        builder.run_as_non_root(true);
+
+        builder
     }
 
     pub fn build(&self) -> PodSecurityContext {
