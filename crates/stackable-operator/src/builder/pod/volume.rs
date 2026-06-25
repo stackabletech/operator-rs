@@ -280,6 +280,7 @@ pub struct SecretOperatorVolumeSourceBuilder {
     kerberos_service_names: Vec<String>,
     tls_pkcs12_password: Option<String>,
     auto_tls_cert_lifetime: Option<Duration>,
+    auto_tls_cert_domain_components_in_subject_dn: Option<bool>,
     provision_parts: SecretClassVolumeProvisionParts,
 }
 
@@ -302,12 +303,21 @@ impl SecretOperatorVolumeSourceBuilder {
             kerberos_service_names: Vec::new(),
             tls_pkcs12_password: None,
             auto_tls_cert_lifetime: None,
+            auto_tls_cert_domain_components_in_subject_dn: None,
             provision_parts,
         }
     }
 
     pub fn with_auto_tls_cert_lifetime(&mut self, lifetime: impl Into<Duration>) -> &mut Self {
         self.auto_tls_cert_lifetime = Some(lifetime.into());
+        self
+    }
+
+    pub fn with_auto_tls_cert_domain_components_in_subject_dn(
+        &mut self,
+        enabled: bool,
+    ) -> &mut Self {
+        self.auto_tls_cert_domain_components_in_subject_dn = Some(enabled);
         self
     }
 
@@ -389,6 +399,12 @@ impl SecretOperatorVolumeSourceBuilder {
                 Annotation::auto_tls_cert_lifetime(&lifetime.to_string())
                     .context(ParseAnnotationSnafu)?,
             );
+        }
+
+        if let Some(enabled) = self.auto_tls_cert_domain_components_in_subject_dn {
+            annotations.insert(Annotation::auto_tls_cert_domain_components_in_subject_dn(
+                enabled,
+            ));
         }
 
         Ok(EphemeralVolumeSource {

@@ -159,11 +159,24 @@ impl Annotation {
 
     /// Constructs a `autoscaling.stackable.tech/retry` annotation.
     pub fn autoscaling_retry(retry: bool) -> Self {
-        // SAFETY: We use expect here, because the input parameter can only be one of two possible
+        // PANICS: We use expect here, because the input parameter can only be one of two possible
         // values: true or false. This fact in combination with the known annotation key length
-        // allows use to use expect here, instead of bubbling up the error.
+        // allows us to use expect here, instead of bubbling up the error.
         let kvp = KeyValuePair::try_from(("autoscaling.stackable.tech/retry", retry.to_string()))
             .expect("autoscaling retry annotation must be valid");
+        Self(kvp)
+    }
+
+    /// Constructs a `secrets.stackable.tech/backend.autotls.cert.domain-components-in-subject-dn` annotation.
+    pub fn auto_tls_cert_domain_components_in_subject_dn(enabled: bool) -> Self {
+        // PANICS: We use expect here, because the input parameter can only be one of two possible
+        // values: true or false. This fact in combination with the known annotation key length
+        // allows us to use expect here, instead of bubbling up the error.
+        let kvp = KeyValuePair::try_from((
+            "secrets.stackable.tech/backend.autotls.cert.domain-components-in-subject-dn",
+            enabled.to_string(),
+        ))
+        .expect("annotation secrets.stackable.tech/backend.autotls.cert.domain-components-in-subject-dn must be valid");
         Self(kvp)
     }
 }
@@ -356,5 +369,14 @@ mod test {
             .unwrap();
 
         assert_eq!(annotations.len(), 2);
+    }
+
+    #[test]
+    fn test_boolean_annotations() {
+        // Check that the functions do not fail for all possible inputs
+        for value in [false, true] {
+            Annotation::autoscaling_retry(value);
+            Annotation::auto_tls_cert_domain_components_in_subject_dn(value);
+        }
     }
 }

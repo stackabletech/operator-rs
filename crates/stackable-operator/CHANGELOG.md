@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Support the annotation `secrets.stackable.tech/backend.autotls.cert.domain-components-in-subject-dn`
+  in the `SecretOperatorVolumeSourceBuilder` ([#1209]).
+
+[#1209]: https://github.com/stackabletech/operator-rs/pull/1209
+
 ## [0.113.0] - 2026-06-22
 
 ### Added
