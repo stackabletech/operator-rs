@@ -10,16 +10,29 @@ pub struct SecurityContextBuilder {
 }
 
 impl SecurityContextBuilder {
-    /// Convenience function for a wide use-case.
-    pub fn run_as_root() -> SecurityContext {
-        SecurityContext {
-            run_as_user: Some(0),
-            ..SecurityContext::default()
-        }
+    /// Construct a new [`SecurityContextBuilder`] that is pre-filled with Stackable's defaults.
+    ///
+    /// Currently the defaults are:
+    ///
+    /// * `runAsNonRoot: true`
+    pub fn with_stackable_defaults() -> Self {
+        // We are using the builder functions to ensure that builder functions exist to override these settings.
+        let mut builder = Self {
+            security_context: SecurityContext::default(),
+        };
+
+        // Reason: Running as root is bad
+        builder.run_as_non_root(true);
+
+        builder
     }
 
-    pub fn new() -> Self {
-        Self::default()
+    /// Convenience function for a wide use-case.
+    ///
+    /// Please only use this is really needed.
+    pub fn run_as_root(&mut self) {
+        self.run_as_user(0);
+        self.run_as_non_root(false);
     }
 
     pub fn allow_privilege_escalation(&mut self, value: bool) -> &mut Self {
