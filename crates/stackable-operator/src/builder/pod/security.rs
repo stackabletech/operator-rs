@@ -169,18 +169,10 @@ impl PodSecurityContextBuilder {
     /// * `runAsNonRoot: true`
     pub fn with_stackable_defaults() -> Self {
         Self {
-            pod_security_context: Self::stackable_default_pod_security_context(),
-        }
-    }
-
-    /// The Stackable's defaults for a [`PodSecurityContext`].
-    ///
-    /// It is recommended to use the [`PodSecurityContextBuilder::with_stackable_defaults`] instead
-    /// (if possible). Have a look at it's documentation for details.
-    pub fn stackable_default_pod_security_context() -> PodSecurityContext {
-        PodSecurityContext {
-            run_as_non_root: Some(true),
-            ..Default::default()
+            pod_security_context: PodSecurityContext {
+                run_as_non_root: Some(true),
+                ..Default::default()
+            },
         }
     }
 
