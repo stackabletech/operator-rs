@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
   This function already sets up some defaults we want to use across the platform.
   Currently this is `runAsNonRoot: true`, which might cause product Pods to crash and require changes.
 - BREAKING: `PodSecurityContextBuilder::run_as_non_root` now takes a `bool` instead of assuming consumers always want to set it to `true` ([#1205]).
-  This is needed to allow users setting it to `false` in case the new `with_stackable_defaults` functions set's it to `true`.
+  This is needed to allow users setting it to `false` in case the new `with_stackable_defaults` function sets it to `true`.
 
 [#1205]: https://github.com/stackabletech/operator-rs/pull/1205
 
