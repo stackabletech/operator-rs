@@ -27,14 +27,6 @@ impl SecurityContextBuilder {
         builder
     }
 
-    /// Convenience function for a wide use-case.
-    ///
-    /// Please only use this is really needed.
-    pub fn run_as_root(&mut self) {
-        self.run_as_user(0);
-        self.run_as_non_root(false);
-    }
-
     pub fn allow_privilege_escalation(&mut self, value: bool) -> &mut Self {
         self.security_context.allow_privilege_escalation = Some(value);
         self
