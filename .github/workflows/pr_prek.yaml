@@ -1,5 +1,5 @@
 ---
-name: pre-commit
+name: prek
 
 on:
   pull_request:
@@ -12,14 +12,14 @@ env:
 permissions: {}
 
 jobs:
-  pre-commit:
+  prek:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: stackabletech/actions/run-pre-commit@c34dbb4f27b274736c7d2edc6f6f30a03d03edf5 # v0.12.2
+      - uses: stackabletech/actions/run-prek@a14cbd08d9e034e2361ea9205b32aff0491885db # v0.15.0
         with:
           rust: ${{ env.RUST_TOOLCHAIN_VERSION }}
           # rust-src is required for trybuild stderr output comparison to work
