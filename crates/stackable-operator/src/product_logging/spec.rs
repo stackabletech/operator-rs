@@ -234,7 +234,10 @@ pub struct AutomaticContainerLogConfig {
 
 impl Merge for AutomaticContainerLogConfigFragment {
     fn merge(&mut self, defaults: &Self) {
-        self.loggers.merge(&defaults.loggers);
+        // The fully qualified syntax is used here because BTreeMaps also have a merge function.
+        // See https://github.com/rust-lang/rust/issues/48919
+        Merge::merge(&mut self.loggers, &defaults.loggers);
+
         if let Some(console) = &mut self.console {
             if let Some(defaults_console) = &defaults.console {
                 console.merge(defaults_console);

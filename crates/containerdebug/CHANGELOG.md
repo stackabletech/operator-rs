@@ -1,0 +1,63 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [Unreleased]
+
+## [0.4.0] - 2026-05-19
+
+### Changed
+
+- Bump `hickory-resolver` to 0.26, `sysinfo` to 0.39 and Rust to 1.95.0 ([#63]).
+
+[#63]: https://github.com/stackabletech/containerdebug/pull/63
+
+### Fixed
+
+- Don't log ANSI escape sequences if stdout is a file ([#59]).
+
+[#59]: https://github.com/stackabletech/containerdebug/pull/59
+
+## [0.3.0] - 2026-03-10
+
+### Changed
+
+- Dependency bumps. This includes switching to async code (using `tokio`), as `hickory-resolver` 0.25 removed the synchronous APIs ([#52]).
+
+[#52]: https://github.com/stackabletech/containerdebug/pull/52
+
+## [0.2.0] - 2025-05-26
+
+### Changed
+
+- Increased the default `--loop` interval from every minute to every 30 minutes ([#23]).
+- Collect and output the open files limit ([#45]).
+
+### Fixes
+
+- Move the span inside the loop ([#46]).
+
+[#23]: https://github.com/stackabletech/containerdebug/pull/23
+[#45]: https://github.com/stackabletech/containerdebug/pull/45
+[#46]: https://github.com/stackabletech/containerdebug/pull/46
+
+## [0.1.1] - 2024-12-16
+
+### Changed
+
+- Downgraded DNS errors to warnings ([#17]).
+- All output is now wrapped in a "containerdebug" span ([#18]).
+
+### Fixes
+
+- Reduced memory usage dramatically by limiting and caching fetched information ([#20]).
+
+[#17]: https://github.com/stackabletech/containerdebug/pull/17
+[#18]: https://github.com/stackabletech/containerdebug/pull/18
+[#20]: https://github.com/stackabletech/containerdebug/pull/20
+
+## [0.1.0] - 2024-12-09
+
+### Added
+
+- Initial release.
