@@ -27,7 +27,7 @@ jobs:
           persist-credentials: false
 
       - name: Install rust toolchain
-        run: | 
+        run: |
             rustup toolchain install "${RUST_TOOLCHAIN_VERSION}"
             rustup default "${RUST_TOOLCHAIN_VERSION}"
 
