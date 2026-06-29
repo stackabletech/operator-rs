@@ -1,3 +1,10 @@
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    net::IpAddr,
+    sync::LazyLock,
+    time::Duration,
+};
+
 use hickory_resolver::{
     TokioResolver, net::runtime::TokioRuntimeProvider, proto::rr::RData,
     system_conf::read_system_conf,
@@ -5,12 +12,6 @@ use hickory_resolver::{
 use local_ip_address::list_afinet_netifas;
 use serde::Serialize;
 use snafu::{ResultExt, Snafu};
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    net::IpAddr,
-    sync::LazyLock,
-    time::Duration,
-};
 use tokio::task::JoinSet;
 
 #[derive(Debug, Snafu)]

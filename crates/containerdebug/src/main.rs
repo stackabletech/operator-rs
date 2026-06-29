@@ -1,12 +1,12 @@
-mod error;
-mod system_information;
+use std::{path::PathBuf, time::Instant};
 
 use clap::Parser;
 use stackable_telemetry::{Tracing, tracing::TelemetryOptions};
-use std::path::PathBuf;
 
 use crate::system_information::SystemInformation;
-use std::time::Instant;
+
+mod error;
+mod system_information;
 
 const APP_NAME: &str = "containerdebug";
 
