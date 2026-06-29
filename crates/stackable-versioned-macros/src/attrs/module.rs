@@ -41,7 +41,7 @@ impl ModuleAttributes {
 
         // It needs to be sorted, even though the definition could be unsorted
         // (if allow_unsorted is set).
-        self.versions.sort_by(|lhs, rhs| lhs.name.cmp(&rhs.name));
+        self.versions.sort_by_key(|lhs| lhs.name);
 
         if !self.options.common.allow_unsorted.is_present() && !is_sorted {
             let versions = self.versions.iter().map(|v| v.name).join(", ");
