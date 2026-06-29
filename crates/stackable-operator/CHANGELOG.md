@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Support the annotation `secrets.stackable.tech/backend.autotls.cert.domain-components-in-subject-dn`
+  in the `SecretOperatorVolumeSourceBuilder` ([#1209]).
+
 ### Changed
 
 - BREAKING: `PodSecurityContextBuilder::new` was removed in favor of `PodSecurityContextBuilder::with_stackable_defaults`
@@ -15,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - BREAKING: `SecurityContextBuilder::run_as_root` has been removed ([#1205]).
 
 [#1205]: https://github.com/stackabletech/operator-rs/pull/1205
+[#1209]: https://github.com/stackabletech/operator-rs/pull/1209
 
 ## [0.113.0] - 2026-06-22
 
