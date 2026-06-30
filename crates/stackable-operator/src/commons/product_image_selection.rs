@@ -156,8 +156,10 @@ impl PullPolicy {
     /// Returns the appropriate [`PullPolicy`] based on if a floating tag is used.
     fn from_is_floating_tag(is_floating_tag: bool) -> Self {
         if is_floating_tag {
+            // Floating tags only really make sense in case new versions are pulled on startup.
             Self::Always
         } else {
+            // Fixed (e.g. full SDP version) tags should never move and thus only need to be pulled if not present.
             Self::IfNotPresent
         }
     }
