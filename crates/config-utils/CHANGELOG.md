@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Bump dependencies ([#15]).
+
+[#15]: https://github.com/stackabletech/config-utils/pull/15
+
 ## [0.4.0] - 2026-05-21
 
 ### Changed
