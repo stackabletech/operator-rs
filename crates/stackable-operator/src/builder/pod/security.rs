@@ -4,22 +4,27 @@ use k8s_openapi::api::core::v1::{
 };
 
 /// A builder for [`SecurityContext`] objects (not to be confused with `PodSecurityContext`).
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct SecurityContextBuilder {
     security_context: SecurityContext,
 }
 
 impl SecurityContextBuilder {
-    /// Convenience function for a wide use-case.
-    pub fn run_as_root() -> SecurityContext {
-        SecurityContext {
-            run_as_user: Some(0),
-            ..SecurityContext::default()
-        }
-    }
+    /// Construct a new [`SecurityContextBuilder`] that is pre-filled with Stackable's defaults.
+    ///
+    /// Currently the defaults are:
+    ///
+    /// * `runAsNonRoot: true`
+    pub fn with_stackable_defaults() -> Self {
+        // We are using the builder functions to ensure that builder functions exist to override these settings.
+        let mut builder = Self {
+            security_context: SecurityContext::default(),
+        };
 
-    pub fn new() -> Self {
-        Self::default()
+        // Reason: Running as root is bad
+        builder.run_as_non_root(true);
+
+        builder
     }
 
     pub fn allow_privilege_escalation(&mut self, value: bool) -> &mut Self {
@@ -144,14 +149,39 @@ impl SecurityContextBuilder {
     }
 }
 
-#[derive(Clone, Default)]
+/// A builder to construct a [`PodSecurityContext`].
+///
+/// # Basic usage
+///
+/// ```
+/// use stackable_operator::builder::pod::security::PodSecurityContextBuilder;
+///
+/// let _ = PodSecurityContextBuilder::with_stackable_defaults()
+///     // Configure any arbitrary fields
+///     .run_as_user(1234)
+///     .build();
+/// ```
+#[derive(Clone, Debug)]
 pub struct PodSecurityContextBuilder {
     pod_security_context: PodSecurityContext,
 }
 
 impl PodSecurityContextBuilder {
-    pub fn new() -> Self {
-        Self::default()
+    /// Construct a new [`PodSecurityContextBuilder`] that is pre-filled with Stackable's defaults.
+    ///
+    /// Currently the defaults are:
+    ///
+    /// * `runAsNonRoot: true`
+    pub fn with_stackable_defaults() -> Self {
+        // We are using the builder functions to ensure that builder functions exist to override these settings.
+        let mut builder = Self {
+            pod_security_context: PodSecurityContext::default(),
+        };
+
+        // Reason: Running as root is bad
+        builder.run_as_non_root(true);
+
+        builder
     }
 
     pub fn build(&self) -> PodSecurityContext {
@@ -173,8 +203,8 @@ impl PodSecurityContextBuilder {
         self
     }
 
-    pub fn run_as_non_root(&mut self) -> &mut Self {
-        self.pod_security_context.run_as_non_root = Some(true);
+    pub fn run_as_non_root(&mut self, non_root: bool) -> &mut Self {
+        self.pod_security_context.run_as_non_root = Some(non_root);
         self
     }
 
@@ -381,13 +411,13 @@ mod tests {
 
     #[test]
     fn security_context_builder() {
-        let mut builder = PodSecurityContextBuilder::new();
+        let mut builder = PodSecurityContextBuilder::with_stackable_defaults();
         let context = builder
             .fs_group(1000)
             .fs_group_change_policy("policy")
             .run_as_user(1001)
             .run_as_group(1001)
-            .run_as_non_root()
+            .run_as_non_root(true)
             .supplemental_groups(&[1002, 1003])
             .se_linux_level("level")
             .se_linux_role("role")
