@@ -924,6 +924,11 @@ transforms:
     source: |
       .logger = "ROOT"
       .level = "INFO"
+      # containers capture raw stdout, which can contain ANSI escape codes (colors) emitted by the
+      # tools they run (e.g. containerdebug, cert-tools). These codes are unreadable in log
+      # aggregators such as OpenSearch, so we strip them here. On failure (e.g. non-string message)
+      # we keep the original message untouched.
+      .message = strip_ansi_escape_codes(.message) ?? .message
 
   processed_files_stderr:
     inputs:
@@ -932,6 +937,8 @@ transforms:
     source: |
       .logger = "ROOT"
       .level = "ERROR"
+      # See above for why we strip ANSI escape codes.
+      .message = strip_ansi_escape_codes(.message) ?? .message
 
   processed_files_log4j:
     inputs:

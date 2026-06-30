@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Revert [#1183], so we again default to ANSI escape sequences, which can be turned off using
+  `NO_COLOR=1` ([#XXXX]).
+
+[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+
 ## [0.6.4] - 2026-06-03
 
 Note: There are only dependency bumps in this release
