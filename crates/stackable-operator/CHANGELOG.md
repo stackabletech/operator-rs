@@ -12,10 +12,10 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Strip ANSI escape codes (e.g. colors) from captured shell stdout/stderr in the generated Vector
-  agent config, so they no longer show up as garbled text in log aggregators such as OpenSearch ([#XXX]).
+  agent config, so they no longer show up as garbled text in log aggregators such as OpenSearch ([#1237]).
 
 [#1209]: https://github.com/stackabletech/operator-rs/pull/1209
-[#XXX]: https://github.com/stackabletech/operator-rs/pull/XXX
+[#1237]: https://github.com/stackabletech/operator-rs/pull/1237
 
 ## [0.113.0] - 2026-06-22
 
