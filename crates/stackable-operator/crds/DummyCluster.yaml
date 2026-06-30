@@ -1892,6 +1892,9 @@ spec:
 
                       If not specified, the operator will use its own version, e.g. `26.7.1`. When using a nightly
                       operator or a PR version, it will use the nightly `0.0.0-dev` image.
+
+                      If this is used in combination with `useFloatingTag`, the correct floating tag is computed
+                      automatically, e.g. `26.7.0` becomes `26.7` for the product image.
                     nullable: true
                     type: string
                   useFloatingTag:
