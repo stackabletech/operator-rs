@@ -924,7 +924,7 @@ transforms:
     source: |
       .logger = "ROOT"
       .level = "INFO"
-      # containers capture raw stdout, which can contain ANSI escape codes (colors) emitted by the
+      # Containers capture raw stdout, which can contain ANSI escape codes (colors) emitted by the
       # tools they run (e.g. containerdebug, cert-tools). These codes are unreadable in log
       # aggregators such as OpenSearch, so we strip them here. On failure (e.g. non-string message)
       # we keep the original message untouched.
