@@ -17,7 +17,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Auto-generated derived type for BucketSpec via `CustomResource`
+        description: S3 bucket specification containing the bucket name and an inlined or referenced connection specification.
         properties:
           spec:
             description: |-

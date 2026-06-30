@@ -9,7 +9,7 @@ use stackable_versioned_macros::versioned;
 )]
 #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
 mod versioned {
-    #[versioned(crd(group = "stackable.tech"))]
+    #[versioned(crd(group = "stackable.tech", doc = "Test"))]
     pub struct Foo {
         #[versioned(
             added(since = "v1beta1"),

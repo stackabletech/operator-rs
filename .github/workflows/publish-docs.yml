@@ -26,9 +26,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@efa25f7f19611383d5b0ccf2d1c8914531636bf9
-        with:
-          toolchain: ${{ env.RUST_TOOLCHAIN_VERSION }}
+      - name: Install rust toolchain
+        run: |
+            rustup toolchain install "${RUST_TOOLCHAIN_VERSION}"
+            rustup default "${RUST_TOOLCHAIN_VERSION}"
 
       - name: Build Crate Docs
         run: cargo doc --no-deps --all-features

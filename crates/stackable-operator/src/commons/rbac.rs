@@ -70,7 +70,7 @@ pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
         role_ref: RoleRef {
             kind: "ClusterRole".to_string(),
             name: format!("{product_name}-clusterrole"),
-            api_group: "rbac.authorization.k8s.io".to_string(),
+            api_group: Some("rbac.authorization.k8s.io".to_owned()),
         },
         subjects: Some(vec![Subject {
             kind: "ServiceAccount".to_string(),

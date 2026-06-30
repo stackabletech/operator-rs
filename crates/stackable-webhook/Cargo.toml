@@ -28,7 +28,7 @@ serde_json.workspace = true
 snafu.workspace = true
 tokio-rustls.workspace = true
 tokio.workspace = true
-tower-http.workspace = true
+tower-http.workspace = true # We don't actually use this crate, but we need to enable the `trace` feature
 tower.workspace = true
 tracing.workspace = true
 tracing-opentelemetry.workspace = true
@@ -42,6 +42,8 @@ clap.workspace = true
 [lints]
 workspace = true
 
-# Only needed for tests, this is a false positive of "cargo udeps"
 [package.metadata.cargo-udeps.ignore]
-development = ["stackable-operator"]
+# We don't actually use this crate, but we need to enable the `trace` feature
+normal = ["tower-http"]
+# Only needed for tests, this is a false positive of "cargo udeps"
+development = ["tower-http", "stackable-operator"]

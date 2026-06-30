@@ -302,12 +302,14 @@ impl Struct {
             .map(|s| quote! { , shortname = #s })
             .collect();
 
+        let doc = &spec_gen_ctx.kubernetes_arguments.doc;
+
         quote! {
             // The end-developer needs to derive CustomResource and JsonSchema.
             // This is because we don't know if they want to use a re-exported or renamed import.
             #[kube(
                 // These must be comma separated (except the last) as they always exist:
-                group = #group, version = #version, kind = #kind
+                group = #group, version = #version, kind = #kind, doc = #doc
                 // These fields are optional, and therefore the token stream must prefix each with a comma:
                 #singular #plural #namespaced #crates #status #scale #shortnames
             )]

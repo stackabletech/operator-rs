@@ -313,11 +313,7 @@ impl ClusterConditionSet {
         let mut result = Self::new();
 
         // Combine the two condition vectors of old and new `ClusterConditionSet`.
-        for (old_condition, new_condition) in self
-            .conditions
-            .into_iter()
-            .zip(other.conditions.into_iter())
-        {
+        for (old_condition, new_condition) in self.conditions.into_iter().zip(other.conditions) {
             if let Some(condition) = match (old_condition, new_condition) {
                 // If both are set use the `condition_combiner` to update timestamps or concatenate
                 // the message

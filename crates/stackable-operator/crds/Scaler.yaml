@@ -17,7 +17,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Auto-generated derived type for ScalerSpec via `CustomResource`
+        description: Controls the replica count of a Stackable component, integrating with the Kubernetes scale subresource to enable horizontal autoscaling.
         properties:
           spec:
             properties:
@@ -33,8 +33,8 @@ spec:
 
                   Upstream issues:
 
-                  - https://github.com/kubernetes/kubernetes/issues/105533
-                  - https://github.com/Arnavion/k8s-openapi/issues/136
+                  - <https://github.com/kubernetes/kubernetes/issues/105533>
+                  - <https://github.com/Arnavion/k8s-openapi/issues/136>
                 format: uint16
                 maximum: 65535.0
                 minimum: 0.0

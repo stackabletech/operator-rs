@@ -17,6 +17,7 @@ pub mod versioned {
             status_replicas_path = ".status.replicas",
             label_selector_path = ".status.selector"
         ),
+        doc = "Controls the replica count of a Stackable component, integrating with the Kubernetes scale subresource to enable horizontal autoscaling.",
         namespaced
     ))]
     #[derive(Clone, Debug, PartialEq, Eq, CustomResource, Deserialize, Serialize, JsonSchema)]
@@ -31,8 +32,8 @@ pub mod versioned {
         ///
         /// Upstream issues:
         ///
-        /// - https://github.com/kubernetes/kubernetes/issues/105533
-        /// - https://github.com/Arnavion/k8s-openapi/issues/136
+        /// - <https://github.com/kubernetes/kubernetes/issues/105533>
+        /// - <https://github.com/Arnavion/k8s-openapi/issues/136>
         pub replicas: u16,
     }
 }

@@ -24,6 +24,7 @@ mod inputs {
         // mod conversion_tracking;
         // mod crate_overrides;
         // mod crate_overrides_only_kube;
+        // mod crd_doc;
         // mod docs;
         // mod downgrade_with;
         // mod enum_fields;

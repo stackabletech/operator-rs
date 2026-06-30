@@ -17,7 +17,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Auto-generated derived type for ListenerClassSpec via `CustomResource`
+        description: Defines a policy for how Listeners should be exposed.
         properties:
           spec:
             description: |-

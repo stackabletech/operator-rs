@@ -18,6 +18,7 @@ pub mod v1alpha1 {
         group = "foo.example.org",
         version = "v1alpha1",
         kind = "Foo",
+        doc = "Test",
         crates(kube_core = ::kube::core, schemars = ::schemars)
     )]
     pub struct FooSpec {
@@ -74,6 +75,7 @@ pub mod v1beta1 {
         group = "foo.example.org",
         version = "v1beta1",
         kind = "Foo",
+        doc = "Test",
         crates(kube_core = ::kube::core, schemars = ::schemars)
     )]
     pub struct FooSpec {
@@ -132,6 +134,7 @@ pub mod v1 {
         group = "foo.example.org",
         version = "v1",
         kind = "Foo",
+        doc = "Test",
         crates(kube_core = ::kube::core, schemars = ::schemars)
     )]
     pub struct FooSpec {

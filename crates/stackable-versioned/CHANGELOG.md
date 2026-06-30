@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-06-22
+
+### Added
+
+- BREAKING: Add a required `#[versioned(crd(doc = "..."))]` argument that sets the root
+  description of the generated CRD. It is required so that every CRD carries a meaningful
+  description instead of the generic auto-generated one ([#1228]).
+
+[#1228]: https://github.com/stackabletech/operator-rs/pull/1228
+
 ## [0.10.0] - 2026-04-27
 
 ### Added
