@@ -239,21 +239,20 @@ impl ProductImage {
                     // Trim the end to ensure no double slashes are produced below
                     .trim_end_matches('/');
 
+                // First, figure out which version should be used. If the user explicitly specified
+                // a version, use that directly. If no explicit version is set, we need to fall back
+                // to the operator version. 0.0.0-pr* as the operator version results in the product
+                // version to use 0.0.0-dev. In all other cases, the operator version is used as is.
                 let stackable_version = match stackable_version {
                     Some(version) => version,
                     None => {
-                        if operator_version.major == 0
-                            && operator_version.minor == 0
-                            && operator_version.patch == 0
-                            && operator_version.pre.starts_with("pr")
-                        {
+                        if operator_version.is_0_0_0_pr() {
                             tracing::warn!(
                                 %operator_version,
                                 "operator is built by pull request, using {version} build of product image",
                                 version = *ZERO_ZERO_ZERO_DEV
                             );
 
-                            is_floating_tag = true;
                             &*ZERO_ZERO_ZERO_DEV
                         } else {
                             operator_version
@@ -261,8 +260,10 @@ impl ProductImage {
                     }
                 };
 
+                // Determine if the selected stackable version is considered floating once.
+                is_floating_tag = stackable_version.is_floating() || *use_floating_tag;
+
                 let stackable_version = if *use_floating_tag {
-                    is_floating_tag = true;
                     stackable_version.floating()
                 } else {
                     stackable_version.to_string()
@@ -383,7 +384,7 @@ mod tests {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable0.0.0-dev".to_string(),
             app_version_label_value: "1.4.1-stackable0.0.0-dev".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "IfNotPresent".to_string(),
+            image_pull_policy: "Always".to_string(),
             pull_secrets: None,
         }
     )]
