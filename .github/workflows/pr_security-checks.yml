@@ -8,7 +8,7 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
   CARGO_PROFILE_DEV_DEBUG: "0"
-  RUST_TOOLCHAIN_VERSION: "1.93.0"
+  RUST_TOOLCHAIN_VERSION: "1.95.0"
   RUSTFLAGS: "-D warnings"
   RUSTDOCFLAGS: "-D warnings"
   RUST_LOG: "info"
@@ -23,17 +23,20 @@ jobs:
     env:
       RUSTC_BOOTSTRAP: 1
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+
       - name: Install rust toolchain
         run: |
-            rustup toolchain install "${RUST_TOOLCHAIN_VERSION}"
-            rustup default "${RUST_TOOLCHAIN_VERSION}"
-      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
+          rustup toolchain install "${RUST_TOOLCHAIN_VERSION}"
+          rustup default "${RUST_TOOLCHAIN_VERSION}"
+
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
         with:
           key: udeps
-      - run: cargo install --locked cargo-udeps@0.1.60
+
+      - run: cargo install --locked cargo-udeps@0.1.61
       - run: cargo udeps --all-targets --all-features
 
   cargo-deny:
@@ -49,13 +52,15 @@ jobs:
     continue-on-error: ${{ matrix.checks == 'advisories' }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+
       - name: Install rust toolchain
         run: |
-            rustup toolchain install "${RUST_TOOLCHAIN_VERSION}"
-            rustup default "${RUST_TOOLCHAIN_VERSION}"
-      - uses: EmbarkStudios/cargo-deny-action@3fd3802e88374d3fe9159b834c7714ec57d6c979 # v2.0.15
+          rustup toolchain install "${RUST_TOOLCHAIN_VERSION}"
+          rustup default "${RUST_TOOLCHAIN_VERSION}"
+
+      - uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe # v2.0.20
         with:
           command: check ${{ matrix.checks }}
