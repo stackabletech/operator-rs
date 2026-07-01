@@ -47,6 +47,22 @@ repos:
         stages: [pre-commit, pre-merge-commit, manual]
         pass_filenames: false
 
+      - id: cargo-check-all-features
+        name: cargo-check-all-features
+        language: system
+        entry: cargo check --all-target --workspace --all-features
+        stages: [pre-commit, pre-merge-commit]
+        pass_filenames: false
+        files: Cargo\.(toml|lock)
+
+      - id: cargo-check-no-default-features
+        name: cargo-check-no-default-features
+        language: system
+        entry: cargo check --all-target --workspace --no-default-features
+        stages: [pre-commit, pre-merge-commit]
+        pass_filenames: false
+        files: Cargo\.(toml|lock)
+
       - id: cargo-rustfmt
         name: cargo-rustfmt
         language: system
