@@ -50,7 +50,7 @@ repos:
       - id: cargo-check-all-features
         name: cargo-check-all-features
         language: system
-        entry: cargo check --all-target --workspace --all-features
+        entry: cargo check --all-targets --workspace --all-features
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: Cargo\.(toml|lock)
@@ -58,7 +58,7 @@ repos:
       - id: cargo-check-no-default-features
         name: cargo-check-no-default-features
         language: system
-        entry: cargo check --all-target --workspace --no-default-features
+        entry: cargo check --all-targets --workspace --no-default-features
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: Cargo\.(toml|lock)
