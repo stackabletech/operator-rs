@@ -13,7 +13,7 @@ on:
       - crates/**
 
 env:
-  RUST_TOOLCHAIN_VERSION: "1.93.0"
+  RUST_TOOLCHAIN_VERSION: "1.95.0"
 
 permissions: {}
 
@@ -28,8 +28,8 @@ jobs:
 
       - name: Install rust toolchain
         run: |
-            rustup toolchain install "${RUST_TOOLCHAIN_VERSION}"
-            rustup default "${RUST_TOOLCHAIN_VERSION}"
+          rustup toolchain install "${RUST_TOOLCHAIN_VERSION}"
+          rustup default "${RUST_TOOLCHAIN_VERSION}"
 
       - name: Build Crate Docs
         run: cargo doc --no-deps --all-features
