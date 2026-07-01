@@ -9,7 +9,13 @@ All notable changes to this project will be documented in this file.
 - Support the annotation `secrets.stackable.tech/backend.autotls.cert.domain-components-in-subject-dn`
   in the `SecretOperatorVolumeSourceBuilder` ([#1209]).
 
+### Fixed
+
+- Strip ANSI escape codes (e.g. colors) from captured shell stdout/stderr in the generated Vector
+  agent config, so they no longer show up as garbled text in log aggregators such as OpenSearch ([#1237]).
+
 [#1209]: https://github.com/stackabletech/operator-rs/pull/1209
+[#1237]: https://github.com/stackabletech/operator-rs/pull/1237
 
 ## [0.113.0] - 2026-06-22
 

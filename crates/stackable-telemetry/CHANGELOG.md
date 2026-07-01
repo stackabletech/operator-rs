@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Revert [#1183], so we again default to ANSI escape sequences, which can be turned off using
+  `NO_COLOR=1`.
+  This way we keep colored logs for human consumption.
+  Instead we adopted the Vector config, so that the Vector sidecar strips ANSI codes ([#1237]).
+
+[#1237]: https://github.com/stackabletech/operator-rs/pull/1237
+
 ## [0.6.4] - 2026-06-03
 
 Note: There are only dependency bumps in this release
