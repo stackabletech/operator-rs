@@ -410,7 +410,7 @@ where
     CommonConfig: Default + JsonSchema + Serialize,
     ConfigOverrides: Default + JsonSchema + Serialize,
 {
-    /// Returns [`Some<u32>`] in case the number of nodes is hard-coded to a certain value.
+    /// Returns [`Some<u32>`] in case the number of replicas is hard-coded to a certain value.
     ///
     /// This is the case when all `replicas` are set to [`Some<u16>`], in which case they are simply
     /// summed.
