@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Support the annotation `secrets.stackable.tech/backend.autotls.cert.domain-components-in-subject-dn`
   in the `SecretOperatorVolumeSourceBuilder` ([#1209]).
-- Add `Role::fixed_replica_count` function that returns (optionally) the number of fixed replicas ([#XXXX]).
+- Add `Role::fixed_replica_count` and `Role::estimated_replica_count` helper functions ([#XXXX]).
 
 [#1209]: https://github.com/stackabletech/operator-rs/pull/1209
 [#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX

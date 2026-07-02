@@ -434,6 +434,18 @@ where
             })
             .sum()
     }
+
+    /// Returns the estimated total number of replicas across all role groups.
+    ///
+    /// Unlike [`Self::fixed_replica_count`], this always returns a value: a role group with an unset
+    /// (i.e. [`None`]) replica count is assumed to run a single replica. Use this when a best-effort
+    /// estimate is needed even though the exact number of replicas is not hard-coded.
+    pub fn estimated_replica_count(&self) -> u32 {
+        self.role_groups
+            .values()
+            .map(|rg| u32::from(rg.replicas.unwrap_or(1)))
+            .sum()
+    }
 }
 
 impl<Config, ConfigOverrides, RoleConfig>
@@ -689,44 +701,49 @@ mod tests {
     }
 
     #[test]
-    fn fixed_replica_count_sums_all_set_replicas() {
+    fn replica_counts_with_all_replicas_set() {
         let role = construct_role_with_replicas([Some(3), Some(2), Some(5)]);
 
         assert_eq!(role.fixed_replica_count(false), Some(10));
         assert_eq!(role.fixed_replica_count(true), Some(10));
+        assert_eq!(role.estimated_replica_count(), 10);
     }
 
     #[test]
-    fn fixed_replica_count_is_none_if_any_replica_is_unset() {
+    fn replica_counts_with_one_replica_unset() {
         let role = construct_role_with_replicas([Some(3), None, Some(2)]);
 
         assert_eq!(role.fixed_replica_count(false), None);
         assert_eq!(role.fixed_replica_count(true), None);
+        assert_eq!(role.estimated_replica_count(), 6);
     }
 
     #[test]
-    fn fixed_replica_count_treats_zero_according_to_flag() {
+    fn replica_counts_with_a_zero_replica() {
         let role = construct_role_with_replicas([Some(3), Some(0)]);
 
         assert_eq!(role.fixed_replica_count(false), Some(3));
         // With treat_zero_as_none the zero turns the whole count into None.
         assert_eq!(role.fixed_replica_count(true), None);
+        assert_eq!(role.estimated_replica_count(), 3);
     }
 
     #[test]
-    fn fixed_replica_count_of_single_zero_role_group() {
+    fn replica_counts_with_a_single_zero_role_group() {
         let role = construct_role_with_replicas([Some(0)]);
 
         assert_eq!(role.fixed_replica_count(false), Some(0));
         assert_eq!(role.fixed_replica_count(true), None);
+        assert_eq!(role.estimated_replica_count(), 0);
     }
 
     #[test]
-    fn fixed_replica_count_of_role_without_role_groups_is_zero() {
+    fn replica_counts_without_role_groups() {
         let role = construct_role_with_replicas(vec![]);
 
         assert_eq!(role.fixed_replica_count(false), Some(0));
         assert_eq!(role.fixed_replica_count(true), None);
+        assert_eq!(role.estimated_replica_count(), 0);
     }
 
     /// Builds a [`Role`] with one role group per passed `replicas` entry, so tests only need to
