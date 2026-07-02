@@ -415,12 +415,15 @@ where
     /// This is the case when all `replicas` are set to [`Some<u16>`], in which case they are simply
     /// summed.
     ///
-    /// The argument `treat_zero_as_none` is a safety mechanism, which allows the caller to decide
-    /// if an explicit replica count of `0` should be treated as [`None`]. It also means that
+    /// The argument `zero_replicas_counting` is a safety mechanism, which allows the caller to
+    /// decide if an explicit replica count of `0` should be treated as [`None`]. It also means that
     /// [`None`] is returned in case no roleGroups are configured at all.
-    pub fn fixed_replica_count(&self, treat_zero_as_none: bool) -> Option<u32> {
+    pub fn fixed_replica_count(
+        &self,
+        zero_replicas_counting: ZeroReplicasCounting,
+    ) -> Option<u32> {
         // An empty role has no fixed replica count when zeros are treated as None.
-        if treat_zero_as_none && self.role_groups.is_empty() {
+        if zero_replicas_counting == ZeroReplicasCounting::TreatAsNone && self.role_groups.is_empty() {
             return None;
         }
 
@@ -428,7 +431,7 @@ where
             .values()
             .map(|rg| match rg.replicas {
                 None => None,
-                Some(0) if treat_zero_as_none => None,
+                Some(0) if zero_replicas_counting == ZeroReplicasCounting::TreatAsNone => None,
                 // The individual replicas are [`u16`]s, so a [`u32`] sum has plenty of space.
                 Some(replicas) => Some(u32::from(replicas)),
             })
@@ -446,6 +449,15 @@ where
             .map(|rg| u32::from(rg.replicas.unwrap_or(1)))
             .sum()
     }
+}
+
+/// How explicit zero (`0`) replicas on a role group should be counted
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ZeroReplicasCounting {
+    /// Treat them as what they are: `Some(0)`.
+    TreatAsZero,
+    /// Treat them as if the user configured [`None`].
+    TreatAsNone,
 }
 
 impl<Config, ConfigOverrides, RoleConfig>
@@ -704,8 +716,8 @@ mod tests {
     fn replica_counts_with_all_replicas_set() {
         let role = construct_role_with_replicas([Some(3), Some(2), Some(5)]);
 
-        assert_eq!(role.fixed_replica_count(false), Some(10));
-        assert_eq!(role.fixed_replica_count(true), Some(10));
+        assert_eq!(role.fixed_replica_count(ZeroReplicasCounting::TreatAsZero), Some(10));
+        assert_eq!(role.fixed_replica_count(ZeroReplicasCounting::TreatAsNone), Some(10));
         assert_eq!(role.estimated_replica_count(), 10);
     }
 
@@ -713,8 +725,8 @@ mod tests {
     fn replica_counts_with_one_replica_unset() {
         let role = construct_role_with_replicas([Some(3), None, Some(2)]);
 
-        assert_eq!(role.fixed_replica_count(false), None);
-        assert_eq!(role.fixed_replica_count(true), None);
+        assert_eq!(role.fixed_replica_count(ZeroReplicasCounting::TreatAsZero), None);
+        assert_eq!(role.fixed_replica_count(ZeroReplicasCounting::TreatAsNone), None);
         assert_eq!(role.estimated_replica_count(), 6);
     }
 
@@ -722,9 +734,9 @@ mod tests {
     fn replica_counts_with_a_zero_replica() {
         let role = construct_role_with_replicas([Some(3), Some(0)]);
 
-        assert_eq!(role.fixed_replica_count(false), Some(3));
+        assert_eq!(role.fixed_replica_count(ZeroReplicasCounting::TreatAsZero), Some(3));
         // With treat_zero_as_none the zero turns the whole count into None.
-        assert_eq!(role.fixed_replica_count(true), None);
+        assert_eq!(role.fixed_replica_count(ZeroReplicasCounting::TreatAsNone), None);
         assert_eq!(role.estimated_replica_count(), 3);
     }
 
@@ -732,8 +744,8 @@ mod tests {
     fn replica_counts_with_a_single_zero_role_group() {
         let role = construct_role_with_replicas([Some(0)]);
 
-        assert_eq!(role.fixed_replica_count(false), Some(0));
-        assert_eq!(role.fixed_replica_count(true), None);
+        assert_eq!(role.fixed_replica_count(ZeroReplicasCounting::TreatAsZero), Some(0));
+        assert_eq!(role.fixed_replica_count(ZeroReplicasCounting::TreatAsNone), None);
         assert_eq!(role.estimated_replica_count(), 0);
     }
 
@@ -741,8 +753,8 @@ mod tests {
     fn replica_counts_without_role_groups() {
         let role = construct_role_with_replicas(vec![]);
 
-        assert_eq!(role.fixed_replica_count(false), Some(0));
-        assert_eq!(role.fixed_replica_count(true), None);
+        assert_eq!(role.fixed_replica_count(ZeroReplicasCounting::TreatAsZero), Some(0));
+        assert_eq!(role.fixed_replica_count(ZeroReplicasCounting::TreatAsNone), None);
         assert_eq!(role.estimated_replica_count(), 0);
     }
 
