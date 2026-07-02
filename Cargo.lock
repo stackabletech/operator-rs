@@ -3823,7 +3823,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-webhook"
-version = "0.9.1"
+version = "0.9.2"
 dependencies = [
  "arc-swap",
  "async-trait",
