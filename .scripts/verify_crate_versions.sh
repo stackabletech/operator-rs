@@ -3,6 +3,7 @@
 set -euo pipefail
 
 # Eg: makes a list like this based on the latest release in the CHANGELOG.md files:
+# containerdebug-0.4.1
 # k8s-version-0.1.1
 # stackable-certs-0.3.1
 # stackable-operator-0.70.0

@@ -9,6 +9,8 @@ repos:
       - id: cargo-doc
         name: cargo-doc
         language: system
+        env:
+          K8S_OPENAPI_ENABLED_VERSION: "1.36"
         entry: cargo doc --no-deps --document-private-items --package stackable-versioned
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
@@ -17,6 +19,8 @@ repos:
       - id: cargo-doc-no-default-features
         name: cargo-doc-no-default-features
         language: system
+        env:
+          K8S_OPENAPI_ENABLED_VERSION: "1.36"
         entry: cargo doc --no-deps --no-default-features --document-private-items --package stackable-versioned
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
@@ -25,6 +29,8 @@ repos:
       - id: cargo-doc-all-features
         name: cargo-doc-all-features
         language: system
+        env:
+          K8S_OPENAPI_ENABLED_VERSION: "1.36"
         entry: cargo doc --no-deps --all-features --document-private-items --package stackable-versioned
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
@@ -39,7 +45,7 @@ repos:
         files: .*\.rs$|Cargo\.toml
 
       - id: cargo-test-all-features
-        name: cargo-test-no-default-features
+        name: cargo-test-all-default-features
         language: system
         entry: cargo test --all-features --package stackable-versioned
         stages: [pre-commit, pre-merge-commit]

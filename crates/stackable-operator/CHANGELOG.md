@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.113.1] - 2026-07-06
+
 ### Added
 
 - Support the annotation `secrets.stackable.tech/backend.autotls.cert.domain-components-in-subject-dn`
