@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `raw_object_schema` to v2 `JsonConfigOverrides` ([#1242]).
+
+[#1242]: https://github.com/stackabletech/operator-rs/pull/1242
+
 ## [0.113.1] - 2026-07-06
 
 ### Added

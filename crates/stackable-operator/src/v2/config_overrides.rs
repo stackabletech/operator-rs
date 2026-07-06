@@ -78,6 +78,7 @@ where
 pub enum JsonConfigOverrides {
     /// Can be set to arbitrary YAML content, which is converted to JSON and used as
     /// [RFC 7396](https://datatracker.ietf.org/doc/html/rfc7396) JSON merge patch.
+    #[schemars(schema_with = "raw_object_schema")]
     JsonMergePatch(serde_json::Value),
 
     /// An [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON patch.
@@ -92,9 +93,11 @@ pub enum JsonConfigOverrides {
     /// or
     ///
     /// `- {"op": "add", "path": "/0/happy", "value": true}`
+    #[schemars(schema_with = "raw_object_schema")]
     JsonPatch(json_patch::Patch),
 
     /// Override the entire config file with the specified JSON value.
+    #[schemars(schema_with = "raw_object_schema")]
     UserProvided(serde_json::Value),
 
     /// Sequence of [`JsonConfigOverrides`] starting with the latest patch
