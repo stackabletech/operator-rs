@@ -1,5 +1,9 @@
-use std::collections::{BTreeMap, btree_map};
+use std::{
+    collections::{BTreeMap, BTreeSet, btree_map},
+    str::FromStr,
+};
 
+use regex::Regex;
 use snafu::Snafu;
 use strum::{EnumDiscriminants, IntoStaticStr};
 
@@ -7,7 +11,10 @@ use crate::{
     attributed_string_type,
     builder::pod::container::{ContainerBuilder, FieldPathEnvVar},
     k8s_openapi::api::core::v1::{ConfigMapKeySelector, EnvVar, EnvVarSource, ObjectFieldSelector},
-    v2::types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName},
+    v2::{
+        macros::attributed_string_type,
+        types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName},
+    },
 };
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
@@ -58,6 +65,15 @@ impl EnvVarSet {
         self.0.append(&mut env_var_set.0);
 
         self
+    }
+
+    /// Adds the given [`EnvVar`] to this set
+    ///
+    /// An [`EnvVar`] with the same name is overridden.
+    pub fn with_env_var(mut self, env_var: EnvVar) -> Result<Self, attributed_string_type::Error> {
+        self.0.insert(EnvVarName::from_str(&env_var.name)?, env_var);
+
+        Ok(self)
     }
 
     /// Adds the given [`EnvVar`]s to this set
@@ -144,7 +160,335 @@ impl EnvVarSet {
 
 impl From<EnvVarSet> for Vec<EnvVar> {
     fn from(value: EnvVarSet) -> Self {
-        value.0.values().cloned().collect()
+        let mut env_var_closure = EnvVarDependencyResolver::new(&value, 10);
+
+        let mut vec: Self = value.0.values().cloned().collect();
+        vec.sort_by_key(|env_var| env_var_closure.sort_key(env_var));
+        vec
+    }
+}
+
+/// Resolves dependencies between environment variables and provides sort keys which take these
+/// dependencies into account
+pub struct EnvVarDependencyResolver<'a> {
+    /// [EnvVarSet] with possibly dependent environment variables
+    env_vars: &'a EnvVarSet,
+
+    /// Maximum recursion depth
+    ///
+    /// Long dependency chains could slow down the operator.
+    max_recursion_depth: usize,
+
+    /// Pattern for an escaped environment variable reference, e.g. `$$(ESCAPED_REFERENCE)`
+    escaped_env_vars_pattern: Regex,
+
+    /// Pattern for a referenced environment variable, e.g. `$(ENV_VAR)`
+    referenced_env_vars_pattern: Regex,
+}
+
+impl<'a> EnvVarDependencyResolver<'a> {
+    pub fn new(env_vars: &'a EnvVarSet, max_recursion_depth: usize) -> Self {
+        Self {
+            env_vars,
+            max_recursion_depth,
+            escaped_env_vars_pattern: Regex::new(r"\$\$\([^\)]*\)")
+                .expect("should be a valid regular expression"),
+            referenced_env_vars_pattern: Regex::new(r"\$\(([^\)]+)\)")
+                .expect("should be a valid regular expression"),
+        }
+    }
+
+    /// Returns a sort key for the given environment variable which considers dependencies to other
+    /// environment variables
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::{
+    /// #     collections::BTreeSet,
+    /// #     str::FromStr,
+    /// # };
+    /// # use stackable_operator::{
+    /// #     k8s_openapi::api::core::v1::{
+    /// #         EnvVar, EnvVarSource, ObjectFieldSelector
+    /// #     },
+    /// #     v2::builder::pod::container::{
+    /// #         EnvVarDependencyResolver, EnvVarName, EnvVarSet
+    /// #     },
+    /// # };
+    ///
+    /// let env_var1 = EnvVar {
+    ///     name: "ENV1".to_owned(),
+    ///     value: Some("references to $(ENV2) and $(ENV4)".to_owned()),
+    ///     value_from: None,
+    /// };
+    /// let env_var2 = EnvVar {
+    ///     name: "ENV2".to_owned(),
+    ///     value: Some("reference to $(ENV4)".to_owned()),
+    ///     value_from: None,
+    /// };
+    /// let env_var3 = EnvVar {
+    ///     name: "ENV3".to_owned(),
+    ///     value: Some("reference to $(ENV4)".to_owned()),
+    ///     value_from: None,
+    /// };
+    /// let env_var4 = EnvVar {
+    ///     name: "ENV4".to_owned(),
+    ///     value: None,
+    ///     value_from: Some(EnvVarSource {
+    ///         field_ref: Some(ObjectFieldSelector {
+    ///             field_path: "metadata.name".to_owned(),
+    ///             ..ObjectFieldSelector::default()
+    ///         }),
+    ///         ..EnvVarSource::default()
+    ///     }),
+    /// };
+    /// let env_var5 = EnvVar {
+    ///     name: "ENV5".to_owned(),
+    ///     value: Some("self reference to $(ENV5)".to_owned()),
+    ///     value_from: None,
+    /// };
+    ///
+    /// let env_vars = EnvVarSet::new()
+    ///     .with_env_var(env_var1.clone())
+    ///     .unwrap()
+    ///     .with_env_var(env_var2.clone())
+    ///     .unwrap()
+    ///     .with_env_var(env_var3.clone())
+    ///     .unwrap()
+    ///     .with_env_var(env_var4.clone())
+    ///     .unwrap()
+    ///     .with_env_var(env_var5.clone())
+    ///     .unwrap();
+    ///
+    /// let mut resolver = EnvVarDependencyResolver::new(&env_vars, 2);
+    /// assert_eq!(
+    ///     vec!["ENV4".to_owned(), "ENV2".to_owned(), "ENV1".to_owned()],
+    ///     resolver.sort_key(&env_var1)
+    /// );
+    /// assert_eq!(
+    ///     vec!["ENV4".to_owned(), "ENV2".to_owned()],
+    ///     resolver.sort_key(&env_var2)
+    /// );
+    /// assert_eq!(
+    ///     vec!["ENV4".to_owned(), "ENV3".to_owned()],
+    ///     resolver.sort_key(&env_var3)
+    /// );
+    /// assert_eq!(vec!["ENV4".to_owned()], resolver.sort_key(&env_var4));
+    /// assert_eq!(vec!["ENV5".to_owned()], resolver.sort_key(&env_var5));
+    /// ```
+    pub fn sort_key(&mut self, env_var: &EnvVar) -> Vec<String> {
+        if let Some(mut closure) = self.calculate_closure(env_var) {
+            // Add the name of the variable to its closure to make the set unique for every
+            // variable.
+            closure.insert(env_var.name.clone());
+
+            closure.into_iter().rev().collect()
+        } else {
+            vec![env_var.name.clone()]
+        }
+    }
+
+    /// Calculates the transitive closure of referenced environment variables
+    ///
+    /// If the given environment variable is part of a reference cycle or a reference chain longer
+    /// than the maximum recursion depth, then `None` is returned.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::{
+    /// #     collections::BTreeSet,
+    /// #     str::FromStr,
+    /// # };
+    /// # use stackable_operator::{
+    /// #     k8s_openapi::api::core::v1::{
+    /// #         EnvVar, EnvVarSource, ObjectFieldSelector
+    /// #     },
+    /// #     v2::builder::pod::container::{
+    /// #         EnvVarDependencyResolver, EnvVarName, EnvVarSet
+    /// #     },
+    /// # };
+    ///
+    /// let env_var1 = EnvVar {
+    ///     name: "ENV1".to_owned(),
+    ///     value: Some("references to $(ENV2) and $(ENV4)".to_owned()),
+    ///     value_from: None,
+    /// };
+    /// let env_var2 = EnvVar {
+    ///     name: "ENV2".to_owned(),
+    ///     value: Some("reference to $(ENV4)".to_owned()),
+    ///     value_from: None,
+    /// };
+    /// let env_var3 = EnvVar {
+    ///     name: "ENV3".to_owned(),
+    ///     value: Some("reference to $(ENV4)".to_owned()),
+    ///     value_from: None,
+    /// };
+    /// let env_var4 = EnvVar {
+    ///     name: "ENV4".to_owned(),
+    ///     value: None,
+    ///     value_from: Some(EnvVarSource {
+    ///         field_ref: Some(ObjectFieldSelector {
+    ///             field_path: "metadata.name".to_owned(),
+    ///             ..ObjectFieldSelector::default()
+    ///         }),
+    ///         ..EnvVarSource::default()
+    ///     }),
+    /// };
+    /// let env_var5 = EnvVar {
+    ///     name: "ENV5".to_owned(),
+    ///     value: Some("self reference to $(ENV5)".to_owned()),
+    ///     value_from: None,
+    /// };
+    /// let env_var6 = EnvVar {
+    ///     name: "ENV6".to_owned(),
+    ///     value: Some("cyclic reference to $(ENV7)".to_owned()),
+    ///     value_from: None,
+    /// };
+    /// let env_var7 = EnvVar {
+    ///     name: "ENV7".to_owned(),
+    ///     value: Some("cyclic reference to $(ENV6)".to_owned()),
+    ///     value_from: None,
+    /// };
+    /// let env_var8 = EnvVar {
+    ///     name: "ENV8".to_owned(),
+    ///     value: Some("long reference chain to $(ENV1)".to_owned()),
+    ///     value_from: None,
+    /// };
+    ///
+    /// let env_vars = EnvVarSet::new()
+    ///     .with_env_var(env_var1.clone())
+    ///     .unwrap()
+    ///     .with_env_var(env_var2.clone())
+    ///     .unwrap()
+    ///     .with_env_var(env_var3.clone())
+    ///     .unwrap()
+    ///     .with_env_var(env_var4.clone())
+    ///     .unwrap()
+    ///     .with_env_var(env_var5.clone())
+    ///     .unwrap()
+    ///     .with_env_var(env_var6.clone())
+    ///     .unwrap()
+    ///     .with_env_var(env_var7.clone())
+    ///     .unwrap()
+    ///     .with_env_var(env_var8.clone())
+    ///     .unwrap();
+    ///
+    /// let mut resolver = EnvVarDependencyResolver::new(&env_vars, 2);
+    /// assert_eq!(
+    ///     Some(BTreeSet::from(["ENV2".to_owned(), "ENV4".to_owned()])),
+    ///     resolver.calculate_closure(&env_var1)
+    /// );
+    /// assert_eq!(
+    ///     Some(BTreeSet::from(["ENV4".to_owned()])),
+    ///     resolver.calculate_closure(&env_var2)
+    /// );
+    /// assert_eq!(
+    ///     Some(BTreeSet::from(["ENV4".to_owned()])),
+    ///     resolver.calculate_closure(&env_var3)
+    /// );
+    /// assert_eq!(Some(BTreeSet::new()), resolver.calculate_closure(&env_var4));
+    /// assert_eq!(None, resolver.calculate_closure(&env_var5));
+    /// assert_eq!(None, resolver.calculate_closure(&env_var6));
+    /// assert_eq!(None, resolver.calculate_closure(&env_var7));
+    /// assert_eq!(None, resolver.calculate_closure(&env_var8));
+    /// ```
+    pub fn calculate_closure(&mut self, env_var: &EnvVar) -> Option<BTreeSet<String>> {
+        self.calculate_closure_rec(env_var, self.max_recursion_depth)
+    }
+
+    fn calculate_closure_rec(
+        &mut self,
+        env_var: &EnvVar,
+        remaining_recursion_depth: usize,
+    ) -> Option<BTreeSet<String>> {
+        if env_var.value.is_none() {
+            Some(BTreeSet::new())
+        } else if let Some(value) = &env_var.value
+            && remaining_recursion_depth > 0
+        {
+            let mut closure = BTreeSet::new();
+
+            for referenced_env_var in self.referenced_env_vars(value) {
+                closure.insert(referenced_env_var.name.clone());
+                closure.extend(
+                    self.calculate_closure_rec(referenced_env_var, remaining_recursion_depth - 1)?,
+                );
+            }
+
+            Some(closure)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the directly referenced environment variables
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::str::FromStr;
+    /// # use stackable_operator::{
+    /// #     k8s_openapi::api::core::v1::EnvVar,
+    /// #     v2::builder::pod::container::{
+    /// #         EnvVarDependencyResolver, EnvVarName, EnvVarSet
+    /// #     },
+    /// # };
+    ///
+    /// let env_vars = EnvVarSet::new().with_values([
+    ///     (EnvVarName::from_str("ENV1").unwrap(), "value 1"),
+    ///     (EnvVarName::from_str("ENV2").unwrap(), "value 2"),
+    ///     (EnvVarName::from_str("ENV3").unwrap(), "value 3"),
+    /// ]);
+    ///
+    /// let resolver = EnvVarDependencyResolver::new(&env_vars, 10);
+    ///
+    /// assert_eq!(
+    ///     Vec::<&EnvVar>::new(),
+    ///     resolver.referenced_env_vars("no references")
+    /// );
+    /// assert_eq!(
+    ///     vec![
+    ///         &EnvVar {
+    ///             name: "ENV2".to_owned(),
+    ///             value: Some("value 2".to_owned()),
+    ///             value_from: None
+    ///         },
+    ///         &EnvVar {
+    ///             name: "ENV3".to_owned(),
+    ///             value: Some("value 3".to_owned()),
+    ///             value_from: None
+    ///         },
+    ///     ],
+    ///     resolver.referenced_env_vars("references to $(ENV2) and $(ENV3)")
+    /// );
+    /// assert_eq!(
+    ///     vec![&EnvVar {
+    ///         name: "ENV1".to_owned(),
+    ///         value: Some("value 1".to_owned()),
+    ///         value_from: None
+    ///     }],
+    ///     resolver.referenced_env_vars("reference to $(ENV1) and escaped reference to $$(ENV2)")
+    /// );
+    /// assert_eq!(
+    ///     vec![&EnvVar {
+    ///         name: "ENV1".to_owned(),
+    ///         value: Some("value 1".to_owned()),
+    ///         value_from: None
+    ///     }],
+    ///     resolver.referenced_env_vars("reference to $(ENV1) and invalid reference to $(ENV4)")
+    /// );
+    /// ```
+    pub fn referenced_env_vars(&self, value: &str) -> Vec<&'a EnvVar> {
+        let value_without_escapes = self.escaped_env_vars_pattern.replace_all(value, "");
+
+        self.referenced_env_vars_pattern
+            .captures_iter(&value_without_escapes)
+            .filter_map(|capture| capture.get(1))
+            .filter_map(|regex_match| EnvVarName::from_str(regex_match.as_str()).ok())
+            .filter_map(|env_var_name| self.env_vars.0.get(&env_var_name))
+            .collect()
     }
 }
 
@@ -344,6 +688,93 @@ mod tests {
                 }),
             }),
             env_var_set.get(&EnvVarName::from_str_unsafe("ENV"))
+        );
+    }
+
+    #[test]
+    fn test_envvarset_with_references() {
+        let env_var_set = EnvVarSet::new()
+            .with_value(&EnvVarName::from_str_unsafe("ENV1"), "value1")
+            // valid reference to a later variable
+            .with_value(&EnvVarName::from_str_unsafe("ENV2"), "$(ENV3)")
+            // valid reference to a later variable
+            .with_value(&EnvVarName::from_str_unsafe("ENV3"), "$(ENV4)")
+            // valid reference to an earlier variable
+            .with_value(&EnvVarName::from_str_unsafe("ENV4"), "$(ENV1)")
+            // invalid reference
+            .with_value(&EnvVarName::from_str_unsafe("ENV5"), "$(ENV?)")
+            // Same keys are allowed in Kubernetes, but not in `EnvVarSet`.
+            // The existing ENV1 is overridden.
+            .with_value(&EnvVarName::from_str_unsafe("ENV6"), "value6")
+            .with_value(&EnvVarName::from_str_unsafe("ENV6"), "$(ENV6)")
+            // multiple references
+            .with_value(
+                &EnvVarName::from_str_unsafe("ENV7"),
+                "$(ENV5) $(ENV8) $(ENV2)",
+            )
+            // multiple references with escaped and invalid references
+            .with_value(
+                &EnvVarName::from_str_unsafe("ENV8"),
+                "$(ENV1) $$(ENV9) $() $(ENV2)",
+            )
+            // No value
+            .with_field_path(&EnvVarName::from_str_unsafe("ENV9"), &FieldPathEnvVar::Name);
+
+        assert_eq!(
+            vec![
+                EnvVar {
+                    name: "ENV1".to_owned(),
+                    value: Some("value1".to_owned()),
+                    value_from: None
+                },
+                EnvVar {
+                    name: "ENV4".to_owned(),
+                    value: Some("$(ENV1)".to_owned()),
+                    value_from: None
+                },
+                EnvVar {
+                    name: "ENV3".to_owned(),
+                    value: Some("$(ENV4)".to_owned()),
+                    value_from: None
+                },
+                EnvVar {
+                    name: "ENV2".to_owned(),
+                    value: Some("$(ENV3)".to_owned()),
+                    value_from: None
+                },
+                EnvVar {
+                    name: "ENV5".to_owned(),
+                    value: Some("$(ENV?)".to_owned()),
+                    value_from: None
+                },
+                EnvVar {
+                    name: "ENV6".to_owned(),
+                    value: Some("$(ENV6)".to_owned()),
+                    value_from: None
+                },
+                EnvVar {
+                    name: "ENV8".to_owned(),
+                    value: Some("$(ENV1) $$(ENV9) $() $(ENV2)".to_owned()),
+                    value_from: None
+                },
+                EnvVar {
+                    name: "ENV7".to_owned(),
+                    value: Some("$(ENV5) $(ENV8) $(ENV2)".to_owned()),
+                    value_from: None
+                },
+                EnvVar {
+                    name: "ENV9".to_owned(),
+                    value: None,
+                    value_from: Some(EnvVarSource {
+                        field_ref: Some(ObjectFieldSelector {
+                            field_path: FieldPathEnvVar::Name.to_string(),
+                            ..ObjectFieldSelector::default()
+                        }),
+                        ..EnvVarSource::default()
+                    }),
+                },
+            ],
+            Vec::from(env_var_set)
         );
     }
 }
