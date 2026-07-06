@@ -20,7 +20,7 @@ pub enum SecretClassVolumeError {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct SecretClassVolume {
-    /// [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass) containing the LDAP bind credentials.
+    /// [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass) providing the requested secrets.
     pub secret_class: String,
 
     /// [Scope](DOCS_BASE_URL_PLACEHOLDER/secret-operator/scope) of the
