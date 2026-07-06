@@ -154,7 +154,7 @@ impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()> {
     /// Mutually exclusive with [`PodDisruptionBudgetBuilder::with_max_unavailable`].
     #[deprecated(
         since = "0.51.0",
-        note = "It is strongly recommended to use [`max_unavailable`]. Please read the ADR on Pod disruptions before using this function."
+        note = "It is strongly recommended to use [`PodDisruptionBudgetBuilder::with_max_unavailable`]. Please read the ADR on Pod disruptions before using this function."
     )]
     pub fn with_min_available(
         self,
