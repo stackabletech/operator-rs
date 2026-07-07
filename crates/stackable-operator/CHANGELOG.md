@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.113.3] - 2026-07-07
+
 ### Fixed
 
 - [v2] Don't require the `attributed_string_type` macro caller to have `std::str::FromStr` in scope ([#1244]).
