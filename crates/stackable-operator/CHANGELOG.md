@@ -7,8 +7,10 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - [v2] Don't require the `attributed_string_type` macro caller to have `std::str::FromStr` in scope ([#1244]).
+- [v2] Fix the JSON schema of `JsonConfigOverrides` ([#1245]).
 
 [#1244]: https://github.com/stackabletech/operator-rs/pull/1244
+[#1245]: https://github.com/stackabletech/operator-rs/pull/1245
 
 ## [0.113.2] - 2026-07-07
 

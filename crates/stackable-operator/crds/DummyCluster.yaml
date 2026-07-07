@@ -979,7 +979,7 @@ spec:
                         - required:
                           - jsonMergePatch
                         - required:
-                          - jsonPatches
+                          - jsonPatch
                         - required:
                           - userProvided
                         properties:
@@ -989,22 +989,23 @@ spec:
                               [RFC 7396](https://datatracker.ietf.org/doc/html/rfc7396) JSON merge patch.
                             type: object
                             x-kubernetes-preserve-unknown-fields: true
-                          jsonPatches:
+                          jsonPatch:
                             description: |-
-                              List of [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON patches.
+                              An [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON patch.
 
                               Can be used when more flexibility is needed, e.g. to only modify elements
                               in a list based on a condition.
 
                               A patch looks something like
 
-                              `{"op": "test", "path": "/0/name", "value": "Andrew"}`
+                              `- {"op": "test", "path": "/0/name", "value": "Andrew"}`
 
                               or
 
-                              `{"op": "add", "path": "/0/happy", "value": true}`
+                              `- {"op": "add", "path": "/0/happy", "value": true}`
                             items:
-                              type: string
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
                             type: array
                           userProvided:
                             description: |-
@@ -1657,7 +1658,7 @@ spec:
                               - required:
                                 - jsonMergePatch
                               - required:
-                                - jsonPatches
+                                - jsonPatch
                               - required:
                                 - userProvided
                               properties:
@@ -1667,22 +1668,23 @@ spec:
                                     [RFC 7396](https://datatracker.ietf.org/doc/html/rfc7396) JSON merge patch.
                                   type: object
                                   x-kubernetes-preserve-unknown-fields: true
-                                jsonPatches:
+                                jsonPatch:
                                   description: |-
-                                    List of [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON patches.
+                                    An [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON patch.
 
                                     Can be used when more flexibility is needed, e.g. to only modify elements
                                     in a list based on a condition.
 
                                     A patch looks something like
 
-                                    `{"op": "test", "path": "/0/name", "value": "Andrew"}`
+                                    `- {"op": "test", "path": "/0/name", "value": "Andrew"}`
 
                                     or
 
-                                    `{"op": "add", "path": "/0/happy", "value": true}`
+                                    `- {"op": "add", "path": "/0/happy", "value": true}`
                                   items:
-                                    type: string
+                                    type: object
+                                    x-kubernetes-preserve-unknown-fields: true
                                   type: array
                                 userProvided:
                                   description: |-
