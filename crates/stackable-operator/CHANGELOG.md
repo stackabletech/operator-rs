@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- [v2]: Don't require the `attributed_string_type` macro caller to have `std::str::FromStr` in scope ([#1244]).
+- [v2] Don't require the `attributed_string_type` macro caller to have `std::str::FromStr` in scope ([#1244]).
 
 [#1244]: https://github.com/stackabletech/operator-rs/pull/1244
 
