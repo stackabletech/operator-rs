@@ -1,6 +1,4 @@
 //! Kubernetes (resource) names
-use std::str::FromStr;
-
 use crate::{
     attributed_string_type,
     validation::{RFC_1123_LABEL_MAX_LENGTH, RFC_1123_SUBDOMAIN_MAX_LENGTH},

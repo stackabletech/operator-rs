@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, btree_map},
-    str::FromStr,
-};
+use std::collections::{BTreeMap, btree_map};
 
 use snafu::Snafu;
 use strum::{EnumDiscriminants, IntoStaticStr};

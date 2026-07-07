@@ -1,7 +1,5 @@
 //! Names for operators
 
-use std::str::FromStr;
-
 use crate::attributed_string_type;
 
 attributed_string_type! {
