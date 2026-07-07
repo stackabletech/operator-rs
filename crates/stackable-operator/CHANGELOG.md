@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.113.2] - 2026-07-07
+
 ### Added
 
 - Add `raw_object_schema` to v2 `JsonConfigOverrides` ([#1242]).
