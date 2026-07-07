@@ -99,7 +99,31 @@ pub enum JsonConfigOverrides {
     #[schemars(schema_with = "raw_object_list_schema")]
     JsonPatch(json_patch::Patch),
 
-    /// Override the entire config file with the specified JSON value.
+    /// Override the entire config file with the specified JSON document.
+    ///
+    /// Please note that you can in-line JSON into YAML as follows:
+    ///
+    /// ```yaml
+    /// # ... other YAML content
+    /// userProvided: {
+    ///   "myString": "test",
+    ///   "myList": ["test"],
+    ///   "myBool": true,
+    ///   "my": {"nested.field.with.dots": 42}
+    /// }
+    /// ```
+    ///
+    /// As an alternative you can also stick to YAML:
+    ///
+    /// ```yaml
+    /// # ... other YAML content
+    /// userProvided:
+    ///   myString: test
+    ///   myList: [test]
+    ///   myBool: true
+    ///   my:
+    ///     nested.field.with.dots: 42
+    /// ```
     #[schemars(schema_with = "raw_object_schema")]
     UserProvided(serde_json::Value),
 
