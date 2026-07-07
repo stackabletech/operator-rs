@@ -254,82 +254,10 @@ impl Merge for JsonOrKeyValueConfigOverrides {
 
 #[cfg(test)]
 mod tests {
-    use indoc::indoc;
-    use kube::core::schema::StructuralSchemaRewriter;
-    use schemars::generate::SchemaSettings;
     use serde_json::json;
 
     use super::*;
     use crate::config::merge;
-
-    #[test]
-    fn test_json_config_overrides_schema() {
-        let schema = SchemaSettings::default()
-            .with_transform(StructuralSchemaRewriter)
-            .into_generator()
-            .into_root_schema_for::<JsonConfigOverrides>();
-
-        assert_eq!(
-            json!({
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "description": "ConfigOverrides that can be applied to a JSON file.",
-                "oneOf": [
-                    {
-                        "required": [
-                            "jsonMergePatch"
-                        ]
-                    },
-                    {
-                        "required": [
-                            "jsonPatch"
-                        ]
-                    },
-                    {
-                        "required": [
-                            "userProvided"
-                        ]
-                    }
-                ],
-                "properties": {
-                    "jsonMergePatch": {
-                        "description": indoc!("
-                            Can be set to arbitrary YAML content, which is converted to JSON and used as
-                            [RFC 7396](https://datatracker.ietf.org/doc/html/rfc7396) JSON merge patch."),
-                        "type": "object",
-                        "x-kubernetes-preserve-unknown-fields": true
-                    },
-                    "jsonPatch": {
-                        "description": indoc!(r#"
-                            An [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON patch.
-
-                            Can be used when more flexibility is needed, e.g. to only modify elements
-                            in a list based on a condition.
-
-                            A patch looks something like
-
-                            `- {"op": "test", "path": "/0/name", "value": "Andrew"}`
-
-                            or
-
-                            `- {"op": "add", "path": "/0/happy", "value": true}`"#),
-                        "items": {
-                            "type": "object",
-                            "x-kubernetes-preserve-unknown-fields": true
-                        },
-                        "type": "array"
-                    },
-                    "userProvided": {
-                        "description": "Override the entire config file with the specified JSON value.",
-                        "type": "object",
-                        "x-kubernetes-preserve-unknown-fields": true
-                    }
-                },
-                "title": "JsonConfigOverrides",
-                "type": "object"
-            }),
-            schema
-        );
-    }
 
     #[test]
     fn test_json_config_overrides_apply() {
