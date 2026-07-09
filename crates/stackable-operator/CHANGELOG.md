@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Make `Role::fixed_replica_count` and `Role::estimated_replica_count` functions standalone,
+  so consumers don't need access to the `Role` struct ([#1247]).
+
+[#1247]: https://github.com/stackabletech/operator-rs/pull/1247
+
 ## [0.113.3] - 2026-07-07
 
 ### Fixed
