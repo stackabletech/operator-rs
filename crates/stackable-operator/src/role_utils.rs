@@ -543,9 +543,12 @@ impl<K: Resource> Display for RoleGroupRef<K> {
 /// This is the case when all `replicas` are set to [`Some<u16>`], in which case they are simply
 /// summed.
 ///
-/// The argument `zero_replicas_counting` is a safety mechanism, which allows the caller to
-/// decide if an explicit replica count of `0` should be treated as [`None`]. It also means that
-/// [`None`] is returned in case no roleGroups are configured at all.
+/// The argument `zero_replicas_counting` is a safety mechanism, which allows the caller to decide
+/// if an explicit replica count of `0` should be treated as [`None`]. It also means that [`None`]
+/// is returned in case no roleGroups are configured at all.
+//
+// Note: We are using a [`IntoIterator`] combined with `.peekable()` over [`ExactSizeIterator`] to
+// have minimal bound requirements on the caller.
 pub fn fixed_replica_count<I: IntoIterator<Item = Option<u16>>>(
     replicas: I,
     zero_replicas_counting: ZeroReplicasCounting,
@@ -569,9 +572,12 @@ pub fn fixed_replica_count<I: IntoIterator<Item = Option<u16>>>(
 
 /// Returns the estimated total number of replicas across all role groups.
 ///
-/// Unlike [`Self::fixed_replica_count`], this always returns a value: a role group with an unset
-/// (i.e. [`None`]) replica count is assumed to run a single replica. Use this when a best-effort
-/// estimate is needed even though the exact number of replicas is not hard-coded.
+/// Unlike [`fixed_replica_count`], this always returns a value: a role group with an unset (i.e.
+/// [`None`]) replica count is assumed to run a single replica. Use this when a best-effort estimate
+/// is needed even though the exact number of replicas is not hard-coded.
+//
+// Note: We are using a [`IntoIterator`] combined with `.peekable()` over [`ExactSizeIterator`] to
+// have minimal bound requirements on the caller.
 pub fn estimated_replica_count<I: IntoIterator<Item = Option<u16>>>(replicas: I) -> u32 {
     replicas
         .into_iter()
