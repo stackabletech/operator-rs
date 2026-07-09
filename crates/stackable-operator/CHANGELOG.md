@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.113.4] - 2026-07-09
+
 ### Changed
 
 - BREAKING: Make `Role::fixed_replica_count` and `Role::estimated_replica_count` functions standalone,
