@@ -19,9 +19,9 @@ use crate::{
     },
 };
 
-/// Pattern for an escaped environment variable reference, e.g. `$$(ESCAPED_REFERENCE)`
-static ESCAPED_ENV_VARS_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\$\$\([^\)]*\)").expect("should be a valid regular expression"));
+/// Pattern for an escaped dollar sign, e.g. `$$`
+static ESCAPED_DOLLAR_SIGN_PATTERN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\$\$").expect("should be a valid regular expression"));
 
 /// Pattern for a referenced environment variable, e.g. `$(ENV_VAR)`
 static REFERENCED_ENV_VARS_PATTERN: LazyLock<Regex> =
@@ -170,10 +170,10 @@ impl EnvVarSet {
 
 impl From<EnvVarSet> for Vec<EnvVar> {
     fn from(value: EnvVarSet) -> Self {
-        let mut env_var_closure = EnvVarDependencyResolver::new(&value, 10);
+        let env_var_closure = EnvVarDependencyResolver::new(&value, 10);
 
         let mut vec: Self = value.0.values().cloned().collect();
-        vec.sort_by_cached_key(|env_var| env_var_closure.sort_key(env_var));
+        vec.sort_by_key(|env_var| env_var_closure.sort_key(env_var));
         vec
     }
 }
@@ -222,7 +222,7 @@ impl<'a> EnvVarDependencyResolver<'a> {
     /// #         EnvVar, EnvVarSource, ObjectFieldSelector
     /// #     },
     /// #     v2::builder::pod::container::{
-    /// #         EnvVarDependencyResolver, EnvVarName, EnvVarSet
+    /// #         EnvVarDependencyResolver, EnvVarSet
     /// #     },
     /// # };
     ///
@@ -270,7 +270,7 @@ impl<'a> EnvVarDependencyResolver<'a> {
     ///     .with_env_var(env_var5.clone())
     ///     .unwrap();
     ///
-    /// let mut resolver = EnvVarDependencyResolver::new(&env_vars, 2);
+    /// let resolver = EnvVarDependencyResolver::new(&env_vars, 2);
     /// assert_eq!(
     ///     vec!["ENV4".to_owned(), "ENV2".to_owned(), "ENV1".to_owned()],
     ///     resolver.sort_key(&env_var1)
@@ -286,7 +286,7 @@ impl<'a> EnvVarDependencyResolver<'a> {
     /// assert_eq!(vec!["ENV4".to_owned()], resolver.sort_key(&env_var4));
     /// assert_eq!(vec!["ENV5".to_owned()], resolver.sort_key(&env_var5));
     /// ```
-    pub fn sort_key(&mut self, env_var: &EnvVar) -> Vec<String> {
+    pub fn sort_key(&self, env_var: &EnvVar) -> Vec<String> {
         if let Some(mut closure) = self.calculate_closure(env_var) {
             // Add the name of the variable to its closure to make the set unique for every
             // variable.
@@ -315,7 +315,7 @@ impl<'a> EnvVarDependencyResolver<'a> {
     /// #         EnvVar, EnvVarSource, ObjectFieldSelector
     /// #     },
     /// #     v2::builder::pod::container::{
-    /// #         EnvVarDependencyResolver, EnvVarName, EnvVarSet
+    /// #         EnvVarDependencyResolver, EnvVarSet
     /// #     },
     /// # };
     ///
@@ -384,7 +384,7 @@ impl<'a> EnvVarDependencyResolver<'a> {
     ///     .with_env_var(env_var8.clone())
     ///     .unwrap();
     ///
-    /// let mut resolver = EnvVarDependencyResolver::new(&env_vars, 2);
+    /// let resolver = EnvVarDependencyResolver::new(&env_vars, 2);
     /// assert_eq!(
     ///     Some(BTreeSet::from(["ENV2".to_owned(), "ENV4".to_owned()])),
     ///     resolver.calculate_closure(&env_var1)
@@ -403,12 +403,12 @@ impl<'a> EnvVarDependencyResolver<'a> {
     /// assert_eq!(None, resolver.calculate_closure(&env_var7));
     /// assert_eq!(None, resolver.calculate_closure(&env_var8));
     /// ```
-    pub fn calculate_closure(&mut self, env_var: &EnvVar) -> Option<BTreeSet<String>> {
+    pub fn calculate_closure(&self, env_var: &EnvVar) -> Option<BTreeSet<String>> {
         self.calculate_closure_rec(env_var, self.max_recursion_depth)
     }
 
     fn calculate_closure_rec(
-        &mut self,
+        &self,
         env_var: &EnvVar,
         remaining_recursion_depth: usize,
     ) -> Option<BTreeSet<String>> {
@@ -449,6 +449,7 @@ impl<'a> EnvVarDependencyResolver<'a> {
     ///     (EnvVarName::from_str("ENV1").unwrap(), "value 1"),
     ///     (EnvVarName::from_str("ENV2").unwrap(), "value 2"),
     ///     (EnvVarName::from_str("ENV3").unwrap(), "value 3"),
+    ///     (EnvVarName::from_str("ENV4").unwrap(), "value 4"),
     /// ]);
     ///
     /// let resolver = EnvVarDependencyResolver::new(&env_vars, 10);
@@ -473,12 +474,21 @@ impl<'a> EnvVarDependencyResolver<'a> {
     ///     resolver.referenced_env_vars("references to $(ENV2) and $(ENV3)")
     /// );
     /// assert_eq!(
-    ///     vec![&EnvVar {
-    ///         name: "ENV1".to_owned(),
-    ///         value: Some("value 1".to_owned()),
-    ///         value_from: None
-    ///     }],
-    ///     resolver.referenced_env_vars("reference to $(ENV1) and escaped reference to $$(ENV2)")
+    ///     vec![
+    ///         &EnvVar {
+    ///             name: "ENV1".to_owned(),
+    ///             value: Some("value 1".to_owned()),
+    ///             value_from: None
+    ///         },
+    ///         &EnvVar {
+    ///             name: "ENV2".to_owned(),
+    ///             value: Some("value 2".to_owned()),
+    ///             value_from: None
+    ///         },
+    ///     ],
+    ///     resolver.referenced_env_vars(
+    ///         "references to $(ENV1) and $$$(ENV2) and escaped references to $$(ENV3) and $$$$(ENV4)"
+    ///     )
     /// );
     /// assert_eq!(
     ///     vec![&EnvVar {
@@ -486,11 +496,11 @@ impl<'a> EnvVarDependencyResolver<'a> {
     ///         value: Some("value 1".to_owned()),
     ///         value_from: None
     ///     }],
-    ///     resolver.referenced_env_vars("reference to $(ENV1) and invalid reference to $(ENV4)")
+    ///     resolver.referenced_env_vars("reference to $(ENV1) and invalid reference to $(ENV5)")
     /// );
     /// ```
     pub fn referenced_env_vars(&self, value: &str) -> Vec<&'a EnvVar> {
-        let value_without_escapes = ESCAPED_ENV_VARS_PATTERN.replace_all(value, "");
+        let value_without_escapes = ESCAPED_DOLLAR_SIGN_PATTERN.replace_all(value, "");
 
         REFERENCED_ENV_VARS_PATTERN
             .captures_iter(&value_without_escapes)
