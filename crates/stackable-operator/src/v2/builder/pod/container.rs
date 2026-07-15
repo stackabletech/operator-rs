@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     str::FromStr,
+    sync::LazyLock,
     vec,
 };
 
@@ -17,6 +18,14 @@ use crate::{
         types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName},
     },
 };
+
+/// Pattern for an escaped environment variable reference, e.g. `$$(ESCAPED_REFERENCE)`
+static ESCAPED_ENV_VARS_PATTERN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\$\$\([^\)]*\)").expect("should be a valid regular expression"));
+
+/// Pattern for a referenced environment variable, e.g. `$(ENV_VAR)`
+static REFERENCED_ENV_VARS_PATTERN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\$\(([^\)]+)\)").expect("should be a valid regular expression"));
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
@@ -188,12 +197,6 @@ pub struct EnvVarDependencyResolver<'a> {
     ///
     /// Long dependency chains could slow down the operator.
     max_recursion_depth: usize,
-
-    /// Pattern for an escaped environment variable reference, e.g. `$$(ESCAPED_REFERENCE)`
-    escaped_env_vars_pattern: Regex,
-
-    /// Pattern for a referenced environment variable, e.g. `$(ENV_VAR)`
-    referenced_env_vars_pattern: Regex,
 }
 
 impl<'a> EnvVarDependencyResolver<'a> {
@@ -201,10 +204,6 @@ impl<'a> EnvVarDependencyResolver<'a> {
         Self {
             env_vars,
             max_recursion_depth,
-            escaped_env_vars_pattern: Regex::new(r"\$\$\([^\)]*\)")
-                .expect("should be a valid regular expression"),
-            referenced_env_vars_pattern: Regex::new(r"\$\(([^\)]+)\)")
-                .expect("should be a valid regular expression"),
         }
     }
 
@@ -491,9 +490,9 @@ impl<'a> EnvVarDependencyResolver<'a> {
     /// );
     /// ```
     pub fn referenced_env_vars(&self, value: &str) -> Vec<&'a EnvVar> {
-        let value_without_escapes = self.escaped_env_vars_pattern.replace_all(value, "");
+        let value_without_escapes = ESCAPED_ENV_VARS_PATTERN.replace_all(value, "");
 
-        self.referenced_env_vars_pattern
+        REFERENCED_ENV_VARS_PATTERN
             .captures_iter(&value_without_escapes)
             .filter_map(|capture| capture.get(1))
             .filter_map(|regex_match| EnvVarName::from_str(regex_match.as_str()).ok())
