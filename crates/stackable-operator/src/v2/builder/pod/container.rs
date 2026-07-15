@@ -17,12 +17,14 @@ use crate::{
 };
 
 /// Pattern for an escaped dollar sign (`$$`)
-static ESCAPED_DOLLAR_SIGN_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\$\$").expect("should be a valid regular expression"));
+static ESCAPED_DOLLAR_SIGN_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\$\$").expect("static string must be a valid regular expression")
+});
 
 /// Pattern for a referenced environment variable, e.g. `$(ENV_VAR)`
-static REFERENCED_ENV_VARS_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\$\(([^\)]+)\)").expect("should be a valid regular expression"));
+static REFERENCED_ENV_VARS_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\$\(([^\)]+)\)").expect("static string must be a valid regular expression")
+});
 
 /// Maximum depth to which references between environment variables are followed
 const ENV_VAR_DEPENDENCY_RESOLVER_MAX_RECURSION_DEPTH: usize = 10;
