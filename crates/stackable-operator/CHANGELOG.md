@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Removed
+
+- BREAKING: Remove modules which are not used by any operator or stackablectl:
+  - `builder::event`
+  - `builder::pod::env` (still available crate-internally)
+  - `cli::product_config` (including the `product_config` field of `cli::RunArguments`)
+  - `client::feature_gates` (including the `client-feature-gates` Cargo feature)
+  - `config_overrides` (superseded by `v2::config_overrides`)
+  - `crd::scaler`
+  - `database_connections::helpers`
+  - `helm`
+  - `logging::k8s_events`
+  - `pod_utils`
+  - `product_config_utils` (including the `Configuration` trait, `Role::erase` and the
+    dependency on the `product-config` crate)
+  - `test_utils`
+  - `utils::kubelet` (still available crate-internally)
+  - `utils::logging`
+  - `utils::url`
+  - `validation::{name_is_dns_label, validate_namespace_name}`
+
 ## [0.113.4] - 2026-07-09
 
 ### Changed

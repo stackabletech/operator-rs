@@ -271,40 +271,6 @@ pub fn is_kerberos_realm_name(value: &str) -> Result {
     )])
 }
 
-// mask_trailing_dash replaces the final character of a string with a subdomain safe
-// value if is a dash.
-fn mask_trailing_dash(mut name: String) -> String {
-    if name.ends_with('-') {
-        name.pop();
-        name.push('a');
-    }
-
-    name
-}
-
-/// name_is_dns_label checks whether the passed in name is a valid DNS label
-/// according to RFC 1035.
-///
-/// # Arguments
-///
-/// * `name` - is the name to check for validity
-/// * `prefix` - indicates whether `name` is just a prefix (ending in a dash, which would otherwise not be legal at the end)
-pub fn name_is_dns_label(name: &str, prefix: bool) -> Result {
-    let mut name = name.to_string();
-    if prefix {
-        name = mask_trailing_dash(name);
-    }
-
-    is_lowercase_rfc_1035_label(&name)
-}
-
-/// Validates a namespace name.
-///
-/// See [`name_is_dns_label`] for more information.
-pub fn validate_namespace_name(name: &str, prefix: bool) -> Result {
-    name_is_dns_label(name, prefix)
-}
-
 #[cfg(test)]
 mod tests {
     use rstest::rstest;
@@ -431,14 +397,6 @@ mod tests {
     #[case("CLUSTER.LOCAL.")]
     fn is_domain_pass(#[case] value: &str) {
         assert!(is_domain(value).is_ok());
-    }
-
-    #[test]
-    fn test_mask_trailing_dash() {
-        assert_eq!(mask_trailing_dash("abc-".to_string()), "abca");
-        assert_eq!(mask_trailing_dash("abc".to_string()), "abc");
-        assert_eq!(mask_trailing_dash(String::new()), String::new());
-        assert_eq!(mask_trailing_dash("-".to_string()), "a");
     }
 
     #[rstest]

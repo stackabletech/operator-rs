@@ -2,6 +2,7 @@
 
 use std::{collections::BTreeMap, path::PathBuf};
 
+use k8s_openapi::api::core::v1::EnvVar;
 use schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
 use stackable_shared::time::Duration;
@@ -14,6 +15,43 @@ use crate::{
 
 mod v1alpha1_impl;
 mod v1alpha2_impl;
+
+/// Convert key-value structures into a vector of [`EnvVar`]s.
+#[cfg(test)]
+pub(crate) fn env_vars_from<I, K, V>(env_vars: I) -> Vec<EnvVar>
+where
+    I: IntoIterator<Item = (K, V)>,
+    K: Clone + Into<String>,
+    V: Clone + Into<String>,
+{
+    env_vars.into_iter().map(env_var_from_tuple).collect()
+}
+
+/// Convert a tuple of strings into an [`EnvVar`].
+#[cfg(test)]
+pub(crate) fn env_var_from_tuple(entry: (impl Into<String>, impl Into<String>)) -> EnvVar {
+    EnvVar {
+        name: entry.0.into(),
+        value: Some(entry.1.into()),
+        value_from: None,
+    }
+}
+
+/// Inserts or updates the [`EnvVar`]s from `env_overrides` in `env_vars`.
+///
+/// The resulting vector is sorted by the [`EnvVar`] names.
+pub(crate) fn insert_or_update_env_vars(
+    env_vars: &[EnvVar],
+    env_overrides: &[EnvVar],
+) -> Vec<EnvVar> {
+    let mut combined = BTreeMap::new();
+
+    for env_var in env_vars.iter().chain(env_overrides) {
+        combined.insert(env_var.name.clone(), env_var.to_owned());
+    }
+
+    combined.into_values().collect()
+}
 
 #[versioned(version(name = "v1alpha1"), version(name = "v1alpha2"))]
 pub mod versioned {

@@ -18,8 +18,10 @@ use crate::{
         secret_class::{SecretClassVolume, SecretClassVolumeProvisionParts},
         tls_verification::{CaCert, TlsServerVerification, TlsVerification},
     },
-    crd::git_sync::v1alpha2::{Credentials, GitSync},
-    product_config_utils::insert_or_update_env_vars,
+    crd::git_sync::{
+        insert_or_update_env_vars,
+        v1alpha2::{Credentials, GitSync},
+    },
     product_logging::{
         framework::capture_shell_output,
         spec::{ContainerLogConfig, ContainerLogConfigChoice},
@@ -478,7 +480,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        config::fragment::validate, product_config_utils::env_vars_from,
+        config::fragment::validate, crd::git_sync::env_vars_from,
         product_logging::spec::default_container_log_config, utils::yaml_from_str_singleton_map,
     };
 

@@ -26,9 +26,6 @@ use crate::{
     utils::cluster_info::{KubernetesClusterInfo, KubernetesClusterInfoOptions},
 };
 
-#[cfg(feature = "client-feature-gates")]
-pub mod feature_gates;
-
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Snafu)]
@@ -94,21 +91,6 @@ pub enum Error {
     NewKubeletClusterInfo {
         source: crate::utils::cluster_info::Error,
     },
-
-    #[cfg(feature = "client-feature-gates")]
-    #[snafu(display("failed to create raw {method} request"))]
-    CreateRawRequest {
-        source: http::Error,
-        method: http::Method,
-    },
-
-    #[cfg(feature = "client-feature-gates")]
-    #[snafu(display("failed to perform raw request"))]
-    PerformRawRequest { source: kube::Error },
-
-    #[cfg(feature = "client-feature-gates")]
-    #[snafu(display("failed to parse feature gate: {error}"))]
-    ParseFeatureGate { error: String },
 }
 
 /// This `Client` can be used to access Kubernetes.

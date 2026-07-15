@@ -321,7 +321,7 @@ impl ClusterResource for Deployment {
 /// # Examples
 ///
 /// ```
-/// use std::sync::Arc;
+/// use std::{collections::BTreeMap, sync::Arc};
 ///
 /// use k8s_openapi::api::{
 ///     apps::v1::StatefulSet,
@@ -338,7 +338,6 @@ impl ClusterResource for Deployment {
 ///     client::Client,
 ///     cluster_resources::{self, ClusterResourceApplyStrategy, ClusterResources},
 ///     deep_merger::ObjectOverrides,
-///     product_config_utils::ValidatedRoleConfigByPropertyKind,
 ///     role_utils::Role,
 /// };
 ///
@@ -366,7 +365,7 @@ impl ClusterResource for Deployment {
 /// };
 ///
 /// async fn reconcile(app: Arc<AppCluster>, client: Arc<Client>) -> Result<Action, Error> {
-///     let validated_config = ValidatedRoleConfigByPropertyKind::default();
+///     let role_groups: BTreeMap<String, Vec<String>> = BTreeMap::new();
 ///
 ///     let mut cluster_resources = ClusterResources::new(
 ///         APP_NAME,
@@ -384,8 +383,8 @@ impl ClusterResource for Deployment {
 ///         .await
 ///         .map_err(|source| Error::AddClusterResource { source })?;
 ///
-///     for (role_name, group_config) in validated_config.iter() {
-///         for (rolegroup_name, rolegroup_config) in group_config.iter() {
+///     for (role_name, rolegroup_names) in role_groups.iter() {
+///         for rolegroup_name in rolegroup_names.iter() {
 ///             let rolegroup_service = Service::default();
 ///             cluster_resources
 ///                 .add(&client, rolegroup_service)

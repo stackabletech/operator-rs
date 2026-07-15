@@ -10,7 +10,6 @@ use stackable_operator::{
             PodListenersVersion,
         },
         s3::{S3Bucket, S3BucketVersion, S3Connection, S3ConnectionVersion},
-        scaler::{Scaler, ScalerVersion},
     },
     kube::core::crd::MergeError,
 };
@@ -78,7 +77,6 @@ pub fn generate_preview() -> Result<(), Error> {
     write_crd!(path, PodListeners, V1Alpha1);
     write_crd!(path, S3Bucket, V1Alpha1);
     write_crd!(path, S3Connection, V1Alpha1);
-    write_crd!(path, Scaler, V1Alpha1);
 
     write_crd!(path, DummyCluster, V1Alpha1);
 

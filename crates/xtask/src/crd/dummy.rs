@@ -1,10 +1,7 @@
-use std::collections::BTreeMap;
-
 use serde::{Deserialize, Serialize};
 use stackable_operator::{
     commons::resources::{JvmHeapLimits, Resources},
     config::fragment::Fragment,
-    config_overrides::{KeyValueConfigOverrides, KeyValueOverridesProvider},
     crd::{
         authentication::{self, oidc},
         git_sync::v1alpha2::GitSync,
@@ -24,7 +21,7 @@ use stackable_operator::{
     role_utils::Role,
     schemars::JsonSchema,
     status::condition::ClusterCondition,
-    v2::config_overrides::JsonConfigOverrides,
+    v2::config_overrides::{JsonConfigOverrides, KeyValueConfigOverrides},
     versioned::versioned,
 };
 use strum::EnumIter;
@@ -52,19 +49,6 @@ pub struct DummyConfigOverrides {
         skip_serializing_if = "Option::is_none"
     )]
     pub dummy_properties: Option<KeyValueConfigOverrides>,
-}
-
-impl KeyValueOverridesProvider for DummyConfigOverrides {
-    fn get_key_value_overrides(&self, file: &str) -> BTreeMap<String, Option<String>> {
-        match file {
-            "dummy.properties" => self
-                .dummy_properties
-                .as_ref()
-                .map(KeyValueConfigOverrides::as_product_config_overrides)
-                .unwrap_or_default(),
-            _ => BTreeMap::new(),
-        }
-    }
 }
 
 #[versioned(

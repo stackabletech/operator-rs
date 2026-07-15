@@ -29,7 +29,7 @@ use crate::{
 };
 
 pub mod container;
-pub mod env;
+pub(crate) mod env;
 pub mod probe;
 pub mod resources;
 pub mod security;
