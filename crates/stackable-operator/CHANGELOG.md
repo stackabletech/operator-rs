@@ -6,7 +6,11 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- [v2] BREAKING: Converting an `EnvVarSet` into a `Vec<EnvVar>` takes dependencies between the
+- [v2] Add `EnvVarSet::with_env_var` to add a given `EnvVar` to the set ([#1249]).
+
+### Changed
+
+- [v2] BREAKING: Converting an `EnvVarSet` into a `Vec<EnvVar>` takes dependencies between
   environment variables into account ([#1249]).
 
 [#1249]: https://github.com/stackabletech/operator-rs/pull/1249

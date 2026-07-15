@@ -16,7 +16,7 @@ use crate::{
     v2::types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName},
 };
 
-/// Pattern for an escaped dollar sign, e.g. `$$`
+/// Pattern for an escaped dollar sign (`$$`)
 static ESCAPED_DOLLAR_SIGN_PATTERN: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\$\$").expect("should be a valid regular expression"));
 
@@ -24,7 +24,7 @@ static ESCAPED_DOLLAR_SIGN_PATTERN: LazyLock<Regex> =
 static REFERENCED_ENV_VARS_PATTERN: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\$\(([^\)]+)\)").expect("should be a valid regular expression"));
 
-/// Maximum recursion depth until references in environment variables are followed
+/// Maximum depth to which references between environment variables are followed
 const ENV_VAR_DEPENDENCY_RESOLVER_MAX_RECURSION_DEPTH: usize = 10;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -177,11 +177,11 @@ impl EnvVarSet {
 
 impl From<EnvVarSet> for Vec<EnvVar> {
     fn from(value: EnvVarSet) -> Self {
-        let env_var_closure =
+        let dependency_resolver =
             EnvVarDependencyResolver::new(&value, ENV_VAR_DEPENDENCY_RESOLVER_MAX_RECURSION_DEPTH);
 
         let mut vec: Self = value.0.values().cloned().collect();
-        vec.sort_by_cached_key(|env_var| env_var_closure.sort_key(env_var));
+        vec.sort_by_cached_key(|env_var| dependency_resolver.sort_key(env_var));
         vec
     }
 }
@@ -198,12 +198,13 @@ impl IntoIterator for EnvVarSet {
 /// Resolves dependencies between environment variables and provides sort keys which take these
 /// dependencies into account
 pub struct EnvVarDependencyResolver<'a> {
-    /// [EnvVarSet] with possibly dependent environment variables
+    /// [`EnvVarSet`] with possibly dependent environment variables
     env_vars: &'a EnvVarSet,
 
-    /// Maximum recursion depth
+    /// Maximum depth to which references between environment variables are followed
     ///
-    /// Long dependency chains could slow down the operator.
+    /// The recursion depth is limited because long dependency chains could slow down the
+    /// operator.
     max_recursion_depth: usize,
 }
 
@@ -215,8 +216,8 @@ impl<'a> EnvVarDependencyResolver<'a> {
         }
     }
 
-    /// Returns a sort key for the given environment variable which considers dependencies to other
-    /// environment variables
+    /// Returns a sort key for the given environment variable, taking dependencies on other
+    /// environment variables into account
     ///
     /// # Example
     ///
@@ -262,7 +263,7 @@ impl<'a> EnvVarDependencyResolver<'a> {
     /// };
     /// let env_var5 = EnvVar {
     ///     name: "ENV5".to_owned(),
-    ///     value: Some("self reference to $(ENV5)".to_owned()),
+    ///     value: Some("self-reference to $(ENV5)".to_owned()),
     ///     value_from: None,
     /// };
     ///
@@ -296,8 +297,8 @@ impl<'a> EnvVarDependencyResolver<'a> {
     /// ```
     pub fn sort_key(&self, env_var: &EnvVar) -> Vec<String> {
         if let Some(mut closure) = self.calculate_closure(env_var) {
-            // Add the name of the variable to its closure to make the set unique for every
-            // variable.
+            // Add the name of the variable to its closure so that every variable gets a unique
+            // sort key.
             closure.insert(env_var.name.clone());
 
             closure.into_iter().rev().collect()
@@ -355,7 +356,7 @@ impl<'a> EnvVarDependencyResolver<'a> {
     /// };
     /// let env_var5 = EnvVar {
     ///     name: "ENV5".to_owned(),
-    ///     value: Some("self reference to $(ENV5)".to_owned()),
+    ///     value: Some("self-reference to $(ENV5)".to_owned()),
     ///     value_from: None,
     /// };
     /// let env_var6 = EnvVar {
