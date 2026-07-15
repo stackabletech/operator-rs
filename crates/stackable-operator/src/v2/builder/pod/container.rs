@@ -181,7 +181,7 @@ impl From<EnvVarSet> for Vec<EnvVar> {
             EnvVarDependencyResolver::new(&value, ENV_VAR_DEPENDENCY_RESOLVER_MAX_RECURSION_DEPTH);
 
         let mut vec: Self = value.0.values().cloned().collect();
-        vec.sort_by_key(|env_var| env_var_closure.sort_key(env_var));
+        vec.sort_by_cached_key(|env_var| env_var_closure.sort_key(env_var));
         vec
     }
 }
