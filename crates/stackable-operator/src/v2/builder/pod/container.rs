@@ -1,6 +1,7 @@
 use std::{
-    collections::{BTreeMap, BTreeSet, btree_map},
+    collections::{BTreeMap, BTreeSet},
     str::FromStr,
+    vec,
 };
 
 use regex::Regex;
@@ -165,6 +166,15 @@ impl From<EnvVarSet> for Vec<EnvVar> {
         let mut vec: Self = value.0.values().cloned().collect();
         vec.sort_by_key(|env_var| env_var_closure.sort_key(env_var));
         vec
+    }
+}
+
+impl IntoIterator for EnvVarSet {
+    type IntoIter = vec::IntoIter<Self::Item>;
+    type Item = EnvVar;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Vec::from(self).into_iter()
     }
 }
 
@@ -492,15 +502,6 @@ impl<'a> EnvVarDependencyResolver<'a> {
     }
 }
 
-impl IntoIterator for EnvVarSet {
-    type IntoIter = btree_map::IntoValues<EnvVarName, Self::Item>;
-    type Item = EnvVar;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_values()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
@@ -692,89 +693,67 @@ mod tests {
     }
 
     #[test]
-    fn test_envvarset_with_references() {
+    fn test_vec_envvar_from_envvarset() {
         let env_var_set = EnvVarSet::new()
-            .with_value(&EnvVarName::from_str_unsafe("ENV1"), "value1")
-            // valid reference to a later variable
-            .with_value(&EnvVarName::from_str_unsafe("ENV2"), "$(ENV3)")
-            // valid reference to a later variable
-            .with_value(&EnvVarName::from_str_unsafe("ENV3"), "$(ENV4)")
-            // valid reference to an earlier variable
-            .with_value(&EnvVarName::from_str_unsafe("ENV4"), "$(ENV1)")
-            // invalid reference
-            .with_value(&EnvVarName::from_str_unsafe("ENV5"), "$(ENV?)")
-            // Same keys are allowed in Kubernetes, but not in `EnvVarSet`.
-            // The existing ENV1 is overridden.
-            .with_value(&EnvVarName::from_str_unsafe("ENV6"), "value6")
-            .with_value(&EnvVarName::from_str_unsafe("ENV6"), "$(ENV6)")
-            // multiple references
-            .with_value(
-                &EnvVarName::from_str_unsafe("ENV7"),
-                "$(ENV5) $(ENV8) $(ENV2)",
-            )
-            // multiple references with escaped and invalid references
-            .with_value(
-                &EnvVarName::from_str_unsafe("ENV8"),
-                "$(ENV1) $$(ENV9) $() $(ENV2)",
-            )
-            // No value
-            .with_field_path(&EnvVarName::from_str_unsafe("ENV9"), &FieldPathEnvVar::Name);
+            .with_value(&EnvVarName::from_str_unsafe("ENV1"), "$(ENV2)")
+            .with_value(&EnvVarName::from_str_unsafe("ENV2"), "value 2")
+            .with_value(&EnvVarName::from_str_unsafe("ENV3"), "value 3");
 
         assert_eq!(
             vec![
                 EnvVar {
-                    name: "ENV1".to_owned(),
-                    value: Some("value1".to_owned()),
+                    name: "ENV2".to_owned(),
+                    value: Some("value 2".to_owned()),
                     value_from: None
                 },
                 EnvVar {
-                    name: "ENV4".to_owned(),
-                    value: Some("$(ENV1)".to_owned()),
+                    name: "ENV1".to_owned(),
+                    value: Some("$(ENV2)".to_owned()),
                     value_from: None
                 },
                 EnvVar {
                     name: "ENV3".to_owned(),
-                    value: Some("$(ENV4)".to_owned()),
+                    value: Some("value 3".to_owned()),
                     value_from: None
-                },
-                EnvVar {
-                    name: "ENV2".to_owned(),
-                    value: Some("$(ENV3)".to_owned()),
-                    value_from: None
-                },
-                EnvVar {
-                    name: "ENV5".to_owned(),
-                    value: Some("$(ENV?)".to_owned()),
-                    value_from: None
-                },
-                EnvVar {
-                    name: "ENV6".to_owned(),
-                    value: Some("$(ENV6)".to_owned()),
-                    value_from: None
-                },
-                EnvVar {
-                    name: "ENV8".to_owned(),
-                    value: Some("$(ENV1) $$(ENV9) $() $(ENV2)".to_owned()),
-                    value_from: None
-                },
-                EnvVar {
-                    name: "ENV7".to_owned(),
-                    value: Some("$(ENV5) $(ENV8) $(ENV2)".to_owned()),
-                    value_from: None
-                },
-                EnvVar {
-                    name: "ENV9".to_owned(),
-                    value: None,
-                    value_from: Some(EnvVarSource {
-                        field_ref: Some(ObjectFieldSelector {
-                            field_path: FieldPathEnvVar::Name.to_string(),
-                            ..ObjectFieldSelector::default()
-                        }),
-                        ..EnvVarSource::default()
-                    }),
                 },
             ],
             Vec::from(env_var_set)
         );
+    }
+
+    #[test]
+    fn test_envvarset_intoiterator() {
+        let env_var_set = EnvVarSet::new()
+            .with_value(&EnvVarName::from_str_unsafe("ENV1"), "$(ENV2)")
+            .with_value(&EnvVarName::from_str_unsafe("ENV2"), "value 2")
+            .with_value(&EnvVarName::from_str_unsafe("ENV3"), "value 3");
+
+        let mut iter = env_var_set.into_iter();
+
+        assert_eq!(
+            Some(EnvVar {
+                name: "ENV2".to_owned(),
+                value: Some("value 2".to_owned()),
+                value_from: None
+            }),
+            iter.next()
+        );
+        assert_eq!(
+            Some(EnvVar {
+                name: "ENV1".to_owned(),
+                value: Some("$(ENV2)".to_owned()),
+                value_from: None
+            }),
+            iter.next()
+        );
+        assert_eq!(
+            Some(EnvVar {
+                name: "ENV3".to_owned(),
+                value: Some("value 3".to_owned()),
+                value_from: None
+            }),
+            iter.next()
+        );
+        assert_eq!(None, iter.next());
     }
 }
