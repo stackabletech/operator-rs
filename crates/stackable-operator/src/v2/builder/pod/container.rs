@@ -6,17 +6,14 @@ use std::{
 };
 
 use regex::Regex;
-use snafu::Snafu;
+use snafu::{ResultExt, Snafu};
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
     attributed_string_type,
     builder::pod::container::{ContainerBuilder, FieldPathEnvVar},
     k8s_openapi::api::core::v1::{ConfigMapKeySelector, EnvVar, EnvVarSource, ObjectFieldSelector},
-    v2::{
-        macros::attributed_string_type,
-        types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName},
-    },
+    v2::types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName},
 };
 
 /// Pattern for an escaped dollar sign, e.g. `$$`
@@ -27,6 +24,11 @@ static ESCAPED_DOLLAR_SIGN_PATTERN: LazyLock<Regex> =
 static REFERENCED_ENV_VARS_PATTERN: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\$\(([^\)]+)\)").expect("should be a valid regular expression"));
 
+/// Maximum recursion depth until references in environment variables are followed
+const ENV_VAR_DEPENDENCY_RESOLVER_MAX_RECURSION_DEPTH: usize = 10;
+
+type Result<T, E = Error> = std::result::Result<T, E>;
+
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
 pub enum Error {
@@ -34,7 +36,9 @@ pub enum Error {
         "invalid environment variable name: a valid environment variable name must not be empty \
         and must consist only of printable ASCII characters other than '='"
     ))]
-    ParseEnvVarName { env_var_name: String },
+    ParseEnvVarName {
+        source: crate::v2::macros::attributed_string_type::Error,
+    },
 }
 
 /// Infallible variant of [`crate::builder::pod::container::ContainerBuilder::new`]
@@ -80,8 +84,11 @@ impl EnvVarSet {
     /// Adds the given [`EnvVar`] to this set
     ///
     /// An [`EnvVar`] with the same name is overridden.
-    pub fn with_env_var(mut self, env_var: EnvVar) -> Result<Self, attributed_string_type::Error> {
-        self.0.insert(EnvVarName::from_str(&env_var.name)?, env_var);
+    pub fn with_env_var(mut self, env_var: EnvVar) -> Result<Self> {
+        self.0.insert(
+            EnvVarName::from_str(&env_var.name).context(ParseEnvVarNameSnafu)?,
+            env_var,
+        );
 
         Ok(self)
     }
@@ -170,7 +177,8 @@ impl EnvVarSet {
 
 impl From<EnvVarSet> for Vec<EnvVar> {
     fn from(value: EnvVarSet) -> Self {
-        let env_var_closure = EnvVarDependencyResolver::new(&value, 10);
+        let env_var_closure =
+            EnvVarDependencyResolver::new(&value, ENV_VAR_DEPENDENCY_RESOLVER_MAX_RECURSION_DEPTH);
 
         let mut vec: Self = value.0.values().cloned().collect();
         vec.sort_by_key(|env_var| env_var_closure.sort_key(env_var));
