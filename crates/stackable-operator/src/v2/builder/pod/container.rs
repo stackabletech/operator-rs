@@ -173,7 +173,7 @@ impl From<EnvVarSet> for Vec<EnvVar> {
         let mut env_var_closure = EnvVarDependencyResolver::new(&value, 10);
 
         let mut vec: Self = value.0.values().cloned().collect();
-        vec.sort_by_key(|env_var| env_var_closure.sort_key(env_var));
+        vec.sort_by_cached_key(|env_var| env_var_closure.sort_key(env_var));
         vec
     }
 }
