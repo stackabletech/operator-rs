@@ -74,6 +74,14 @@ impl EnvVarSet {
         self.0.get(env_var_name)
     }
 
+    /// Returns an iterator over the [`EnvVar`]s in this set
+    ///
+    /// The [`EnvVar`]s are sorted so that variables referencing other variables come after the
+    /// referenced ones.
+    pub fn iter(&self) -> vec::IntoIter<&EnvVar> {
+        self.into_iter()
+    }
+
     /// Moves all [`EnvVar`]s from the given set into this one.
     ///
     /// [`EnvVar`]s with the same name are overridden.
@@ -177,14 +185,24 @@ impl EnvVarSet {
     }
 }
 
-impl From<EnvVarSet> for Vec<EnvVar> {
-    fn from(value: EnvVarSet) -> Self {
-        let dependency_resolver =
-            EnvVarDependencyResolver::new(&value, ENV_VAR_DEPENDENCY_RESOLVER_MAX_RECURSION_DEPTH);
+impl<'a> From<&'a EnvVarSet> for Vec<&'a EnvVar> {
+    fn from(value: &'a EnvVarSet) -> Self {
+        value.into_iter().collect()
+    }
+}
 
-        let mut vec: Self = value.0.values().cloned().collect();
-        vec.sort_by_cached_key(|env_var| dependency_resolver.sort_key(env_var));
-        vec
+impl<'a> IntoIterator for &'a EnvVarSet {
+    type IntoIter = vec::IntoIter<Self::Item>;
+    type Item = &'a EnvVar;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let dependency_resolver =
+            EnvVarDependencyResolver::new(self, ENV_VAR_DEPENDENCY_RESOLVER_MAX_RECURSION_DEPTH);
+
+        let mut env_vars: Vec<&EnvVar> = self.0.values().collect();
+        env_vars.sort_by_cached_key(|env_var| dependency_resolver.sort_key(env_var));
+
+        env_vars.into_iter()
     }
 }
 
@@ -193,7 +211,11 @@ impl IntoIterator for EnvVarSet {
     type Item = EnvVar;
 
     fn into_iter(self) -> Self::IntoIter {
-        Vec::from(self).into_iter()
+        Vec::from(&self)
+            .into_iter()
+            .cloned()
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 }
 
@@ -282,30 +304,21 @@ impl<'a> EnvVarDependencyResolver<'a> {
     ///     .unwrap();
     ///
     /// let resolver = EnvVarDependencyResolver::new(&env_vars, 2);
-    /// assert_eq!(
-    ///     vec!["ENV4".to_owned(), "ENV2".to_owned(), "ENV1".to_owned()],
-    ///     resolver.sort_key(&env_var1)
-    /// );
-    /// assert_eq!(
-    ///     vec!["ENV4".to_owned(), "ENV2".to_owned()],
-    ///     resolver.sort_key(&env_var2)
-    /// );
-    /// assert_eq!(
-    ///     vec!["ENV4".to_owned(), "ENV3".to_owned()],
-    ///     resolver.sort_key(&env_var3)
-    /// );
-    /// assert_eq!(vec!["ENV4".to_owned()], resolver.sort_key(&env_var4));
-    /// assert_eq!(vec!["ENV5".to_owned()], resolver.sort_key(&env_var5));
+    /// assert_eq!(vec!["ENV4", "ENV2", "ENV1"], resolver.sort_key(&env_var1));
+    /// assert_eq!(vec!["ENV4", "ENV2"], resolver.sort_key(&env_var2));
+    /// assert_eq!(vec!["ENV4", "ENV3"], resolver.sort_key(&env_var3));
+    /// assert_eq!(vec!["ENV4"], resolver.sort_key(&env_var4));
+    /// assert_eq!(vec!["ENV5"], resolver.sort_key(&env_var5));
     /// ```
-    pub fn sort_key(&self, env_var: &EnvVar) -> Vec<String> {
+    pub fn sort_key(&self, env_var: &'a EnvVar) -> Vec<&'a String> {
         if let Some(mut closure) = self.calculate_closure(env_var) {
             // Add the name of the variable to its closure so that every variable gets a unique
             // sort key.
-            closure.insert(env_var.name.clone());
+            closure.insert(&env_var.name);
 
             closure.into_iter().rev().collect()
         } else {
-            vec![env_var.name.clone()]
+            vec![&env_var.name]
         }
     }
 
@@ -397,15 +410,15 @@ impl<'a> EnvVarDependencyResolver<'a> {
     ///
     /// let resolver = EnvVarDependencyResolver::new(&env_vars, 2);
     /// assert_eq!(
-    ///     Some(BTreeSet::from(["ENV2".to_owned(), "ENV4".to_owned()])),
+    ///     Some(BTreeSet::from([&env_var2.name, &env_var4.name])),
     ///     resolver.calculate_closure(&env_var1)
     /// );
     /// assert_eq!(
-    ///     Some(BTreeSet::from(["ENV4".to_owned()])),
+    ///     Some(BTreeSet::from([&env_var4.name])),
     ///     resolver.calculate_closure(&env_var2)
     /// );
     /// assert_eq!(
-    ///     Some(BTreeSet::from(["ENV4".to_owned()])),
+    ///     Some(BTreeSet::from([&env_var4.name])),
     ///     resolver.calculate_closure(&env_var3)
     /// );
     /// assert_eq!(Some(BTreeSet::new()), resolver.calculate_closure(&env_var4));
@@ -414,7 +427,7 @@ impl<'a> EnvVarDependencyResolver<'a> {
     /// assert_eq!(None, resolver.calculate_closure(&env_var7));
     /// assert_eq!(None, resolver.calculate_closure(&env_var8));
     /// ```
-    pub fn calculate_closure(&self, env_var: &EnvVar) -> Option<BTreeSet<String>> {
+    pub fn calculate_closure(&self, env_var: &EnvVar) -> Option<BTreeSet<&'a String>> {
         self.calculate_closure_rec(env_var, self.max_recursion_depth)
     }
 
@@ -422,7 +435,7 @@ impl<'a> EnvVarDependencyResolver<'a> {
         &self,
         env_var: &EnvVar,
         remaining_recursion_depth: usize,
-    ) -> Option<BTreeSet<String>> {
+    ) -> Option<BTreeSet<&'a String>> {
         if env_var.value.is_none() {
             Some(BTreeSet::new())
         } else if let Some(value) = &env_var.value
@@ -431,7 +444,7 @@ impl<'a> EnvVarDependencyResolver<'a> {
             let mut closure = BTreeSet::new();
 
             for referenced_env_var in self.referenced_env_vars(value) {
-                closure.insert(referenced_env_var.name.clone());
+                closure.insert(&referenced_env_var.name);
                 closure.extend(
                     self.calculate_closure_rec(referenced_env_var, remaining_recursion_depth - 1)?,
                 );
@@ -597,17 +610,17 @@ mod tests {
 
         assert_eq!(
             vec![
-                EnvVar {
+                &EnvVar {
                     name: "ENV1".to_owned(),
                     value: Some("value1 from env_var_set1".to_owned()),
                     value_from: None
                 },
-                EnvVar {
+                &EnvVar {
                     name: "ENV2".to_owned(),
                     value: Some("value2 from env_var_set2".to_owned()),
                     value_from: None
                 },
-                EnvVar {
+                &EnvVar {
                     name: "ENV3".to_owned(),
                     value: None,
                     value_from: Some(EnvVarSource {
@@ -618,13 +631,13 @@ mod tests {
                         ..EnvVarSource::default()
                     }),
                 },
-                EnvVar {
+                &EnvVar {
                     name: "ENV4".to_owned(),
                     value: Some("value4 from env_var_set2".to_owned()),
                     value_from: None
                 }
             ],
-            Vec::from(merged_env_var_set)
+            Vec::from(&merged_env_var_set)
         );
     }
 
@@ -637,18 +650,18 @@ mod tests {
 
         assert_eq!(
             vec![
-                EnvVar {
+                &EnvVar {
                     name: "ENV1".to_owned(),
                     value: Some("value1".to_owned()),
                     value_from: None
                 },
-                EnvVar {
+                &EnvVar {
                     name: "ENV2".to_owned(),
                     value: Some("value2".to_owned()),
                     value_from: None
                 }
             ],
-            Vec::from(env_var_set)
+            Vec::from(&env_var_set)
         );
     }
 
@@ -721,23 +734,23 @@ mod tests {
 
         assert_eq!(
             vec![
-                EnvVar {
+                &EnvVar {
                     name: "ENV2".to_owned(),
                     value: Some("value 2".to_owned()),
                     value_from: None
                 },
-                EnvVar {
+                &EnvVar {
                     name: "ENV1".to_owned(),
                     value: Some("$(ENV2)".to_owned()),
                     value_from: None
                 },
-                EnvVar {
+                &EnvVar {
                     name: "ENV3".to_owned(),
                     value: Some("value 3".to_owned()),
                     value_from: None
                 },
             ],
-            Vec::from(env_var_set)
+            Vec::from(&env_var_set)
         );
     }
 
