@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `crd::openlineage` module with the `OpenLineageConnection` CRD (a reusable connection to an
+  OpenLineage backend), an `InlineConnectionOrReference` wrapper with `resolve()`, and an embeddable
+  `OpenLineageJob` type for operators ([#XXXX]).
+
+[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+
 ## [0.113.4] - 2026-07-09
 
 ### Changed
