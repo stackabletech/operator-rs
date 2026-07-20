@@ -190,11 +190,13 @@ impl<'a> From<&'a EnvVarSet> for Vec<&'a EnvVar> {
         value.into_iter().collect()
     }
 }
+
 impl From<EnvVarSet> for Vec<EnvVar> {
     fn from(value: EnvVarSet) -> Self {
         value.into_iter().collect()
     }
 }
+
 impl<'a> IntoIterator for &'a EnvVarSet {
     type IntoIter = vec::IntoIter<Self::Item>;
     type Item = &'a EnvVar;
@@ -215,7 +217,7 @@ impl IntoIterator for EnvVarSet {
     type Item = EnvVar;
 
     fn into_iter(self) -> Self::IntoIter {
-        Vec::from(self).into_iter()
+        (&self).into_iter().cloned().collect::<Vec<_>>().into_iter()
     }
 }
 
