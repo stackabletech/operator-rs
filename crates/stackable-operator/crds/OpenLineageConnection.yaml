@@ -24,6 +24,15 @@ spec:
               OpenLineage connection definition as a resource.
               Learn more about [OpenLineage](https://openlineage.io/).
             properties:
+              authenticationClassRef:
+                description: |-
+                  Name of an [`AuthenticationClass`](https://docs.stackable.tech/home/nightly/concepts/authentication) used
+                  to authenticate against the OpenLineage backend. The `AuthenticationClass` is cluster-scoped
+                  and referenced by name; it is resolved at runtime via
+                  [`OpenLineageConnectionSpec::resolve_authentication_class`]. If not specified, no
+                  authentication is used.
+                nullable: true
+                type: string
               host:
                 description: 'Host of the OpenLineage backend without any protocol or port. For example: `marquez`.'
                 type: string
