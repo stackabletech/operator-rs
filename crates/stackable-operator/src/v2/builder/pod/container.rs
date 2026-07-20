@@ -1,14 +1,21 @@
-use std::collections::{BTreeMap, btree_map};
+use std::{
+    collections::{BTreeMap, btree_map},
+    str::FromStr,
+};
 
-use snafu::Snafu;
+use snafu::{ResultExt, Snafu};
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
     attributed_string_type,
     builder::pod::container::{ContainerBuilder, FieldPathEnvVar},
-    k8s_openapi::api::core::v1::{ConfigMapKeySelector, EnvVar, EnvVarSource, ObjectFieldSelector},
-    v2::types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName},
+    k8s_openapi::api::core::v1::{
+        ConfigMapKeySelector, EnvVar, EnvVarSource, ObjectFieldSelector, SecretKeySelector,
+    },
+    v2::types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName, SecretKey, SecretName},
 };
+
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
@@ -17,7 +24,9 @@ pub enum Error {
         "invalid environment variable name: a valid environment variable name must not be empty \
         and must consist only of printable ASCII characters other than '='"
     ))]
-    ParseEnvVarName { env_var_name: String },
+    ParseEnvVarName {
+        source: crate::v2::macros::attributed_string_type::Error,
+    },
 }
 
 /// Infallible variant of [`crate::builder::pod::container::ContainerBuilder::new`]
@@ -58,6 +67,18 @@ impl EnvVarSet {
         self.0.append(&mut env_var_set.0);
 
         self
+    }
+
+    /// Adds the given [`EnvVar`] to this set
+    ///
+    /// An [`EnvVar`] with the same name is overridden.
+    pub fn with_env_var(mut self, env_var: EnvVar) -> Result<Self> {
+        self.0.insert(
+            EnvVarName::from_str(&env_var.name).context(ParseEnvVarNameSnafu)?,
+            env_var,
+        );
+
+        Ok(self)
     }
 
     /// Adds the given [`EnvVar`]s to this set
@@ -140,6 +161,34 @@ impl EnvVarSet {
 
         self
     }
+
+    /// Adds an environment variable with the given Secret key reference to this set
+    ///
+    /// An [`EnvVar`] with the same name is overridden.
+    pub fn with_secret_key_ref(
+        mut self,
+        name: &EnvVarName,
+        secret_name: &SecretName,
+        secret_key: &SecretKey,
+    ) -> Self {
+        self.0.insert(
+            name.clone(),
+            EnvVar {
+                name: name.to_string(),
+                value: None,
+                value_from: Some(EnvVarSource {
+                    secret_key_ref: Some(SecretKeySelector {
+                        key: secret_key.to_string(),
+                        name: secret_name.to_string(),
+                        ..SecretKeySelector::default()
+                    }),
+                    ..EnvVarSource::default()
+                }),
+            },
+        );
+
+        self
+    }
 }
 
 impl From<EnvVarSet> for Vec<EnvVar> {
@@ -165,11 +214,13 @@ mod tests {
     use crate::{
         builder::pod::container::FieldPathEnvVar,
         k8s_openapi::api::core::v1::{
-            ConfigMapKeySelector, EnvVar, EnvVarSource, ObjectFieldSelector,
+            ConfigMapKeySelector, EnvVar, EnvVarSource, ObjectFieldSelector, SecretKeySelector,
         },
         v2::{
             builder::pod::container::new_container_builder,
-            types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName},
+            types::kubernetes::{
+                ConfigMapKey, ConfigMapName, ContainerName, SecretKey, SecretName,
+            },
         },
     };
 
@@ -264,6 +315,26 @@ mod tests {
     }
 
     #[test]
+    fn test_envvarset_with_env_var() {
+        let env_var_set = EnvVarSet::new()
+            .with_env_var(EnvVar {
+                name: "ENV".to_owned(),
+                value: Some("value".to_owned()),
+                value_from: None,
+            })
+            .expect("should be a valid EnvVar");
+
+        assert_eq!(
+            Some(&EnvVar {
+                name: "ENV".to_owned(),
+                value: Some("value".to_owned()),
+                value_from: None
+            }),
+            env_var_set.get(&EnvVarName::from_str_unsafe("ENV"))
+        );
+    }
+
+    #[test]
     fn test_envvarset_with_values() {
         let env_var_set = EnvVarSet::new().with_values([
             (EnvVarName::from_str_unsafe("ENV1"), "value1"),
@@ -339,6 +410,31 @@ mod tests {
                         key: "key".to_owned(),
                         name: "config-map".to_owned(),
                         ..ConfigMapKeySelector::default()
+                    }),
+                    ..EnvVarSource::default()
+                }),
+            }),
+            env_var_set.get(&EnvVarName::from_str_unsafe("ENV"))
+        );
+    }
+
+    #[test]
+    fn test_envvarset_with_secret_key_ref() {
+        let env_var_set = EnvVarSet::new().with_secret_key_ref(
+            &EnvVarName::from_str_unsafe("ENV"),
+            &SecretName::from_str_unsafe("secret"),
+            &SecretKey::from_str_unsafe("key"),
+        );
+
+        assert_eq!(
+            Some(&EnvVar {
+                name: "ENV".to_owned(),
+                value: None,
+                value_from: Some(EnvVarSource {
+                    secret_key_ref: Some(SecretKeySelector {
+                        key: "key".to_owned(),
+                        name: "secret".to_owned(),
+                        ..SecretKeySelector::default()
                     }),
                     ..EnvVarSource::default()
                 }),

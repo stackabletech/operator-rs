@@ -338,7 +338,6 @@ impl ClusterResource for Deployment {
 ///     client::Client,
 ///     cluster_resources::{self, ClusterResourceApplyStrategy, ClusterResources},
 ///     deep_merger::ObjectOverrides,
-///     product_config_utils::ValidatedRoleConfigByPropertyKind,
 ///     role_utils::Role,
 /// };
 ///
@@ -366,8 +365,6 @@ impl ClusterResource for Deployment {
 /// };
 ///
 /// async fn reconcile(app: Arc<AppCluster>, client: Arc<Client>) -> Result<Action, Error> {
-///     let validated_config = ValidatedRoleConfigByPropertyKind::default();
-///
 ///     let mut cluster_resources = ClusterResources::new(
 ///         APP_NAME,
 ///         OPERATOR_NAME,
@@ -384,27 +381,23 @@ impl ClusterResource for Deployment {
 ///         .await
 ///         .map_err(|source| Error::AddClusterResource { source })?;
 ///
-///     for (role_name, group_config) in validated_config.iter() {
-///         for (rolegroup_name, rolegroup_config) in group_config.iter() {
-///             let rolegroup_service = Service::default();
-///             cluster_resources
-///                 .add(&client, rolegroup_service)
-///                 .await
-///                 .map_err(|source| Error::AddClusterResource { source })?;
+///     let rolegroup_service = Service::default();
+///     cluster_resources
+///         .add(&client, rolegroup_service)
+///         .await
+///         .map_err(|source| Error::AddClusterResource { source })?;
 ///
-///             let rolegroup_configmap = ConfigMap::default();
-///             cluster_resources
-///                 .add(&client, rolegroup_configmap)
-///                 .await
-///                 .map_err(|source| Error::AddClusterResource { source })?;
+///     let rolegroup_configmap = ConfigMap::default();
+///     cluster_resources
+///         .add(&client, rolegroup_configmap)
+///         .await
+///         .map_err(|source| Error::AddClusterResource { source })?;
 ///
-///             let rolegroup_statefulset = StatefulSet::default();
-///             cluster_resources
-///                 .add(&client, rolegroup_statefulset)
-///                 .await
-///                 .map_err(|source| Error::AddClusterResource { source })?;
-///         }
-///     }
+///     let rolegroup_statefulset = StatefulSet::default();
+///     cluster_resources
+///         .add(&client, rolegroup_statefulset)
+///         .await
+///         .map_err(|source| Error::AddClusterResource { source })?;
 ///
 ///     let discovery_configmap = ConfigMap::default();
 ///     let patched_discovery_configmap = cluster_resources
