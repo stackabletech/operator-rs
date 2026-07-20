@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- [v2] Add `rbac::build_service_account` and `rbac::build_role_binding`, the infallible variant of
+  `commons::rbac::build_rbac_resources` based on typed names and owner references ([#XXXX]).
+
+[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+
 ## [0.113.4] - 2026-07-09
 
 ### Changed
