@@ -258,7 +258,7 @@ impl GitSyncResources {
                 resolved_product_image,
                 git_sync,
                 true,
-                &Vec::from(env_vars.clone()),
+                &Vec::from(env_vars),
                 &git_sync_container_volume_mounts,
                 container_log_config,
                 ca_cert_path.as_deref(),
@@ -1045,7 +1045,7 @@ name: content-from-git-2
         let git_sync_resources = GitSyncResources::new(
             &git_syncs,
             &resolved_product_image,
-            &Vec::from(extra_env_vars.clone()),
+            &Vec::from(extra_env_vars),
             &extra_volume_mounts,
             "log-volume",
             &validate(default_container_log_config()).unwrap(),
@@ -1255,7 +1255,7 @@ secret:
         let git_sync_resources = GitSyncResources::new(
             &git_syncs,
             &resolved_product_image,
-            &Vec::from(extra_env_vars.clone()),
+            &Vec::from(extra_env_vars),
             &extra_volume_mounts,
             "log-volume",
             &validate(default_container_log_config()).unwrap(),

@@ -164,7 +164,7 @@ impl GitSyncResources {
                 resolved_product_image,
                 git_sync,
                 true,
-                &Vec::from(env_vars.clone()),
+                &Vec::from(env_vars),
                 &git_sync_container_volume_mounts,
                 container_log_config,
             )?;
