@@ -83,7 +83,6 @@ stackable-operator-derive = { path = "stackable-operator-derive" }
 strum = { version = "0.28.0", features = ["derive"] }
 syn = "2.0.118"
 sysinfo = "0.39.5"
-tempfile = "3.12.0"
 time = { version = "0.3.49" }
 tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread", "fs"] }
 # We use ring instead of aws-lc-rs, as this currently fails to build in "make run-dev"
