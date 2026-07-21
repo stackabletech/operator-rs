@@ -47,13 +47,12 @@ pub mod versioned {
         #[serde(flatten)]
         pub tls: TlsClientDetails,
 
-        /// Name of an [`AuthenticationClass`](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication) used
-        /// to authenticate against the OpenLineage backend. The `AuthenticationClass` is cluster-scoped
-        /// and referenced by name; it is resolved at runtime via
-        /// [`OpenLineageConnectionSpec::resolve_authentication_class`]. If not specified, no
+        /// Name of a Secret containing the API key used to authenticate against the OpenLineage
+        /// backend. The API key must be stored under the key `apiKey`. The Secret must be located in
+        /// the same namespace as the workload using this connection. If not specified, no
         /// authentication is used.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub authentication_class_ref: Option<String>,
+        pub credentials_secret_name: Option<String>,
     }
 
     /// An OpenLineage connection, either inlined or referenced by the name of an
@@ -108,7 +107,7 @@ impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::OpenLineag
                       secretClass: openlineage-cert
             - host: marquez
               port: 5000
-              authenticationClassRef: openlineage-auth
+              credentialsSecretName: openlineage-credentials
         "})
         .expect("Failed to parse OpenLineageConnectionSpec YAML")
     }
@@ -129,7 +128,7 @@ mod tests {
             host: "marquez".to_string(),
             port: 5000,
             tls: TlsClientDetails { tls: None },
-            authentication_class_ref: None,
+            credentials_secret_name: None,
         };
 
         assert_eq!(connection.transport_url(), "http://marquez:5000");
@@ -147,7 +146,7 @@ mod tests {
                     }),
                 }),
             },
-            authentication_class_ref: None,
+            credentials_secret_name: None,
         };
 
         assert_eq!(connection.transport_url(), "https://marquez:5000");
@@ -163,7 +162,7 @@ mod tests {
                     verification: TlsVerification::None {},
                 }),
             },
-            authentication_class_ref: None,
+            credentials_secret_name: None,
         };
 
         assert_eq!(connection.transport_url(), "http://marquez:5000");

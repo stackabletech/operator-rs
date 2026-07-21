@@ -2,14 +2,9 @@ use snafu::{ResultExt as _, Snafu};
 
 use crate::{
     client::Client,
-    crd::{
-        authentication::core::v1alpha1::AuthenticationClass,
-        openlineage::{
-            ResolvedOpenLineageConnection,
-            v1alpha1::{
-                InlineConnectionOrReference, OpenLineageConnection, OpenLineageConnectionSpec,
-            },
-        },
+    crd::openlineage::{
+        ResolvedOpenLineageConnection,
+        v1alpha1::{InlineConnectionOrReference, OpenLineageConnection, OpenLineageConnectionSpec},
     },
 };
 
@@ -20,13 +15,6 @@ pub enum OpenLineageError {
         #[snafu(source(from(crate::client::Error, Box::new)))]
         source: Box<crate::client::Error>,
         open_lineage_connection: String,
-    },
-
-    #[snafu(display("failed to retrieve AuthenticationClass '{authentication_class}'"))]
-    RetrieveAuthenticationClass {
-        #[snafu(source(from(crate::client::Error, Box::new)))]
-        source: Box<crate::client::Error>,
-        authentication_class: String,
     },
 }
 
@@ -47,27 +35,6 @@ impl OpenLineageConnectionSpec {
             host = self.host,
             port = self.port
         )
-    }
-
-    /// Resolves the [`AuthenticationClass`] referenced by this connection, if any.
-    ///
-    /// Returns `Ok(None)` when no `authenticationClassRef` is configured. The `AuthenticationClass`
-    /// is cluster-scoped, so no namespace is required.
-    pub async fn resolve_authentication_class(
-        &self,
-        client: &Client,
-    ) -> Result<Option<AuthenticationClass>, OpenLineageError> {
-        let Some(authentication_class_ref) = &self.authentication_class_ref else {
-            return Ok(None);
-        };
-
-        let resolved = AuthenticationClass::resolve(client, authentication_class_ref)
-            .await
-            .context(RetrieveAuthenticationClassSnafu {
-                authentication_class: authentication_class_ref.clone(),
-            })?;
-
-        Ok(Some(resolved))
     }
 }
 

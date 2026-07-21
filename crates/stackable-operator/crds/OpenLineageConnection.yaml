@@ -24,12 +24,11 @@ spec:
               OpenLineage connection definition as a resource.
               Learn more about [OpenLineage](https://openlineage.io/).
             properties:
-              authenticationClassRef:
+              credentialsSecretName:
                 description: |-
-                  Name of an [`AuthenticationClass`](https://docs.stackable.tech/home/nightly/concepts/authentication) used
-                  to authenticate against the OpenLineage backend. The `AuthenticationClass` is cluster-scoped
-                  and referenced by name; it is resolved at runtime via
-                  [`OpenLineageConnectionSpec::resolve_authentication_class`]. If not specified, no
+                  Name of a Secret containing the API key used to authenticate against the OpenLineage
+                  backend. The API key must be stored under the key `apiKey`. The Secret must be located in
+                  the same namespace as the workload using this connection. If not specified, no
                   authentication is used.
                 nullable: true
                 type: string
