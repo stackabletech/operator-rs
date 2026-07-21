@@ -6,11 +6,18 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- [v2] Add `EnvVarSet::with_env_var` to add a given `EnvVar` to the set ([#1249]).
 - Add `crd::openlineage` module with the `OpenLineageConnection` CRD (a reusable connection to an
   OpenLineage backend), an `InlineConnectionOrReference` wrapper with `resolve()`, and an embeddable
   `OpenLineageJob` type for operators ([#1250]).
+  
+### Changed
 
-[#1250]: https://github.com/stackabletech/operator-rs/pull/XXXX
+- [v2] BREAKING: Converting an `EnvVarSet` into a `Vec<EnvVar>` takes dependencies between
+  environment variables into account ([#1249]).
+
+[#1249]: https://github.com/stackabletech/operator-rs/pull/1249
+[#1250]: https://github.com/stackabletech/operator-rs/pull/1250
 
 ## [0.113.4] - 2026-07-09
 
