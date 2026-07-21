@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - [v2] Add `EnvVarSet::with_env_var` to add a given `EnvVar` to the set ([#1249]).
+- [v2] Add `rbac::build_service_account` and `rbac::build_role_binding`, the infallible variant of
+  `commons::rbac::build_rbac_resources` based on typed names and owner references ([#1251]).
 
 ### Changed
 
@@ -14,6 +16,7 @@ All notable changes to this project will be documented in this file.
   environment variables into account ([#1249]).
 
 [#1249]: https://github.com/stackabletech/operator-rs/pull/1249
+[#1251]: https://github.com/stackabletech/operator-rs/pull/1251
 
 ## [0.113.4] - 2026-07-09
 
