@@ -49,15 +49,25 @@ pub enum Error {
         source: crate::builder::pod::container::Error,
     },
 
+    #[snafu(display("invalid environment variable"))]
+    InvalidEnvVar {
+        source: crate::v2::builder::pod::container::Error,
+    },
+
+    #[snafu(display("invalid environment variable name"))]
+    InvalidEnvVarName {
+        source: crate::v2::macros::attributed_string_type::Error,
+    },
+
+    #[snafu(display("invalid Secret key"))]
+    InvalidSecretKey {
+        source: crate::v2::macros::attributed_string_type::Error,
+    },
+
     #[snafu(display("invalid Secret name {name:?}"))]
     InvalidSecretName {
         source: crate::v2::macros::attributed_string_type::Error,
         name: String,
-    },
-
-    #[snafu(display("invalid environment variable"))]
-    InvalidEnvVar {
-        source: crate::v2::builder::pod::container::Error,
     },
 
     #[snafu(display("failed to add needed volumeMount"))]
@@ -136,35 +146,35 @@ impl GitSyncResources {
                 env_vars = env_vars
                     .with_secret_key_ref(
                         &EnvVarName::from_str("GITSYNC_USERNAME")
-                            .expect("must be a valid environment variable name"),
+                            .context(InvalidEnvVarNameSnafu)?,
                         &SecretName::from_str(basic_auth_secret_name).with_context(|_| {
                             InvalidSecretNameSnafu {
                                 name: basic_auth_secret_name,
                             }
                         })?,
-                        &SecretKey::from_str("user").expect("must be a valid Secret key"),
+                        &SecretKey::from_str("user").context(InvalidSecretKeySnafu)?,
                     )
                     .with_secret_key_ref(
                         &EnvVarName::from_str("GITSYNC_PASSWORD")
-                            .expect("must be a valid environment variable name"),
+                            .context(InvalidEnvVarNameSnafu)?,
                         &SecretName::from_str(basic_auth_secret_name).with_context(|_| {
                             InvalidSecretNameSnafu {
                                 name: basic_auth_secret_name,
                             }
                         })?,
-                        &SecretKey::from_str("password").expect("must be a valid Secret key"),
+                        &SecretKey::from_str("password").context(InvalidSecretKeySnafu)?,
                     );
             }
             if let Some(Credentials::SshPrivateKeySecretName { .. }) = git_sync.credentials {
                 env_vars = env_vars
                     .with_value(
                         &EnvVarName::from_str("GITSYNC_SSH_KEY_FILE")
-                            .expect("must be a valid environment variable name"),
+                            .context(InvalidEnvVarNameSnafu)?,
                         format!("{SSH_MOUNT_PATH_PREFIX}-{i}/key"),
                     )
                     .with_value(
                         &EnvVarName::from_str("GITSYNC_SSH_KNOWN_HOSTS_FILE")
-                            .expect("must be a valid environment variable name"),
+                            .context(InvalidEnvVarNameSnafu)?,
                         format!("{SSH_MOUNT_PATH_PREFIX}-{i}/knownHosts"),
                     );
             }
