@@ -132,7 +132,7 @@ pub mod versioned {
         None,
     }
 
-    /// OIDC specific config options. These are set on the product config level.
+    /// OIDC specific config options.
     #[derive(
         Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
     )]

@@ -15,8 +15,13 @@ All notable changes to this project will be documented in this file.
 - [v2] BREAKING: Converting an `EnvVarSet` into a `Vec<EnvVar>` takes dependencies between
   environment variables into account ([#1249]).
 
+### Removed
+
+- [v2] BREAKING: Remove dependency to product-config and the product_config_utils module ([#1252]).
+
 [#1249]: https://github.com/stackabletech/operator-rs/pull/1249
 [#1251]: https://github.com/stackabletech/operator-rs/pull/1251
+[#1252]: https://github.com/stackabletech/operator-rs/pull/1252
 
 ## [0.113.4] - 2026-07-09
 

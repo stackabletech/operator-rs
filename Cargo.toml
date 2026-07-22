@@ -9,8 +9,6 @@ edition = "2024"
 repository = "https://github.com/stackabletech/operator-rs"
 
 [workspace.dependencies]
-product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.8.0" }
-
 arc-swap = "1.7.0"
 async-trait = "0.1.89"
 axum = { version = "0.8.1", features = ["http2"] }
@@ -85,7 +83,6 @@ stackable-operator-derive = { path = "stackable-operator-derive" }
 strum = { version = "0.28.0", features = ["derive"] }
 syn = "2.0.118"
 sysinfo = "0.39.5"
-tempfile = "3.12.0"
 time = { version = "0.3.49" }
 tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread", "fs"] }
 # We use ring instead of aws-lc-rs, as this currently fails to build in "make run-dev"

@@ -12,8 +12,10 @@ use strum::{EnumDiscriminants, IntoStaticStr};
 use crate::{
     attributed_string_type,
     builder::pod::container::{ContainerBuilder, FieldPathEnvVar},
-    k8s_openapi::api::core::v1::{ConfigMapKeySelector, EnvVar, EnvVarSource, ObjectFieldSelector},
-    v2::types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName},
+    k8s_openapi::api::core::v1::{
+        ConfigMapKeySelector, EnvVar, EnvVarSource, ObjectFieldSelector, SecretKeySelector,
+    },
+    v2::types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName, SecretKey, SecretName},
 };
 
 /// Pattern for an escaped dollar sign (`$$`)
@@ -175,6 +177,34 @@ impl EnvVarSet {
                         key: config_map_key.to_string(),
                         name: config_map_name.to_string(),
                         ..ConfigMapKeySelector::default()
+                    }),
+                    ..EnvVarSource::default()
+                }),
+            },
+        );
+
+        self
+    }
+
+    /// Adds an environment variable with the given Secret key reference to this set
+    ///
+    /// An [`EnvVar`] with the same name is overridden.
+    pub fn with_secret_key_ref(
+        mut self,
+        name: &EnvVarName,
+        secret_name: &SecretName,
+        secret_key: &SecretKey,
+    ) -> Self {
+        self.0.insert(
+            name.clone(),
+            EnvVar {
+                name: name.to_string(),
+                value: None,
+                value_from: Some(EnvVarSource {
+                    secret_key_ref: Some(SecretKeySelector {
+                        key: secret_key.to_string(),
+                        name: secret_name.to_string(),
+                        ..SecretKeySelector::default()
                     }),
                     ..EnvVarSource::default()
                 }),
@@ -545,11 +575,13 @@ mod tests {
     use crate::{
         builder::pod::container::FieldPathEnvVar,
         k8s_openapi::api::core::v1::{
-            ConfigMapKeySelector, EnvVar, EnvVarSource, ObjectFieldSelector,
+            ConfigMapKeySelector, EnvVar, EnvVarSource, ObjectFieldSelector, SecretKeySelector,
         },
         v2::{
             builder::pod::container::new_container_builder,
-            types::kubernetes::{ConfigMapKey, ConfigMapName, ContainerName},
+            types::kubernetes::{
+                ConfigMapKey, ConfigMapName, ContainerName, SecretKey, SecretName,
+            },
         },
     };
 
@@ -644,6 +676,26 @@ mod tests {
     }
 
     #[test]
+    fn test_envvarset_with_env_var() {
+        let env_var_set = EnvVarSet::new()
+            .with_env_var(EnvVar {
+                name: "ENV".to_owned(),
+                value: Some("value".to_owned()),
+                value_from: None,
+            })
+            .expect("should be a valid EnvVar");
+
+        assert_eq!(
+            Some(&EnvVar {
+                name: "ENV".to_owned(),
+                value: Some("value".to_owned()),
+                value_from: None
+            }),
+            env_var_set.get(&EnvVarName::from_str_unsafe("ENV"))
+        );
+    }
+
+    #[test]
     fn test_envvarset_with_values() {
         let env_var_set = EnvVarSet::new().with_values([
             (EnvVarName::from_str_unsafe("ENV1"), "value1"),
@@ -719,6 +771,31 @@ mod tests {
                         key: "key".to_owned(),
                         name: "config-map".to_owned(),
                         ..ConfigMapKeySelector::default()
+                    }),
+                    ..EnvVarSource::default()
+                }),
+            }),
+            env_var_set.get(&EnvVarName::from_str_unsafe("ENV"))
+        );
+    }
+
+    #[test]
+    fn test_envvarset_with_secret_key_ref() {
+        let env_var_set = EnvVarSet::new().with_secret_key_ref(
+            &EnvVarName::from_str_unsafe("ENV"),
+            &SecretName::from_str_unsafe("secret"),
+            &SecretKey::from_str_unsafe("key"),
+        );
+
+        assert_eq!(
+            Some(&EnvVar {
+                name: "ENV".to_owned(),
+                value: None,
+                value_from: Some(EnvVarSource {
+                    secret_key_ref: Some(SecretKeySelector {
+                        key: "key".to_owned(),
+                        name: "secret".to_owned(),
+                        ..SecretKeySelector::default()
                     }),
                     ..EnvVarSource::default()
                 }),

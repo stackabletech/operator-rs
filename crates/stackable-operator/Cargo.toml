@@ -42,7 +42,6 @@ jiff.workspace = true
 json-patch = { workspace = true, features = ["schemars"] }
 k8s-openapi.workspace = true
 kube.workspace = true
-product-config.workspace = true
 rand.workspace = true
 regex.workspace = true
 schemars.workspace = true
@@ -65,7 +64,6 @@ xml.workspace = true
 [dev-dependencies]
 indoc.workspace = true
 rstest.workspace = true
-tempfile.workspace = true
 
 [lints]
 workspace = true
