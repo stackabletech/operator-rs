@@ -257,7 +257,7 @@ impl GitSyncResources {
                 resolved_product_image,
                 git_sync,
                 false,
-                &Vec::from(env_vars.clone()),
+                env_vars.clone(),
                 &git_sync_container_volume_mounts,
                 container_log_config,
                 ca_cert_path.as_deref(),
@@ -268,7 +268,7 @@ impl GitSyncResources {
                 resolved_product_image,
                 git_sync,
                 true,
-                &Vec::from(env_vars),
+                env_vars,
                 &git_sync_container_volume_mounts,
                 container_log_config,
                 ca_cert_path.as_deref(),
@@ -331,7 +331,7 @@ impl GitSyncResources {
         resolved_product_image: &ResolvedProductImage,
         git_sync: &GitSync,
         one_time: bool,
-        env_vars: &[EnvVar],
+        env_vars: EnvVarSet,
         volume_mounts: &[VolumeMount],
         container_log_config: &ContainerLogConfig,
         ca_cert_path: Option<&str>,
@@ -353,7 +353,7 @@ impl GitSyncResources {
                 container_log_config,
                 ca_cert_path,
             )])
-            .add_env_vars(env_vars.iter().cloned())
+            .add_env_vars(env_vars)
             .add_volume_mounts(volume_mounts.to_vec())
             .context(AddVolumeMountSnafu)?
             .resources(
