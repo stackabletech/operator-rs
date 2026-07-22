@@ -1,8 +1,6 @@
-use std::{collections::BTreeMap, fmt::Write as _, path::PathBuf};
+use std::{collections::BTreeMap, fmt::Write as _, path::PathBuf, str::FromStr};
 
-use k8s_openapi::api::core::v1::{
-    Container, EmptyDirVolumeSource, EnvVar, EnvVarSource, SecretKeySelector, Volume, VolumeMount,
-};
+use k8s_openapi::api::core::v1::{Container, EmptyDirVolumeSource, EnvVar, Volume, VolumeMount};
 use snafu::{ResultExt, Snafu, ensure};
 use strum::{EnumDiscriminants, IntoStaticStr};
 
@@ -19,12 +17,15 @@ use crate::{
         tls_verification::{CaCert, TlsServerVerification, TlsVerification},
     },
     crd::git_sync::v1alpha2::{Credentials, GitSync},
-    product_config_utils::insert_or_update_env_vars,
     product_logging::{
         framework::capture_shell_output,
         spec::{ContainerLogConfig, ContainerLogConfigChoice},
     },
     utils::COMMON_BASH_TRAP_FUNCTIONS,
+    v2::{
+        builder::pod::container::{EnvVarName, EnvVarSet},
+        types::kubernetes::{SecretKey, SecretName},
+    },
 };
 
 pub const CONTAINER_NAME_PREFIX: &str = "git-sync";
@@ -46,6 +47,27 @@ pub enum Error {
     #[snafu(display("invalid container name"))]
     InvalidContainerName {
         source: crate::builder::pod::container::Error,
+    },
+
+    #[snafu(display("invalid environment variable"))]
+    InvalidEnvVar {
+        source: crate::v2::builder::pod::container::Error,
+    },
+
+    #[snafu(display("invalid environment variable name"))]
+    InvalidEnvVarName {
+        source: crate::v2::macros::attributed_string_type::Error,
+    },
+
+    #[snafu(display("invalid Secret key"))]
+    InvalidSecretKey {
+        source: crate::v2::macros::attributed_string_type::Error,
+    },
+
+    #[snafu(display("invalid Secret name {name:?}"))]
+    InvalidSecretName {
+        source: crate::v2::macros::attributed_string_type::Error,
+        name: String,
     },
 
     #[snafu(display("failed to add needed volumeMount"))]
@@ -116,36 +138,52 @@ impl GitSyncResources {
         let mut resources = Self::default();
 
         for (i, git_sync) in git_syncs.iter().enumerate() {
-            let mut env_vars = vec![];
+            let mut env_vars = EnvVarSet::new();
 
             if let Some(Credentials::BasicAuthSecretName(basic_auth_secret_name)) =
                 &git_sync.credentials
             {
-                env_vars.push(Self::env_var_from_secret(
-                    "GITSYNC_USERNAME",
-                    basic_auth_secret_name,
-                    "user",
-                ));
-                env_vars.push(Self::env_var_from_secret(
-                    "GITSYNC_PASSWORD",
-                    basic_auth_secret_name,
-                    "password",
-                ));
+                env_vars = env_vars
+                    .with_secret_key_ref(
+                        &EnvVarName::from_str("GITSYNC_USERNAME")
+                            .context(InvalidEnvVarNameSnafu)?,
+                        &SecretName::from_str(basic_auth_secret_name).with_context(|_| {
+                            InvalidSecretNameSnafu {
+                                name: basic_auth_secret_name,
+                            }
+                        })?,
+                        &SecretKey::from_str("user").context(InvalidSecretKeySnafu)?,
+                    )
+                    .with_secret_key_ref(
+                        &EnvVarName::from_str("GITSYNC_PASSWORD")
+                            .context(InvalidEnvVarNameSnafu)?,
+                        &SecretName::from_str(basic_auth_secret_name).with_context(|_| {
+                            InvalidSecretNameSnafu {
+                                name: basic_auth_secret_name,
+                            }
+                        })?,
+                        &SecretKey::from_str("password").context(InvalidSecretKeySnafu)?,
+                    );
             }
             if let Some(Credentials::SshPrivateKeySecretName { .. }) = git_sync.credentials {
-                env_vars.push(EnvVar {
-                    name: "GITSYNC_SSH_KEY_FILE".to_owned(),
-                    value: Some(format!("{SSH_MOUNT_PATH_PREFIX}-{i}/key").to_owned()),
-                    value_from: None,
-                });
-                env_vars.push(EnvVar {
-                    name: "GITSYNC_SSH_KNOWN_HOSTS_FILE".to_owned(),
-                    value: Some(format!("{SSH_MOUNT_PATH_PREFIX}-{i}/knownHosts").to_owned()),
-                    value_from: None,
-                });
+                env_vars = env_vars
+                    .with_value(
+                        &EnvVarName::from_str("GITSYNC_SSH_KEY_FILE")
+                            .context(InvalidEnvVarNameSnafu)?,
+                        format!("{SSH_MOUNT_PATH_PREFIX}-{i}/key"),
+                    )
+                    .with_value(
+                        &EnvVarName::from_str("GITSYNC_SSH_KNOWN_HOSTS_FILE")
+                            .context(InvalidEnvVarNameSnafu)?,
+                        format!("{SSH_MOUNT_PATH_PREFIX}-{i}/knownHosts"),
+                    );
             }
 
-            env_vars = insert_or_update_env_vars(&env_vars, extra_env_vars);
+            for extra_env_var in extra_env_vars {
+                env_vars = env_vars
+                    .with_env_var(extra_env_var.clone())
+                    .context(InvalidEnvVarSnafu)?;
+            }
 
             let volume_name = format!("{VOLUME_NAME_PREFIX}-{i}");
             let mount_path = format!("{MOUNT_PATH_PREFIX}-{i}");
@@ -219,7 +257,7 @@ impl GitSyncResources {
                 resolved_product_image,
                 git_sync,
                 false,
-                &env_vars,
+                env_vars.clone(),
                 &git_sync_container_volume_mounts,
                 container_log_config,
                 ca_cert_path.as_deref(),
@@ -230,7 +268,7 @@ impl GitSyncResources {
                 resolved_product_image,
                 git_sync,
                 true,
-                &env_vars,
+                env_vars,
                 &git_sync_container_volume_mounts,
                 container_log_config,
                 ca_cert_path.as_deref(),
@@ -293,7 +331,7 @@ impl GitSyncResources {
         resolved_product_image: &ResolvedProductImage,
         git_sync: &GitSync,
         one_time: bool,
-        env_vars: &[EnvVar],
+        env_vars: EnvVarSet,
         volume_mounts: &[VolumeMount],
         container_log_config: &ContainerLogConfig,
         ca_cert_path: Option<&str>,
@@ -315,7 +353,7 @@ impl GitSyncResources {
                 container_log_config,
                 ca_cert_path,
             )])
-            .add_env_vars(env_vars.iter().cloned())
+            .add_env_vars(env_vars)
             .add_volume_mounts(volume_mounts.to_vec())
             .context(AddVolumeMountSnafu)?
             .resources(
@@ -451,25 +489,6 @@ wait_for_termination $!"
 
         shell_script
     }
-
-    fn env_var_from_secret(
-        var_name: impl Into<String>,
-        secret: impl Into<String>,
-        secret_key: impl Into<String>,
-    ) -> EnvVar {
-        EnvVar {
-            name: var_name.into(),
-            value_from: Some(EnvVarSource {
-                secret_key_ref: Some(SecretKeySelector {
-                    name: secret.into(),
-                    key: secret_key.into(),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            }),
-            ..Default::default()
-        }
-    }
 }
 
 #[cfg(test)]
@@ -478,8 +497,8 @@ mod tests {
 
     use super::*;
     use crate::{
-        config::fragment::validate, product_config_utils::env_vars_from,
-        product_logging::spec::default_container_log_config, utils::yaml_from_str_singleton_map,
+        config::fragment::validate, product_logging::spec::default_container_log_config,
+        utils::yaml_from_str_singleton_map,
     };
 
     #[test]
@@ -565,10 +584,12 @@ mod tests {
             pull_secrets: None,
         };
 
-        let extra_env_vars = env_vars_from([
-            ("VAR1", "value1"),
-            ("GITSYNC_USERNAME", "overridden-username"),
-        ]);
+        let extra_env_vars = EnvVarSet::new()
+            .with_value(&EnvVarName::from_str_unsafe("VAR1"), "value1")
+            .with_value(
+                &EnvVarName::from_str_unsafe("GITSYNC_USERNAME"),
+                "overridden-username",
+            );
 
         let extra_volume_mounts = [VolumeMount {
             name: "extra-volume".to_string(),
@@ -579,7 +600,7 @@ mod tests {
         let git_sync_resources = GitSyncResources::new(
             &git_syncs,
             &resolved_product_image,
-            &extra_env_vars,
+            &Vec::from(extra_env_vars),
             &extra_volume_mounts,
             "log-volume",
             &validate(default_container_log_config()).unwrap(),
@@ -1022,7 +1043,8 @@ name: content-from-git-2
             pull_secrets: None,
         };
 
-        let extra_env_vars = env_vars_from([("VAR1", "value1")]);
+        let extra_env_vars =
+            EnvVarSet::new().with_value(&EnvVarName::from_str_unsafe("VAR1"), "value1");
 
         let extra_volume_mounts = [VolumeMount {
             name: "extra-volume".to_string(),
@@ -1033,7 +1055,7 @@ name: content-from-git-2
         let git_sync_resources = GitSyncResources::new(
             &git_syncs,
             &resolved_product_image,
-            &extra_env_vars,
+            &Vec::from(extra_env_vars),
             &extra_volume_mounts,
             "log-volume",
             &validate(default_container_log_config()).unwrap(),
@@ -1231,7 +1253,8 @@ secret:
             pull_secrets: None,
         };
 
-        let extra_env_vars = env_vars_from([("VAR1", "value1")]);
+        let extra_env_vars =
+            EnvVarSet::new().with_value(&EnvVarName::from_str_unsafe("VAR1"), "value1");
 
         let extra_volume_mounts = [VolumeMount {
             name: "extra-volume".to_string(),
@@ -1242,7 +1265,7 @@ secret:
         let git_sync_resources = GitSyncResources::new(
             &git_syncs,
             &resolved_product_image,
-            &extra_env_vars,
+            &Vec::from(extra_env_vars),
             &extra_volume_mounts,
             "log-volume",
             &validate(default_container_log_config()).unwrap(),

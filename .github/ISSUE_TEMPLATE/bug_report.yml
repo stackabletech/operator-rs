@@ -33,10 +33,10 @@ body:
     attributes:
       label: Environment
       description: |
-        What type of kubernetes cluster you are running aginst (k3s/eks/aks/gke/other) and any other information about your environment?
+        What type of kubernetes cluster you are running against (k3s/eks/aks/gke/other) and any other information about your environment?
       placeholder: |
         Examples:
-        Output of `kubectl version --short`
+        Output of `kubectl version`
 
   - type: dropdown
     attributes:

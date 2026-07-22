@@ -99,7 +99,6 @@ use crate::{
         fragment::{self, FromFragment},
         merge::Merge,
     },
-    product_config_utils::Configuration,
     utils::crds::raw_object_schema,
 };
 
@@ -342,65 +341,6 @@ pub struct Role<
     /// [roles and role groups concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/roles-and-role-groups)
     /// for more details.
     pub role_groups: HashMap<String, RoleGroup<Config, CommonConfig, ConfigOverrides>>,
-}
-
-impl<Config, ConfigOverrides, RoleConfig, CommonConfig>
-    Role<Config, ConfigOverrides, RoleConfig, CommonConfig>
-where
-    Config: Configuration + 'static,
-    RoleConfig: Default + JsonSchema + Serialize,
-    CommonConfig: Default + JsonSchema + Serialize + Clone,
-    ConfigOverrides: Default + JsonSchema + Serialize,
-{
-    /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
-    /// and used in [`Role`] into a Box of a dynamically dispatched
-    /// [`crate::product_config_utils::Configuration`] Trait. This is required to use the generic
-    /// [`Role`] with more than a single generic struct. For example different roles most likely
-    /// have different structs implementing Configuration.
-    pub fn erase(
-        self,
-    ) -> Role<
-        Box<dyn Configuration<Configurable = Config::Configurable>>,
-        ConfigOverrides,
-        RoleConfig,
-        CommonConfig,
-    > {
-        Role {
-            config: CommonConfiguration {
-                config: Box::new(self.config.config)
-                    as Box<dyn Configuration<Configurable = Config::Configurable>>,
-                config_overrides: self.config.config_overrides,
-                env_overrides: self.config.env_overrides,
-                cli_overrides: self.config.cli_overrides,
-                pod_overrides: self.config.pod_overrides,
-                product_specific_common_config: self.config.product_specific_common_config,
-            },
-            role_config: self.role_config,
-            role_groups: self
-                .role_groups
-                .into_iter()
-                .map(|(name, group)| {
-                    (
-                        name,
-                        RoleGroup {
-                            config: CommonConfiguration {
-                                config: Box::new(group.config.config)
-                                    as Box<dyn Configuration<Configurable = Config::Configurable>>,
-                                config_overrides: group.config.config_overrides,
-                                env_overrides: group.config.env_overrides,
-                                cli_overrides: group.config.cli_overrides,
-                                pod_overrides: group.config.pod_overrides,
-                                product_specific_common_config: group
-                                    .config
-                                    .product_specific_common_config,
-                            },
-                            replicas: group.replicas,
-                        },
-                    )
-                })
-                .collect(),
-        }
-    }
 }
 
 impl<Config, ConfigOverrides, RoleConfig>

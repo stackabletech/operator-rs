@@ -6,18 +6,32 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- [v2] Add `EnvVarSet::with_env_var` to add a given `EnvVar` to the set ([#1249]).
 - Add `crd::openlineage` module with the `OpenLineageConnection` CRD (a reusable connection to an
   OpenLineage backend), an `InlineConnectionOrReference` wrapper with `resolve()`, and an embeddable
   `OpenLineageJob` type for operators ([#1250]).
+
+[#1250]: https://github.com/stackabletech/operator-rs/pull/1250
+
+## [0.114.0] - 2026-07-22
+
+### Added
+
+- [v2] Add `EnvVarSet::with_env_var` to add a given `EnvVar` to the set ([#1249]).
+- [v2] Add `rbac::build_service_account` and `rbac::build_role_binding`, the infallible variant of
+  `commons::rbac::build_rbac_resources` based on typed names and owner references ([#1251]).
 
 ### Changed
 
 - [v2] BREAKING: Converting an `EnvVarSet` into a `Vec<EnvVar>` takes dependencies between
   environment variables into account ([#1249]).
 
+### Removed
+
+- [v2] BREAKING: Remove dependency to product-config and the product_config_utils module ([#1252]).
+
 [#1249]: https://github.com/stackabletech/operator-rs/pull/1249
-[#1250]: https://github.com/stackabletech/operator-rs/pull/1250
+[#1251]: https://github.com/stackabletech/operator-rs/pull/1251
+[#1252]: https://github.com/stackabletech/operator-rs/pull/1252
 
 ## [0.113.4] - 2026-07-09
 
