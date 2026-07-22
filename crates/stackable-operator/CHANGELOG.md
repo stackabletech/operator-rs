@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 - Add `crd::openlineage` module with the `OpenLineageConnection` CRD (a reusable connection to an
   OpenLineage backend), an `InlineConnectionOrReference` wrapper with `resolve()`, and an embeddable
   `OpenLineageJob` type for operators ([#1250]).
-  
+
 ### Changed
 
 - [v2] BREAKING: Converting an `EnvVarSet` into a `Vec<EnvVar>` takes dependencies between
