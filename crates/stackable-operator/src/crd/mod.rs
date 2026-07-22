@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 pub mod authentication;
 pub mod git_sync;
 pub mod listener;
+pub mod openlineage;
 pub mod s3;
 pub mod scaler;
 
