@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.114.0] - 2026-07-22
+
 ### Added
 
 - [v2] Add `EnvVarSet::with_env_var` to add a given `EnvVar` to the set ([#1249]).
