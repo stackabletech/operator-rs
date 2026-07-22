@@ -123,7 +123,7 @@ pub fn vector_container(
     container_name: &ContainerName,
     image: &ResolvedProductImage,
     vector_container_log_config: &VectorContainerLogConfig,
-    resource_names: &role_group_utils::ResourceNames,
+    resource_names: &role_group_utils::RoleGroupResourceNames,
     log_config_volume_name: &VolumeName,
     log_volume_name: &VolumeName,
     extra_env_vars: EnvVarSet,
@@ -392,7 +392,7 @@ mod tests {
             vector_aggregator_config_map_name: ConfigMapName::from_str_unsafe("vector-aggregator"),
         };
 
-        let resource_names = role_group_utils::ResourceNames {
+        let resource_names = role_group_utils::RoleGroupResourceNames {
             cluster_name: ClusterName::from_str_unsafe("test-cluster"),
             role_name: RoleName::from_str_unsafe("role"),
             role_group_name: RoleGroupName::from_str_unsafe("role-group"),

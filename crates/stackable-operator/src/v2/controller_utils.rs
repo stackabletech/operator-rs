@@ -6,12 +6,53 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
-    kube::runtime::reflector::Lookup,
-    v2::types::{
-        kubernetes::{NamespaceName, Uid},
-        operator::ClusterName,
+    kube::{Resource, runtime::reflector::Lookup},
+    kvp::Labels,
+    v2::{
+        HasName, NameIsValidLabelValue,
+        kvp::label::recommended_labels,
+        types::{
+            kubernetes::{NamespaceName, Uid},
+            operator::{
+                ClusterName, ControllerName, OperatorName, ProductName, ProductVersion,
+                RoleGroupName, RoleName,
+            },
+        },
     },
 };
+
+/// The typed identity of a controller: the product it manages and the operator/controller
+/// names it acts as, e.g. for the recommended labels. Static for a given controller, so it is
+/// constructed once at controller startup and passed down.
+pub struct ContextNames {
+    pub product_name: ProductName,
+    pub operator_name: OperatorName,
+    pub controller_name: ControllerName,
+}
+
+impl ContextNames {
+    /// The recommended labels for a resource owned by `owner`, combining this controller
+    /// identity with the given product version, role and role group. Use the
+    /// [`crate::v2::kvp::label`] placeholder values for dimensions that do not apply to the
+    /// resource.
+    pub fn recommended_labels(
+        &self,
+        owner: &(impl Resource + HasName + NameIsValidLabelValue),
+        product_version: &ProductVersion,
+        role_name: &RoleName,
+        role_group_name: &RoleGroupName,
+    ) -> Labels {
+        recommended_labels(
+            owner,
+            &self.product_name,
+            product_version,
+            &self.operator_name,
+            &self.controller_name,
+            role_name,
+            role_group_name,
+        )
+    }
+}
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]

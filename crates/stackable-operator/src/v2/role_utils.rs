@@ -154,12 +154,12 @@ where
 }
 
 /// Type-safe names for role resources
-pub struct ResourceNames {
+pub struct ClusterResourceNames {
     pub cluster_name: ClusterName,
     pub product_name: ProductName,
 }
 
-impl ResourceNames {
+impl ClusterResourceNames {
     pub fn service_account_name(&self) -> ServiceAccountName {
         const SUFFIX: &str = "-serviceaccount";
 
@@ -210,7 +210,7 @@ mod tests {
     use rstest::*;
     use serde::Serialize;
 
-    use super::ResourceNames;
+    use super::ClusterResourceNames;
     use crate::{
         config::{fragment::Fragment, merge::Merge},
         k8s_openapi::api::core::v1::PodTemplateSpec,
@@ -370,7 +370,7 @@ mod tests {
 
     #[test]
     fn test_resource_names() {
-        let resource_names = ResourceNames {
+        let resource_names = ClusterResourceNames {
             cluster_name: ClusterName::from_str_unsafe("my-cluster"),
             product_name: ProductName::from_str_unsafe("my-product"),
         };

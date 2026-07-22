@@ -8,12 +8,24 @@ All notable changes to this project will be documented in this file.
 
 - [v2] Add `EnvVarSet::with_env_var` to add a given `EnvVar` to the set ([#1249]).
 - [v2] Add `rbac::build_service_account` and `rbac::build_role_binding`, the infallible variant of
-  `commons::rbac::build_rbac_resources` based on typed names and owner references ([#1251]).
+  `commons::rbac::build_rbac_resources` based on typed names and owner references; they derive
+  the recommended labels from the new `controller_utils::ContextNames` and the product version
+  ([#1251], [#XXXX]).
+- [v2] Add the `kvp::label::HasRecommendedLabels` trait (provided `recommended_labels_for` /
+  `unversioned_recommended_labels_for`) and the `NONE_ROLE_NAME`, `NONE_ROLE_GROUP_NAME` and
+  `UNVERSIONED_PRODUCT_VERSION` placeholder label values ([#XXXX]).
 
 ### Changed
 
 - [v2] BREAKING: Converting an `EnvVarSet` into a `Vec<EnvVar>` takes dependencies between
   environment variables into account ([#1249]).
+- [v2] BREAKING: Rename `role_utils::ResourceNames` to `ClusterResourceNames` and
+  `role_group_utils::ResourceNames` to `RoleGroupResourceNames`, naming both by their scope
+  ([#XXXX]).
+
+### Deprecated
+
+- Deprecate `commons::rbac::build_rbac_resources`; use the `v2::rbac` functions instead ([#XXXX]).
 
 ### Removed
 

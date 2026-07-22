@@ -38,6 +38,10 @@ pub enum Error {
 ///
 /// The service account is bound to a cluster role named `{product_name}-clusterrole` which
 /// must already exist.
+#[deprecated(
+    note = "use `v2::rbac::{build_service_account, build_role_binding}`, which are infallible, \
+            take typed names and derive the recommended labels"
+)]
 pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     resource: &T,
     product_name: &str,
@@ -102,6 +106,7 @@ fn role_binding_name(rbac_prefix: &str) -> String {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use kube::CustomResource;
     use schemars::{self, JsonSchema};

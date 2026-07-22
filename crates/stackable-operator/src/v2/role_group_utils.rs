@@ -22,13 +22,13 @@ attributed_string_type! {
 }
 
 /// Type-safe names for role-group resources
-pub struct ResourceNames {
+pub struct RoleGroupResourceNames {
     pub cluster_name: ClusterName,
     pub role_name: RoleName,
     pub role_group_name: RoleGroupName,
 }
 
-impl ResourceNames {
+impl RoleGroupResourceNames {
     /// Creates a qualified role group name in the format
     /// `<cluster_name>-<role_name>-<role_group_name>`
     ///
@@ -39,10 +39,10 @@ impl ResourceNames {
     ///
     /// ```rust
     /// # use std::str::FromStr;
-    /// # use stackable_operator::v2::role_group_utils::ResourceNames;
+    /// # use stackable_operator::v2::role_group_utils::RoleGroupResourceNames;
     /// # use stackable_operator::v2::types::operator::{ClusterName, RoleGroupName, RoleName};
     ///
-    /// let resource_names = ResourceNames {
+    /// let resource_names = RoleGroupResourceNames {
     ///     cluster_name: ClusterName::from_str("an-exceptional-long-cluster-name").unwrap(),
     ///     role_name: RoleName::from_str("dagprocessor").unwrap(),
     ///     role_group_name: RoleGroupName::from_str("default").unwrap(),
@@ -235,7 +235,7 @@ impl ResourceNames {
 mod tests {
     use super::{ClusterName, RoleGroupName, RoleName};
     use crate::v2::{
-        role_group_utils::{QualifiedRoleGroupName, ResourceNames},
+        role_group_utils::{QualifiedRoleGroupName, RoleGroupResourceNames},
         types::kubernetes::{
             ConfigMapName, DaemonSetName, DeploymentName, ListenerName, ServiceName,
             StatefulSetName,
@@ -246,7 +246,7 @@ mod tests {
     fn test_resource_names() {
         QualifiedRoleGroupName::test_example();
 
-        let resource_names = ResourceNames {
+        let resource_names = RoleGroupResourceNames {
             cluster_name: ClusterName::from_str_unsafe("test-cluster"),
             role_name: RoleName::from_str_unsafe("data-nodes"),
             role_group_name: RoleGroupName::from_str_unsafe("ssd-storage"),
@@ -293,7 +293,7 @@ mod tests {
         let role_name_length = role_name_and_role_group_name_length / 2;
         let role_group_name_length = role_name_and_role_group_name_length - role_name_length;
 
-        let resource_names = ResourceNames {
+        let resource_names = RoleGroupResourceNames {
             cluster_name: ClusterName::from_str_unsafe(&"c".repeat(cluster_name_length)),
             role_name: RoleName::from_str_unsafe(&"r".repeat(role_name_length)),
             role_group_name: RoleGroupName::from_str_unsafe(&"g".repeat(role_group_name_length)),
@@ -315,7 +315,7 @@ mod tests {
 
     #[test]
     fn test_hashed_qualified_role_group_name() {
-        let resource_names = ResourceNames {
+        let resource_names = RoleGroupResourceNames {
             cluster_name: ClusterName::from_str_unsafe(&"c".repeat(ClusterName::MAX_LENGTH)),
             role_name: RoleName::from_str_unsafe(&"r".repeat(RoleName::MAX_LENGTH)),
             role_group_name: RoleGroupName::from_str_unsafe(&"g".repeat(RoleGroupName::MAX_LENGTH)),
@@ -340,52 +340,52 @@ mod tests {
         // empty resource name, no hash length
         assert_eq!(
             String::new(),
-            ResourceNames::ensure_max_length(String::new(), 2, 0)
+            RoleGroupResourceNames::ensure_max_length(String::new(), 2, 0)
         );
 
         // resource_name.len() <= max_length
         assert_eq!(
             "abcdef".to_owned(),
-            ResourceNames::ensure_max_length("abcdef".to_owned(), 6, 4)
+            RoleGroupResourceNames::ensure_max_length("abcdef".to_owned(), 6, 4)
         );
 
         // hash_length == 0
         assert_eq!(
             "abcdef".to_owned(),
-            ResourceNames::ensure_max_length("abcdefg".to_owned(), 6, 0)
+            RoleGroupResourceNames::ensure_max_length("abcdefg".to_owned(), 6, 0)
         );
 
         // hash appended with dash
         assert_eq!(
             "a-7d1a".to_owned(),
-            ResourceNames::ensure_max_length("abcdefg".to_owned(), 6, 4)
+            RoleGroupResourceNames::ensure_max_length("abcdefg".to_owned(), 6, 4)
         );
 
         // hash appended without an extra dash
         assert_eq!(
             "ab-a1b1".to_owned(),
-            ResourceNames::ensure_max_length("ab-defgh".to_owned(), 7, 4)
+            RoleGroupResourceNames::ensure_max_length("ab-defgh".to_owned(), 7, 4)
         );
 
         // hash appended without an extra dash
         // In this case, the result is one character shorter than the maximum length.
         assert_eq!(
             "a-3951".to_owned(),
-            ResourceNames::ensure_max_length("a-cdefgh".to_owned(), 7, 4)
+            RoleGroupResourceNames::ensure_max_length("a-cdefgh".to_owned(), 7, 4)
         );
 
         // hash appended without an extra dash
         // The two dashes in the given resource name are intentionally kept.
         assert_eq!(
             "a--f7a0".to_owned(),
-            ResourceNames::ensure_max_length("a--defgh".to_owned(), 7, 4)
+            RoleGroupResourceNames::ensure_max_length("a--defgh".to_owned(), 7, 4)
         );
 
         // A hash_length longer than the produced hash string may not produce the desired result.
         // Just use sensible values!
         assert_eq!(
             "aaaaaaaaa-d476ce01c3787bcab054a2cf48d6af6dd303a0eb549e21a74125132f79d90c36".to_owned(),
-            ResourceNames::ensure_max_length("a".repeat(1011), 1010, 1000)
+            RoleGroupResourceNames::ensure_max_length("a".repeat(1011), 1010, 1000)
         );
     }
 }

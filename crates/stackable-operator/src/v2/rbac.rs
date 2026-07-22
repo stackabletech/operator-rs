@@ -10,48 +10,62 @@ use crate::{
     },
     kube::{Resource, ResourceExt},
     kvp::Labels,
-    v2::{HasName, HasUid, builder::meta::ownerreference_from_resource, role_utils::ResourceNames},
+    v2::{
+        HasName, HasUid, NameIsValidLabelValue,
+        builder::meta::ownerreference_from_resource,
+        controller_utils::ContextNames,
+        kvp::label::{NONE_ROLE_GROUP_NAME, NONE_ROLE_NAME},
+        role_utils::ClusterResourceNames,
+        types::operator::ProductVersion,
+    },
 };
 
 /// Builds the [`ServiceAccount`] for the product workloads, named
-/// `<cluster_name>-serviceaccount` after the given [`ResourceNames`].
+/// `<cluster_name>-serviceaccount` after the given [`ClusterResourceNames`], carrying the
+/// recommended labels derived from `context_names` and `product_version` (with
+/// [`static@NONE_ROLE_NAME`]/[`static@NONE_ROLE_GROUP_NAME`] as the role/role-group values,
+/// because the ServiceAccount is shared by the whole cluster).
 ///
 /// Together with [`build_role_binding`] this is the infallible variant of
-/// [`crate::commons::rbac::build_rbac_resources`]; the output is identical as long as
-/// `resource_names.cluster_name` matches the metadata name of `owner`.
+/// [`crate::commons::rbac::build_rbac_resources`]; the output is identical when the v1
+/// function is given the same recommended labels and `resource_names.cluster_name` matches
+/// the metadata name of `owner`.
 pub fn build_service_account(
-    owner: &(impl Resource<DynamicType = ()> + HasName + HasUid),
-    resource_names: &ResourceNames,
-    labels: Labels,
+    owner: &(impl Resource<DynamicType = ()> + HasName + HasUid + NameIsValidLabelValue),
+    resource_names: &ClusterResourceNames,
+    context_names: &ContextNames,
+    product_version: &ProductVersion,
 ) -> ServiceAccount {
     ServiceAccount {
         metadata: build_metadata(
             owner,
             resource_names.service_account_name().to_string(),
-            labels,
+            rbac_labels(owner, context_names, product_version),
         ),
         ..ServiceAccount::default()
     }
 }
 
 /// Builds the [`RoleBinding`] for the product workloads, named `<cluster_name>-rolebinding`
-/// after the given [`ResourceNames`]. It binds the [`ServiceAccount`] from
-/// [`build_service_account`] to the operator-deployed ClusterRole
-/// `<product_name>-clusterrole`, which must already exist.
+/// after the given [`ClusterResourceNames`] and labelled like [`build_service_account`]. It
+/// binds the [`ServiceAccount`] from [`build_service_account`] to the operator-deployed
+/// ClusterRole `<product_name>-clusterrole`, which must already exist.
 ///
 /// Together with [`build_service_account`] this is the infallible variant of
-/// [`crate::commons::rbac::build_rbac_resources`]; the output is identical as long as
-/// `resource_names.cluster_name` matches the metadata name of `owner`.
+/// [`crate::commons::rbac::build_rbac_resources`]; the output is identical when the v1
+/// function is given the same recommended labels and `resource_names.cluster_name` matches
+/// the metadata name of `owner`.
 pub fn build_role_binding(
-    owner: &(impl Resource<DynamicType = ()> + HasName + HasUid),
-    resource_names: &ResourceNames,
-    labels: Labels,
+    owner: &(impl Resource<DynamicType = ()> + HasName + HasUid + NameIsValidLabelValue),
+    resource_names: &ClusterResourceNames,
+    context_names: &ContextNames,
+    product_version: &ProductVersion,
 ) -> RoleBinding {
     RoleBinding {
         metadata: build_metadata(
             owner,
             resource_names.role_binding_name().to_string(),
-            labels,
+            rbac_labels(owner, context_names, product_version),
         ),
         role_ref: RoleRef {
             api_group: Some(ClusterRole::GROUP.to_owned()),
@@ -66,6 +80,22 @@ pub fn build_role_binding(
             api_group: None,
         }]),
     }
+}
+
+/// The recommended labels of the RBAC resources; role and role group are
+/// [`static@NONE_ROLE_NAME`]/[`static@NONE_ROLE_GROUP_NAME`] because the resources are shared
+/// by the whole cluster.
+fn rbac_labels(
+    owner: &(impl Resource + HasName + NameIsValidLabelValue),
+    context_names: &ContextNames,
+    product_version: &ProductVersion,
+) -> Labels {
+    context_names.recommended_labels(
+        owner,
+        product_version,
+        &NONE_ROLE_NAME,
+        &NONE_ROLE_GROUP_NAME,
+    )
 }
 
 /// Common metadata of the RBAC resources: name, the owner's namespace, an owner reference on
@@ -96,14 +126,17 @@ mod tests {
             apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference},
         },
         kube::Resource,
-        kvp::Labels,
         v2::{
-            HasName, HasUid,
+            HasName, HasUid, NameIsValidLabelValue,
+            controller_utils::ContextNames,
+            kvp::label::{NONE_ROLE_GROUP_NAME, NONE_ROLE_NAME, recommended_labels},
             rbac::{build_role_binding, build_service_account},
-            role_utils::ResourceNames,
+            role_utils::ClusterResourceNames,
             types::{
                 kubernetes::Uid,
-                operator::{ClusterName, ProductName},
+                operator::{
+                    ClusterName, ControllerName, OperatorName, ProductName, ProductVersion,
+                },
             },
         },
     };
@@ -176,23 +209,45 @@ mod tests {
         }
     }
 
-    fn resource_names() -> ResourceNames {
-        ResourceNames {
+    impl NameIsValidLabelValue for Cluster {
+        fn to_label_value(&self) -> String {
+            self.to_name()
+        }
+    }
+
+    fn resource_names() -> ClusterResourceNames {
+        ClusterResourceNames {
             cluster_name: ClusterName::from_str_unsafe("cluster-name"),
             product_name: ProductName::from_str_unsafe("my-product"),
         }
     }
 
-    fn labels() -> Labels {
-        Labels::common("my-product", "cluster-name").expect("should be valid label values")
+    fn context_names() -> ContextNames {
+        ContextNames {
+            product_name: ProductName::from_str_unsafe("my-product"),
+            operator_name: OperatorName::from_str_unsafe("product.example.org"),
+            controller_name: ControllerName::from_str_unsafe("productcluster"),
+        }
+    }
+
+    fn product_version() -> ProductVersion {
+        ProductVersion::from_str_unsafe("1.2.3")
     }
 
     fn expected_metadata(name: &str) -> ObjectMeta {
         ObjectMeta {
             labels: Some(
                 [
+                    ("app.kubernetes.io/component", "none"),
                     ("app.kubernetes.io/instance", "cluster-name"),
+                    (
+                        "app.kubernetes.io/managed-by",
+                        "product.example.org_productcluster",
+                    ),
                     ("app.kubernetes.io/name", "my-product"),
+                    ("app.kubernetes.io/role-group", "none"),
+                    ("app.kubernetes.io/version", "1.2.3"),
+                    ("stackable.tech/vendor", "Stackable"),
                 ]
                 .map(|(key, value)| (key.to_owned(), value.to_owned()))
                 .into(),
@@ -220,7 +275,12 @@ mod tests {
 
         assert_eq!(
             expected_service_account,
-            build_service_account(&Cluster::new(), &resource_names(), labels())
+            build_service_account(
+                &Cluster::new(),
+                &resource_names(),
+                &context_names(),
+                &product_version(),
+            )
         );
     }
 
@@ -243,25 +303,45 @@ mod tests {
 
         assert_eq!(
             expected_role_binding,
-            build_role_binding(&Cluster::new(), &resource_names(), labels())
+            build_role_binding(
+                &Cluster::new(),
+                &resource_names(),
+                &context_names(),
+                &product_version(),
+            )
         );
     }
 
+    /// The v2 output must stay byte-identical to the v1 builder given the same labels, so that
+    /// migrating an operator from v1 to v2 changes nothing but where the labels come from.
     #[test]
+    #[allow(deprecated)]
     fn output_is_identical_to_v1_build_rbac_resources() {
         let cluster = Cluster::new();
 
+        let names = context_names();
+        let version = product_version();
+        let labels = recommended_labels(
+            &cluster,
+            &names.product_name,
+            &version,
+            &names.operator_name,
+            &names.controller_name,
+            &NONE_ROLE_NAME,
+            &NONE_ROLE_GROUP_NAME,
+        );
+
         let (v1_service_account, v1_role_binding) =
-            crate::commons::rbac::build_rbac_resources(&cluster, "my-product", labels())
+            crate::commons::rbac::build_rbac_resources(&cluster, "my-product", labels)
                 .expect("should build the v1 RBAC resources");
 
         assert_eq!(
             v1_service_account,
-            build_service_account(&cluster, &resource_names(), labels())
+            build_service_account(&cluster, &resource_names(), &names, &version)
         );
         assert_eq!(
             v1_role_binding,
-            build_role_binding(&cluster, &resource_names(), labels())
+            build_role_binding(&cluster, &resource_names(), &names, &version)
         );
     }
 }
