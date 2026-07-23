@@ -1858,12 +1858,13 @@ spec:
                     description: Version of the product, e.g. `1.4.1`.
                     type: string
                   pullPolicy:
-                    default: Always
                     description: '[Pull policy](https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy) used when pulling the image.'
                     enum:
                     - IfNotPresent
                     - Always
                     - Never
+                    - null
+                    nullable: true
                     type: string
                   pullSecrets:
                     description: '[Image pull secrets](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod) to pull images from a private registry.'
@@ -1889,12 +1890,41 @@ spec:
                     type: string
                   stackableVersion:
                     description: |-
-                      Stackable version of the product, e.g. `23.4`, `23.4.1` or `0.0.0-dev`.
+                      Stackable version of the product, e.g. `26.7.0` or `0.0.0-dev`.
 
-                      If not specified, the operator will use its own version, e.g. `23.4.1`. When using a nightly
+                      If not specified, the operator will use its own version, e.g. `26.7.1`. When using a nightly
                       operator or a PR version, it will use the nightly `0.0.0-dev` image.
+
+                      If this is used in combination with `useFloatingTag`, the correct floating tag is computed
+                      automatically, e.g. `26.7.0` becomes `26.7` for the product image.
                     nullable: true
                     type: string
+                  useFloatingTag:
+                    default: false
+                    description: |-
+                      Use a floating tag for the product image. Defaults to `false`.
+
+                      This mechanism utilizes a floating image tag which always refers to the latest patch version
+                      in the current release line. The current release line is either automatically derived by the
+                      operator based on its own version, or can be overridden with `stackableVersion`.
+
+                      A potential newer image is only pulled when Pods are rotated or their containers are
+                      restarted. Pods are NOT rotated and containers are NOT restarted automatically when a new
+                      image is available. This behaviour makes this a passive update mechanism, rather than an
+                      active one.
+
+                      It should be noted that when this field is set to `true`, the operator uses `Always` as the
+                      pull policy for product images. If set to `false`, `IfNotPresent` is used. Explicitly
+                      setting `pullPolicy` takes precedence.
+
+                      ### Examples
+
+                      - The `stackableVersion` field is not set, the operator falls back to its own version, eg.
+                        26.7.0. If this field is set to `true`, the `26.7` floating tag will be used for product
+                        images, else, `26.7.0` will be used.
+                      - The `stackableVersion` field is set to `26.3.0`. If this field is set to `true`, the
+                        `26.3` floating tag will be used for product images, else, `26.3.0` will be used.
+                    type: boolean
                 type: object
               secretClassVolume:
                 properties:
