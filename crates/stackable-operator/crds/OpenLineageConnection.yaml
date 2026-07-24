@@ -2,9 +2,9 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: openlineageconnections.openlineage.stackable.tech
+  name: openlineageconnections.lineage.stackable.tech
 spec:
-  group: openlineage.stackable.tech
+  group: lineage.stackable.tech
   names:
     categories: []
     kind: OpenLineageConnection

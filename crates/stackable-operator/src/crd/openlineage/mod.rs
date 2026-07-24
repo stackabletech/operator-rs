@@ -27,7 +27,7 @@ pub mod versioned {
     /// OpenLineage connection definition as a resource.
     /// Learn more about [OpenLineage](https://openlineage.io/).
     #[versioned(crd(
-        group = "openlineage.stackable.tech",
+        group = "lineage.stackable.tech",
         kind = "OpenLineageConnection",
         plural = "openlineageconnections",
         doc = "A reusable definition of a connection to an OpenLineage backend.",
@@ -80,10 +80,10 @@ pub mod versioned {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub namespace: Option<String>,
 
-        /// A stable OpenLineage job/application name. Setting this prevents fragmented run history.
+        /// A stable OpenLineage job name. Setting this prevents fragmented run history.
         /// If unset, operators resolve a name from workload-specific configuration.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub app_name: Option<String>,
+        pub job_name: Option<String>,
     }
 }
 
