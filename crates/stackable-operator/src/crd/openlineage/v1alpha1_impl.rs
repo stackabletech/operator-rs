@@ -21,6 +21,13 @@ pub enum OpenLineageError {
 }
 
 impl HttpTransport {
+    /// Having it as `const &str` as well, so we don't always allocate a [`String`] just for comparisons
+    pub const DEFAULT_PATH: &str = "/api/v1/lineage";
+
+    pub(super) fn default_path() -> String {
+        Self::DEFAULT_PATH.to_string()
+    }
+
     /// Build the OpenLineage transport URL from this transport.
     ///
     /// The scheme is `https` when TLS server verification is configured

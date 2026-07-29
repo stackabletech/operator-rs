@@ -60,6 +60,10 @@ pub mod versioned {
         /// Port the OpenLineage backend listens on. For example: `5000`.
         pub port: u16,
 
+        /// URL path of the endpoint lineage events are sent to.
+        #[serde(default = "v1alpha1::HttpTransport::default_path")]
+        pub path: String,
+
         /// Use a TLS connection. If not specified no TLS will be used.
         /// When TLS server verification is configured, the transport uses `https` instead of `http`.
         #[serde(flatten)]
@@ -129,6 +133,10 @@ impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::OpenLineag
                 host: marquez
                 port: 5000
                 credentialsSecretName: openlineage-credentials
+            - http:
+                host: marquez
+                port: 5000
+                path: /custom/lineage/endpoint
         "})
         .expect("Failed to parse OpenLineageConnectionSpec YAML")
     }
@@ -148,6 +156,7 @@ mod tests {
         let transport = HttpTransport {
             host: "marquez".to_string(),
             port: 5000,
+            path: HttpTransport::default_path(),
             tls: TlsClientDetails { tls: None },
             credentials_secret_name: None,
         };
@@ -160,6 +169,7 @@ mod tests {
         let transport = HttpTransport {
             host: "marquez".to_string(),
             port: 5000,
+            path: HttpTransport::default_path(),
             tls: TlsClientDetails {
                 tls: Some(Tls {
                     verification: TlsVerification::Server(TlsServerVerification {
@@ -178,6 +188,7 @@ mod tests {
         let transport = HttpTransport {
             host: "marquez".to_string(),
             port: 5000,
+            path: HttpTransport::default_path(),
             tls: TlsClientDetails {
                 tls: Some(Tls {
                     verification: TlsVerification::None {},

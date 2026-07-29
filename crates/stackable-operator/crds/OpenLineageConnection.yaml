@@ -41,6 +41,10 @@ spec:
                   host:
                     description: 'Host of the OpenLineage backend without any protocol or port. For example: `marquez`.'
                     type: string
+                  path:
+                    default: /api/v1/lineage
+                    description: URL path of the endpoint lineage events are sent to.
+                    type: string
                   port:
                     description: 'Port the OpenLineage backend listens on. For example: `5000`.'
                     format: uint16
