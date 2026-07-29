@@ -1,0 +1,202 @@
+use kube::CustomResource;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+use crate::{commons::tls_verification::TlsClientDetails, versioned::versioned};
+
+mod v1alpha1_impl;
+
+// FIXME (@Techassi): This should be versioned as well, but the macro cannot
+// handle new-type structs yet.
+/// Use this type in your operator!
+pub type ResolvedOpenLineageConnection = v1alpha1::OpenLineageConnectionSpec;
+
+#[versioned(
+    version(name = "v1alpha1"),
+    crates(
+        kube_core = "kube::core",
+        k8s_openapi = "k8s_openapi",
+        schemars = "schemars",
+    )
+)]
+pub mod versioned {
+    pub mod v1alpha1 {
+        pub use v1alpha1_impl::OpenLineageError;
+    }
+
+    /// OpenLineage connection definition as a resource.
+    /// Learn more about [OpenLineage](https://openlineage.io/).
+    #[versioned(crd(
+        group = "lineage.stackable.tech",
+        kind = "OpenLineageConnection",
+        plural = "openlineageconnections",
+        doc = "A reusable definition of a connection to an OpenLineage backend.",
+        namespaced
+    ))]
+    #[derive(CustomResource, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct OpenLineageConnectionSpec {
+        /// The transport used to publish lineage events.
+        #[serde(flatten)]
+        pub transport: OpenLineageTransport,
+    }
+
+    /// The transport used to publish OpenLineage events. Mirrors the transport types of the
+    /// OpenLineage client libraries. Exactly one transport must be specified.
+    #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub enum OpenLineageTransport {
+        /// Publish events over HTTP(S) to an OpenLineage backend such as Marquez.
+        Http(HttpTransport),
+    }
+
+    /// Publish events over HTTP(S) to an OpenLineage backend such as Marquez.
+    #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct HttpTransport {
+        /// Host of the OpenLineage backend without any protocol or port. For example: `marquez`.
+        pub host: String,
+
+        /// Port the OpenLineage backend listens on. For example: `5000`.
+        pub port: u16,
+
+        /// URL path of the endpoint lineage events are sent to.
+        #[serde(default = "v1alpha1::HttpTransport::default_path")]
+        pub path: String,
+
+        /// Use a TLS connection. If not specified no TLS will be used.
+        /// When TLS server verification is configured, the transport uses `https` instead of `http`.
+        #[serde(flatten)]
+        pub tls: TlsClientDetails,
+
+        /// Name of a Secret containing the API key used to authenticate against the OpenLineage
+        /// backend. The API key must be stored under the key `apiKey`. The Secret must be located in
+        /// the same namespace as the workload using this connection. If not specified, no
+        /// authentication is used.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub credentials_secret_name: Option<String>,
+    }
+
+    /// An OpenLineage connection, either inlined or referenced by the name of an
+    /// [`OpenLineageConnection`] resource in the same namespace.
+    #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    // TODO: This probably should be serde(untagged), but this would be a breaking change
+    pub enum InlineConnectionOrReference {
+        Inline(OpenLineageConnectionSpec),
+        Reference(String),
+    }
+
+    /// OpenLineage lineage-emission configuration for a single workload/application.
+    ///
+    /// Embed this in an operator's workload spec to enable OpenLineage for that workload.
+    #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct OpenLineageConfig {
+        /// The OpenLineage backend connection, either inlined or referencing an
+        /// `OpenLineageConnection` resource by name.
+        pub connection: InlineConnectionOrReference,
+
+        /// The OpenLineage namespace lineage is reported under.
+        #[serde(default = "v1alpha1::OpenLineageConfig::default_namespace")]
+        pub namespace: String,
+
+        /// A stable OpenLineage job name. Setting this prevents fragmented run history.
+        /// If unset, operators resolve a name from workload-specific configuration.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub job_name: Option<String>,
+    }
+}
+
+#[cfg(test)]
+impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::OpenLineageConnectionSpec {
+    fn roundtrip_test_data() -> Vec<Self> {
+        crate::utils::yaml_from_str_singleton_map(indoc::indoc! {"
+            - http:
+                host: marquez
+                port: 5000
+            - http:
+                host: marquez
+                port: 5000
+                tls:
+                  verification:
+                    none: {}
+            - http:
+                host: marquez
+                port: 5000
+                tls:
+                  verification:
+                    server:
+                      caCert:
+                        secretClass: openlineage-cert
+            - http:
+                host: marquez
+                port: 5000
+                credentialsSecretName: openlineage-credentials
+            - http:
+                host: marquez
+                port: 5000
+                path: /custom/lineage/endpoint
+        "})
+        .expect("Failed to parse OpenLineageConnectionSpec YAML")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        commons::tls_verification::{
+            CaCert, Tls, TlsClientDetails, TlsServerVerification, TlsVerification,
+        },
+        crd::openlineage::v1alpha1::HttpTransport,
+    };
+
+    #[test]
+    fn http_transport_url_without_tls() {
+        let transport = HttpTransport {
+            host: "marquez".to_string(),
+            port: 5000,
+            path: HttpTransport::default_path(),
+            tls: TlsClientDetails { tls: None },
+            credentials_secret_name: None,
+        };
+
+        assert_eq!(transport.transport_url(), "http://marquez:5000");
+    }
+
+    #[test]
+    fn https_transport_url_with_server_verification() {
+        let transport = HttpTransport {
+            host: "marquez".to_string(),
+            port: 5000,
+            path: HttpTransport::default_path(),
+            tls: TlsClientDetails {
+                tls: Some(Tls {
+                    verification: TlsVerification::Server(TlsServerVerification {
+                        ca_cert: CaCert::WebPki {},
+                    }),
+                }),
+            },
+            credentials_secret_name: None,
+        };
+
+        assert_eq!(transport.transport_url(), "https://marquez:5000");
+    }
+
+    #[test]
+    fn http_transport_url_without_verification() {
+        let transport = HttpTransport {
+            host: "marquez".to_string(),
+            port: 5000,
+            path: HttpTransport::default_path(),
+            tls: TlsClientDetails {
+                tls: Some(Tls {
+                    verification: TlsVerification::None {},
+                }),
+            },
+            credentials_secret_name: None,
+        };
+
+        assert_eq!(transport.transport_url(), "http://marquez:5000");
+    }
+}

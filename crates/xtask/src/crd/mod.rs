@@ -9,6 +9,7 @@ use stackable_operator::{
             Listener, ListenerClass, ListenerClassVersion, ListenerVersion, PodListeners,
             PodListenersVersion,
         },
+        openlineage::{OpenLineageConnection, OpenLineageConnectionVersion},
         s3::{S3Bucket, S3BucketVersion, S3Connection, S3ConnectionVersion},
         scaler::{Scaler, ScalerVersion},
     },
@@ -75,6 +76,7 @@ pub fn generate_preview() -> Result<(), Error> {
     write_crd!(path, AuthenticationClass, V1Alpha1);
     write_crd!(path, Listener, V1Alpha1);
     write_crd!(path, ListenerClass, V1Alpha1);
+    write_crd!(path, OpenLineageConnection, V1Alpha1);
     write_crd!(path, PodListeners, V1Alpha1);
     write_crd!(path, S3Bucket, V1Alpha1);
     write_crd!(path, S3Connection, V1Alpha1);

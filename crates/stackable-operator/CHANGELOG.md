@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `crd::openlineage` module with the `OpenLineageConnection` CRD (a reusable connection to an
+  OpenLineage backend, in the `lineage.stackable.tech` API group), an `InlineConnectionOrReference`
+  wrapper with `resolve()`, and an embeddable `OpenLineageConfig` type (with a `jobName` field) for
+  operators ([#1250]).
+  The connection spec selects one of the `OpenLineageTransport` variants, mirroring the transport
+  types of the OpenLineage client libraries. Currently only `http` (HTTP(S), with optional TLS and
+  API key) is supported.
+
+[#1250]: https://github.com/stackabletech/operator-rs/pull/1250
+
 ## [0.114.0] - 2026-07-22
 
 ### Added
