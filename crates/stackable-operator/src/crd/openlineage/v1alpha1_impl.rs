@@ -5,8 +5,7 @@ use crate::{
     crd::openlineage::{
         ResolvedOpenLineageConnection,
         v1alpha1::{
-            InlineConnectionOrReference, OpenLineageConfig, OpenLineageConnection,
-            OpenLineageConnectionSpec,
+            HttpTransport, InlineConnectionOrReference, OpenLineageConfig, OpenLineageConnection,
         },
     },
 };
@@ -21,8 +20,8 @@ pub enum OpenLineageError {
     },
 }
 
-impl OpenLineageConnectionSpec {
-    /// Build the OpenLineage transport URL from this connection.
+impl HttpTransport {
+    /// Build the OpenLineage transport URL from this transport.
     ///
     /// The scheme is `https` when TLS server verification is configured
     /// (`tls.verification.server`), otherwise `http`.

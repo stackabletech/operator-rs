@@ -36,6 +36,24 @@ pub mod versioned {
     #[derive(CustomResource, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct OpenLineageConnectionSpec {
+        /// The transport used to publish lineage events.
+        #[serde(flatten)]
+        pub transport: OpenLineageTransport,
+    }
+
+    /// The transport used to publish OpenLineage events. Mirrors the transport types of the
+    /// OpenLineage client libraries. Exactly one transport must be specified.
+    #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub enum OpenLineageTransport {
+        /// Publish events over HTTP(S) to an OpenLineage backend such as Marquez.
+        Http(HttpTransport),
+    }
+
+    /// Publish events over HTTP(S) to an OpenLineage backend such as Marquez.
+    #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct HttpTransport {
         /// Host of the OpenLineage backend without any protocol or port. For example: `marquez`.
         pub host: String,
 
@@ -90,23 +108,27 @@ pub mod versioned {
 impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::OpenLineageConnectionSpec {
     fn roundtrip_test_data() -> Vec<Self> {
         crate::utils::yaml_from_str_singleton_map(indoc::indoc! {"
-            - host: marquez
-              port: 5000
-            - host: marquez
-              port: 5000
-              tls:
-                verification:
-                  none: {}
-            - host: marquez
-              port: 5000
-              tls:
-                verification:
-                  server:
-                    caCert:
-                      secretClass: openlineage-cert
-            - host: marquez
-              port: 5000
-              credentialsSecretName: openlineage-credentials
+            - http:
+                host: marquez
+                port: 5000
+            - http:
+                host: marquez
+                port: 5000
+                tls:
+                  verification:
+                    none: {}
+            - http:
+                host: marquez
+                port: 5000
+                tls:
+                  verification:
+                    server:
+                      caCert:
+                        secretClass: openlineage-cert
+            - http:
+                host: marquez
+                port: 5000
+                credentialsSecretName: openlineage-credentials
         "})
         .expect("Failed to parse OpenLineageConnectionSpec YAML")
     }
@@ -118,24 +140,24 @@ mod tests {
         commons::tls_verification::{
             CaCert, Tls, TlsClientDetails, TlsServerVerification, TlsVerification,
         },
-        crd::openlineage::v1alpha1::OpenLineageConnectionSpec,
+        crd::openlineage::v1alpha1::HttpTransport,
     };
 
     #[test]
     fn http_transport_url_without_tls() {
-        let connection = OpenLineageConnectionSpec {
+        let transport = HttpTransport {
             host: "marquez".to_string(),
             port: 5000,
             tls: TlsClientDetails { tls: None },
             credentials_secret_name: None,
         };
 
-        assert_eq!(connection.transport_url(), "http://marquez:5000");
+        assert_eq!(transport.transport_url(), "http://marquez:5000");
     }
 
     #[test]
     fn https_transport_url_with_server_verification() {
-        let connection = OpenLineageConnectionSpec {
+        let transport = HttpTransport {
             host: "marquez".to_string(),
             port: 5000,
             tls: TlsClientDetails {
@@ -148,12 +170,12 @@ mod tests {
             credentials_secret_name: None,
         };
 
-        assert_eq!(connection.transport_url(), "https://marquez:5000");
+        assert_eq!(transport.transport_url(), "https://marquez:5000");
     }
 
     #[test]
     fn http_transport_url_without_verification() {
-        let connection = OpenLineageConnectionSpec {
+        let transport = HttpTransport {
             host: "marquez".to_string(),
             port: 5000,
             tls: TlsClientDetails {
@@ -164,6 +186,6 @@ mod tests {
             credentials_secret_name: None,
         };
 
-        assert_eq!(connection.transport_url(), "http://marquez:5000");
+        assert_eq!(transport.transport_url(), "http://marquez:5000");
     }
 }
