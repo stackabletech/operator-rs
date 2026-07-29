@@ -4,7 +4,10 @@ use crate::{
     client::Client,
     crd::openlineage::{
         ResolvedOpenLineageConnection,
-        v1alpha1::{InlineConnectionOrReference, OpenLineageConnection, OpenLineageConnectionSpec},
+        v1alpha1::{
+            InlineConnectionOrReference, OpenLineageConfig, OpenLineageConnection,
+            OpenLineageConnectionSpec,
+        },
     },
 };
 
@@ -35,6 +38,15 @@ impl OpenLineageConnectionSpec {
             host = self.host,
             port = self.port
         )
+    }
+}
+
+impl OpenLineageConfig {
+    /// Having it as `const &str` as well, so we don't always allocate a [`String`] just for comparisons
+    pub const DEFAULT_NAMESPACE: &str = "default";
+
+    pub(super) fn default_namespace() -> String {
+        Self::DEFAULT_NAMESPACE.to_string()
     }
 }
 

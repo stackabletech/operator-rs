@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Add `crd::openlineage` module with the `OpenLineageConnection` CRD (a reusable connection to an
   OpenLineage backend, in the `lineage.stackable.tech` API group), an `InlineConnectionOrReference`
-  wrapper with `resolve()`, and an embeddable `OpenLineageJob` type (with a `jobName` field) for
+  wrapper with `resolve()`, and an embeddable `OpenLineageConfig` type (with a `jobName` field) for
   operators ([#1250]).
 
 [#1250]: https://github.com/stackabletech/operator-rs/pull/1250

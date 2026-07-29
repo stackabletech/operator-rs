@@ -70,15 +70,14 @@ pub mod versioned {
     /// Embed this in an operator's workload spec to enable OpenLineage for that workload.
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct OpenLineageJob {
+    pub struct OpenLineageConfig {
         /// The OpenLineage backend connection, either inlined or referencing an
         /// `OpenLineageConnection` resource by name.
         pub connection: InlineConnectionOrReference,
 
         /// The OpenLineage namespace lineage is reported under.
-        /// If unset, operators typically default to the workload's Kubernetes namespace.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub namespace: Option<String>,
+        #[serde(default = "v1alpha1::OpenLineageConfig::default_namespace")]
+        pub namespace: String,
 
         /// A stable OpenLineage job name. Setting this prevents fragmented run history.
         /// If unset, operators resolve a name from workload-specific configuration.
