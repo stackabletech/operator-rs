@@ -230,6 +230,12 @@ pub struct AutomaticContainerLogConfig {
     pub console: Option<AppenderConfig>,
     /// Configuration for the file appender
     pub file: Option<AppenderConfig>,
+    /// Configuration for the task appender
+    ///
+    /// Only used by products which have a separate task log destination, currently Airflow,
+    /// where it controls the log level shown in the web UI. Left unset by every other product,
+    /// in which case it has no effect.
+    pub task: Option<AppenderConfig>,
 }
 
 impl Merge for AutomaticContainerLogConfigFragment {
@@ -251,6 +257,13 @@ impl Merge for AutomaticContainerLogConfigFragment {
             }
         } else {
             self.file.clone_from(&defaults.file);
+        }
+        if let Some(task) = &mut self.task {
+            if let Some(defaults_task) = &defaults.task {
+                task.merge(defaults_task);
+            }
+        } else {
+            self.task.clone_from(&defaults.task);
         }
     }
 }
@@ -449,6 +462,7 @@ pub fn default_container_log_config() -> ContainerLogConfigFragment {
                 file: Some(AppenderConfigFragment {
                     level: Some(LogLevel::INFO),
                 }),
+                task: None,
             },
         )),
     }
@@ -471,7 +485,7 @@ mod tests {
     fn serialize_container_log_config() {
         // automatic configuration
         assert_eq!(
-            "{\"loggers\":{},\"console\":{\"level\":\"INFO\"},\"file\":{\"level\":\"WARN\"}}"
+            "{\"loggers\":{},\"console\":{\"level\":\"INFO\"},\"file\":{\"level\":\"WARN\"},\"task\":null}"
                 .to_string(),
             serde_json::to_string(&ContainerLogConfigFragment {
                 choice: Some(ContainerLogConfigChoiceFragment::Automatic(
@@ -483,6 +497,7 @@ mod tests {
                         file: Some(AppenderConfigFragment {
                             level: Some(LogLevel::WARN),
                         }),
+                        task: None,
                     },
                 )),
             })
@@ -519,6 +534,7 @@ mod tests {
                         file: Some(AppenderConfigFragment {
                             level: Some(LogLevel::WARN),
                         }),
+                        task: None,
                     },
                 )),
             },
@@ -553,6 +569,7 @@ mod tests {
                         loggers: BTreeMap::new(),
                         console: None,
                         file: None,
+                        task: None,
                     },
                 )),
             },
@@ -586,17 +603,20 @@ mod tests {
                 loggers: BTreeMap::new(),
                 console: None,
                 file: None,
+                task: None,
             },
             merge::merge(
                 AutomaticContainerLogConfigFragment {
                     loggers: BTreeMap::new(),
                     console: None,
                     file: None,
+                    task: None,
                 },
                 &AutomaticContainerLogConfigFragment {
                     loggers: BTreeMap::new(),
                     console: None,
                     file: None,
+                    task: None,
                 }
             )
         );
@@ -611,6 +631,7 @@ mod tests {
                 file: Some(AppenderConfigFragment {
                     level: Some(LogLevel::WARN),
                 }),
+                task: None,
             },
             merge::merge(
                 AutomaticContainerLogConfigFragment {
@@ -621,11 +642,13 @@ mod tests {
                     file: Some(AppenderConfigFragment {
                         level: Some(LogLevel::WARN),
                     }),
+                    task: None,
                 },
                 &AutomaticContainerLogConfigFragment {
                     loggers: BTreeMap::new(),
                     console: None,
                     file: None,
+                    task: None,
                 }
             )
         );
@@ -640,12 +663,14 @@ mod tests {
                 file: Some(AppenderConfigFragment {
                     level: Some(LogLevel::WARN),
                 }),
+                task: None,
             },
             merge::merge(
                 AutomaticContainerLogConfigFragment {
                     loggers: BTreeMap::new(),
                     console: None,
                     file: None,
+                    task: None,
                 },
                 &AutomaticContainerLogConfigFragment {
                     loggers: BTreeMap::new(),
@@ -655,6 +680,7 @@ mod tests {
                     file: Some(AppenderConfigFragment {
                         level: Some(LogLevel::WARN),
                     }),
+                    task: None,
                 }
             )
         );
@@ -669,6 +695,7 @@ mod tests {
                 file: Some(AppenderConfigFragment {
                     level: Some(LogLevel::ERROR),
                 }),
+                task: None,
             },
             merge::merge(
                 AutomaticContainerLogConfigFragment {
@@ -677,6 +704,7 @@ mod tests {
                     file: Some(AppenderConfigFragment {
                         level: Some(LogLevel::ERROR),
                     }),
+                    task: None,
                 },
                 &AutomaticContainerLogConfigFragment {
                     loggers: BTreeMap::new(),
@@ -686,8 +714,66 @@ mod tests {
                     file: Some(AppenderConfigFragment {
                         level: Some(LogLevel::WARN),
                     }),
+                    task: None,
                 }
             )
+        );
+    }
+
+    #[test]
+    fn merge_task_appender_config_fragment() {
+        // The task appender is merged like the console and file appenders. It is handled
+        // separately here because the Merge implementation is written by hand, so a missing
+        // block would silently drop the level instead of failing to compile.
+
+        // overriding task level + default task level -> overriding task level
+        assert_eq!(
+            Some(AppenderConfigFragment {
+                level: Some(LogLevel::DEBUG),
+            }),
+            merge::merge(
+                AutomaticContainerLogConfigFragment {
+                    loggers: BTreeMap::new(),
+                    console: None,
+                    file: None,
+                    task: Some(AppenderConfigFragment {
+                        level: Some(LogLevel::DEBUG),
+                    }),
+                },
+                &AutomaticContainerLogConfigFragment {
+                    loggers: BTreeMap::new(),
+                    console: None,
+                    file: None,
+                    task: Some(AppenderConfigFragment {
+                        level: Some(LogLevel::WARN),
+                    }),
+                }
+            )
+            .task
+        );
+
+        // no overriding task level + default task level -> default task level
+        assert_eq!(
+            Some(AppenderConfigFragment {
+                level: Some(LogLevel::WARN),
+            }),
+            merge::merge(
+                AutomaticContainerLogConfigFragment {
+                    loggers: BTreeMap::new(),
+                    console: None,
+                    file: None,
+                    task: None,
+                },
+                &AutomaticContainerLogConfigFragment {
+                    loggers: BTreeMap::new(),
+                    console: None,
+                    file: None,
+                    task: Some(AppenderConfigFragment {
+                        level: Some(LogLevel::WARN),
+                    }),
+                }
+            )
+            .task
         );
     }
 
@@ -705,6 +791,7 @@ mod tests {
                         file: Some(AppenderConfigFragment {
                             level: Some(LogLevel::WARN),
                         }),
+                        task: None,
                     },
                 )),
             },
@@ -719,6 +806,7 @@ mod tests {
                             file: Some(AppenderConfigFragment {
                                 level: Some(LogLevel::WARN),
                             }),
+                            task: None,
                         },
                     )),
                 },
@@ -746,6 +834,7 @@ mod tests {
                         file: Some(AppenderConfigFragment {
                             level: Some(LogLevel::WARN),
                         }),
+                        task: None,
                     },
                 )),
             },
@@ -758,6 +847,7 @@ mod tests {
                             file: Some(AppenderConfigFragment {
                                 level: Some(LogLevel::WARN),
                             }),
+                            task: None,
                         },
                     )),
                 },
@@ -769,6 +859,7 @@ mod tests {
                                 level: Some(LogLevel::INFO),
                             }),
                             file: Some(AppenderConfigFragment { level: None }),
+                            task: None,
                         },
                     )),
                 }
@@ -789,6 +880,7 @@ mod tests {
                         file: Some(AppenderConfig {
                             level: Some(LogLevel::WARN)
                         }),
+                        task: None,
                     }
                 ))
             },
@@ -802,6 +894,7 @@ mod tests {
                         file: Some(AppenderConfigFragment {
                             level: Some(LogLevel::WARN),
                         }),
+                        task: None,
                     },
                 )),
             })

@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add an optional `task` appender to `AutomaticContainerLogConfig`, next to `console` and
+  `file`. It is only used by products which have a separate task log destination, currently
+  Airflow, where it sets the log level shown in the web UI. It defaults to unset, so the
+  rendered configuration of every other product is unchanged ([#1255]).
+
+[#1255]: https://github.com/stackabletech/operator-rs/pull/1255
+
 ## [0.114.0] - 2026-07-22
 
 ### Added

@@ -1553,6 +1553,7 @@ mod tests {
             file: Some(AppenderConfig {
                 level: Some(LogLevel::ERROR),
             }),
+            task: None,
         };
 
         let log4j2_properties = create_log4j2_config(
@@ -1601,6 +1602,7 @@ mod tests {
             file: Some(AppenderConfig {
                 level: Some(LogLevel::ERROR),
             }),
+            task: None,
         };
 
         let log4j2_properties = create_log4j2_config(
