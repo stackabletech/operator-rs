@@ -10,13 +10,14 @@ use snafu::{ResultExt, Snafu};
 use crate::{
     builder::meta::ObjectMetaBuilder,
     kvp::{Annotation, AnnotationError, LabelError, Labels},
+    v2::types::kubernetes::{ListenerClassName, ListenerName, PersistentVolumeClaimName},
 };
 
 /// Reference to a listener class or listener name
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ListenerReference {
-    ListenerClass(String),
-    ListenerName(String),
+    ListenerClass(ListenerClassName),
+    Listener(ListenerName),
 }
 
 impl ListenerReference {
@@ -24,10 +25,10 @@ impl ListenerReference {
     fn to_annotation(&self) -> Result<Annotation, AnnotationError> {
         match self {
             Self::ListenerClass(class) => {
-                Annotation::try_from(("listeners.stackable.tech/listener-class", class.as_str()))
+                Annotation::try_from(("listeners.stackable.tech/listener-class", class.to_string()))
             }
-            Self::ListenerName(name) => {
-                Annotation::try_from(("listeners.stackable.tech/listener-name", name.as_str()))
+            Self::Listener(name) => {
+                Annotation::try_from(("listeners.stackable.tech/listener-name", name.to_string()))
             }
         }
     }
@@ -120,24 +121,25 @@ impl ListenerOperatorVolumeSourceBuilder {
     }
 
     /// Build a [`PersistentVolumeClaim`] from the builder.
-    pub fn build_pvc(
-        &self,
-        name: impl Into<String>,
-    ) -> Result<PersistentVolumeClaim, ListenerOperatorVolumeSourceBuilderError> {
+    pub fn build_pvc(&self, name: &PersistentVolumeClaimName) -> PersistentVolumeClaim {
         let listener_reference_annotation = self
             .listener_reference
             .to_annotation()
-            .context(ListenerReferenceAnnotationSnafu)?;
+            .expect(
+                "should return a PersistentVolumeClaim, because the only check is that \
+                listener_reference is a valid annotation value and there are no restrictions on single \
+                annotation values",
+            );
 
-        Ok(PersistentVolumeClaim {
+        PersistentVolumeClaim {
             metadata: ObjectMetaBuilder::new()
-                .name(name)
+                .name(name.to_string())
                 .with_annotation(listener_reference_annotation)
                 .with_labels(self.labels.clone())
                 .build(),
             spec: Some(Self::spec()),
             ..Default::default()
-        })
+        }
     }
 
     fn spec() -> PersistentVolumeClaimSpec {
@@ -166,7 +168,7 @@ mod tests {
         let labels: Labels = Labels::try_from(BTreeMap::<String, String>::new()).unwrap();
 
         let builder = ListenerOperatorVolumeSourceBuilder::new(
-            &ListenerReference::ListenerClass("public".into()),
+            &ListenerReference::ListenerClass(ListenerClassName::from_str_unsafe("public")),
             &labels,
         );
 
