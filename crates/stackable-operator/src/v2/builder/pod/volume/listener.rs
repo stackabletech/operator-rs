@@ -5,11 +5,10 @@ use k8s_openapi::{
     },
     apimachinery::pkg::api::resource::Quantity,
 };
-use snafu::{ResultExt, Snafu};
 
 use crate::{
     builder::meta::ObjectMetaBuilder,
-    kvp::{Annotation, AnnotationError, LabelError, Labels},
+    kvp::{Annotation, Labels},
     v2::types::kubernetes::{ListenerClassName, ListenerName, PersistentVolumeClaimName},
 };
 
@@ -22,26 +21,18 @@ pub enum ListenerReference {
 
 impl ListenerReference {
     /// Return the key and value for a Kubernetes object annotation
-    fn to_annotation(&self) -> Result<Annotation, AnnotationError> {
+    fn to_annotation(&self) -> Annotation {
         match self {
             Self::ListenerClass(class) => {
                 Annotation::try_from(("listeners.stackable.tech/listener-class", class.to_string()))
+                    .expect("The statically defined annotation key, combined with any ListenerClass name, produces a valid annotation.")
             }
             Self::Listener(name) => {
                 Annotation::try_from(("listeners.stackable.tech/listener-name", name.to_string()))
+                    .expect("The statically defined annotation key, combined with any Listener name, produces a valid annotation.")
             }
         }
     }
-}
-
-// NOTE (Techassi): We might want to think about these names and how long they
-// are getting.
-#[derive(Debug, PartialEq, Eq, Snafu)]
-pub enum ListenerOperatorVolumeSourceBuilderError {
-    #[snafu(display("failed to convert listener reference into Kubernetes annotation"))]
-    ListenerReferenceAnnotation { source: AnnotationError },
-    #[snafu(display("invalid recommended labels"))]
-    RecommendedLabels { source: LabelError },
 }
 
 /// Builder for an [`EphemeralVolumeSource`] containing the listener configuration
@@ -93,48 +84,27 @@ impl ListenerOperatorVolumeSourceBuilder {
         }
     }
 
-    #[deprecated(note = "renamed to `build_ephemeral`", since = "0.61.1")]
-    pub fn build(&self) -> Result<EphemeralVolumeSource, ListenerOperatorVolumeSourceBuilderError> {
-        self.build_ephemeral()
-    }
-
     /// Build an [`EphemeralVolumeSource`] from the builder.
-    pub fn build_ephemeral(
-        &self,
-    ) -> Result<EphemeralVolumeSource, ListenerOperatorVolumeSourceBuilderError> {
-        let listener_reference_annotation = self
-            .listener_reference
-            .to_annotation()
-            .context(ListenerReferenceAnnotationSnafu)?;
-
-        Ok(EphemeralVolumeSource {
+    pub fn build_ephemeral(&self) -> EphemeralVolumeSource {
+        EphemeralVolumeSource {
             volume_claim_template: Some(PersistentVolumeClaimTemplate {
                 metadata: Some(
                     ObjectMetaBuilder::new()
-                        .with_annotation(listener_reference_annotation)
+                        .with_annotation(self.listener_reference.to_annotation())
                         .with_labels(self.labels.clone())
                         .build(),
                 ),
                 spec: Self::spec(),
             }),
-        })
+        }
     }
 
     /// Build a [`PersistentVolumeClaim`] from the builder.
     pub fn build_pvc(&self, name: &PersistentVolumeClaimName) -> PersistentVolumeClaim {
-        let listener_reference_annotation = self
-            .listener_reference
-            .to_annotation()
-            .expect(
-                "should return a PersistentVolumeClaim, because the only check is that \
-                listener_reference is a valid annotation value and there are no restrictions on single \
-                annotation values",
-            );
-
         PersistentVolumeClaim {
             metadata: ObjectMetaBuilder::new()
                 .name(name.to_string())
-                .with_annotation(listener_reference_annotation)
+                .with_annotation(self.listener_reference.to_annotation())
                 .with_labels(self.labels.clone())
                 .build(),
             spec: Some(Self::spec()),
@@ -172,7 +142,7 @@ mod tests {
             &labels,
         );
 
-        let volume_source = builder.build_ephemeral().unwrap();
+        let volume_source = builder.build_ephemeral();
 
         let volume_claim_template = volume_source.volume_claim_template;
         let annotations = volume_claim_template
