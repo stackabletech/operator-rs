@@ -10,6 +10,7 @@ pub mod jvm_argument_overrides;
 pub mod kvp;
 pub mod macros;
 pub mod product_logging;
+pub mod rbac;
 pub mod role_group_utils;
 pub mod role_utils;
 pub mod types;

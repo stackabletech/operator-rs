@@ -77,7 +77,7 @@ spec:
                         type: array
                     type: object
                   secretClass:
-                    description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                    description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing the requested secrets.'
                     type: string
                 required:
                 - secretClass

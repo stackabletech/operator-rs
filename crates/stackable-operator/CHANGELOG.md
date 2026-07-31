@@ -4,10 +4,61 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.114.0] - 2026-07-22
+
+### Added
+
+- [v2] Add `EnvVarSet::with_env_var` to add a given `EnvVar` to the set ([#1249]).
+- [v2] Add `rbac::build_service_account` and `rbac::build_role_binding`, the infallible variant of
+  `commons::rbac::build_rbac_resources` based on typed names and owner references ([#1251]).
+
+### Changed
+
+- [v2] BREAKING: Converting an `EnvVarSet` into a `Vec<EnvVar>` takes dependencies between
+  environment variables into account ([#1249]).
+
+### Removed
+
+- [v2] BREAKING: Remove dependency to product-config and the product_config_utils module ([#1252]).
+
+[#1249]: https://github.com/stackabletech/operator-rs/pull/1249
+[#1251]: https://github.com/stackabletech/operator-rs/pull/1251
+[#1252]: https://github.com/stackabletech/operator-rs/pull/1252
+
+## [0.113.4] - 2026-07-09
+
+### Changed
+
+- BREAKING: Make `Role::fixed_replica_count` and `Role::estimated_replica_count` functions standalone,
+  so consumers don't need access to the `Role` struct ([#1247]).
+
+[#1247]: https://github.com/stackabletech/operator-rs/pull/1247
+
+## [0.113.3] - 2026-07-07
+
+### Fixed
+
+- [v2] Don't require the `attributed_string_type` macro caller to have `std::str::FromStr` in scope ([#1244]).
+- [v2] Fix the JSON schema of `JsonConfigOverrides` ([#1245]).
+
+[#1244]: https://github.com/stackabletech/operator-rs/pull/1244
+[#1245]: https://github.com/stackabletech/operator-rs/pull/1245
+
+## [0.113.2] - 2026-07-07
+
+### Added
+
+- [v2] Add `raw_object_schema` to `JsonConfigOverrides` ([#1242]).
+
+[#1242]: https://github.com/stackabletech/operator-rs/pull/1242
+
+## [0.113.1] - 2026-07-06
+
 ### Added
 
 - Support the annotation `secrets.stackable.tech/backend.autotls.cert.domain-components-in-subject-dn`
   in the `SecretOperatorVolumeSourceBuilder` ([#1209]).
+- Add `Role::fixed_replica_count` and `Role::estimated_replica_count` helper functions ([#1241]).
 
 ### Changed
 
@@ -21,6 +72,7 @@ All notable changes to this project will be documented in this file.
 
 [#1205]: https://github.com/stackabletech/operator-rs/pull/1205
 [#1209]: https://github.com/stackabletech/operator-rs/pull/1209
+[#1241]: https://github.com/stackabletech/operator-rs/pull/1241
 
 ## [0.113.0] - 2026-06-22
 

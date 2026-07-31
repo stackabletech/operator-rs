@@ -8,11 +8,9 @@ use crate::{namespace::WatchNamespace, utils::cluster_info::KubernetesClusterInf
 
 mod environment;
 mod maintenance;
-mod product_config;
 
 pub use environment::*;
 pub use maintenance::*;
-pub use product_config::*;
 
 // NOTE (@Techassi): Why the hell is this here? Let's get rid of it.
 pub const AUTHOR: &str = "Stackable GmbH - info@stackable.tech";
@@ -80,10 +78,6 @@ pub enum Command<Run: Args = RunArguments> {
 #[derive(Debug, PartialEq, Eq, Parser)]
 #[command(long_about = "")]
 pub struct RunArguments {
-    /// Provides the path to a product-config file
-    #[arg(long, short = 'p', value_name = "FILE", default_value = "", env)]
-    pub product_config: ProductConfigPath,
-
     // TODO (@Techassi): This should be moved into the environment options
     /// Provides a specific namespace to watch (instead of watching all namespaces)
     #[arg(long, env, default_value = "")]

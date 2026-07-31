@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-07-06
+
+Note: There are only dependency bumps in this release.
+
 ## [0.11.0] - 2026-06-22
 
 ### Added

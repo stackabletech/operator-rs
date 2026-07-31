@@ -99,7 +99,6 @@ use crate::{
         fragment::{self, FromFragment},
         merge::Merge,
     },
-    product_config_utils::Configuration,
     utils::crds::raw_object_schema,
 };
 
@@ -344,65 +343,6 @@ pub struct Role<
     pub role_groups: HashMap<String, RoleGroup<Config, CommonConfig, ConfigOverrides>>,
 }
 
-impl<Config, ConfigOverrides, RoleConfig, CommonConfig>
-    Role<Config, ConfigOverrides, RoleConfig, CommonConfig>
-where
-    Config: Configuration + 'static,
-    RoleConfig: Default + JsonSchema + Serialize,
-    CommonConfig: Default + JsonSchema + Serialize + Clone,
-    ConfigOverrides: Default + JsonSchema + Serialize,
-{
-    /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
-    /// and used in [`Role`] into a Box of a dynamically dispatched
-    /// [`crate::product_config_utils::Configuration`] Trait. This is required to use the generic
-    /// [`Role`] with more than a single generic struct. For example different roles most likely
-    /// have different structs implementing Configuration.
-    pub fn erase(
-        self,
-    ) -> Role<
-        Box<dyn Configuration<Configurable = Config::Configurable>>,
-        ConfigOverrides,
-        RoleConfig,
-        CommonConfig,
-    > {
-        Role {
-            config: CommonConfiguration {
-                config: Box::new(self.config.config)
-                    as Box<dyn Configuration<Configurable = Config::Configurable>>,
-                config_overrides: self.config.config_overrides,
-                env_overrides: self.config.env_overrides,
-                cli_overrides: self.config.cli_overrides,
-                pod_overrides: self.config.pod_overrides,
-                product_specific_common_config: self.config.product_specific_common_config,
-            },
-            role_config: self.role_config,
-            role_groups: self
-                .role_groups
-                .into_iter()
-                .map(|(name, group)| {
-                    (
-                        name,
-                        RoleGroup {
-                            config: CommonConfiguration {
-                                config: Box::new(group.config.config)
-                                    as Box<dyn Configuration<Configurable = Config::Configurable>>,
-                                config_overrides: group.config.config_overrides,
-                                env_overrides: group.config.env_overrides,
-                                cli_overrides: group.config.cli_overrides,
-                                pod_overrides: group.config.pod_overrides,
-                                product_specific_common_config: group
-                                    .config
-                                    .product_specific_common_config,
-                            },
-                            replicas: group.replicas,
-                        },
-                    )
-                })
-                .collect(),
-        }
-    }
-}
-
 impl<Config, ConfigOverrides, RoleConfig>
     Role<Config, ConfigOverrides, RoleConfig, JavaCommonConfig>
 where
@@ -538,6 +478,62 @@ impl<K: Resource> Display for RoleGroupRef<K> {
     }
 }
 
+/// Returns [`Some<u32>`] in case the number of replicas is hard-coded to a certain value.
+///
+/// This is the case when all `replicas` are set to [`Some<u16>`], in which case they are simply
+/// summed.
+///
+/// The argument `zero_replicas_counting` is a safety mechanism, which allows the caller to decide
+/// if an explicit replica count of `0` should be treated as [`None`]. It also means that [`None`]
+/// is returned in case no roleGroups are configured at all.
+//
+// Note: We are using a [`IntoIterator`] combined with `.peekable()` over [`ExactSizeIterator`] to
+// have minimal bound requirements on the caller.
+pub fn fixed_replica_count<I: IntoIterator<Item = Option<u16>>>(
+    replicas: I,
+    zero_replicas_counting: ZeroReplicasCounting,
+) -> Option<u32> {
+    let mut replicas = replicas.into_iter().peekable();
+
+    // An empty role has no fixed replica count when zeros are treated as None.
+    if zero_replicas_counting == ZeroReplicasCounting::TreatAsNone && replicas.peek().is_none() {
+        return None;
+    }
+
+    replicas
+        .map(|replicas| match replicas {
+            None => None,
+            Some(0) if zero_replicas_counting == ZeroReplicasCounting::TreatAsNone => None,
+            // The individual replicas are [`u16`]s, so a [`u32`] sum has plenty of space.
+            Some(replicas) => Some(u32::from(replicas)),
+        })
+        .sum()
+}
+
+/// Returns the estimated total number of replicas across all role groups.
+///
+/// Unlike [`fixed_replica_count`], this always returns a value: a role group with an unset (i.e.
+/// [`None`]) replica count is assumed to run a single replica. Use this when a best-effort estimate
+/// is needed even though the exact number of replicas is not hard-coded.
+//
+// Note: We are using a [`IntoIterator`] combined with `.peekable()` over [`ExactSizeIterator`] to
+// have minimal bound requirements on the caller.
+pub fn estimated_replica_count<I: IntoIterator<Item = Option<u16>>>(replicas: I) -> u32 {
+    replicas
+        .into_iter()
+        .map(|replicas| u32::from(replicas.unwrap_or(1)))
+        .sum()
+}
+
+/// How explicit zero (`0`) replicas on a role group should be counted
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ZeroReplicasCounting {
+    /// Treat them as what they are: `Some(0)`.
+    TreatAsZero,
+    /// Treat them as if the user configured [`None`].
+    TreatAsNone,
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -653,5 +649,81 @@ mod tests {
                 "-Xms3m".to_owned()
             ]
         );
+    }
+
+    #[test]
+    fn replica_counts_with_all_replicas_set() {
+        let replicas = [Some(3), Some(2), Some(5)];
+
+        assert_eq!(
+            fixed_replica_count(replicas, ZeroReplicasCounting::TreatAsZero),
+            Some(10)
+        );
+        assert_eq!(
+            fixed_replica_count(replicas, ZeroReplicasCounting::TreatAsNone),
+            Some(10)
+        );
+        assert_eq!(estimated_replica_count(replicas), 10);
+    }
+
+    #[test]
+    fn replica_counts_with_one_replica_unset() {
+        let replicas = [Some(3), None, Some(2)];
+
+        assert_eq!(
+            fixed_replica_count(replicas, ZeroReplicasCounting::TreatAsZero),
+            None
+        );
+        assert_eq!(
+            fixed_replica_count(replicas, ZeroReplicasCounting::TreatAsNone),
+            None
+        );
+        assert_eq!(estimated_replica_count(replicas), 6);
+    }
+
+    #[test]
+    fn replica_counts_with_a_zero_replica() {
+        let replicas = [Some(3), Some(0)];
+
+        assert_eq!(
+            fixed_replica_count(replicas, ZeroReplicasCounting::TreatAsZero),
+            Some(3)
+        );
+        // With treat_zero_as_none the zero turns the whole count into None.
+        assert_eq!(
+            fixed_replica_count(replicas, ZeroReplicasCounting::TreatAsNone),
+            None
+        );
+        assert_eq!(estimated_replica_count(replicas), 3);
+    }
+
+    #[test]
+    fn replica_counts_with_a_single_zero_role_groups_group() {
+        let replicas = [Some(0)];
+
+        assert_eq!(
+            fixed_replica_count(replicas, ZeroReplicasCounting::TreatAsZero),
+            Some(0)
+        );
+        assert_eq!(
+            fixed_replica_count(replicas, ZeroReplicasCounting::TreatAsNone),
+            None
+        );
+        assert_eq!(estimated_replica_count(replicas), 0);
+    }
+
+    #[test]
+    fn replica_counts_without_role_groups() {
+        let replicas = [];
+
+        assert_eq!(
+            fixed_replica_count(replicas, ZeroReplicasCounting::TreatAsZero),
+            Some(0)
+        );
+        assert_eq!(
+            fixed_replica_count(replicas, ZeroReplicasCounting::TreatAsNone),
+            None
+        );
+        assert_eq!(estimated_replica_count(replicas), 0);
     }
 }
