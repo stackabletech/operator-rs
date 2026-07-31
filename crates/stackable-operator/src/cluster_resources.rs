@@ -668,6 +668,7 @@ impl<'a> ClusterResources<'a> {
             self.delete_orphaned_resources_of_kind::<Service>(client),
             self.delete_orphaned_resources_of_kind::<StatefulSet>(client),
             self.delete_orphaned_resources_of_kind::<DaemonSet>(client),
+            self.delete_orphaned_resources_of_kind::<Deployment>(client),
             self.delete_orphaned_resources_of_kind::<Job>(client),
             self.delete_orphaned_resources_of_kind::<ConfigMap>(client),
             self.delete_orphaned_resources_of_kind::<Secret>(client),
