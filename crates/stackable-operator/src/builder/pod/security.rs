@@ -12,22 +12,15 @@ pub struct SecurityContextBuilder {
 impl SecurityContextBuilder {
     /// Construct a new [`SecurityContextBuilder`] that is pre-filled with Stackable's defaults.
     ///
-    /// Currently the defaults are:
+    /// We currently don't have any defaults we set.
     ///
-    /// * `runAsNonRoot: true`
+    /// We intentionally don't set `runAsNonRoot`, as we set that in
+    /// [`PodSecurityContextBuilder::with_stackable_defaults`] already and don't want to confuse
+    /// users by setting it on the Pod and container.
     pub fn with_stackable_defaults() -> Self {
-        // We are using the builder functions to ensure that builder functions exist to override these settings.
-        let builder = Self {
+        Self {
             security_context: SecurityContext::default(),
-        };
-
-        // We currently don't have any defaults we set.
-
-        // We intentionally don't set `runAsNonRoot`, as we set that in
-        // [`PodSecurityContextBuilder::with_stackable_defaults`] already and don't want to confuse
-        // users by setting it on the Pod and container.
-
-        builder
+        }
     }
 
     pub fn allow_privilege_escalation(&mut self, value: bool) -> &mut Self {
