@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.115.0] - 2026-08-04
+
 ### Changed
 
 - BREAKING: `PodSecurityContextBuilder::new` was removed in favor of `PodSecurityContextBuilder::with_stackable_defaults`
