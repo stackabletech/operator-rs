@@ -6,15 +6,12 @@ metadata:
 spec:
   group: s3.stackable.tech
   names:
-    categories: []
     kind: S3Connection
     plural: s3connections
-    shortNames: []
     singular: s3connection
   scope: Namespaced
   versions:
-  - additionalPrinterColumns: []
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: A reusable definition of a connection to an S3 endpoint.
@@ -162,4 +159,3 @@ spec:
         type: object
     served: true
     storage: true
-    subresources: {}

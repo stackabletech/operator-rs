@@ -13,8 +13,11 @@ All notable changes to this project will be documented in this file.
 - BREAKING: `PodSecurityContextBuilder::run_as_non_root` now takes a `bool` instead of assuming consumers always want to set it to `true` ([#1205]).
   This is needed to allow users setting it to `false` in case the new `with_stackable_defaults` function sets it to `true`.
 - BREAKING: `SecurityContextBuilder::run_as_root` has been removed ([#1205]).
+- BREAKING: Bump `kube` to `4.2.0` ([#1257]).
+  - This fixes a long-standing issue, where `additionalPrinterColumns`, `categories` and `shortNames` where always included in the CRD, which lead to ArgoCD thinking the CRs where out of sync.
 
 [#1205]: https://github.com/stackabletech/operator-rs/pull/1205
+[#1257]: https://github.com/stackabletech/operator-rs/pull/1257
 
 ## [0.114.0] - 2026-07-22
 
