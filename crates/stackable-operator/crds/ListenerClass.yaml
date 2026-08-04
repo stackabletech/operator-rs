@@ -6,15 +6,12 @@ metadata:
 spec:
   group: listeners.stackable.tech
   names:
-    categories: []
     kind: ListenerClass
     plural: listenerclasses
-    shortNames: []
     singular: listenerclass
   scope: Cluster
   versions:
-  - additionalPrinterColumns: []
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Defines a policy for how Listeners should be exposed.
@@ -119,4 +116,3 @@ spec:
         type: object
     served: true
     storage: true
-    subresources: {}

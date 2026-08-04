@@ -14,7 +14,13 @@ pub mod scaler;
 ///
 /// `namespace`'s defaulting only applies when retrieved via [`ClusterRef::namespace_relative_from`]
 #[derive(Deserialize, Serialize, JsonSchema, Educe)]
-#[educe(Clone(bound()), Debug(bound()), Default(bound()), PartialEq(bound()))]
+#[educe(
+    Clone(bound()),
+    Debug(bound()),
+    Default(bound()),
+    PartialEq(bound()),
+    Eq(bound())
+)]
 pub struct ClusterRef<K> {
     /// The name of the cluster
     pub name: Option<String>,

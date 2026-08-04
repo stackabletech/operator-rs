@@ -6,15 +6,12 @@ metadata:
 spec:
   group: dummy.stackable.tech
   names:
-    categories: []
     kind: DummyCluster
     plural: dummyclusters
-    shortNames: []
     singular: dummycluster
   scope: Namespaced
   versions:
-  - additionalPrinterColumns: []
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: A DummyCluster is a test-only resource used by operator-rs to exercise CRD generation. It is not backed by a real operator.
