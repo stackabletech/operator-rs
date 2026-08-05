@@ -6,9 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add the Cargo feature `kube-cel` that enables the `cel` feature on the `kube` crate ([#XXXX]).
+- Add the Cargo feature `kube-cel` that enables the `cel` feature on the `kube` crate ([1259]).
 
-[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+[1259]: https://github.com/stackabletech/operator-rs/pull/XXXX
 
 ## [0.115.0] - 2026-08-04
 
