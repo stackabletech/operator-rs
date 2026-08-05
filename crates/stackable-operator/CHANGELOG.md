@@ -6,10 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- [v2]: Make `ResourceNames::ensure_max_length` public ([#XXXX]).
-- [v2]: Add `MAX_ANNOTATION_NAME_LENGTH` constant with a value of `63` ([#XXXX]).
+- [v2]: Make `ResourceNames::ensure_max_length` public ([#1260]).
+- [v2]: Add `MAX_ANNOTATION_NAME_LENGTH` constant with a value of `63` ([#1260]).
 
-[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+[#1260]: https://github.com/stackabletech/operator-rs/pull/1260
 
 ## [0.115.0] - 2026-08-04
 
