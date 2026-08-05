@@ -99,7 +99,11 @@ impl ResourceNames {
     /// `max_length < 1 /* character */ + 1 /* dash */ + hash_length`.
     ///
     /// Kubernetes object names cannot contain non-ASCII characters.
-    fn ensure_max_length(resource_name: String, max_length: usize, hash_length: usize) -> String {
+    pub fn ensure_max_length(
+        resource_name: String,
+        max_length: usize,
+        hash_length: usize,
+    ) -> String {
         assert!(resource_name.is_ascii());
         assert!(max_length >= 1 /* character */ + 1 /* dash */ + hash_length);
 

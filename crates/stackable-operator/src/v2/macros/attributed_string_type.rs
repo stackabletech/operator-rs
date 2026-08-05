@@ -6,6 +6,9 @@ use strum::{EnumDiscriminants, IntoStaticStr};
 /// Duplicates the private constant [`crate::kvp::LABEL_VALUE_MAX_LEN`]
 pub const MAX_LABEL_VALUE_LENGTH: usize = 63;
 
+/// Maximum length of annotation names
+pub const MAX_ANNOTATION_NAME_LENGTH: usize = 63;
+
 #[derive(Debug, EnumDiscriminants, Snafu)]
 #[snafu(visibility(pub))]
 #[strum_discriminants(derive(IntoStaticStr))]
