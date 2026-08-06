@@ -295,6 +295,12 @@ impl FromIterator<KeyValuePair<LabelValue>> for Labels {
     }
 }
 
+impl FromIterator<Label> for Labels {
+    fn from_iter<T: IntoIterator<Item = Label>>(iter: T) -> Self {
+        iter.into_iter().map(Label::into_inner).collect::<Self>()
+    }
+}
+
 impl<K, V> TryFromIterator<(K, V)> for Labels
 where
     K: AsRef<str>,

@@ -1,17 +1,70 @@
+use std::str::FromStr;
+
 use crate::{
-    kube::Resource,
-    kvp::{Labels, ObjectLabels},
+    kvp::{Label, Labels, consts::K8S_APP_MANAGED_BY_KEY},
     v2::{
-        HasName, NameIsValidLabelValue,
+        NameIsValidLabelValue,
         types::operator::{
-            ControllerName, OperatorName, ProductName, ProductVersion, RoleGroupName, RoleName,
+            ClusterName, ControllerName, OperatorName, ProductName, ProductVersion, RoleGroupName,
+            RoleName,
         },
     },
 };
 
-/// Infallible variant of [`crate::kvp::Labels::recommended`]
-pub fn recommended_labels(
-    owner: &(impl Resource + HasName + NameIsValidLabelValue),
+/// Creates the recommended labels for cluster resources, like ServiceAccounts.
+pub fn recommended_labels_for_cluster_resources(
+    cluster_name: &ClusterName,
+    product_name: &ProductName,
+    product_version: &ProductVersion,
+    operator_name: &OperatorName,
+    controller_name: &ControllerName,
+) -> Labels {
+    Labels::from_iter([
+        label_app_kubernetes_io_instance(cluster_name),
+        label_app_kubernetes_io_name(product_name),
+        label_app_kubernetes_io_version(product_version),
+        label_app_kubernetes_io_managed_by(operator_name, controller_name),
+        label_stackable_tech_vendor(),
+    ])
+}
+
+/// Creates the recommended labels for role resources, like discovery ConfigMaps.
+pub fn recommended_labels_for_role_resources(
+    cluster_name: &ClusterName,
+    product_name: &ProductName,
+    product_version: &ProductVersion,
+    operator_name: &OperatorName,
+    controller_name: &ControllerName,
+    role_name: &RoleName,
+) -> Labels {
+    Labels::from_iter([
+        label_app_kubernetes_io_instance(cluster_name),
+        label_app_kubernetes_io_name(product_name),
+        label_app_kubernetes_io_version(product_version),
+        label_app_kubernetes_io_component(role_name),
+        label_app_kubernetes_io_managed_by(operator_name, controller_name),
+        label_stackable_tech_vendor(),
+    ])
+}
+
+/// Creates the role selector.
+///
+/// The returned labels are a subset of the recommended labels for role resources.
+pub fn role_selector(
+    cluster_name: &ClusterName,
+    product_name: &ProductName,
+    role_name: &RoleName,
+) -> Labels {
+    Labels::from_iter([
+        label_app_kubernetes_io_instance(cluster_name),
+        label_app_kubernetes_io_name(product_name),
+        label_app_kubernetes_io_component(role_name),
+    ])
+}
+
+/// Creates the recommended labels for role group resources, like StatefulSets.
+pub fn recommended_labels_for_role_group_resources(
+    cluster_name: &ClusterName,
     product_name: &ProductName,
     product_version: &ProductVersion,
     operator_name: &OperatorName,
@@ -19,133 +72,220 @@ pub fn recommended_labels(
     role_name: &RoleName,
     role_group_name: &RoleGroupName,
 ) -> Labels {
-    let object_labels = ObjectLabels {
-        owner,
-        app_name: &product_name.to_label_value(),
-        app_version: &product_version.to_label_value(),
-        operator_name: &operator_name.to_label_value(),
-        controller_name: &controller_name.to_label_value(),
-        role: &role_name.to_label_value(),
-        role_group: &role_group_name.to_label_value(),
-    };
-    Labels::recommended(&object_labels).expect(
-        "Labels should be created because the owner has an object name and all given parameters \
-        produce valid label values.",
-    )
+    Labels::from_iter([
+        label_app_kubernetes_io_instance(cluster_name),
+        label_app_kubernetes_io_name(product_name),
+        label_app_kubernetes_io_version(product_version),
+        label_app_kubernetes_io_component(role_name),
+        label_app_kubernetes_io_role_group(role_group_name),
+        label_app_kubernetes_io_managed_by(operator_name, controller_name),
+        label_stackable_tech_vendor(),
+    ])
 }
 
-/// Infallible variant of [`crate::kvp::Labels::role_selector`]
-pub fn role_selector(
-    owner: &(impl Resource + HasName + NameIsValidLabelValue),
+/// Creates the recommended labels for role group resources which cannot be mutated and should
+/// therefore not include product version, like PersistentVolumeClaims.
+pub fn recommended_labels_for_unversioned_role_group_resources(
+    cluster_name: &ClusterName,
     product_name: &ProductName,
+    operator_name: &OperatorName,
+    controller_name: &ControllerName,
     role_name: &RoleName,
+    role_group_name: &RoleGroupName,
 ) -> Labels {
-    Labels::role_selector(
-        owner,
-        &product_name.to_label_value(),
-        &role_name.to_label_value(),
-    )
-    .expect("Labels should be created because all given parameters produce valid label values")
+    Labels::from_iter([
+        label_app_kubernetes_io_instance(cluster_name),
+        label_app_kubernetes_io_name(product_name),
+        label_app_kubernetes_io_component(role_name),
+        label_app_kubernetes_io_role_group(role_group_name),
+        label_app_kubernetes_io_managed_by(operator_name, controller_name),
+        label_stackable_tech_vendor(),
+    ])
 }
 
-/// Infallible variant of [`crate::kvp::Labels::role_group_selector`]
+/// Creates the role group selector.
+///
+/// The returned labels are a subset of the recommended labels for role group resources.
 pub fn role_group_selector(
-    owner: &(impl Resource + HasName + NameIsValidLabelValue),
+    cluster_name: &ClusterName,
     product_name: &ProductName,
     role_name: &RoleName,
     role_group_name: &RoleGroupName,
 ) -> Labels {
-    Labels::role_group_selector(
-        owner,
-        &product_name.to_label_value(),
-        &role_name.to_label_value(),
-        &role_group_name.to_label_value(),
+    Labels::from_iter([
+        label_app_kubernetes_io_instance(cluster_name),
+        label_app_kubernetes_io_name(product_name),
+        label_app_kubernetes_io_component(role_name),
+        label_app_kubernetes_io_role_group(role_group_name),
+    ])
+}
+
+/// Creates the `app.kubernetes.io/instance` label with the given cluster name as value.
+pub fn label_app_kubernetes_io_instance(cluster_name: &ClusterName) -> Label {
+    Label::instance(&cluster_name.to_label_value())
+        .expect("produces a valid label because the value implements NameIsValidLabelValue")
+}
+
+/// Creates the `app.kubernetes.io/name` label with given product name as value.
+pub fn label_app_kubernetes_io_name(product_name: &ProductName) -> Label {
+    Label::name(&product_name.to_label_value())
+        .expect("produces a valid label because the value implements NameIsValidLabelValue")
+}
+
+/// Creates the `app.kubernetes.io/version` label with given product version as value.
+pub fn label_app_kubernetes_io_version(product_version: &ProductVersion) -> Label {
+    Label::version(&product_version.to_label_value())
+        .expect("produces a valid label because the value implements NameIsValidLabelValue")
+}
+
+/// Creates the `app.kubernetes.io/managed-by` label with the full controller name as value
+/// generated from the given operator and controller name.
+pub fn label_app_kubernetes_io_managed_by(
+    operator_name: &OperatorName,
+    controller_name: &ControllerName,
+) -> Label {
+    let full_controller_name = full_controller_name(operator_name, controller_name);
+    Label::try_from((K8S_APP_MANAGED_BY_KEY, full_controller_name))
+        .expect("produces a valid label because the statically defined key is valid and the value implements NameIsValidLabelValue")
+}
+
+/// Creates the `app.kubernetes.io/component` label with the given role as value.
+pub fn label_app_kubernetes_io_component(role_name: &RoleName) -> Label {
+    Label::component(&role_name.to_label_value())
+        .expect("produces a valid label because the value implements NameIsValidLabelValue")
+}
+
+/// Creates the `app.kubernetes.io/role-group` label with the the given role group as value.
+pub fn label_app_kubernetes_io_role_group(role_group_name: &RoleGroupName) -> Label {
+    Label::role_group(&role_group_name.to_label_value())
+        .expect("produces a valid label because the value implements NameIsValidLabelValue")
+}
+
+/// Creates the Stackable specific vendor label.
+pub fn label_stackable_tech_vendor() -> Label {
+    Label::stackable_vendor()
+}
+
+fn full_controller_name(
+    operator_name: &OperatorName,
+    controller_name: &ControllerName,
+) -> ControllerName {
+    let mut full_controller_name = format!(
+        "{}_{}",
+        operator_name.to_label_value(),
+        controller_name.to_label_value()
+    );
+    full_controller_name.truncate(ControllerName::MAX_LENGTH);
+
+    ControllerName::from_str(&full_controller_name).expect(
+        "is a valid ControllerName because it satifies both the character and length constraints",
     )
-    .expect("Labels should be created because all given parameters produce valid label values")
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{borrow::Cow, collections::BTreeMap};
+    use std::collections::BTreeMap;
 
-    use crate::{
-        k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta,
-        kube::Resource,
-        v2::{
-            HasName, NameIsValidLabelValue,
-            kvp::label::{recommended_labels, role_group_selector, role_selector},
-            types::operator::{
-                ControllerName, OperatorName, ProductName, ProductVersion, RoleGroupName, RoleName,
-            },
-        },
-    };
+    use super::*;
 
-    struct Cluster {
-        object_meta: ObjectMeta,
-    }
+    #[test]
+    fn test_recommended_labels_for_cluster_resources() {
+        let actual_labels = recommended_labels_for_cluster_resources(
+            &ClusterName::from_str_unsafe("cluster-name"),
+            &ProductName::from_str_unsafe("my-product"),
+            &ProductVersion::from_str_unsafe("1.0.0"),
+            &OperatorName::from_str_unsafe("my-operator"),
+            &ControllerName::from_str_unsafe("my-controller"),
+        );
 
-    impl Cluster {
-        fn new() -> Self {
-            Self {
-                object_meta: ObjectMeta {
-                    name: Some("cluster-name".to_owned()),
-                    ..ObjectMeta::default()
-                },
-            }
-        }
-    }
+        let expected_labels: BTreeMap<_, _> = [
+            ("app.kubernetes.io/instance", "cluster-name"),
+            ("app.kubernetes.io/managed-by", "my-operator_my-controller"),
+            ("app.kubernetes.io/name", "my-product"),
+            ("app.kubernetes.io/version", "1.0.0"),
+            ("stackable.tech/vendor", "Stackable"),
+        ]
+        .map(|(k, v)| (k.to_owned(), v.to_owned()))
+        .into();
 
-    impl Resource for Cluster {
-        type DynamicType = ();
-        type Scope = ();
-
-        fn kind(_dt: &Self::DynamicType) -> Cow<'_, str> {
-            Cow::from("kind")
-        }
-
-        fn group(_dt: &Self::DynamicType) -> Cow<'_, str> {
-            Cow::from("group")
-        }
-
-        fn version(_dt: &Self::DynamicType) -> Cow<'_, str> {
-            Cow::from("version")
-        }
-
-        fn plural(_dt: &Self::DynamicType) -> Cow<'_, str> {
-            Cow::from("plural")
-        }
-
-        fn meta(&self) -> &ObjectMeta {
-            &self.object_meta
-        }
-
-        fn meta_mut(&mut self) -> &mut ObjectMeta {
-            &mut self.object_meta
-        }
-    }
-
-    impl HasName for Cluster {
-        fn to_name(&self) -> String {
-            self.object_meta
-                .name
-                .clone()
-                .expect("should be set in Cluster::new")
-        }
-    }
-
-    impl NameIsValidLabelValue for Cluster {
-        fn to_label_value(&self) -> String {
-            self.object_meta
-                .name
-                .clone()
-                .expect("should be set in Cluster::new")
-        }
+        assert_eq!(expected_labels, actual_labels.into());
     }
 
     #[test]
-    fn test_recommended_labels() {
-        let actual_labels = recommended_labels(
-            &Cluster::new(),
+    fn test_recommended_labels_for_role_resources() {
+        let actual_labels = recommended_labels_for_role_resources(
+            &ClusterName::from_str_unsafe("cluster-name"),
+            &ProductName::from_str_unsafe("my-product"),
+            &ProductVersion::from_str_unsafe("1.0.0"),
+            &OperatorName::from_str_unsafe("my-operator"),
+            &ControllerName::from_str_unsafe("my-controller"),
+            &RoleName::from_str_unsafe("my-role"),
+        );
+
+        let expected_labels: BTreeMap<_, _> = [
+            ("app.kubernetes.io/component", "my-role"),
+            ("app.kubernetes.io/instance", "cluster-name"),
+            ("app.kubernetes.io/managed-by", "my-operator_my-controller"),
+            ("app.kubernetes.io/name", "my-product"),
+            ("app.kubernetes.io/version", "1.0.0"),
+            ("stackable.tech/vendor", "Stackable"),
+        ]
+        .map(|(k, v)| (k.to_owned(), v.to_owned()))
+        .into();
+
+        assert_eq!(expected_labels, actual_labels.into());
+    }
+
+    #[test]
+    fn test_role_selector() {
+        let actual_labels = role_selector(
+            &ClusterName::from_str_unsafe("cluster-name"),
+            &ProductName::from_str_unsafe("my-product"),
+            &RoleName::from_str_unsafe("my-role"),
+        );
+
+        let expected_labels: BTreeMap<_, _> = [
+            ("app.kubernetes.io/component", "my-role"),
+            ("app.kubernetes.io/instance", "cluster-name"),
+            ("app.kubernetes.io/name", "my-product"),
+        ]
+        .map(|(k, v)| (k.to_owned(), v.to_owned()))
+        .into();
+
+        assert_eq!(expected_labels, actual_labels.into());
+    }
+
+    #[test]
+    fn role_selector_is_subset_of_recommended_role_labels() {
+        let cluster_name = ClusterName::from_str_unsafe("cluster-name");
+        let product_name = ProductName::from_str_unsafe("my-product");
+        let product_version = ProductVersion::from_str_unsafe("1.0.0");
+        let operator_name = OperatorName::from_str_unsafe("my-operator");
+        let controller_name = ControllerName::from_str_unsafe("my-controller");
+        let role_name = RoleName::from_str_unsafe("my-role");
+
+        let role_labels = recommended_labels_for_role_resources(
+            &cluster_name,
+            &product_name,
+            &product_version,
+            &operator_name,
+            &controller_name,
+            &role_name,
+        );
+
+        let role_selector = role_selector(&cluster_name, &product_name, &role_name);
+
+        assert!(
+            role_selector
+                .iter()
+                .all(|selector| role_labels.contains(selector))
+        );
+    }
+
+    #[test]
+    fn test_recommended_labels_for_role_group_resources() {
+        let actual_labels = recommended_labels_for_role_group_resources(
+            &ClusterName::from_str_unsafe("cluster-name"),
             &ProductName::from_str_unsafe("my-product"),
             &ProductVersion::from_str_unsafe("1.0.0"),
             &OperatorName::from_str_unsafe("my-operator"),
@@ -154,7 +294,7 @@ mod tests {
             &RoleGroupName::from_str_unsafe("my-role-group"),
         );
 
-        let expected_labels: BTreeMap<String, String> = [
+        let expected_labels: BTreeMap<_, _> = [
             ("app.kubernetes.io/component", "my-role"),
             ("app.kubernetes.io/instance", "cluster-name"),
             ("app.kubernetes.io/managed-by", "my-operator_my-controller"),
@@ -170,17 +310,23 @@ mod tests {
     }
 
     #[test]
-    fn test_role_selector() {
-        let actual_labels = role_selector(
-            &Cluster::new(),
+    fn test_recommended_labels_for_unversioned_role_group_resources() {
+        let actual_labels = recommended_labels_for_unversioned_role_group_resources(
+            &ClusterName::from_str_unsafe("cluster-name"),
             &ProductName::from_str_unsafe("my-product"),
+            &OperatorName::from_str_unsafe("my-operator"),
+            &ControllerName::from_str_unsafe("my-controller"),
             &RoleName::from_str_unsafe("my-role"),
+            &RoleGroupName::from_str_unsafe("my-role-group"),
         );
 
-        let expected_labels: BTreeMap<String, String> = [
+        let expected_labels: BTreeMap<_, _> = [
             ("app.kubernetes.io/component", "my-role"),
             ("app.kubernetes.io/instance", "cluster-name"),
+            ("app.kubernetes.io/managed-by", "my-operator_my-controller"),
             ("app.kubernetes.io/name", "my-product"),
+            ("app.kubernetes.io/role-group", "my-role-group"),
+            ("stackable.tech/vendor", "Stackable"),
         ]
         .map(|(k, v)| (k.to_owned(), v.to_owned()))
         .into();
@@ -191,13 +337,13 @@ mod tests {
     #[test]
     fn test_role_group_selector() {
         let actual_labels = role_group_selector(
-            &Cluster::new(),
+            &ClusterName::from_str_unsafe("cluster-name"),
             &ProductName::from_str_unsafe("my-product"),
             &RoleName::from_str_unsafe("my-role"),
             &RoleGroupName::from_str_unsafe("my-role-group"),
         );
 
-        let expected_labels: BTreeMap<String, String> = [
+        let expected_labels: BTreeMap<_, _> = [
             ("app.kubernetes.io/component", "my-role"),
             ("app.kubernetes.io/instance", "cluster-name"),
             ("app.kubernetes.io/name", "my-product"),
@@ -207,5 +353,50 @@ mod tests {
         .into();
 
         assert_eq!(expected_labels, actual_labels.into());
+    }
+
+    #[test]
+    fn role_group_selector_is_subset_of_recommended_role_group_labels() {
+        let cluster_name = ClusterName::from_str_unsafe("cluster-name");
+        let product_name = ProductName::from_str_unsafe("my-product");
+        let product_version = ProductVersion::from_str_unsafe("1.0.0");
+        let operator_name = OperatorName::from_str_unsafe("my-operator");
+        let controller_name = ControllerName::from_str_unsafe("my-controller");
+        let role_name = RoleName::from_str_unsafe("my-role");
+        let role_group_name = RoleGroupName::from_str_unsafe("my-role-group");
+
+        let role_group_labels = recommended_labels_for_role_group_resources(
+            &cluster_name,
+            &product_name,
+            &product_version,
+            &operator_name,
+            &controller_name,
+            &role_name,
+            &role_group_name,
+        );
+
+        let unversioned_role_group_labels = recommended_labels_for_unversioned_role_group_resources(
+            &cluster_name,
+            &product_name,
+            &operator_name,
+            &controller_name,
+            &role_name,
+            &role_group_name,
+        );
+
+        let role_group_selector =
+            role_group_selector(&cluster_name, &product_name, &role_name, &role_group_name);
+
+        assert!(
+            role_group_selector
+                .iter()
+                .all(|selector| role_group_labels.contains(selector))
+        );
+
+        assert!(
+            role_group_selector
+                .iter()
+                .all(|selector| unversioned_role_group_labels.contains(selector))
+        );
     }
 }
