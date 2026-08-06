@@ -137,7 +137,10 @@ impl Deref for Key {
 }
 
 impl Key {
-    pub fn with_enforced_length(
+    /// (Optionally) shortens the `prefix` and `name` to make sure they produce a valid [`Key`].
+    ///
+    /// See [`ensure_max_length`] for details on the shortening algorithm.
+    pub fn shortened_to_valid_length(
         prefix: impl Into<String>,
         name: impl Into<String>,
     ) -> Result<Self, KeyError> {

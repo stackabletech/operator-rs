@@ -7,8 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add the Cargo feature `kube-cel` that enables the `cel` feature on the `kube` crate ([1259]).
-- [v2]: Make `ResourceNames::ensure_max_length` public ([#1260]).
-- [v2]: Add `MAX_ANNOTATION_NAME_LENGTH` constant with a value of `63` ([#1260]).
+- Add `length_enforcement::ensure_max_length` and `Key::shortened_to_valid_length` helper functions ([#1260]).
 
 [#1259]: https://github.com/stackabletech/operator-rs/pull/1259
 [#1260]: https://github.com/stackabletech/operator-rs/pull/1260
