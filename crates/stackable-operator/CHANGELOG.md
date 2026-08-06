@@ -7,8 +7,10 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add the Cargo feature `kube-cel` that enables the `cel` feature on the `kube` crate ([1259]).
+- [v2] Add functions for recommended labels to `v2::kvp::label` ([#1261]).
 
 [1259]: https://github.com/stackabletech/operator-rs/pull/1259
+[1261]: https://github.com/stackabletech/operator-rs/pull/1261
 
 ## [0.115.0] - 2026-08-04
 
