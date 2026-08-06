@@ -3,6 +3,8 @@ use std::{fmt::Display, ops::Deref, str::FromStr, sync::LazyLock};
 use regex::Regex;
 use snafu::{ResultExt, Snafu, ensure};
 
+use crate::utils::length_enforcement::ensure_max_length;
+
 const KEY_PREFIX_MAX_LEN: usize = 253;
 const KEY_NAME_MAX_LEN: usize = 63;
 
@@ -135,6 +137,16 @@ impl Deref for Key {
 }
 
 impl Key {
+    pub fn with_enforced_length(
+        prefix: impl Into<String>,
+        name: impl Into<String>,
+    ) -> Result<Self, KeyError> {
+        let prefix = ensure_max_length(prefix, KEY_PREFIX_MAX_LEN, 8);
+        let name = ensure_max_length(name, KEY_NAME_MAX_LEN, 8);
+
+        Self::from_str(&format!("{prefix}/{name}"))
+    }
+
     /// Retrieves the key's prefix.
     ///
     /// ```

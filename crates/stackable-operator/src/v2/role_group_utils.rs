@@ -1,14 +1,12 @@
 use std::str::FromStr;
 
-use sha2::{Digest, Sha256};
-
 use super::types::{
     kubernetes::{
         ConfigMapName, DaemonSetName, DeploymentName, ListenerName, ServiceName, StatefulSetName,
     },
     operator::{ClusterName, RoleGroupName, RoleName},
 };
-use crate::attributed_string_type;
+use crate::{attributed_string_type, utils::length_enforcement::ensure_max_length};
 
 attributed_string_type! {
     QualifiedRoleGroupName,
@@ -80,63 +78,16 @@ impl ResourceNames {
             self.cluster_name, self.role_name, self.role_group_name,
         );
         // `concatenated_name` contains only ASCII characters.
-        let sanitized_name = Self::ensure_max_length(
+        assert!(concatenated_name.is_ascii());
+        let sanitized_name = ensure_max_length(
             concatenated_name,
             QualifiedRoleGroupName::MAX_LENGTH,
             HASH_LENGTH,
         );
+        assert!(sanitized_name.len() <= QualifiedRoleGroupName::MAX_LENGTH);
 
         QualifiedRoleGroupName::from_str(&sanitized_name)
             .expect("should be a valid QualifiedRoleGroupName")
-    }
-
-    /// Ensures that the given resource name does not exceed the given maximum length.
-    /// If required, the resource name is truncated and a hex encoded hash is appended with a dash.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `resource_name` contains non-ASCII characters or if
-    /// `max_length < 1 /* character */ + 1 /* dash */ + hash_length`.
-    ///
-    /// Kubernetes object names cannot contain non-ASCII characters.
-    pub fn ensure_max_length(
-        resource_name: String,
-        max_length: usize,
-        hash_length: usize,
-    ) -> String {
-        assert!(resource_name.is_ascii());
-        assert!(max_length >= 1 /* character */ + 1 /* dash */ + hash_length);
-
-        if resource_name.len() <= max_length {
-            resource_name
-        } else if hash_length == 0 {
-            let mut truncated_name = resource_name;
-            truncated_name.truncate(max_length);
-            truncated_name
-        } else {
-            let mut hash = format!("{:x}", Sha256::digest(resource_name.as_bytes()));
-            hash.truncate(hash_length);
-
-            let mut truncated_name = resource_name;
-            // Truncate the name so that the hash can be appended without exceeding the maximum
-            // length.
-            truncated_name.truncate(max_length - hash_length);
-
-            let last_char = truncated_name
-                .pop()
-                .expect("should be guaranteed by the assertion above");
-            let second_to_last_char = truncated_name
-                .pop()
-                .expect("should be guaranteed by the assertion above");
-
-            // If the truncated name already ends with a dash then do not add another one,
-            // otherwise replace the last character with a dash.
-            if second_to_last_char == '-' && last_char != '-' {
-                format!("{truncated_name}{second_to_last_char}{hash}")
-            } else {
-                format!("{truncated_name}{second_to_last_char}-{hash}")
-            }
-        }
     }
 
     pub fn role_group_config_map(&self) -> ConfigMapName {
@@ -336,60 +287,6 @@ mod tests {
                 "cccccccccccccccccccccccccccccccccccccccc-rrrr-a12cc0"
             ),
             qualified_role_group_name
-        );
-    }
-
-    #[test]
-    fn test_ensure_max_length() {
-        // empty resource name, no hash length
-        assert_eq!(
-            String::new(),
-            ResourceNames::ensure_max_length(String::new(), 2, 0)
-        );
-
-        // resource_name.len() <= max_length
-        assert_eq!(
-            "abcdef".to_owned(),
-            ResourceNames::ensure_max_length("abcdef".to_owned(), 6, 4)
-        );
-
-        // hash_length == 0
-        assert_eq!(
-            "abcdef".to_owned(),
-            ResourceNames::ensure_max_length("abcdefg".to_owned(), 6, 0)
-        );
-
-        // hash appended with dash
-        assert_eq!(
-            "a-7d1a".to_owned(),
-            ResourceNames::ensure_max_length("abcdefg".to_owned(), 6, 4)
-        );
-
-        // hash appended without an extra dash
-        assert_eq!(
-            "ab-a1b1".to_owned(),
-            ResourceNames::ensure_max_length("ab-defgh".to_owned(), 7, 4)
-        );
-
-        // hash appended without an extra dash
-        // In this case, the result is one character shorter than the maximum length.
-        assert_eq!(
-            "a-3951".to_owned(),
-            ResourceNames::ensure_max_length("a-cdefgh".to_owned(), 7, 4)
-        );
-
-        // hash appended without an extra dash
-        // The two dashes in the given resource name are intentionally kept.
-        assert_eq!(
-            "a--f7a0".to_owned(),
-            ResourceNames::ensure_max_length("a--defgh".to_owned(), 7, 4)
-        );
-
-        // A hash_length longer than the produced hash string may not produce the desired result.
-        // Just use sensible values!
-        assert_eq!(
-            "aaaaaaaaa-d476ce01c3787bcab054a2cf48d6af6dd303a0eb549e21a74125132f79d90c36".to_owned(),
-            ResourceNames::ensure_max_length("a".repeat(1011), 1010, 1000)
         );
     }
 }
