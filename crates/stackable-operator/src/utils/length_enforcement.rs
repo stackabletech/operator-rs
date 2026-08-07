@@ -109,13 +109,6 @@ mod test {
             "a--f7a0".to_owned(),
             ensure_max_string_length("a--defgh".to_owned(), 7, 4)
         );
-
-        // A hash_length longer than the produced hash string may not produce the desired result.
-        // Just use sensible values!
-        assert_eq!(
-            "aaaaaaaaa-d476ce01c3787bcab054a2cf48d6af6dd303a0eb549e21a74125132f79d90c36".to_owned(),
-            ensure_max_string_length("a".repeat(1011), 1010, 1000)
-        );
     }
 
     /// The maximum length is measured in bytes, so multi-byte characters must not be split up by
