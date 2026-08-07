@@ -10,12 +10,17 @@ use sha2::{Digest, Sha256};
 ///
 /// # Panics
 ///
-/// Panics if `max_length_bytes < 1 /* character */ + 1 /* dash */ + hash_length`.
+/// Panics if the `hash_length > 64` or
+/// `max_length_bytes < 1 /* character */ + 1 /* dash */ + hash_length`.
 pub fn ensure_max_string_length(
     original: impl Into<String>,
     max_length_bytes: usize,
     hash_length: usize,
 ) -> String {
+    assert!(
+        hash_length <= 64,
+        "We hash using sha256, so we don't produce more than 64 bytes"
+    );
     assert!(max_length_bytes >= 1 /* character */ + 1 /* dash */ + hash_length);
 
     let original = original.into();

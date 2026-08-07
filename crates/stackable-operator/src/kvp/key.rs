@@ -137,17 +137,17 @@ impl Deref for Key {
 }
 
 impl Key {
-    /// (Optionally) shortens the `prefix` and `name` to make sure they produce a valid [`Key`].
+    /// Shortens `name` if needed, so that it does not exceed the maximum key name length.
+    ///
+    /// The `prefix` is used as-is: If it isn't already a valid DNS subdomain name, shortening won't
+    /// make it one. In particular, a prefix must end in a letters-only TLD, but the appended hash
+    /// adds a hyphen and probably digits, very likely being an invalid result.
     ///
     /// See [`ensure_max_string_length`] for details on the shortening algorithm.
     pub fn shortened_to_valid_length(
         prefix: Option<&str>,
         name: impl Into<String>,
     ) -> Result<Self, KeyError> {
-        // Note that we are *not* shortening the prefix: If it isn't already a valid DNS subdomain
-        // name, shortening won't make it one. In particular, a prefix must end in a letters-only
-        // TLD, but the appended hash adds a hyphen and probably digits, very likely being an
-        // invalid result.
         let name = ensure_max_string_length(name, KEY_NAME_MAX_LEN, 8);
 
         let key = match prefix {
