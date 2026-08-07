@@ -6,7 +6,7 @@ use super::types::{
     },
     operator::{ClusterName, RoleGroupName, RoleName},
 };
-use crate::{attributed_string_type, utils::length_enforcement::ensure_max_length};
+use crate::{attributed_string_type, utils::length_enforcement::ensure_max_string_length};
 
 attributed_string_type! {
     QualifiedRoleGroupName,
@@ -79,7 +79,7 @@ impl ResourceNames {
         );
         // `concatenated_name` contains only ASCII characters.
         assert!(concatenated_name.is_ascii());
-        let sanitized_name = ensure_max_length(
+        let sanitized_name = ensure_max_string_length(
             concatenated_name,
             QualifiedRoleGroupName::MAX_LENGTH,
             HASH_LENGTH,

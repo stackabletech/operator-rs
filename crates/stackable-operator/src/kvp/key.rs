@@ -3,7 +3,7 @@ use std::{fmt::Display, ops::Deref, str::FromStr, sync::LazyLock};
 use regex::Regex;
 use snafu::{ResultExt, Snafu, ensure};
 
-use crate::utils::length_enforcement::ensure_max_length;
+use crate::utils::length_enforcement::ensure_max_string_length;
 
 const KEY_PREFIX_MAX_LEN: usize = 253;
 const KEY_NAME_MAX_LEN: usize = 63;
@@ -139,7 +139,7 @@ impl Deref for Key {
 impl Key {
     /// (Optionally) shortens the `prefix` and `name` to make sure they produce a valid [`Key`].
     ///
-    /// See [`ensure_max_length`] for details on the shortening algorithm.
+    /// See [`ensure_max_string_length`] for details on the shortening algorithm.
     pub fn shortened_to_valid_length(
         prefix: Option<&str>,
         name: impl Into<String>,
@@ -148,7 +148,7 @@ impl Key {
         // name, shortening won't make it one. In particular, a prefix must end in a letters-only
         // TLD, but the appended hash adds a hyphen and probably digits, very likely being an
         // invalid result.
-        let name = ensure_max_length(name, KEY_NAME_MAX_LEN, 8);
+        let name = ensure_max_string_length(name, KEY_NAME_MAX_LEN, 8);
 
         let key = match prefix {
             Some(prefix) => format!("{prefix}/{name}"),
