@@ -144,10 +144,7 @@ impl Key {
     /// adds a hyphen and probably digits, very likely being an invalid result.
     ///
     /// See [`ensure_max_string_length`] for details on the shortening algorithm.
-    pub fn shortened_to_valid_length(
-        prefix: Option<&str>,
-        name: impl Into<String>,
-    ) -> Result<Self, KeyError> {
+    pub fn new_trimmed(prefix: Option<&str>, name: impl Into<String>) -> Result<Self, KeyError> {
         let name = ensure_max_string_length(name, KEY_NAME_MAX_LEN, 8);
 
         let key = match prefix {
@@ -386,7 +383,7 @@ mod test {
 
     #[test]
     fn key_shortened_to_valid_length_with_short_enough_name() {
-        let key = Key::shortened_to_valid_length(Some("stackable.tech"), "a".repeat(63)).unwrap();
+        let key = Key::new_trimmed(Some("stackable.tech"), "a".repeat(63)).unwrap();
 
         assert_eq!(key.prefix, Some(KeyPrefix("stackable.tech".into())));
         assert_eq!(key.name, KeyName("a".repeat(63)));
@@ -399,7 +396,7 @@ mod test {
 
     #[test]
     fn key_shortened_to_valid_length_with_too_long_name() {
-        let key = Key::shortened_to_valid_length(Some("stackable.tech"), "a".repeat(64)).unwrap();
+        let key = Key::new_trimmed(Some("stackable.tech"), "a".repeat(64)).unwrap();
 
         assert_eq!(key.prefix, Some(KeyPrefix("stackable.tech".into())));
         assert_eq!(key.name, KeyName(format!("{}-ffe054fe", "a".repeat(54))));
@@ -414,7 +411,7 @@ mod test {
     fn key_shortened_to_valid_length_with_too_long_prefix() {
         // The prefix is a valid DNS subdomain name, except for being one character too long.
         let prefix = format!("{}.tech", "a".repeat(249));
-        let error = Key::shortened_to_valid_length(Some(&prefix), "myname")
+        let error = Key::new_trimmed(Some(&prefix), "myname")
             .expect_err("the prefix exceeds the maximum length");
 
         assert_eq!(
@@ -427,7 +424,7 @@ mod test {
 
     #[test]
     fn key_shortened_to_valid_length_without_prefix() {
-        let key = Key::shortened_to_valid_length(None, "a".repeat(64)).unwrap();
+        let key = Key::new_trimmed(None, "a".repeat(64)).unwrap();
 
         assert_eq!(key.prefix, None);
         assert_eq!(key.name, KeyName(format!("{}-ffe054fe", "a".repeat(54))));
