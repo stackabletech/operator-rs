@@ -3,6 +3,8 @@ use std::{fmt::Display, ops::Deref, str::FromStr, sync::LazyLock};
 use regex::Regex;
 use snafu::{ResultExt, Snafu, ensure};
 
+use crate::utils::length_enforcement::ensure_max_string_length;
+
 const KEY_PREFIX_MAX_LEN: usize = 253;
 const KEY_NAME_MAX_LEN: usize = 63;
 
@@ -135,6 +137,23 @@ impl Deref for Key {
 }
 
 impl Key {
+    /// Shortens `name` if needed, so that it does not exceed the maximum key name length.
+    ///
+    /// The `prefix` is used as-is: If it isn't already a valid DNS subdomain name, shortening won't
+    /// make it one. In particular, a prefix must end in a letters-only TLD, but the appended hash
+    /// adds a hyphen and probably digits, very likely being an invalid result.
+    ///
+    /// See [`ensure_max_string_length`] for details on the shortening algorithm.
+    pub fn new_trimmed(prefix: Option<&str>, name: impl Into<String>) -> Result<Self, KeyError> {
+        let name = ensure_max_string_length(name, KEY_NAME_MAX_LEN, 8);
+
+        let key = match prefix {
+            Some(prefix) => format!("{prefix}/{name}"),
+            None => name,
+        };
+        Self::from_str(&key)
+    }
+
     /// Retrieves the key's prefix.
     ///
     /// ```
@@ -360,6 +379,60 @@ mod test {
         assert_eq!(key.prefix, None);
         assert_eq!(key.name, KeyName("vendor".into()));
         assert_eq!(key.to_string(), "vendor");
+    }
+
+    #[test]
+    fn key_shortened_to_valid_length_with_short_enough_name() {
+        let key = Key::new_trimmed(Some("stackable.tech"), "a".repeat(63)).unwrap();
+
+        assert_eq!(key.prefix, Some(KeyPrefix("stackable.tech".into())));
+        assert_eq!(key.name, KeyName("a".repeat(63)));
+        assert_eq!(key.name.len(), KEY_NAME_MAX_LEN);
+        assert_eq!(
+            key.to_string(),
+            "stackable.tech/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        );
+    }
+
+    #[test]
+    fn key_shortened_to_valid_length_with_too_long_name() {
+        let key = Key::new_trimmed(Some("stackable.tech"), "a".repeat(64)).unwrap();
+
+        assert_eq!(key.prefix, Some(KeyPrefix("stackable.tech".into())));
+        assert_eq!(key.name, KeyName(format!("{}-ffe054fe", "a".repeat(54))));
+        assert_eq!(key.name.len(), KEY_NAME_MAX_LEN);
+        assert_eq!(
+            key.to_string(),
+            "stackable.tech/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-ffe054fe"
+        );
+    }
+
+    #[test]
+    fn key_shortened_to_valid_length_with_too_long_prefix() {
+        // The prefix is a valid DNS subdomain name, except for being one character too long.
+        let prefix = format!("{}.tech", "a".repeat(249));
+        let error = Key::new_trimmed(Some(&prefix), "myname")
+            .expect_err("the prefix exceeds the maximum length");
+
+        assert_eq!(
+            error,
+            KeyError::KeyPrefixError {
+                source: KeyPrefixError::PrefixTooLong { length: 254 }
+            }
+        );
+    }
+
+    #[test]
+    fn key_shortened_to_valid_length_without_prefix() {
+        let key = Key::new_trimmed(None, "a".repeat(64)).unwrap();
+
+        assert_eq!(key.prefix, None);
+        assert_eq!(key.name, KeyName(format!("{}-ffe054fe", "a".repeat(54))));
+        assert_eq!(key.name.len(), KEY_NAME_MAX_LEN);
+        assert_eq!(
+            key.to_string(),
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-ffe054fe"
+        );
     }
 
     #[test]
