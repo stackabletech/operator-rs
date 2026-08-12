@@ -123,63 +123,66 @@ pub fn role_group_selector(
 /// Creates the `app.kubernetes.io/instance` label with the given cluster name as value.
 pub fn label_app_kubernetes_io_instance(cluster_name: &ClusterName) -> Label {
     Label::instance(&cluster_name.to_label_value())
-        .expect("produces a valid label because the value implements NameIsValidLabelValue")
+        .expect("the value implements NameIsValidLabelValue and is therefore a valid label value")
 }
 
-/// Creates the `app.kubernetes.io/name` label with given product name as value.
+/// Creates the `app.kubernetes.io/name` label with the given product name as value.
 pub fn label_app_kubernetes_io_name(product_name: &ProductName) -> Label {
     Label::name(&product_name.to_label_value())
-        .expect("produces a valid label because the value implements NameIsValidLabelValue")
+        .expect("the value implements NameIsValidLabelValue and is therefore a valid label value")
 }
 
-/// Creates the `app.kubernetes.io/version` label with given product version as value.
+/// Creates the `app.kubernetes.io/version` label with the given product version as value.
 pub fn label_app_kubernetes_io_version(product_version: &ProductVersion) -> Label {
     Label::version(&product_version.to_label_value())
-        .expect("produces a valid label because the value implements NameIsValidLabelValue")
+        .expect("the value implements NameIsValidLabelValue and is therefore a valid label value")
 }
 
-/// Creates the `app.kubernetes.io/managed-by` label with the full controller name as value
-/// generated from the given operator and controller name.
+/// Creates the `app.kubernetes.io/managed-by` label. Its value is the full controller name built
+/// from the given operator and controller name.
 pub fn label_app_kubernetes_io_managed_by(
     operator_name: &OperatorName,
     controller_name: &ControllerName,
 ) -> Label {
     let full_controller_name = full_controller_name(operator_name, controller_name);
     Label::try_from((K8S_APP_MANAGED_BY_KEY, full_controller_name))
-        .expect("produces a valid label because the statically defined key is valid and the value implements NameIsValidLabelValue")
+        .expect("the statically defined key is valid and the value implements NameIsValidLabelValue, so this is a valid label")
 }
 
 /// Creates the `app.kubernetes.io/component` label with the given role as value.
 pub fn label_app_kubernetes_io_component(role_name: &RoleName) -> Label {
     Label::component(&role_name.to_label_value())
-        .expect("produces a valid label because the value implements NameIsValidLabelValue")
+        .expect("the value implements NameIsValidLabelValue and is therefore a valid label value")
 }
 
-/// Creates the `app.kubernetes.io/role-group` label with the the given role group as value.
+/// Creates the `app.kubernetes.io/role-group` label with the given role group as value.
 pub fn label_app_kubernetes_io_role_group(role_group_name: &RoleGroupName) -> Label {
     Label::role_group(&role_group_name.to_label_value())
-        .expect("produces a valid label because the value implements NameIsValidLabelValue")
+        .expect("the value implements NameIsValidLabelValue and is therefore a valid label value")
 }
 
-/// Creates the Stackable specific vendor label.
+/// Creates the Stackable-specific vendor label.
 pub fn label_stackable_tech_vendor() -> Label {
     Label::stackable_vendor()
 }
 
+/// Joins the operator and controller name with an underscore to build the full controller name.
+///
+/// If the full controller name exceeds the maximum length of a `ControllerName`, only the operator
+/// name is returned. This limit is unlikely to be hit in practice: even a long operator name like
+/// "zookeeper.stackable.tech" (24 characters) combined with a long controller name like
+/// "zookeepercluster" (16 characters) stays well below the 63 character limit of a `ControllerName`.
 fn full_controller_name(
     operator_name: &OperatorName,
     controller_name: &ControllerName,
 ) -> ControllerName {
-    let mut full_controller_name = format!(
-        "{}_{}",
-        operator_name.to_label_value(),
-        controller_name.to_label_value()
-    );
-    full_controller_name.truncate(ControllerName::MAX_LENGTH);
+    let full_controller_name = format!("{operator_name}_{controller_name}");
 
-    ControllerName::from_str(&full_controller_name).expect(
-        "is a valid ControllerName because it satifies both the character and length constraints",
-    )
+    ControllerName::from_str(&full_controller_name).unwrap_or_else(|_| {
+        ControllerName::from_str(operator_name.as_ref()).expect(
+            "the operator name is a valid ControllerName because both types share the same constraints",
+        )
+    })
 }
 
 #[cfg(test)]
