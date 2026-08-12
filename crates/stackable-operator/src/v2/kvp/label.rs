@@ -192,7 +192,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_recommended_labels_for_cluster_resources() {
+    fn recommended_labels_for_cluster_resources_produces_expected_labels() {
         let actual_labels = recommended_labels_for_cluster_resources(
             &ClusterName::from_str_unsafe("cluster-name"),
             &ProductName::from_str_unsafe("my-product"),
@@ -215,7 +215,7 @@ mod tests {
     }
 
     #[test]
-    fn test_recommended_labels_for_role_resources() {
+    fn recommended_labels_for_role_resources_produces_expected_labels() {
         let actual_labels = recommended_labels_for_role_resources(
             &ClusterName::from_str_unsafe("cluster-name"),
             &ProductName::from_str_unsafe("my-product"),
@@ -240,7 +240,7 @@ mod tests {
     }
 
     #[test]
-    fn test_role_selector() {
+    fn role_selector_produces_expected_labels() {
         let actual_labels = role_selector(
             &ClusterName::from_str_unsafe("cluster-name"),
             &ProductName::from_str_unsafe("my-product"),
@@ -286,7 +286,7 @@ mod tests {
     }
 
     #[test]
-    fn test_recommended_labels_for_role_group_resources() {
+    fn recommended_labels_for_role_group_resources_produces_expected_labels() {
         let actual_labels = recommended_labels_for_role_group_resources(
             &ClusterName::from_str_unsafe("cluster-name"),
             &ProductName::from_str_unsafe("my-product"),
@@ -313,7 +313,7 @@ mod tests {
     }
 
     #[test]
-    fn test_recommended_labels_for_unversioned_role_group_resources() {
+    fn recommended_labels_for_unversioned_role_group_resources_produces_expected_labels() {
         let actual_labels = recommended_labels_for_unversioned_role_group_resources(
             &ClusterName::from_str_unsafe("cluster-name"),
             &ProductName::from_str_unsafe("my-product"),
@@ -338,7 +338,7 @@ mod tests {
     }
 
     #[test]
-    fn test_role_group_selector() {
+    fn role_group_selector_produces_expected_labels() {
         let actual_labels = role_group_selector(
             &ClusterName::from_str_unsafe("cluster-name"),
             &ProductName::from_str_unsafe("my-product"),
