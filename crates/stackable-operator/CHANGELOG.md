@@ -8,7 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - Add the Cargo feature `kube-cel` that enables the `cel` feature on the `kube` crate ([#1259]).
 - Add `length_enforcement::ensure_max_string_length` and `Key::shortened_to_valid_length` helper functions ([#1260]).
-- [v2] Add functions for recommended labels to `v2::kvp::label` ([#1261]).
+
+### Changed
+
+- BREAKING: [v2] Improve functions for recommended labels in `v2::kvp::label` ([#1261]).
 
 [#1259]: https://github.com/stackabletech/operator-rs/pull/1259
 [#1260]: https://github.com/stackabletech/operator-rs/pull/1260
