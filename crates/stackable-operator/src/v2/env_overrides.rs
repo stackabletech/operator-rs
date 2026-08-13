@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, btree_map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::v2::builder::pod::container::EnvVarName;
+use crate::v2::builder::pod::container::{EnvVarName, EnvVarSet};
 
 /// A map from environment variable names to their values.
 ///
@@ -81,9 +81,13 @@ impl IntoIterator for EnvOverrides {
 
 impl Extend<(EnvVarName, String)> for EnvOverrides {
     fn extend<T: IntoIterator<Item = (EnvVarName, String)>>(&mut self, iter: T) {
-        iter.into_iter().for_each(move |(k, v)| {
-            self.0.insert(k, v);
-        });
+        self.0.extend(iter);
+    }
+}
+
+impl From<EnvOverrides> for EnvVarSet {
+    fn from(value: EnvOverrides) -> Self {
+        Self::new().with_values(value)
     }
 }
 
