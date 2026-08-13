@@ -19,14 +19,188 @@ use crate::{
         merge::{self, Merge, merge},
     },
     k8s_openapi::{DeepMerge, api::core::v1::PodTemplateSpec},
-    role_utils::{CommonConfiguration, Role, RoleGroup},
+    role_utils::GenericRoleConfig,
     schemars::{self, JsonSchema},
+    utils::crds::raw_object_schema,
+    v2::builder::pod::container::EnvVarName,
 };
+
+type EnvOverrides = BTreeMap<EnvVarName, String>;
+
+// Variant of [`crate::role_utils::CommonConfiguration`] that uses `BTreeMap<EnvVarName, String>` for `env_overrides`
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(
+    rename_all = "camelCase",
+    bound(
+        deserialize = "Config: Default + Deserialize<'de>, CommonConfig: Default + Deserialize<'de>, ConfigOverrides: Default + Deserialize<'de>"
+    )
+)]
+#[schemars(
+    bound = "Config: JsonSchema, CommonConfig: JsonSchema, ConfigOverrides: Default + JsonSchema"
+)]
+pub struct CommonConfiguration<Config, CommonConfig, ConfigOverrides> {
+    #[serde(default)]
+    // We can't depend on Config being `Default`, since that trait is not object-safe
+    // We only need to generate schemas for fully specified types, but schemars_derive
+    // does not support specifying custom bounds.
+    #[schemars(default = "Self::default_config")]
+    pub config: Config,
+
+    /// The `configOverrides` can be used to configure properties in product config files
+    /// that are not exposed in the CRD. Read the
+    /// [config overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#config-overrides)
+    /// and consult the operator specific usage guide documentation for details on the
+    /// available config files and settings for the specific product.
+    #[serde(default)]
+    pub config_overrides: ConfigOverrides,
+
+    /// `envOverrides` configure environment variables to be set in the Pods.
+    /// It is a map from environment variable names to their values. The names are validated to be
+    /// valid environment variable names.
+    /// Read the
+    /// [environment variable overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#env-overrides)
+    /// for more information and consult the operator specific usage guide to find out about
+    /// the product specific environment variables that are available.
+    #[serde(default)]
+    pub env_overrides: EnvOverrides,
+
+    // BTreeMap to keep some order with the cli arguments.
+    // TODO add documentation.
+    #[serde(default)]
+    pub cli_overrides: BTreeMap<String, String>,
+
+    /// In the `podOverrides` property you can define a
+    /// [PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.34/#podtemplatespec-v1-core)
+    /// to override any property that can be set on a Kubernetes Pod.
+    /// Read the
+    /// [Pod overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#pod-overrides)
+    /// for more information.
+    #[serde(default)]
+    #[schemars(schema_with = "raw_object_schema")]
+    pub pod_overrides: PodTemplateSpec,
+
+    // No docs needed, as we flatten this struct.
+    //
+    // This field is product-specific and can contain e.g. jvmArgumentOverrides.
+    //
+    // Unlike [`crate::role_utils::CommonConfiguration`] (which needs
+    // [`crate::role_utils::Role::get_merged_jvm_argument_overrides`]), the role and roleGroup values
+    // here are merged generically via [`Merge`] in [`with_validated_config`], so read the
+    // already-merged field off its result instead of merging it yourself.
+    #[serde(flatten, default)]
+    pub product_specific_common_config: CommonConfig,
+}
+
+impl<Config, CommonConfig, ConfigOverrides>
+    CommonConfiguration<Config, CommonConfig, ConfigOverrides>
+{
+    fn default_config() -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
 
 // Variant of [`crate::role_utils::GenericCommonConfig`] that implements [`Merge`]
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Eq, Merge, PartialEq, Serialize)]
 #[merge(path_overrides(merge = "crate::config::merge"))]
 pub struct GenericCommonConfig {}
+
+// Variant of [`crate::role_utils::Role`] with [`v2::CommonConfiguration`]
+/// This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a key-value-map containing
+/// all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable
+/// at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured
+/// on role level. There is also a second form of config, which can only be configured
+/// at role level, the `roleConfig`.
+/// You can learn more about this in the
+/// [Roles and role group concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/roles-and-role-groups).
+//
+// Everything below is only a "normal" comment, not rustdoc - so we don't bloat the CRD documentation
+// with technical (Rust) details.
+//
+// `Config` here is the `config` shared between role and roleGroup.
+//
+// `RoleConfig` here is the `roleConfig` only available on the role. It defaults to [`GenericRoleConfig`], which is
+// sufficient for most of the products. There are some exceptions, where e.g. [`EmptyRoleConfig`] is used.
+// However, product-operators can define their own - custom - struct and use that here.
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Role<
+    Config,
+    ConfigOverrides,
+    RoleConfig = GenericRoleConfig,
+    CommonConfig = GenericCommonConfig,
+> where
+    // Don't remove this trait bounds!!!
+    // We don't know why, but if you remove either of them, the generated default value in the CRDs will
+    // be missing!
+    RoleConfig: Default + JsonSchema + Serialize,
+    CommonConfig: Default + JsonSchema + Serialize,
+    ConfigOverrides: Default + JsonSchema + Serialize,
+{
+    #[serde(
+        flatten,
+        bound(
+            deserialize = "Config: Default + Deserialize<'de>, CommonConfig: Deserialize<'de>, ConfigOverrides: Deserialize<'de>"
+        )
+    )]
+    pub config: CommonConfiguration<Config, CommonConfig, ConfigOverrides>,
+
+    #[serde(default)]
+    pub role_config: RoleConfig,
+
+    /// The set of role groups for this role, keyed by their name.
+    ///
+    /// A role group is a subset of the replicas of a role that share the same configuration,
+    /// allowing finer-grained control than the role level. This is useful to e.g. schedule groups
+    /// onto different classes of nodes or into different regions, or to run them with different
+    /// settings. Configuration set on a role group is merged on top of the role-level `config`,
+    /// with the more specific role group values taking precedence.
+    ///
+    /// Every role needs at least one role group. A role with a single role group conventionally
+    /// names it `default`.
+    ///
+    /// Read the
+    /// [roles and role groups concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/roles-and-role-groups)
+    /// for more details.
+    pub role_groups: HashMap<String, RoleGroup<Config, CommonConfig, ConfigOverrides>>,
+}
+
+// Variant of [`crate::role_utils::RoleGroup`] with [`v2::CommonConfiguration`]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(
+    rename_all = "camelCase",
+    bound(
+        deserialize = "Config: Default + Deserialize<'de>, CommonConfig: Default + Deserialize<'de>, ConfigOverrides: Default + Deserialize<'de>"
+    )
+)]
+#[schemars(
+    bound = "Config: JsonSchema, CommonConfig: JsonSchema, ConfigOverrides: Default + JsonSchema"
+)]
+pub struct RoleGroup<Config, CommonConfig, ConfigOverrides> {
+    #[serde(flatten)]
+    pub config: CommonConfiguration<Config, CommonConfig, ConfigOverrides>,
+    pub replicas: Option<u16>,
+}
+
+impl<Config, CommonConfig, ConfigOverrides> RoleGroup<Config, CommonConfig, ConfigOverrides> {
+    pub fn validate_config<C, RoleConfig>(
+        &self,
+        role: &Role<Config, ConfigOverrides, RoleConfig, CommonConfig>,
+        default_config: &Config,
+    ) -> Result<C, fragment::ValidationError>
+    where
+        C: FromFragment<Fragment = Config>,
+        Config: Merge + Clone,
+        RoleConfig: Default + JsonSchema + Serialize,
+        CommonConfig: Default + JsonSchema + Serialize,
+        ConfigOverrides: Default + JsonSchema + Serialize,
+    {
+        let mut role_config = role.config.config.clone();
+        role_config.merge(default_config);
+        let mut rolegroup_config = self.config.config.clone();
+        rolegroup_config.merge(&role_config);
+        fragment::validate(rolegroup_config)
+    }
+}
 
 // Variant of [`crate::role_utils::JavaCommonConfig`] that implements [`Merge`]
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Merge, PartialEq, Eq, Serialize)]
@@ -45,7 +219,7 @@ pub struct JavaCommonConfig {
 ///
 /// Differences are:
 /// * `config` is flattened.
-/// * The [`HashMap`] in `env_overrides` is replaced with an [`EnvVarSet`].
+/// * The [`BTreeMap`] in `env_overrides` is replaced with an [`EnvVarSet`].
 #[derive(Clone, Debug, PartialEq)]
 pub struct RoleGroupConfig<Config, CommonConfig, ConfigOverrides> {
     pub replicas: Option<u16>,
@@ -120,9 +294,9 @@ where
 }
 
 fn merged_env_overrides(
-    role_env_overrides: HashMap<String, String>,
-    role_group_env_overrides: HashMap<String, String>,
-) -> HashMap<String, String> {
+    role_env_overrides: EnvOverrides,
+    role_group_env_overrides: EnvOverrides,
+) -> EnvOverrides {
     let mut merged_env_overrides = role_env_overrides;
     merged_env_overrides.extend(role_group_env_overrides);
     merged_env_overrides
@@ -205,19 +379,20 @@ impl ResourceNames {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::BTreeMap;
 
     use rstest::*;
     use serde::Serialize;
 
-    use super::ResourceNames;
+    use super::*;
     use crate::{
         config::{fragment::Fragment, merge::Merge},
         k8s_openapi::api::core::v1::PodTemplateSpec,
         kube::api::ObjectMeta,
-        role_utils::{CommonConfiguration, GenericRoleConfig, Role, RoleGroup},
+        role_utils::GenericRoleConfig,
         schemars::{self, JsonSchema},
         v2::{
+            builder::pod::container::EnvVarName,
             config_overrides::KeyValueConfigOverrides,
             role_utils::with_validated_config,
             types::{
@@ -264,12 +439,12 @@ mod tests {
         override_value: Option<&str>,
     ) -> CommonConfiguration<Config, CommonConfig, KeyValueConfigOverrides> {
         let mut config_file_overrides = BTreeMap::new();
-        let mut env_overrides = HashMap::new();
+        let mut env_overrides = EnvOverrides::new();
         let mut cli_overrides = BTreeMap::new();
 
         if let Some(value) = override_value {
             config_file_overrides.insert("property".to_owned(), value.to_owned());
-            env_overrides.insert("PROPERTY".to_owned(), value.to_owned());
+            env_overrides.insert(EnvVarName::from_str_unsafe("PROPERTY"), value.to_owned());
             cli_overrides.insert("--property".to_owned(), value.to_owned());
         }
 

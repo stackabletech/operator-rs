@@ -124,8 +124,8 @@ mod tests {
 
     use super::*;
     use crate::{
-        role_utils::{GenericRoleConfig, Role, RoleGroup},
-        v2::role_utils::{JavaCommonConfig, with_validated_config},
+        role_utils::GenericRoleConfig,
+        v2::role_utils::{JavaCommonConfig, Role, RoleGroup, with_validated_config},
     };
 
     // #[derive(
