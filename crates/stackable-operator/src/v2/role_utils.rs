@@ -22,12 +22,10 @@ use crate::{
     role_utils::GenericRoleConfig,
     schemars::{self, JsonSchema},
     utils::crds::raw_object_schema,
-    v2::builder::pod::container::EnvVarName,
+    v2::env_overrides::EnvOverrides,
 };
 
-type EnvOverrides = BTreeMap<EnvVarName, String>;
-
-// Variant of [`crate::role_utils::CommonConfiguration`] that uses `BTreeMap<EnvVarName, String>` for `env_overrides`
+// Variant of [`crate::role_utils::CommonConfiguration`] that uses [`EnvOverrides`] for `env_overrides`
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(
     rename_all = "camelCase",
@@ -219,7 +217,7 @@ pub struct JavaCommonConfig {
 ///
 /// Differences are:
 /// * `config` is flattened.
-/// * The [`BTreeMap`] in `env_overrides` is replaced with an [`EnvVarSet`].
+/// * The [`EnvOverrides`] in `env_overrides` is replaced with an [`EnvVarSet`].
 #[derive(Clone, Debug, PartialEq)]
 pub struct RoleGroupConfig<Config, CommonConfig, ConfigOverrides> {
     pub replicas: Option<u16>,

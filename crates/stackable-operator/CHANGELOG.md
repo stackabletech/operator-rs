@@ -12,9 +12,10 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: [v2] Improve functions for recommended labels in `v2::kvp::label` ([#1261]).
-- BREAKING: [v2] `env_overrides` in `v2::role_utils::CommonConfiguration` is now a
-  `BTreeMap<EnvVarName, String>` instead of a `HashMap<String, String>`, so environment variable
-  names are validated on deserialization and kept in a deterministic order ([#1262]).
+- BREAKING: [v2] `env_overrides` in `v2::role_utils::CommonConfiguration` is now the new
+  `v2::env_overrides::EnvOverrides` type (a `BTreeMap<EnvVarName, String>`) instead of a
+  `HashMap<String, String>`, so environment variable names are validated on deserialization and
+  kept in a deterministic order ([#1262]).
   `v2::role_utils` now defines its own `CommonConfiguration`, `Role` and `RoleGroup` instead of
   re-exporting them from `crate::role_utils`.
 
