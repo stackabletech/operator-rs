@@ -6,10 +6,92 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add the Cargo feature `kube-cel` that enables the `cel` feature on the `kube` crate ([#1259]).
+- Add `length_enforcement::ensure_max_string_length` and `Key::shortened_to_valid_length` helper functions ([#1260]).
+
+### Changed
+
+- BREAKING: [v2] Improve functions for recommended labels in `v2::kvp::label` ([#1261]).
+
+[#1259]: https://github.com/stackabletech/operator-rs/pull/1259
+[#1260]: https://github.com/stackabletech/operator-rs/pull/1260
+[#1261]: https://github.com/stackabletech/operator-rs/pull/1261
+
+## [0.115.0] - 2026-08-04
+
+### Changed
+
+- BREAKING: `PodSecurityContextBuilder::new` was removed in favor of `PodSecurityContextBuilder::with_stackable_defaults`
+  (same for `SecurityContextBuilder`) ([#1205]).
+  This function already sets up some defaults we want to use across the platform.
+  Currently this is `runAsNonRoot: true` for `PodSecurityContextBuilder`, which might cause product Pods to crash and require changes.
+- BREAKING: `PodSecurityContextBuilder::run_as_non_root` now takes a `bool` instead of assuming consumers always want to set it to `true` ([#1205]).
+  This is needed to allow users setting it to `false` in case the new `with_stackable_defaults` function sets it to `true`.
+- BREAKING: `SecurityContextBuilder::run_as_root` has been removed ([#1205]).
+- BREAKING: Bump `kube` to `4.2.0` ([#1257]).
+  - This fixes a long-standing issue, where `additionalPrinterColumns`, `categories` and `shortNames` where always included in the CRD, which lead to ArgoCD thinking the CRs where out of sync.
+
+[#1205]: https://github.com/stackabletech/operator-rs/pull/1205
+[#1257]: https://github.com/stackabletech/operator-rs/pull/1257
+
+## [0.114.0] - 2026-07-22
+
+### Added
+
+- [v2] Add `EnvVarSet::with_env_var` to add a given `EnvVar` to the set ([#1249]).
+- [v2] Add `rbac::build_service_account` and `rbac::build_role_binding`, the infallible variant of
+  `commons::rbac::build_rbac_resources` based on typed names and owner references ([#1251]).
+
+### Changed
+
+- [v2] BREAKING: Converting an `EnvVarSet` into a `Vec<EnvVar>` takes dependencies between
+  environment variables into account ([#1249]).
+
+### Removed
+
+- [v2] BREAKING: Remove dependency to product-config and the product_config_utils module ([#1252]).
+
+[#1249]: https://github.com/stackabletech/operator-rs/pull/1249
+[#1251]: https://github.com/stackabletech/operator-rs/pull/1251
+[#1252]: https://github.com/stackabletech/operator-rs/pull/1252
+
+## [0.113.4] - 2026-07-09
+
+### Changed
+
+- BREAKING: Make `Role::fixed_replica_count` and `Role::estimated_replica_count` functions standalone,
+  so consumers don't need access to the `Role` struct ([#1247]).
+
+[#1247]: https://github.com/stackabletech/operator-rs/pull/1247
+
+## [0.113.3] - 2026-07-07
+
+### Fixed
+
+- [v2] Don't require the `attributed_string_type` macro caller to have `std::str::FromStr` in scope ([#1244]).
+- [v2] Fix the JSON schema of `JsonConfigOverrides` ([#1245]).
+
+[#1244]: https://github.com/stackabletech/operator-rs/pull/1244
+[#1245]: https://github.com/stackabletech/operator-rs/pull/1245
+
+## [0.113.2] - 2026-07-07
+
+### Added
+
+- [v2] Add `raw_object_schema` to `JsonConfigOverrides` ([#1242]).
+
+[#1242]: https://github.com/stackabletech/operator-rs/pull/1242
+
+## [0.113.1] - 2026-07-06
+
+### Added
+
 - Support the annotation `secrets.stackable.tech/backend.autotls.cert.domain-components-in-subject-dn`
   in the `SecretOperatorVolumeSourceBuilder` ([#1209]).
+- Add `Role::fixed_replica_count` and `Role::estimated_replica_count` helper functions ([#1241]).
 
 [#1209]: https://github.com/stackabletech/operator-rs/pull/1209
+[#1241]: https://github.com/stackabletech/operator-rs/pull/1241
 
 ## [0.113.0] - 2026-06-22
 

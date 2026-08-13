@@ -4,8 +4,11 @@ use serde::{Deserialize, Serialize};
 use stackable_operator::{
     commons::resources::{JvmHeapLimits, Resources},
     config::fragment::Fragment,
-    config_overrides::{JsonConfigOverrides, KeyValueConfigOverrides, KeyValueOverridesProvider},
-    crd::{authentication, authentication::oidc, git_sync::v1alpha2::GitSync},
+    config_overrides::{KeyValueConfigOverrides, KeyValueOverridesProvider},
+    crd::{
+        authentication::{self, oidc},
+        git_sync::v1alpha2::GitSync,
+    },
     database_connections::{
         databases::{
             derby::DerbyConnection, mysql::MysqlConnection, postgresql::PostgresqlConnection,
@@ -21,6 +24,7 @@ use stackable_operator::{
     role_utils::Role,
     schemars::JsonSchema,
     status::condition::ClusterCondition,
+    v2::config_overrides::JsonConfigOverrides,
     versioned::versioned,
 };
 use strum::EnumIter;

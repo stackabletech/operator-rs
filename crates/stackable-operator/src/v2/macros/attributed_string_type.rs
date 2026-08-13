@@ -150,7 +150,7 @@ macro_rules! attributed_string_type {
                 D: serde::Deserializer<'de>,
             {
                 let string: String = serde::Deserialize::deserialize(deserializer)?;
-                $name::from_str(&string).map_err(|err| serde::de::Error::custom(&err))
+                <$name as std::str::FromStr>::from_str(&string).map_err(|err| serde::de::Error::custom(&err))
             }
         }
 

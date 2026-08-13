@@ -36,6 +36,7 @@ impl VersionedVariant {
         // data and as such, we just use the never type here. During codegen, we just re-emit the
         // variant data as is.
         let ty = Type::Never(TypeNever {
+            attrs: Vec::new(),
             bang_token: Not([Span::call_site()]),
         });
         let changes = variant_attributes.common.into_changeset(&idents, ty);
@@ -52,6 +53,7 @@ impl VersionedVariant {
         if let Some(changes) = &mut self.changes {
             // FIXME (@Techassi): Support enum variants with data
             let ty = Type::Never(TypeNever {
+                attrs: Vec::new(),
                 bang_token: Not([Span::call_site()]),
             });
 

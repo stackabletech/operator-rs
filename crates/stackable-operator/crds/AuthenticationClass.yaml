@@ -6,15 +6,12 @@ metadata:
 spec:
   group: authentication.stackable.tech
   names:
-    categories: []
     kind: AuthenticationClass
     plural: authenticationclasses
-    shortNames: []
     singular: authenticationclass
   scope: Cluster
   versions:
-  - additionalPrinterColumns: []
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: The Stackable Platform uses the AuthenticationClass as a central mechanism to handle user authentication across supported products.
@@ -104,7 +101,7 @@ spec:
                                 type: array
                             type: object
                           secretClass:
-                            description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                            description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing the requested secrets.'
                             type: string
                         required:
                         - secretClass
@@ -355,4 +352,3 @@ spec:
         type: object
     served: true
     storage: true
-    subresources: {}
