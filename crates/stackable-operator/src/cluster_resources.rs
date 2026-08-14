@@ -445,6 +445,10 @@ pub struct ClusterResources<'a> {
 
     /// Arbitrary Kubernetes object overrides specified by the user via the CRD.
     object_overrides: &'a ObjectOverrides,
+
+    /// The indices of the object_overrides entries that matched at least one of
+    /// the added resources.
+    matched_object_overrides: HashSet<usize>,
 }
 
 impl<'a> ClusterResources<'a> {
@@ -499,6 +503,7 @@ impl<'a> ClusterResources<'a> {
             resource_ids: HashSet::default(),
             apply_strategy,
             object_overrides,
+            matched_object_overrides: HashSet::default(),
         })
     }
 
@@ -570,10 +575,12 @@ impl<'a> ClusterResources<'a> {
 
         let mut mutated = resource.maybe_mutate(&self.apply_strategy);
 
-        // We apply the object overrides of the user at the very end to offer maximum flexibility.
-        self.object_overrides
+        let matched_object_overrides = self
+            .object_overrides
             .apply_to(&mut mutated)
             .context(ApplyObjectOverridesSnafu)?;
+        self.matched_object_overrides
+            .extend(matched_object_overrides);
 
         let patched_resource = self
             .apply_strategy
@@ -657,6 +664,8 @@ impl<'a> ClusterResources<'a> {
     ///
     /// * `client` - The client which is used to access Kubernetes
     pub async fn delete_orphaned_resources(self, client: &Client) -> Result<()> {
+        self.warn_about_unmatched_object_overrides();
+
         // We can only delete Listeners in case the "crds" feature is enabled, otherwise it's a NOP.
         #[cfg(feature = "crds")]
         let delete_listeners = self
@@ -679,6 +688,40 @@ impl<'a> ClusterResources<'a> {
         )?;
 
         Ok(())
+    }
+
+    /// Warns about every object override that did not match any of the added resources.
+    fn warn_about_unmatched_object_overrides(&self) {
+        for (index, object_override) in self
+            .object_overrides
+            .unmatched(&self.matched_object_overrides)
+        {
+            let (api_version, kind) = object_override
+                .types
+                .as_ref()
+                .map_or(("<not set>", "<not set>"), |types| {
+                    (types.api_version.as_str(), types.kind.as_str())
+                });
+            let name = object_override
+                .metadata
+                .name
+                .as_deref()
+                .unwrap_or("<not set>");
+            let namespace = object_override
+                .metadata
+                .namespace
+                .as_deref()
+                .unwrap_or("<not set>");
+
+            warn!(
+                "The objectOverride at index {index} (apiVersion: {api_version:?}, kind: \
+                {kind:?}, metadata.name: {name:?}, metadata.namespace: {namespace:?}) did not \
+                match any object created for this cluster and therefore had no effect. Please \
+                check that apiVersion, kind and metadata.name are correct and that \
+                metadata.namespace is set to {cluster_namespace:?}.",
+                cluster_namespace = self.namespace,
+            );
+        }
     }
 
     /// Deletes all deployed resources of the given kind which are labelled as if they belong to
