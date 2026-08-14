@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.116.0] - 2026-08-14
+
 ### Added
 
 - Add the Cargo feature `kube-cel` that enables the `cel` feature on the `kube` crate ([#1259]).
