@@ -664,6 +664,14 @@ impl<'a> ClusterResources<'a> {
     ///
     /// * `client` - The client which is used to access Kubernetes
     pub async fn delete_orphaned_resources(self, client: &Client) -> Result<()> {
+        // We warn late about unmatched object overrides, as every override is matched against
+        // each object individually (by apiVersion, kind, name and namespace). An override that
+        // e.g. targets the discovery ConfigMap will therefore not match any of the rolegroup
+        // ConfigMaps, so whether an override matched nothing at all can only be determined once
+        // all objects have been added.
+        // As this function consumes `self` and finalizes the cluster creation, it is the last
+        // point at which we can do so without requiring an extra call in every operator.
+        // The downside is that the warnings are lost in case reconciliation fails earlier.
         self.warn_about_unmatched_object_overrides();
 
         // We can only delete Listeners in case the "crds" feature is enabled, otherwise it's a NOP.
