@@ -1386,8 +1386,10 @@ sinks:
 /// {remove_vector_shutdown_file_command}
 /// prepare_signal_handlers
 /// my-application start &
-/// wait_for_termination $!
+/// product_exit_code=0
+/// wait_for_termination $! || product_exit_code=$?
 /// {create_vector_shutdown_file_command}
+/// exit \"${{product_exit_code}}\"
 /// ",
 ///             remove_vector_shutdown_file_command =
 ///                 remove_vector_shutdown_file_command(STACKABLE_LOG_DIR),

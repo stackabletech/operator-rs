@@ -629,7 +629,7 @@ mod tests {
 
   handle_term_signal()
   {
-      if [ "${term_child_pid}" ]; then
+      if [ -n "${term_child_pid:-}" ]; then
           kill -TERM "${term_child_pid}" 2>/dev/null
       else
           term_kill_needed="yes"
@@ -644,9 +644,14 @@ mod tests {
           kill -TERM "${term_child_pid}" 2>/dev/null
       fi
       wait ${term_child_pid} 2>/dev/null
+      term_child_status=$?
       trap - TERM
-      wait ${term_child_pid} 2>/dev/null
+      if [ "${term_child_status}" -gt 128 ]; then
+          wait ${term_child_pid} 2>/dev/null
+          term_child_status=$?
+      fi
       set -e
+      return ${term_child_status}
   }
 
   prepare_signal_handlers
@@ -698,7 +703,7 @@ volumeMounts:
 
   handle_term_signal()
   {
-      if [ "${term_child_pid}" ]; then
+      if [ -n "${term_child_pid:-}" ]; then
           kill -TERM "${term_child_pid}" 2>/dev/null
       else
           term_kill_needed="yes"
@@ -713,9 +718,14 @@ volumeMounts:
           kill -TERM "${term_child_pid}" 2>/dev/null
       fi
       wait ${term_child_pid} 2>/dev/null
+      term_child_status=$?
       trap - TERM
-      wait ${term_child_pid} 2>/dev/null
+      if [ "${term_child_status}" -gt 128 ]; then
+          wait ${term_child_pid} 2>/dev/null
+          term_child_status=$?
+      fi
       set -e
+      return ${term_child_status}
   }
 
   prepare_signal_handlers
@@ -772,7 +782,7 @@ volumeMounts:
 
   handle_term_signal()
   {
-      if [ "${term_child_pid}" ]; then
+      if [ -n "${term_child_pid:-}" ]; then
           kill -TERM "${term_child_pid}" 2>/dev/null
       else
           term_kill_needed="yes"
@@ -787,9 +797,14 @@ volumeMounts:
           kill -TERM "${term_child_pid}" 2>/dev/null
       fi
       wait ${term_child_pid} 2>/dev/null
+      term_child_status=$?
       trap - TERM
-      wait ${term_child_pid} 2>/dev/null
+      if [ "${term_child_status}" -gt 128 ]; then
+          wait ${term_child_pid} 2>/dev/null
+          term_child_status=$?
+      fi
       set -e
+      return ${term_child_status}
   }
 
   prepare_signal_handlers
@@ -1084,7 +1099,7 @@ name: content-from-git-2
 
   handle_term_signal()
   {
-      if [ "${term_child_pid}" ]; then
+      if [ -n "${term_child_pid:-}" ]; then
           kill -TERM "${term_child_pid}" 2>/dev/null
       else
           term_kill_needed="yes"
@@ -1099,9 +1114,14 @@ name: content-from-git-2
           kill -TERM "${term_child_pid}" 2>/dev/null
       fi
       wait ${term_child_pid} 2>/dev/null
+      term_child_status=$?
       trap - TERM
-      wait ${term_child_pid} 2>/dev/null
+      if [ "${term_child_status}" -gt 128 ]; then
+          wait ${term_child_pid} 2>/dev/null
+          term_child_status=$?
+      fi
       set -e
+      return ${term_child_status}
   }
 
   prepare_signal_handlers
@@ -1294,7 +1314,7 @@ secret:
 
   handle_term_signal()
   {
-      if [ "${term_child_pid}" ]; then
+      if [ -n "${term_child_pid:-}" ]; then
           kill -TERM "${term_child_pid}" 2>/dev/null
       else
           term_kill_needed="yes"
@@ -1309,9 +1329,14 @@ secret:
           kill -TERM "${term_child_pid}" 2>/dev/null
       fi
       wait ${term_child_pid} 2>/dev/null
+      term_child_status=$?
       trap - TERM
-      wait ${term_child_pid} 2>/dev/null
+      if [ "${term_child_status}" -gt 128 ]; then
+          wait ${term_child_pid} 2>/dev/null
+          term_child_status=$?
+      fi
       set -e
+      return ${term_child_status}
   }
 
   prepare_signal_handlers

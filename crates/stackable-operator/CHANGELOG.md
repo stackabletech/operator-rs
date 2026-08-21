@@ -23,6 +23,13 @@ All notable changes to this project will be documented in this file.
   It was only needed when upgrading from SDP <= 26.3 to 26.7. The `DeleteRandomSecret` error variant
   is removed as well ([#1338]).
 
+### Fixed
+
+- `wait_for_termination` in `COMMON_BASH_TRAP_FUNCTIONS` now returns the exit status of the process
+  it waited for instead of always returning `0` and the shell no longer aborts when SIGTERM arrives
+  before the child process ID is known to ensure graceful shut down. ([#1265]).
+
+[#1265]: https://github.com/stackabletech/operator-rs/pull/1265
 [#1326]: https://github.com/stackabletech/operator-rs/pull/1326
 [#1338]: https://github.com/stackabletech/operator-rs/pull/1338
 [#1339]: https://github.com/stackabletech/operator-rs/pull/1339
