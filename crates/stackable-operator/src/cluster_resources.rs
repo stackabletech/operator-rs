@@ -722,12 +722,15 @@ impl<'a> ClusterResources<'a> {
                 .unwrap_or("<not set>");
 
             warn!(
-                "The objectOverride at index {index} (apiVersion: {api_version:?}, kind: \
-                {kind:?}, metadata.name: {name:?}, metadata.namespace: {namespace:?}) did not \
-                match any object created for this cluster and therefore had no effect. Please \
-                check that apiVersion, kind and metadata.name are correct and that \
-                metadata.namespace is set to {cluster_namespace:?}.",
+                index,
+                api_version,
+                kind,
+                metadata.name = name,
+                metadata.namespace = namespace,
                 cluster_namespace = self.namespace,
+                "objectOverride did not match any object created for this cluster and therefore had \
+                no effect. Please check that apiVersion, kind and metadata.name are correct and that \
+                metadata.namespace matches the cluster namespace."
             );
         }
     }
