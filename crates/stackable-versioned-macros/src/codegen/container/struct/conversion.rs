@@ -543,7 +543,7 @@ impl Struct {
             .map(|version| {
                 format!(
                     "{group}/{version}",
-                    group = &spec_gen_ctx.kubernetes_arguments.group
+                    group = spec_gen_ctx.kubernetes_arguments.group
                 )
             })
             .collect::<Vec<_>>();
@@ -614,7 +614,7 @@ impl Struct {
         let api_versions = version_strings.iter().map(|version| {
             format!(
                 "{group}/{version}",
-                group = &spec_gen_ctx.kubernetes_arguments.group
+                group = spec_gen_ctx.kubernetes_arguments.group
             )
         });
 
