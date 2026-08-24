@@ -392,7 +392,7 @@ impl Struct {
             .map(|version| {
                 format!(
                     "{group}/{version}",
-                    group = &spec_gen_ctx.kubernetes_arguments.group
+                    group = spec_gen_ctx.kubernetes_arguments.group
                 )
             })
             .collect::<Vec<_>>();
