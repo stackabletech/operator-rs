@@ -722,9 +722,6 @@ impl<'a> ClusterResources<'a> {
                 .unwrap_or("<not set>");
 
             warn!(
-                index,
-                api_version,
-            warn!(
                 object_override.index = index,
                 k8s.object.api_version = api_version,
                 k8s.object.kind = kind,
