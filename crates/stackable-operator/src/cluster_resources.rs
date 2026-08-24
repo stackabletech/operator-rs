@@ -724,9 +724,12 @@ impl<'a> ClusterResources<'a> {
             warn!(
                 index,
                 api_version,
-                kind,
-                metadata.name = name,
-                metadata.namespace = namespace,
+            warn!(
+                object_override.index = index,
+                k8s.object.api_version = api_version,
+                k8s.object.kind = kind,
+                k8s.object.name = name,
+                k8s.namespace.name = namespace,
                 cluster_namespace = self.namespace,
                 "objectOverride did not match any object created for this cluster and therefore had \
                 no effect. Please check that apiVersion, kind and metadata.name are correct and that \
