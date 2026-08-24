@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.116.0] - 2026-08-14
+
 ### Added
 
 - Add the Cargo feature `kube-cel` that enables the `cel` feature on the `kube` crate ([#1259]).
@@ -12,10 +14,17 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: [v2] Improve functions for recommended labels in `v2::kvp::label` ([#1261]).
+- BREAKING: [v2] `env_overrides` in `v2::role_utils::CommonConfiguration` is now the new
+  `v2::env_overrides::EnvOverrides` type (a `BTreeMap<EnvVarName, String>`) instead of a
+  `HashMap<String, String>`, so environment variable names are validated on deserialization and
+  kept in a deterministic order ([#1262]).
+  `v2::role_utils` now defines its own `CommonConfiguration`, `Role` and `RoleGroup` instead of
+  re-exporting them from `crate::role_utils`.
 
 [#1259]: https://github.com/stackabletech/operator-rs/pull/1259
 [#1260]: https://github.com/stackabletech/operator-rs/pull/1260
 [#1261]: https://github.com/stackabletech/operator-rs/pull/1261
+[#1262]: https://github.com/stackabletech/operator-rs/pull/1262
 
 ## [0.115.0] - 2026-08-04
 

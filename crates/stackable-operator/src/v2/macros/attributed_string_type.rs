@@ -19,7 +19,7 @@ pub enum Error {
     #[snafu(display("invalid regular expression"))]
     InvalidRegex { source: regex::Error },
 
-    #[snafu(display("regular expression not matched"))]
+    #[snafu(display("no match for the regular expression {regex:?} in the value {value:?}"))]
     RegexNotMatched { value: String, regex: &'static str },
 
     #[snafu(display("not a valid label value"))]
@@ -706,7 +706,9 @@ mod tests {
                 .map_err(|err| err.to_string())
         );
         assert_eq!(
-            Err("regular expression not matched".to_owned()),
+            Err(
+                "no match for the regular expression \"^[est-]+$\" in the value \"abc\"".to_owned()
+            ),
             serde_json::from_value::<T>(Value::String("abc".to_owned()))
                 .map_err(|err| err.to_string())
         );
