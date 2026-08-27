@@ -5,9 +5,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use rstest::rstest;
-
 use config_utils::template::template;
+use rstest::rstest;
 use tempfile::tempdir;
 
 #[rstest]

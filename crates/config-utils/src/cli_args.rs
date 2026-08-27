@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use config_utils::template::cli_args::TemplateCommand;
+use crate::template::cli_args::TemplateCommand;
 
 /// Utility that helps you handling config files.
 #[derive(Debug, Parser)]

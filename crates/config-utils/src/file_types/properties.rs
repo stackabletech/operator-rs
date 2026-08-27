@@ -30,9 +30,9 @@ impl Escape for PropertiesEscaper {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use rstest::rstest;
+
+    use super::*;
 
     #[rstest]
     #[case("foo", "foo")]

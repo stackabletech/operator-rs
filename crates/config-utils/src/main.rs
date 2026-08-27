@@ -2,8 +2,7 @@ use clap::Parser;
 use config_utils::template::{self, cli_args::TemplateCommand, template};
 use snafu::{ResultExt, Snafu};
 
-use cli_args::{Args, Command};
-
+use crate::cli_args::{Args, Command};
 mod cli_args;
 
 #[derive(Debug, Snafu)]

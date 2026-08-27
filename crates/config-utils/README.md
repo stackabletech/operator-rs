@@ -24,6 +24,7 @@ echo 'example-password <123>!' > example-password
 ```
 
 You can run the following command to replace both placeholders:
+
 ```bash
 export EXAMPLE_USERNAME=my-user
 
