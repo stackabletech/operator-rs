@@ -15,6 +15,14 @@
 /// echo "Run after termination"
 /// exit "${product_exit_code}"
 /// ```
+// A `wait` status above 128 can mean two things:
+// 1. bash reports a signal death as `128 + signal`
+// 2. an in-progress `wait` abort with such a status when a trapped signal arrives
+//
+// We wait a second time to get the actual child status, which immediately returns the
+// status again in case 1. In case 2 the child is still running and we do need to wait.
+//
+// See https://www.gnu.org/software/bash/manual/html_node/Signals.html
 pub const COMMON_BASH_TRAP_FUNCTIONS: &str = r#"
 prepare_signal_handlers()
 {
