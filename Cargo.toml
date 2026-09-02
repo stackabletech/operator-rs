@@ -84,11 +84,13 @@ serde_yaml = "0.9.34" # This is the last available version, see https://github.c
 # digest 0.11 and signature 3.0, which rsa 0.9 does not support.
 sha2 = { version = "0.10.9", features = ["oid"] }
 signature = "2.2.0"
+similar-asserts = "2.0.0"
 snafu = "0.9.2"
 stackable-operator-derive = { path = "stackable-operator-derive" }
 strum = { version = "0.28.0", features = ["derive"] }
 syn = "3.0.3"
 sysinfo = "0.39.6"
+tempfile = "3.27.0"
 time = { version = "0.3.55" }
 tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread", "fs"] }
 # We use ring instead of aws-lc-rs, as this currently fails to build in "make run-dev"

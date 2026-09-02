@@ -1,0 +1,17 @@
+[package]
+name = "config-utils"
+version = "0.5.0"
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[dependencies]
+# We try hard to have as less dependencies as possible!
+clap.workspace = true
+snafu.workspace = true
+
+[dev-dependencies]
+rstest.workspace = true
+similar-asserts.workspace = true
+tempfile.workspace = true

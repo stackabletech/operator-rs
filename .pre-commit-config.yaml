@@ -67,7 +67,7 @@ repos:
         name: cargo-rustfmt
         language: system
         # Pinning to a specific rustc version, so that we get consistent formatting
-        entry: cargo +nightly-2026-07-01 fmt --all -- --check
+        entry: cargo +nightly-2026-08-23 fmt --all -- --check
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: \.rs$

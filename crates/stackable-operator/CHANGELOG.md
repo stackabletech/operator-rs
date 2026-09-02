@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: `ClusterResources` now warns about `objectOverrides` entries that did not match any of the objects it created.  To enable this, the signatures of `apply_deep_merge` and `ObjectOverrides::apply_to` needed to be adjusted ([#1264]).
+
+[#1264]: https://github.com/stackabletech/operator-rs/pull/1264
+
 ## [0.116.0] - 2026-08-14
 
 ### Added

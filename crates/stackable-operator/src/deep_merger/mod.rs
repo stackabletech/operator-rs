@@ -23,32 +23,34 @@ pub enum Error {
 /// Merges are only applied to objects that have the same apiVersion, kind, name
 /// and namespace.
 ///
+/// Returns whether the merge matched the base object and was therefore applied.
+///
 /// In case the merge matches the base object, it will get cloned prior to merging.
 /// We modeled it this way, as most of the time it won't match, so we don't need to proactively
 /// clone.
-pub fn apply_deep_merge<R>(base: &mut R, merge: &DynamicObject) -> Result<(), Error>
+pub fn apply_deep_merge<R>(base: &mut R, merge: &DynamicObject) -> Result<bool, Error>
 where
     R: kube::Resource<DynamicType = ()> + DeepMerge + DeserializeOwned,
 {
     let Some(merge_type) = &merge.types else {
-        return Ok(());
+        return Ok(false);
     };
     if merge_type.api_version != R::api_version(&()) || merge_type.kind != R::kind(&()) {
-        return Ok(());
+        return Ok(false);
     }
     let Some(merge_name) = &merge.metadata.name else {
-        return Ok(());
+        return Ok(false);
     };
 
     // The name always needs to match
     if &base.name_any() != merge_name {
-        return Ok(());
+        return Ok(false);
     }
 
     // If there is a namespace on the base object, it needs to match as well
     // Note that it is not set for cluster-scoped objects.
     if base.namespace() != merge.metadata.namespace {
-        return Ok(());
+        return Ok(false);
     }
 
     let deserialized_merge = merge
@@ -61,12 +63,15 @@ where
         })?;
     base.merge_from(deserialized_merge);
 
-    Ok(())
+    Ok(true)
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::BTreeMap, vec};
+    use std::{
+        collections::{BTreeMap, HashSet},
+        vec,
+    };
 
     use indoc::indoc;
     use k8s_openapi::{
@@ -228,6 +233,63 @@ mod tests {
             .apply_to(&mut sa)
             .expect("merging onto test object works");
         assert_eq!(sa, original, "The merge shouldn't have changed anything");
+    }
+
+    #[test]
+    fn service_account_not_merged_as_namespace_missing() {
+        let mut sa = generate_service_account();
+        let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
+            - apiVersion: v1
+              kind: ServiceAccount
+              metadata:
+                name: trino-serviceaccount
+                # namespace omitted, so it does not match the namespaced base object
+                labels:
+                  app.kubernetes.io/name: overwritten
+                  foo: bar
+        "})
+        .expect("test YAML is valid");
+
+        let original = sa.clone();
+        let matched_indices = object_overrides
+            .apply_to(&mut sa)
+            .expect("merging onto test object works");
+        assert_eq!(sa, original, "The merge shouldn't have changed anything");
+        assert_eq!(matched_indices, Vec::<usize>::new());
+    }
+
+    #[test]
+    fn unmatched_overrides_are_reported() {
+        let mut sa = generate_service_account();
+        let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
+            - apiVersion: v1
+              kind: ServiceAccount
+              metadata:
+                name: trino-serviceaccount
+                namespace: default
+                labels:
+                  foo: bar
+            - apiVersion: v1
+              kind: ServiceAccount
+              metadata:
+                name: trino-serviceaccount-typo # name mismatch
+                namespace: default
+        "})
+        .expect("test YAML is valid");
+
+        let matched_indices = object_overrides
+            .apply_to(&mut sa)
+            .expect("merging onto test object works");
+        assert_eq!(matched_indices, vec![0]);
+
+        let unmatched = object_overrides
+            .unmatched(&HashSet::from_iter(matched_indices))
+            .map(|(index, object_override)| (index, object_override.metadata.name.clone()))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            unmatched,
+            vec![(1, Some("trino-serviceaccount-typo".to_owned()))]
+        );
     }
 
     #[test]

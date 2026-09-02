@@ -445,6 +445,10 @@ pub struct ClusterResources<'a> {
 
     /// Arbitrary Kubernetes object overrides specified by the user via the CRD.
     object_overrides: &'a ObjectOverrides,
+
+    /// The indices of the object_overrides entries that matched at least one of
+    /// the added resources.
+    matched_object_overrides: HashSet<usize>,
 }
 
 impl<'a> ClusterResources<'a> {
@@ -499,6 +503,7 @@ impl<'a> ClusterResources<'a> {
             resource_ids: HashSet::default(),
             apply_strategy,
             object_overrides,
+            matched_object_overrides: HashSet::default(),
         })
     }
 
@@ -570,10 +575,12 @@ impl<'a> ClusterResources<'a> {
 
         let mut mutated = resource.maybe_mutate(&self.apply_strategy);
 
-        // We apply the object overrides of the user at the very end to offer maximum flexibility.
-        self.object_overrides
+        let matched_object_overrides = self
+            .object_overrides
             .apply_to(&mut mutated)
             .context(ApplyObjectOverridesSnafu)?;
+        self.matched_object_overrides
+            .extend(matched_object_overrides);
 
         let patched_resource = self
             .apply_strategy
@@ -657,6 +664,16 @@ impl<'a> ClusterResources<'a> {
     ///
     /// * `client` - The client which is used to access Kubernetes
     pub async fn delete_orphaned_resources(self, client: &Client) -> Result<()> {
+        // We warn late about unmatched object overrides, as every override is matched against
+        // each object individually (by apiVersion, kind, name and namespace). An override that
+        // e.g. targets the discovery ConfigMap will therefore not match any of the rolegroup
+        // ConfigMaps, so whether an override matched nothing at all can only be determined once
+        // all objects have been added.
+        // As this function consumes `self` and finalizes the cluster creation, it is the last
+        // point at which we can do so without requiring an extra call in every operator.
+        // The downside is that the warnings are lost in case reconciliation fails earlier.
+        self.warn_about_unmatched_object_overrides();
+
         // We can only delete Listeners in case the "crds" feature is enabled, otherwise it's a NOP.
         #[cfg(feature = "crds")]
         let delete_listeners = self
@@ -679,6 +696,43 @@ impl<'a> ClusterResources<'a> {
         )?;
 
         Ok(())
+    }
+
+    /// Warns about every object override that did not match any of the added resources.
+    fn warn_about_unmatched_object_overrides(&self) {
+        for (index, object_override) in self
+            .object_overrides
+            .unmatched(&self.matched_object_overrides)
+        {
+            let (api_version, kind) = object_override
+                .types
+                .as_ref()
+                .map_or(("<not set>", "<not set>"), |types| {
+                    (types.api_version.as_str(), types.kind.as_str())
+                });
+            let name = object_override
+                .metadata
+                .name
+                .as_deref()
+                .unwrap_or("<not set>");
+            let namespace = object_override
+                .metadata
+                .namespace
+                .as_deref()
+                .unwrap_or("<not set>");
+
+            warn!(
+                object_override.index = index,
+                k8s.object.api_version = api_version,
+                k8s.object.kind = kind,
+                k8s.object.name = name,
+                k8s.namespace.name = namespace,
+                cluster_namespace = self.namespace,
+                "objectOverride did not match any object created for this cluster and therefore had \
+                no effect. Please check that apiVersion, kind and metadata.name are correct and that \
+                metadata.namespace matches the cluster namespace."
+            );
+        }
     }
 
     /// Deletes all deployed resources of the given kind which are labelled as if they belong to
