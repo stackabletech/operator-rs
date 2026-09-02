@@ -76,30 +76,33 @@ pub struct AutoProductImage {
     #[schemars(with = "Option::<String>")]
     stackable_version: Option<semver::Version>,
 
-    /// Use a floating tag for the product image. Defaults to `false`.
+    /// Configure the Stackable version strategy. Defaults to `Exact`.
     ///
-    /// This mechanism utilizes a floating image tag which always refers to the latest patch version
-    /// in the current release line. The current release line is either automatically derived by the
-    /// operator based on its own version, or can be overridden with `stackableVersion`.
+    /// Currently, two variants are supported:
+    ///
+    /// - `Exact`, which uses the exact, fully-qualified, canonical version of a product image.
+    /// - `LatestPatch`, referencing a floating tag which always points to the latest patch version
+    ///   in the current release line. The current release line is either automatically derived by
+    ///   the operator based on its own version, or can be overridden with `stackableVersion`.
     ///
     /// A potential newer image is only pulled when Pods are rotated or their containers are
     /// restarted. Pods are NOT rotated and containers are NOT restarted automatically when a new
     /// image is available. This behaviour makes this a passive update mechanism, rather than an
     /// active one.
     ///
-    /// It should be noted that when this field is set to `true`, the operator uses `Always` as the
-    /// pull policy for product images. If set to `false`, `IfNotPresent` is used. Explicitly
-    /// setting `pullPolicy` takes precedence.
+    /// It should be noted that when this field is set to `LatestPatch`, the operator automatically
+    /// uses `Always` as the pull policy for product images. If set to `Exact`, `IfNotPresent` is
+    /// used. Explicitly setting `pullPolicy` takes precedence.
     ///
     /// ### Examples
     ///
     /// - The `stackableVersion` field is not set, the operator falls back to its own version, eg.
-    ///   26.7.0. If this field is set to `true`, the `26.7` floating tag will be used for product
-    ///   images, else, `26.7.0` will be used.
-    /// - The `stackableVersion` field is set to `26.3.0`. If this field is set to `true`, the
-    ///   `26.3` floating tag will be used for product images, else, `26.3.0` will be used.
+    ///   26.7.0. If this field is set to `LatestPatch`, the `26.7` floating tag will be used for
+    ///   product images, else, `26.7.0` will be used.
+    /// - The `stackableVersion` field is set to `26.3.0`. If this field is set to `LatestPatch`,
+    ///   the `26.3` floating tag will be used for product images, else, `26.3.0` will be used.
     #[serde(default)]
-    use_floating_tag: bool,
+    stackable_version_strategy: StackableVersionStrategy,
 
     /// The repository on the container image registry where the container image is located, e.g.
     /// `oci.example.com/namespace`.
@@ -233,7 +236,7 @@ impl ProductImage {
             ProductImageSelection::Auto(AutoProductImage {
                 stackable_version,
                 product_version,
-                use_floating_tag,
+                stackable_version_strategy,
                 repo,
             }) => {
                 let image_repository = repo
@@ -266,9 +269,10 @@ impl ProductImage {
                 };
 
                 // Determine if the selected stackable version is considered floating once.
-                is_floating_tag = stackable_version.is_floating() || *use_floating_tag;
+                is_floating_tag =
+                    stackable_version.is_floating() || stackable_version_strategy.is_latest_patch();
 
-                let stackable_version = if *use_floating_tag {
+                let stackable_version = if stackable_version_strategy.is_latest_patch() {
                     stackable_version.floating()
                 } else {
                     stackable_version.to_string()
@@ -338,6 +342,27 @@ impl ProductImage {
             .with_context(|_| ParseAppVersionLabelSnafu {
                 app_version: formatted_app_version,
             })
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq, Deserialize, Serialize, JsonSchema)]
+#[serde(rename_all = "PascalCase")]
+pub enum StackableVersionStrategy {
+    /// Uses the exact, fully-qualified, canonical version of a product image.
+    #[default]
+    Exact,
+
+    /// Uses the latest patch-level version of a product image.
+    LatestPatch,
+}
+
+impl StackableVersionStrategy {
+    pub fn is_exact(&self) -> bool {
+        *self == Self::Exact
+    }
+
+    pub fn is_latest_patch(&self) -> bool {
+        *self == Self::LatestPatch
     }
 }
 
@@ -458,13 +483,13 @@ mod tests {
             pull_secrets: None,
         }
     )]
-    #[case::auto_with_use_floating_tag(
+    #[case::auto_with_stackable_version_policy_latest_patch(
         "superset",
         "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         productVersion: 1.4.1
-        useFloatingTag: true
+        stackableVersionStrategy: LatestPatch
         ",
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable23.7".to_owned(),
@@ -474,14 +499,14 @@ mod tests {
             pull_secrets: None
         }
     )]
-    #[case::auto_with_use_floating_tag_and_stackable_version(
+    #[case::auto_with_stackable_version_policy_latest_patch_and_stackable_version(
         "superset",
         "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         productVersion: 1.4.1
         stackableVersion: 2.1.0
-        useFloatingTag: true
+        stackableVersionStrategy: LatestPatch
         ",
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable2.1".to_owned(),
@@ -491,14 +516,14 @@ mod tests {
             pull_secrets: None
         }
     )]
-    #[case::auto_with_use_floating_tag_and_pull_policy(
+    #[case::auto_with_stackable_version_policy_latest_patch_and_pull_policy(
         "superset",
         "oci.stackable.tech/sdp",
         "23.7.42",
         r"
         productVersion: 1.4.1
         pullPolicy: IfNotPresent
-        useFloatingTag: true
+        stackableVersionStrategy: LatestPatch
         ",
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable23.7".to_owned(),

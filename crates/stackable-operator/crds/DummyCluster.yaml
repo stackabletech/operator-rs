@@ -1896,32 +1896,38 @@ spec:
                       automatically, e.g. `26.7.0` becomes `26.7` for the product image.
                     nullable: true
                     type: string
-                  useFloatingTag:
-                    default: false
+                  stackableVersionStrategy:
+                    default: Exact
                     description: |-
-                      Use a floating tag for the product image. Defaults to `false`.
+                      Configure the Stackable version strategy. Defaults to `Exact`.
 
-                      This mechanism utilizes a floating image tag which always refers to the latest patch version
-                      in the current release line. The current release line is either automatically derived by the
-                      operator based on its own version, or can be overridden with `stackableVersion`.
+                      Currently, two variants are supported:
+
+                      - `Exact`, which uses the exact, fully-qualified, canonical version of a product image.
+                      - `LatestPatch`, referencing a floating tag which always points to the latest patch version
+                        in the current release line. The current release line is either automatically derived by
+                        the operator based on its own version, or can be overridden with `stackableVersion`.
 
                       A potential newer image is only pulled when Pods are rotated or their containers are
                       restarted. Pods are NOT rotated and containers are NOT restarted automatically when a new
                       image is available. This behaviour makes this a passive update mechanism, rather than an
                       active one.
 
-                      It should be noted that when this field is set to `true`, the operator uses `Always` as the
-                      pull policy for product images. If set to `false`, `IfNotPresent` is used. Explicitly
-                      setting `pullPolicy` takes precedence.
+                      It should be noted that when this field is set to `LatestPatch`, the operator automatically
+                      uses `Always` as the pull policy for product images. If set to `Exact`, `IfNotPresent` is
+                      used. Explicitly setting `pullPolicy` takes precedence.
 
                       ### Examples
 
                       - The `stackableVersion` field is not set, the operator falls back to its own version, eg.
-                        26.7.0. If this field is set to `true`, the `26.7` floating tag will be used for product
-                        images, else, `26.7.0` will be used.
-                      - The `stackableVersion` field is set to `26.3.0`. If this field is set to `true`, the
-                        `26.3` floating tag will be used for product images, else, `26.3.0` will be used.
-                    type: boolean
+                        26.7.0. If this field is set to `LatestPatch`, the `26.7` floating tag will be used for
+                        product images, else, `26.7.0` will be used.
+                      - The `stackableVersion` field is set to `26.3.0`. If this field is set to `LatestPatch`,
+                        the `26.3` floating tag will be used for product images, else, `26.3.0` will be used.
+                    enum:
+                    - Exact
+                    - LatestPatch
+                    type: string
                 type: object
               secretClassVolume:
                 properties:
