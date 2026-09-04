@@ -412,6 +412,34 @@ mod tests {
 
     #[test]
     fn security_context_builder() {
+        // NOTE (@Techassi): We cannot efficiently chain functions because of the function signatures.
+        // See FIXME above.
+        let mut builder = SecurityContextBuilder::with_stackable_defaults();
+        builder
+            .allow_privilege_escalation(false)
+            .privileged(false)
+            .read_only_root_filesystem(true)
+            .run_as_non_root(true)
+            .run_as_user(1001)
+            .run_as_group(1001);
+        let context = builder.build();
+
+        assert_eq!(
+            context,
+            SecurityContext {
+                allow_privilege_escalation: Some(false),
+                privileged: Some(false),
+                read_only_root_filesystem: Some(true),
+                run_as_non_root: Some(true),
+                run_as_user: Some(1001),
+                run_as_group: Some(1001),
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn pod_security_context_builder() {
         let mut builder = PodSecurityContextBuilder::with_stackable_defaults();
         let context = builder
             .fs_group(1000)
