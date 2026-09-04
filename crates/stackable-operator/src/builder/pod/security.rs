@@ -9,6 +9,8 @@ pub struct SecurityContextBuilder {
     security_context: SecurityContext,
 }
 
+// FIXME (@Techassi): These associated function should take `self`` instead of `&mut self` for
+// better chainability.
 impl SecurityContextBuilder {
     /// Construct a new [`SecurityContextBuilder`] that is pre-filled with Stackable's defaults.
     ///
