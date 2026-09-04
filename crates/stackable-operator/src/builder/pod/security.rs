@@ -143,6 +143,11 @@ impl SecurityContextBuilder {
         wo.run_as_user_name = Some(name.into());
         self
     }
+
+    /// Consumes the builder and returns the configured [`SecurityContext`].
+    pub fn build(self) -> SecurityContext {
+        self.security_context
+    }
 }
 
 /// A builder to construct a [`PodSecurityContext`].
