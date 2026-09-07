@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add missing `SecurityContextBuilder::build` associated function ([#1271]).
+
+[#1271]: https://github.com/stackabletech/operator-rs/pull/1271
+
 ## [0.117.0] - 2026-09-03
 
 ### Added
