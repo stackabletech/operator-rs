@@ -1,3 +1,22 @@
+//! Stackable scaler CRD and reconciliation framework.
+//!
+//! This module provides [`Scaler`](v1alpha1::Scaler), a Kubernetes custom resource that exposes a
+//! `/scale` subresource so that a `HorizontalPodAutoscaler` can manage replica counts for
+//! Stackable cluster role groups instead of targeting a `StatefulSet` directly.
+//!
+//! # State machine
+//!
+//! A [`Scaler`](v1alpha1::Scaler) progresses through states tracked in [`ScalerState`]:
+//!
+//! ```text
+//! Idle → PreScaling → Scaling → PostScaling → Idle
+//!                 ↘        ↘           ↘
+//!                          Failed
+//! ```
+//!
+//! Operators provide lifecycle hooks via the [`ScalingHooks`] trait and call
+//! [`reconcile_scaler`] on every reconcile loop iteration for the relevant role group.
+
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 use kube::CustomResource;
 use schemars::JsonSchema;
@@ -6,6 +25,14 @@ use serde::{Deserialize, Serialize};
 #[cfg(doc)]
 use crate::kvp::Annotation;
 use crate::versioned::versioned;
+
+mod builder;
+mod cluster_resource_impl;
+pub mod hooks;
+mod hpa_builder;
+pub mod job_tracker;
+pub mod reconciler;
+mod replicas_config;
 
 #[versioned(version(name = "v1alpha1"))]
 pub mod versioned {
@@ -93,6 +120,20 @@ pub enum ScalerState {
     },
 }
 
+impl ScalerState {
+    /// Returns `true` when a scaling operation is actively running
+    /// (`PreScaling`, `Scaling`, or `PostScaling`).
+    ///
+    /// `Idle` and `Failed` are not considered active — the HPA is
+    /// free to write `spec.replicas` in those states.
+    pub fn is_scaling_in_progress(&self) -> bool {
+        matches!(
+            self,
+            Self::PreScaling { .. } | Self::Scaling { .. } | Self::PostScaling { .. }
+        )
+    }
+}
+
 /// In which state the scaling operation failed.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "PascalCase")]
@@ -107,6 +148,49 @@ pub enum FailedInState {
     PostScaling,
 }
 
+/// Resolve the replica count for a StatefulSet, taking an optional
+/// [`v1alpha1::Scaler`] into account.
+///
+/// A scaler is only effective when `role_group_replicas` is `Some(0)` — this is the platform
+/// convention that signals "externally managed replicas". In all other cases the role group
+/// value is used unchanged.
+///
+/// Always call this instead of reading `role_group.replicas` directly when building a StatefulSet,
+/// to ensure scaler-managed role groups are handled consistently.
+///
+/// # Parameters
+///
+/// - `role_group_replicas`: The replica count from the role group config. `Some(0)` signals
+///   externally-managed replicas (the scaler's value is used). Any other value is returned unchanged.
+/// - `scaler`: The [`v1alpha1::Scaler`] for this role group, if one exists. Only consulted
+///   when `role_group_replicas` is `Some(0)`.
+///
+/// # Returns
+///
+/// The effective replica count, or `None` if the scaler has no status yet.
+pub fn resolve_replicas(
+    role_group_replicas: Option<i32>,
+    scaler: Option<&v1alpha1::Scaler>,
+) -> Option<i32> {
+    match (role_group_replicas, scaler) {
+        (Some(0), Some(s)) => s.status.as_ref().map(|st| i32::from(st.replicas)),
+        (replicas, _) => replicas,
+    }
+}
+
+pub use builder::{BuildScalerError, build_scaler};
+pub use hooks::{
+    HookOutcome, ScalingCondition, ScalingContext, ScalingDirection, ScalingHooks, ScalingResult,
+};
+pub use hpa_builder::{
+    InitializeStatusError, build_hpa_from_user_spec, initialize_scaler_status, scale_target_ref,
+};
+pub use job_tracker::{JobTracker, JobTrackerError, job_name};
+pub use reconciler::{Error as ReconcilerError, reconcile_scaler};
+pub use replicas_config::{
+    AutoConfig, HpaConfig, ReplicasConfig, ValidationError as ReplicasValidationError,
+};
+
 #[cfg(test)]
 impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::ScalerSpec {
     fn roundtrip_test_data() -> Vec<Self> {
@@ -117,5 +201,107 @@ impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::ScalerSpec
           - replicas: 65535
         "})
         .expect("Failed to parse ScalerSpec YAML")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_scaling_in_progress_true_for_active_states() {
+        assert!(ScalerState::PreScaling {}.is_scaling_in_progress());
+        assert!(
+            ScalerState::Scaling {
+                previous_replicas: 3
+            }
+            .is_scaling_in_progress()
+        );
+        assert!(
+            ScalerState::PostScaling {
+                previous_replicas: 3
+            }
+            .is_scaling_in_progress()
+        );
+    }
+
+    #[test]
+    fn is_scaling_in_progress_false_for_idle_and_failed() {
+        assert!(!ScalerState::Idle {}.is_scaling_in_progress());
+        assert!(
+            !ScalerState::Failed {
+                failed_in: FailedInState::PreScaling,
+                reason: "err".to_string(),
+            }
+            .is_scaling_in_progress()
+        );
+    }
+
+    #[test]
+    fn scaler_state_idle_serializes() {
+        let state = ScalerState::Idle {};
+        let json = serde_json::to_value(&state).unwrap();
+        assert_eq!(json["idle"], serde_json::json!({}));
+    }
+
+    #[test]
+    fn scaler_state_failed_serializes() {
+        let state = ScalerState::Failed {
+            failed_in: FailedInState::PreScaling,
+            reason: "timeout".to_string(),
+        };
+        let json = serde_json::to_value(&state).unwrap();
+        assert_eq!(json["failed"]["failedIn"], "PreScaling");
+        assert_eq!(json["failed"]["reason"], "timeout");
+    }
+
+    #[test]
+    fn spec_round_trips() {
+        let spec = v1alpha1::ScalerSpec { replicas: 3 };
+        let json = serde_json::to_string(&spec).unwrap();
+        let back: v1alpha1::ScalerSpec = serde_json::from_str(&json).unwrap();
+        assert_eq!(spec, back);
+    }
+
+    fn test_status(replicas: u16) -> ScalerStatus {
+        ScalerStatus {
+            replicas,
+            selector: None,
+            state: ScalerState::Idle {},
+            last_transition_time: Time(k8s_openapi::jiff::Timestamp::now()),
+        }
+    }
+
+    #[test]
+    fn resolve_replicas_no_scaler_uses_role_group() {
+        assert_eq!(resolve_replicas(Some(3), None), Some(3));
+    }
+
+    #[test]
+    fn resolve_replicas_none_role_group_no_scaler() {
+        assert_eq!(resolve_replicas(None, None), None);
+    }
+
+    #[test]
+    fn resolve_replicas_zero_with_scaler_uses_status() {
+        let mut scaler = v1alpha1::Scaler::new("test", v1alpha1::ScalerSpec { replicas: 5 });
+        scaler.status = Some(test_status(3));
+        assert_eq!(resolve_replicas(Some(0), Some(&scaler)), Some(3));
+    }
+
+    #[test]
+    fn resolve_replicas_nonzero_with_scaler_ignores_scaler() {
+        // role_group.replicas != 0 → scaler is not active (validation webhook should prevent this,
+        // but we defensively fall back to the role group value)
+        let mut scaler = v1alpha1::Scaler::new("test", v1alpha1::ScalerSpec { replicas: 5 });
+        scaler.status = Some(test_status(4));
+        assert_eq!(resolve_replicas(Some(3), Some(&scaler)), Some(3));
+    }
+
+    #[test]
+    fn resolve_replicas_zero_scaler_no_status_returns_none() {
+        // Scaler exists but has no status yet (just created) → return None (don't set replicas)
+        let scaler = v1alpha1::Scaler::new("test", v1alpha1::ScalerSpec { replicas: 5 });
+        assert_eq!(resolve_replicas(Some(0), Some(&scaler)), None);
     }
 }
