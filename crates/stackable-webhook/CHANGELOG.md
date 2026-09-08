@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- BREAKING: The `WebhookServer` now serves a `/ready` endpoint for a startup probe.
+  For that, `WebhookServer::new` takes an additional `HealthCheckRegistry` argument ([#]).
+
+[#]
+
 ## [0.9.2] - 2026-07-06
 
 Note: There are only dependency bumps in this release.

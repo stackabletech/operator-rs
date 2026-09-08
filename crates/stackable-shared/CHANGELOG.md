@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `health` module containing `HealthCheck` and `HealthCheckRegistry` for health endpoints ([#]).
+
+[#]
+
 ## [0.1.2] - 2026-07-06
 
 Note: There are only dependency bumps in this release.

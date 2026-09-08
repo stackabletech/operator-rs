@@ -11,13 +11,17 @@
 //!
 //! For usage please look at the [`WebhookServer`] docs as well as the specific [`Webhook`] you are
 //! using.
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    sync::Arc,
+};
 
 use ::x509_cert::Certificate;
-use axum::{Router, routing::get};
+use axum::{Router, http::StatusCode, routing::get};
 use futures_util::TryFutureExt;
 use k8s_openapi::ByteString;
 use snafu::{ResultExt, Snafu};
+use stackable_shared::health::HealthCheckRegistry;
 use stackable_telemetry::AxumTraceLayer;
 use tokio::{sync::mpsc, try_join};
 use tower::ServiceBuilder;
@@ -54,6 +58,7 @@ pub enum WebhookServerError {
 /// ### Example usage
 ///
 /// ```
+/// use stackable_shared::health::HealthCheckRegistry;
 /// use stackable_webhook::{WebhookServer, WebhookServerOptions, webhooks::Webhook};
 /// use tokio::time::{Duration, sleep};
 ///
@@ -65,7 +70,10 @@ pub enum WebhookServerError {
 ///     webhook_namespace: "my-namespace".to_owned(),
 ///     webhook_service_name: "my-operator".to_owned(),
 /// };
-/// let webhook_server = WebhookServer::new(webhooks, webhook_options).await.unwrap();
+/// let readiness_checks = HealthCheckRegistry::new();
+/// let webhook_server = WebhookServer::new(webhooks, webhook_options, readiness_checks)
+///     .await
+///     .unwrap();
 /// let shutdown_signal = sleep(Duration::from_millis(100));
 ///
 /// webhook_server.run(shutdown_signal).await.unwrap();
@@ -111,6 +119,7 @@ impl WebhookServer {
     pub async fn new(
         webhooks: Vec<Box<dyn Webhook>>,
         options: WebhookServerOptions,
+        readiness_checks: HealthCheckRegistry,
     ) -> Result<Self> {
         tracing::trace!("create new webhook server");
 
@@ -132,12 +141,26 @@ impl WebhookServer {
             router = webhook.register_routes(router);
         }
 
+        // Create the route handler for the startup probe.
+        let readiness_checks = Arc::new(readiness_checks);
+        let ready_route = move || async move {
+            let status = if readiness_checks.all_passed() {
+                StatusCode::OK
+            } else {
+                StatusCode::SERVICE_UNAVAILABLE
+            };
+            // The response body carries check names and their status. Error causes etc. go to the
+            // log, never into a response to not leak internal information to the public endpoint.
+            (status, readiness_checks.to_string())
+        };
+
         let router = router
             // Enrich spans for routes added above.
             // Routes defined below it will not be instrumented to reduce noise.
             .layer(trace_service_builder)
-            // The health route is below the AxumTraceLayer so as not to be instrumented
-            .route("/health", get(|| async { "ok" }));
+            // The health and ready routes are below the AxumTraceLayer so as not to be instrumented
+            .route("/health", get(|| async { "ok" }))
+            .route("/ready", get(ready_route));
 
         tracing::debug!("create TLS server");
         let (tls_server, cert_rx) = TlsServer::new(router, &options)

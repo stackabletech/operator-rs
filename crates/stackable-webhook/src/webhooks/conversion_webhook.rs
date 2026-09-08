@@ -45,6 +45,7 @@ pub enum ConversionWebhookError {
 ///         Client,
 ///         core::admission::{AdmissionRequest, AdmissionResponse},
 ///     },
+///     shared::health::HealthCheckRegistry,
 /// };
 /// use stackable_webhook::{
 ///     WebhookServer,
@@ -72,9 +73,14 @@ pub enum ConversionWebhookError {
 ///     ConversionWebhook::new(crds_and_handlers, client, conversion_webhook_options);
 ///
 /// let webhook_options = todo!();
-/// let webhook_server = WebhookServer::new(vec![Box::new(conversion_webhook)], webhook_options)
-///     .await
-///     .unwrap();
+/// let readiness_checks = HealthCheckRegistry::new();
+/// let webhook_server = WebhookServer::new(
+///     vec![Box::new(conversion_webhook)],
+///     webhook_options,
+///     readiness_checks,
+/// )
+/// .await
+/// .unwrap();
 /// let shutdown_signal = sleep(Duration::from_millis(100));
 ///
 /// webhook_server.run(shutdown_signal).await.unwrap();
