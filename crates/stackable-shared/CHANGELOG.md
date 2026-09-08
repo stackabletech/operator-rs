@@ -6,9 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add `health` module containing `HealthCheck` and `HealthCheckRegistry` for health endpoints ([#]).
+- Add `health` module containing `HealthCheck` and `HealthCheckRegistry` for health endpoints ([#1272]).
 
-[#]
+[#1272]: https://github.com/stackabletech/operator-rs/pull/1272
 
 ## [0.1.2] - 2026-07-06
 
