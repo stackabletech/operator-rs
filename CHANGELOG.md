@@ -2,6 +2,8 @@
 
 Please see the relevant crate changelogs:
 
+- [config-utils](./crates/config-utils/CHANGELOG.md)
+- [containerdebug](./crates/containerdebug/CHANGELOG.md)
 - [k8s-version](./crates/k8s-version/CHANGELOG.md)
 - [stackable-certs](./crates/stackable-certs/CHANGELOG.md)
 - [stackable-operator](./crates/stackable-operator/CHANGELOG.md)

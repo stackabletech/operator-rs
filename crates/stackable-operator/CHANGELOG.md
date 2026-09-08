@@ -4,9 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add missing `SecurityContextBuilder::build` associated function ([#1271]).
+
+[#1271]: https://github.com/stackabletech/operator-rs/pull/1271
+
+## [0.117.0] - 2026-09-03
+
+### Added
+
+- Add the Cargo features `kube-http-proxy` and `kube-socks5` that enable the `http-proxy` and `socks5` features on the `kube` crate ([#1269]).
+
 ### Changed
 
-- BREAKING: `ClusterResources` now warns about `objectOverrides` entries that did not match any of the objects it created.  To enable this, the signatures of `apply_deep_merge` and `ObjectOverrides::apply_to` needed to be adjusted ([#1264]).
+- BREAKING: `ClusterResources` now warns about `objectOverrides` entries that did not match any of the objects it created.
+  To enable this, the signatures of `apply_deep_merge` and `ObjectOverrides::apply_to` needed to be adjusted ([#1264]).
 
 ### Removed
 
@@ -15,6 +28,7 @@ All notable changes to this project will be documented in this file.
   also got removed ([#1272]).
 
 [#1264]: https://github.com/stackabletech/operator-rs/pull/1264
+[#1269]: https://github.com/stackabletech/operator-rs/pull/1269
 [#1272]: https://github.com/stackabletech/operator-rs/pull/1272
 
 ## [0.116.0] - 2026-08-14
