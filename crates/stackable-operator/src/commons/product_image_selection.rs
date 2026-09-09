@@ -222,10 +222,15 @@ impl ProductImage {
                 product_version,
             }) => {
                 let image_ref = ImageRef::parse(custom);
-                let image_tag_or_hash = image_ref.tag.or(image_ref.hash).unwrap_or_else(|| {
+                let image_tag_or_hash = image_ref
+                    .tag
+                    .or(image_ref.hash)
+                    .unwrap_or_else(|| "latest".into());
+
+                // This catches both explicitly set and fallback `:latest` tags.
+                if image_tag_or_hash == "latest" {
                     is_floating_tag = true;
-                    "latest".to_owned()
-                });
+                }
 
                 let app_version = format!("{product_version}-{image_tag_or_hash}");
                 let app_version_label_value = Self::prepare_app_version_label_value(&app_version)?;
@@ -570,6 +575,22 @@ mod tests {
             app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "IfNotPresent".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::custom_with_explicit_latest_tag(
+        "superset",
+        "oci.stackable.tech/sdp",
+        "23.7.42",
+        r"
+        custom: my.corp/myteam/stackable/superset:latest
+        productVersion: 1.4.1
+        ",
+        ResolvedProductImage {
+            image: "my.corp/myteam/stackable/superset:latest".to_string(),
+            app_version_label_value: "1.4.1-latest".parse().expect("static app version label is always valid"),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Always".to_string(),
             pull_secrets: None,
         }
     )]
