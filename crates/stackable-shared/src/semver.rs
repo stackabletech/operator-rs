@@ -10,7 +10,7 @@ pub static ZERO_ZERO_ZERO_DEV: LazyLock<semver::Version> = LazyLock::new(|| semv
 });
 
 pub trait VersionExt {
-    /// Returns the floating version as a [`String`], eg. `26.7.0` -> `26.7`
+    /// Returns the floating version as a [`String`], e.g. `26.7.0` -> `26.7`.
     fn floating(&self) -> String;
 
     /// Returns whether the version is `0.0.0`, independent of pre-release information and build
