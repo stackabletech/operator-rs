@@ -292,10 +292,10 @@ impl ProductImage {
                             tracing::warn!(
                                 pull_policy.configured = %pull_policy,
                                 stackable_version,
-                                r#"product image pull policy is not "Always" but a floating tag is \
+                                "product image pull policy is not \"Always\" but a floating tag is \
                                 used. This can lead to unexpected behaviour and it is recommended \
-                                to explicitly set the pull policy to "Always" or let the operator \
-                                derive it automatically by removing the pullPolicy field."#
+                                to explicitly set the pull policy to \"Always\" or let the operator \
+                                derive it automatically by removing the pullPolicy field."
                             );
                         }
                         pull_policy.to_string()
