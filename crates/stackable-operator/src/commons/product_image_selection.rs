@@ -71,12 +71,12 @@ pub struct AutoProductImage {
     /// If not specified, the operator will use its own version, e.g. `26.7.1`. When using a nightly
     /// operator or a PR version, it will use the nightly `0.0.0-dev` image.
     ///
-    /// If this is used in combination with `stackableVersionStrategy: LatestPatch`, the correct
+    /// If this is used in combination with `stackableVersionPolicy: LatestPatch`, the correct
     /// floating tag is computed automatically, e.g. `26.7.0` becomes `26.7` for the product image.
     #[schemars(with = "Option::<String>")]
     stackable_version: Option<semver::Version>,
 
-    /// Configure the Stackable version strategy. Defaults to `Exact`.
+    /// Configure the Stackable version policy. Defaults to `Exact`.
     ///
     /// Currently, two variants are supported:
     ///
@@ -102,7 +102,7 @@ pub struct AutoProductImage {
     /// - The `stackableVersion` field is set to `26.3.0`. If this field is set to `LatestPatch`,
     ///   the `26.3` floating tag will be used for product images, else, `26.3.0` will be used.
     #[serde(default)]
-    stackable_version_strategy: StackableVersionStrategy,
+    stackable_version_policy: StackableVersionPolicy,
 
     /// The repository on the container image registry where the container image is located, e.g.
     /// `oci.example.com/namespace`.
@@ -136,9 +136,9 @@ pub struct ResolvedProductImage {
 ///
 /// - If the image pull policy is explicitly set by the user
 /// - If the used Stackable version is considered floating/the user opted for
-///   [`StackableVersionStrategy::LatestPatch`].
+///   [`StackableVersionPolicy::LatestPatch`].
 ///
-/// See [`AutoProductImage`]'s `stackable_version_strategy` field for more details.
+/// See [`AutoProductImage`]'s `stackable_version_policy` field for more details.
 ///
 /// ### See
 ///
@@ -249,7 +249,7 @@ impl ProductImage {
             ProductImageSelection::Auto(AutoProductImage {
                 stackable_version,
                 product_version,
-                stackable_version_strategy,
+                stackable_version_policy,
                 repo,
             }) => {
                 let image_repository = repo
@@ -283,9 +283,9 @@ impl ProductImage {
 
                 // Determine if the selected stackable version is considered floating once.
                 is_floating_tag =
-                    stackable_version.is_floating() || stackable_version_strategy.is_latest_patch();
+                    stackable_version.is_floating() || stackable_version_policy.is_latest_patch();
 
-                let stackable_version = if stackable_version_strategy.is_latest_patch() {
+                let stackable_version = if stackable_version_policy.is_latest_patch() {
                     stackable_version.floating()
                 } else {
                     stackable_version.to_string()
@@ -360,7 +360,7 @@ impl ProductImage {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "PascalCase")]
-pub enum StackableVersionStrategy {
+pub enum StackableVersionPolicy {
     /// Uses the exact, fully-qualified, canonical version of a product image.
     #[default]
     Exact,
@@ -369,7 +369,7 @@ pub enum StackableVersionStrategy {
     LatestPatch,
 }
 
-impl StackableVersionStrategy {
+impl StackableVersionPolicy {
     pub fn is_exact(&self) -> bool {
         *self == Self::Exact
     }
@@ -502,7 +502,7 @@ mod tests {
         "23.7.42",
         r"
         productVersion: 1.4.1
-        stackableVersionStrategy: LatestPatch
+        stackableVersionPolicy: LatestPatch
         ",
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable23.7".to_owned(),
@@ -519,7 +519,7 @@ mod tests {
         r"
         productVersion: 1.4.1
         stackableVersion: 2.1.0
-        stackableVersionStrategy: LatestPatch
+        stackableVersionPolicy: LatestPatch
         ",
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable2.1".to_owned(),
@@ -536,7 +536,7 @@ mod tests {
         r"
         productVersion: 1.4.1
         pullPolicy: IfNotPresent
-        stackableVersionStrategy: LatestPatch
+        stackableVersionPolicy: LatestPatch
         ",
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable23.7".to_owned(),
