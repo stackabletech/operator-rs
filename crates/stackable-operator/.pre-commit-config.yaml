@@ -39,7 +39,7 @@ repos:
         files: .*\.rs$|Cargo\.toml
 
       - id: cargo-test-all-features
-        name: cargo-test-no-default-features
+        name: cargo-test-all-default-features
         language: system
         entry: cargo test --all-features --package stackable-operator
         stages: [pre-commit, pre-merge-commit]
