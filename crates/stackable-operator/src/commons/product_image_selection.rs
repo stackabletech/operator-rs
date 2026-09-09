@@ -358,6 +358,21 @@ impl ProductImage {
     }
 }
 
+// We use Policy instead of Strategy to follow well-established patterns in the Kubernetes ecosystem.
+// The Kubernetes project states this in their API conventions document:
+//
+// > Think twice about bool fields. Many ideas start as boolean but eventually trend towards a small
+// > set of mutually exclusive options. Plan for future expansions by describing the policy options
+// > explicitly as a string type alias (e.g. TerminationMessagePolicy).
+//
+// See https://github.com/kubernetes/community/blob/f2ac71e2cf1c468a63f1f87459f1c7e1c097e74e/contributors/devel/sig-architecture/api-conventions.md?plain=1#L607-L610
+//
+// We see this naming scheme in multiple different places, e.g.
+//
+// - imagePullPolicy: https://kubernetes.io/docs/reference/kubernetes-api/core/pod-v1/#Container
+// - restartPolicy: https://kubernetes.io/docs/reference/kubernetes-api/core/pod-v1/#PodSpec
+// - concurrencyPolicy: https://kubernetes.io/docs/reference/kubernetes-api/batch/cron-job-v1/#CronJobSpec
+// - Flux' image policy: https://fluxcd.io/flux/components/image/imagepolicies/
 #[derive(Clone, Debug, Default, Eq, PartialEq, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "PascalCase")]
 pub enum StackableVersionPolicy {
