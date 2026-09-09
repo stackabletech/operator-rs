@@ -130,7 +130,15 @@ pub struct ResolvedProductImage {
     pub pull_secrets: Option<Vec<LocalObjectReference>>,
 }
 
-/// TODO: Update comment
+/// Kubernetes' supported image pull policies.
+///
+/// Our product image selection choses the policy automatically based on two factors:
+///
+/// - If the image pull policy is explicitly set by the user
+/// - If the used Stackable version is considered floating/the user opted for
+///   [`StackableVersionStrategy::LatestPatch`].
+///
+/// See [`AutoProductImage`]'s `stackable_version_strategy` field for more details.
 ///
 /// ### See
 ///
