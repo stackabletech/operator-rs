@@ -6,8 +6,18 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add support for floating tags in product image selection ([#1226]).
 - Add missing `SecurityContextBuilder::build` associated function ([#1271]).
 
+### Changed
+
+- BREAKING: The `AutoProductImage::stackable_version` field now accepts a `semver::Version` instead of a plain
+  `String` ([#1226]).
+- BREAKING: The `ProductImage::pull_policy` field's type is now `Option<PullPolicy>` instead of `PullPolicy` and
+  `ProductImage::resolve`'s `operator_version` argument now expects a `semver::Version` ([#1226]).
+- BREAKING: `PullPolicy` doesn't implement `Default` anymore ([#1226]).
+
+[#1226]: https://github.com/stackabletech/operator-rs/pull/1226
 [#1271]: https://github.com/stackabletech/operator-rs/pull/1271
 
 ## [0.117.0] - 2026-09-03
