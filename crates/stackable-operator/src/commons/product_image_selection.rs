@@ -208,8 +208,8 @@ impl ProductImage {
     ) -> Result<ResolvedProductImage, Error> {
         let Self {
             image_selection,
-            pull_policy,
             pull_secrets,
+            ..
         } = self;
 
         // Keep track if a tag we consider floating is used. Currently, 0.0.0-dev, latest and YY.MM
@@ -234,9 +234,8 @@ impl ProductImage {
 
                 let app_version = format!("{product_version}-{image_tag_or_hash}");
                 let app_version_label_value = Self::prepare_app_version_label_value(&app_version)?;
-                let image_pull_policy = pull_policy
-                    .unwrap_or_else(|| PullPolicy::from_is_floating_tag(is_floating_tag))
-                    .to_string();
+
+                let image_pull_policy = self.pull_policy(is_floating_tag, &app_version);
 
                 Ok(ResolvedProductImage {
                     product_version: product_version.to_owned(),
@@ -291,29 +290,15 @@ impl ProductImage {
                     stackable_version.to_string()
                 };
 
-                let image_pull_policy = match pull_policy {
-                    Some(pull_policy) => {
-                        if is_floating_tag && *pull_policy != PullPolicy::Always {
-                            tracing::warn!(
-                                pull_policy.configured = %pull_policy,
-                                stackable_version,
-                                "product image pull policy is not \"Always\" but a floating tag is \
-                                used. This can lead to unexpected behaviour and it is recommended \
-                                to explicitly set the pull policy to \"Always\" or let the operator \
-                                derive it automatically by removing the pullPolicy field."
-                            );
-                        }
-                        pull_policy.to_string()
-                    }
-                    None => PullPolicy::from_is_floating_tag(is_floating_tag).to_string(),
-                };
-
-                // Trim leading ans trailing whitespace and also trim the start to ensure no double
+                // Trim leading and trailing whitespace and also trim the start to ensure no double
                 // slashes are produced below
                 let image_name = image_name.trim().trim_start_matches('/');
+
                 let app_version = format!("{product_version}-stackable{stackable_version}");
                 let app_version_label_value = Self::prepare_app_version_label_value(&app_version)?;
+
                 let image = format!("{image_repository}/{image_name}:{app_version}");
+                let image_pull_policy = self.pull_policy(is_floating_tag, &app_version);
 
                 Ok(ResolvedProductImage {
                     product_version: product_version.to_owned(),
@@ -355,6 +340,29 @@ impl ProductImage {
             .with_context(|_| ParseAppVersionLabelSnafu {
                 app_version: formatted_app_version,
             })
+    }
+
+    /// Determine the image pull policy.
+    ///
+    /// This function also prints out a warning if a floating tag is used but the [`PullPolicy`]
+    /// is explicitly set to something other than [`PullPolicy::Always`].
+    fn pull_policy(&self, is_floating_tag: bool, app_version: &str) -> String {
+        match self.pull_policy {
+            Some(pull_policy) => {
+                if is_floating_tag && pull_policy != PullPolicy::Always {
+                    tracing::warn!(
+                        pull_policy.configured = %pull_policy,
+                        app_version,
+                        "product image pull policy is not \"Always\" but a floating tag is \
+                        used. This can lead to unexpected behaviour and it is recommended \
+                        to explicitly set the pull policy to \"Always\" or let the operator \
+                        derive it automatically by removing the pullPolicy field."
+                    );
+                }
+                pull_policy.to_string()
+            }
+            None => PullPolicy::from_is_floating_tag(is_floating_tag).to_string(),
+        }
     }
 }
 

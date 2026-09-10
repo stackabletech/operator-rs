@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add support for floating tags in product image selection ([#1226]).
+- Add support for floating tags in product image selection ([#1226], [#1275]).
 - Add missing `SecurityContextBuilder::build` associated function ([#1271]).
 
 ### Changed
@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 
 [#1226]: https://github.com/stackabletech/operator-rs/pull/1226
 [#1271]: https://github.com/stackabletech/operator-rs/pull/1271
+[#1275]: https://github.com/stackabletech/operator-rs/pull/1275
 
 ## [0.117.0] - 2026-09-03
 
