@@ -42,9 +42,12 @@ pub enum MutatingWebhookError {
 /// use k8s_openapi::api::{
 ///     admissionregistration::v1::MutatingWebhookConfiguration, apps::v1::StatefulSet,
 /// };
-/// use stackable_operator::kube::{
-///     Client,
-///     core::admission::{AdmissionRequest, AdmissionResponse},
+/// use stackable_operator::{
+///     kube::{
+///         Client,
+///         core::admission::{AdmissionRequest, AdmissionResponse},
+///     },
+///     shared::health::HealthCheckRegistry,
 /// };
 /// use stackable_webhook::{
 ///     WebhookServer,
@@ -73,9 +76,11 @@ pub enum MutatingWebhookError {
 /// ));
 ///
 /// let webhook_options = todo!();
-/// let webhook_server = WebhookServer::new(vec![mutating_webhook], webhook_options)
-///     .await
-///     .unwrap();
+/// let readiness_checks = HealthCheckRegistry::new();
+/// let webhook_server =
+///     WebhookServer::new(vec![mutating_webhook], webhook_options, readiness_checks)
+///         .await
+///         .unwrap();
 /// let shutdown_signal = sleep(Duration::from_millis(100));
 ///
 /// webhook_server.run(shutdown_signal).await.unwrap();

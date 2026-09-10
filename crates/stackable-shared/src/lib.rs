@@ -2,6 +2,7 @@
 //! workspace.
 
 pub mod crd;
+pub mod health;
 pub mod secret;
 pub mod semver;
 pub mod time;
