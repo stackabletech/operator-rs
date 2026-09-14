@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.118.0] - 2026-09-14
+
 ### Added
 
 - Add support for floating tags in product image selection ([#1226], [#1275]).
