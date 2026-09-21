@@ -3,5 +3,6 @@
 
 pub mod crd;
 pub mod secret;
+pub mod semver;
 pub mod time;
 pub mod yaml;
