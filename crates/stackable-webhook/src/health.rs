@@ -1,3 +1,14 @@
+/// Health checks and health check registry for health endpoints used by probes
+///
+/// The naming here follows the Kubernetes convention of a health check / health check registry and
+/// their usage by the different probes.
+///
+/// ## References
+///
+/// - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/healthz/healthz.go#L41>
+/// - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/healthz.go#L34>
+/// - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/genericapiserver.go#L205>
+/// - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/healthz/healthz.go#L330>
 use std::{
     fmt::Display,
     sync::{
@@ -6,12 +17,19 @@ use std::{
     },
 };
 
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
+
 /// A single named check contributing to one health endpoint.
 ///
-/// A check only passes once [`HealthCheck::mark_passed`] has been called.
+/// A check can be marked as passing with a call to [`HealthCheck::mark_passed`], and reset with
+/// [`HealthCheck::mark_not_passed`], e.g. for a liveness check that can start failing again.
 #[derive(Clone)]
 pub struct HealthCheck {
     name: String,
+    // This has to be an AtomicBool as we could otherwise not share references to it.
     passed: Arc<AtomicBool>,
 }
 
@@ -27,6 +45,10 @@ impl HealthCheck {
         self.passed.store(true, Ordering::Release);
     }
 
+    pub fn mark_not_passed(&self) {
+        self.passed.store(false, Ordering::Release);
+    }
+
     fn passed(&self) -> bool {
         self.passed.load(Ordering::Acquire)
     }
@@ -37,7 +59,7 @@ impl HealthCheck {
 /// # Example
 ///
 /// ```
-/// use stackable_shared::health::HealthCheckRegistry;
+/// use stackable_webhook::health::HealthCheckRegistry;
 ///
 /// let mut startup_checks = HealthCheckRegistry::new();
 /// let crds_established = startup_checks.register("crds-established");
@@ -52,11 +74,14 @@ pub struct HealthCheckRegistry {
 }
 
 impl HealthCheckRegistry {
+    /// Creates a new [`HealthCheckRegistry`] with no health checks registered.
     pub fn new() -> Self {
-        Self::default()
+        Self { checks: Vec::new() }
     }
 
     /// Registers a new [`HealthCheck`] with the provided name and returns it.
+    ///
+    /// The returned [`HealthCheck`] can be used to mark the check as passed.
     pub fn register(&mut self, name: impl Into<String>) -> HealthCheck {
         let check = HealthCheck::new(name);
         self.checks.push(check.clone());
@@ -67,6 +92,19 @@ impl HealthCheckRegistry {
     /// registered.
     pub fn all_passed(&self) -> bool {
         self.checks.iter().all(HealthCheck::passed)
+    }
+}
+
+impl IntoResponse for &HealthCheckRegistry {
+    fn into_response(self) -> Response {
+        let status = if self.all_passed() {
+            StatusCode::OK
+        } else {
+            StatusCode::SERVICE_UNAVAILABLE
+        };
+        // The response body carries check names and their status. Error causes etc. go to the
+        // log, never into a response to not leak internal information to the public endpoint.
+        (status, self.to_string()).into_response()
     }
 }
 
@@ -87,7 +125,7 @@ impl Display for HealthCheckRegistry {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
@@ -98,7 +136,7 @@ mod test {
     }
 
     #[test]
-    fn passed_only_once_every_check_is() {
+    fn passed_only_once_every_check_passed() {
         let mut registry = HealthCheckRegistry::new();
         let crds = registry.register("crds-established");
         let migration = registry.register("database-migrated");
@@ -110,5 +148,17 @@ mod test {
 
         migration.mark_passed();
         assert!(registry.all_passed());
+    }
+
+    #[test]
+    fn not_passed_after_check_marked_not_passed() {
+        let mut registry = HealthCheckRegistry::new();
+        let crds = registry.register("crds-established");
+
+        crds.mark_passed();
+        assert!(registry.all_passed());
+
+        crds.mark_not_passed();
+        assert!(!registry.all_passed());
     }
 }

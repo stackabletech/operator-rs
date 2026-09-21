@@ -45,10 +45,10 @@ pub enum ConversionWebhookError {
 ///         Client,
 ///         core::admission::{AdmissionRequest, AdmissionResponse},
 ///     },
-///     shared::health::HealthCheckRegistry,
 /// };
 /// use stackable_webhook::{
 ///     WebhookServer,
+///     health::HealthCheckRegistry,
 ///     webhooks::{ConversionWebhook, ConversionWebhookOptions},
 /// };
 /// use tokio::time::{Duration, sleep};

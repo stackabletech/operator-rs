@@ -42,15 +42,13 @@ pub enum MutatingWebhookError {
 /// use k8s_openapi::api::{
 ///     admissionregistration::v1::MutatingWebhookConfiguration, apps::v1::StatefulSet,
 /// };
-/// use stackable_operator::{
-///     kube::{
-///         Client,
-///         core::admission::{AdmissionRequest, AdmissionResponse},
-///     },
-///     shared::health::HealthCheckRegistry,
+/// use stackable_operator::kube::{
+///     Client,
+///     core::admission::{AdmissionRequest, AdmissionResponse},
 /// };
 /// use stackable_webhook::{
 ///     WebhookServer,
+///     health::HealthCheckRegistry,
 ///     webhooks::{MutatingWebhook, MutatingWebhookOptions},
 /// };
 /// use tokio::time::{Duration, sleep};

@@ -17,19 +17,19 @@ use std::{
 };
 
 use ::x509_cert::Certificate;
-use axum::{Router, http::StatusCode, routing::get};
+use axum::{Router, response::IntoResponse, routing::get};
 use futures_util::TryFutureExt;
 use k8s_openapi::ByteString;
 use snafu::{ResultExt, Snafu};
-use stackable_shared::health::HealthCheckRegistry;
 use stackable_telemetry::AxumTraceLayer;
 use tokio::{sync::mpsc, try_join};
 use tower::ServiceBuilder;
 use webhooks::{Webhook, WebhookError};
 use x509_cert::der::{EncodePem, pem::LineEnding};
 
-use crate::tls::TlsServer;
+use crate::{health::HealthCheckRegistry, tls::TlsServer};
 
+pub mod health;
 pub mod tls;
 pub mod webhooks;
 
@@ -58,8 +58,9 @@ pub enum WebhookServerError {
 /// ### Example usage
 ///
 /// ```
-/// use stackable_shared::health::HealthCheckRegistry;
-/// use stackable_webhook::{WebhookServer, WebhookServerOptions, webhooks::Webhook};
+/// use stackable_webhook::{
+///     WebhookServer, WebhookServerOptions, health::HealthCheckRegistry, webhooks::Webhook,
+/// };
 /// use tokio::time::{Duration, sleep};
 ///
 /// # async fn docs() {
@@ -143,16 +144,7 @@ impl WebhookServer {
 
         // Create the route handler for the startup probe.
         let readiness_checks = Arc::new(readiness_checks);
-        let ready_route = move || async move {
-            let status = if readiness_checks.all_passed() {
-                StatusCode::OK
-            } else {
-                StatusCode::SERVICE_UNAVAILABLE
-            };
-            // The response body carries check names and their status. Error causes etc. go to the
-            // log, never into a response to not leak internal information to the public endpoint.
-            (status, readiness_checks.to_string())
-        };
+        let ready_route = move || async move { readiness_checks.as_ref().into_response() };
 
         let router = router
             // Enrich spans for routes added above.
