@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add `health` module containing `HealthCheck` and `HealthCheckRegistry` for health endpoints ([#1272]).
 - BREAKING: The `WebhookServer` now serves a `/ready` endpoint for a startup probe.
   For that, `WebhookServer::new` takes an additional `HealthCheckRegistry` argument ([#1272]).
 
