@@ -1,14 +1,14 @@
-/// Health checks and health check registry for health endpoints used by probes
-///
-/// The naming here follows the Kubernetes convention of a health check / health check registry and
-/// their usage by the different probes.
-///
-/// ## References
-///
-/// - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/healthz/healthz.go#L41>
-/// - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/healthz.go#L34>
-/// - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/genericapiserver.go#L205>
-/// - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/healthz/healthz.go#L330>
+//! Health checks and health check registry for health endpoints used by probes
+//!
+//! The naming here follows the Kubernetes convention of a health check / health check registry and
+//! their usage by the different probes.
+//!
+//! ## References
+//!
+//! - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/healthz/healthz.go#L41>
+//! - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/healthz.go#L34>
+//! - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/genericapiserver.go#L205>
+//! - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/healthz/healthz.go#L330>
 use std::{
     fmt::Display,
     sync::{
