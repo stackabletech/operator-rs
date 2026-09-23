@@ -75,7 +75,7 @@ impl VariantAttributes {
     }
 }
 
-// We don't want to take a dependency on the (unmaintained[1]) `convert_case` crate just for this
+// We don't want to take a dependency on the (unmaintained[1]) `convert_case_extras` crate just for this
 // function, so we vendor it from
 // https://github.com/rutrum/convert-case-extras/blob/fe00fabaa00f065e254c675a28cadb4d0f6e1400/src/lib.rs#L36
 //
