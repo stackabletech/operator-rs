@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Removed
+
+- BREAKING: Removed `timeout_duration` parameter from `signal::crd_established`. It now waits indefinitely and
+  the timeout should be handled with a startup probe instead. As a consequence `DEFAULT_CRD_ESTABLISHED_TIMEOUT`
+  also got removed ([#1272]).
+
+[#1272]: https://github.com/stackabletech/operator-rs/pull/1272
+
 ## [0.118.0] - 2026-09-14
 
 ### Added
