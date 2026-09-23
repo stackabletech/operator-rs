@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.119.0] - 2026-09-23
+
 ### Removed
 
 - BREAKING: Removed `timeout_duration` parameter from `signal::crd_established`. It now waits indefinitely and
