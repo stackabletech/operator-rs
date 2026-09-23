@@ -5,10 +5,10 @@
 //!
 //! ## References
 //!
-//! - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/healthz/healthz.go#L41>
-//! - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/healthz.go#L34>
-//! - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/genericapiserver.go#L205>
-//! - <https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/server/healthz/healthz.go#L330>
+//! - <https://github.com/kubernetes/kubernetes/blob/cc213a13bd4e8f0f253087187ffd3e1264d33f3b/staging/src/k8s.io/apiserver/pkg/server/healthz/healthz.go#L41>
+//! - <https://github.com/kubernetes/kubernetes/blob/cc213a13bd4e8f0f253087187ffd3e1264d33f3b/staging/src/k8s.io/apiserver/pkg/server/healthz.go#L34>
+//! - <https://github.com/kubernetes/kubernetes/blob/cc213a13bd4e8f0f253087187ffd3e1264d33f3b/staging/src/k8s.io/apiserver/pkg/server/genericapiserver.go#L205>
+//! - <https://github.com/kubernetes/kubernetes/blob/cc213a13bd4e8f0f253087187ffd3e1264d33f3b/staging/src/k8s.io/apiserver/pkg/server/healthz/healthz.go#L330>
 use std::{
     fmt::Display,
     sync::{
