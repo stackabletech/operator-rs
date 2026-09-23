@@ -1,6 +1,6 @@
 [package]
 name = "stackable-webhook"
-version = "0.9.3"
+version = "0.10.0"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
