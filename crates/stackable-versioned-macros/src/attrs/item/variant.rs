@@ -1,5 +1,4 @@
-use convert_case::Case;
-use convert_case_extras::is_case;
+use convert_case::{Case, Casing};
 use darling::{Error, FromVariant, Result};
 use syn::{Attribute, Ident};
 
@@ -74,4 +73,13 @@ impl VariantAttributes {
     pub fn validate_versions(&self, versions: &[VersionDefinition]) -> Result<()> {
         self.common.validate_versions(versions)
     }
+}
+
+// We don't want to take a dependency on the (unmaintained[1]) `convert_case_extras` crate just for
+// this function, so we vendor it from
+// https://github.com/rutrum/convert-case-extras/blob/fe00fabaa00f065e254c675a28cadb4d0f6e1400/src/lib.rs#L36
+//
+// [1]: https://github.com/rutrum/convert-case-extras/issues/1
+fn is_case<T: AsRef<str>>(s: T, case: Case) -> bool {
+    s.as_ref() == s.as_ref().to_case(case)
 }
