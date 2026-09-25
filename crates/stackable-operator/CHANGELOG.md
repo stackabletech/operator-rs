@@ -6,9 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- `wait_for_termination` in `COMMON_BASH_TRAP_FUNCTIONS` now returns the exit status of the process
-  it waited for instead of always returning `0` and the shell no longer aborts when SIGTERM arrives
-  before the child process ID is known to ensure graceful shut down. ([#1265]).
+- BREAKING: `wait_for_termination` in `COMMON_BASH_TRAP_FUNCTIONS` now returns the exit status of the process
+  it waited for instead of always returning `0` ([#1265]).
+- `handle_term_signal` in `COMMON_BASH_TRAP_FUNCTIONS` no longer aborts under `set -u` when SIGTERM arrives
+  before the child process ID is known ([#1265]).
 
 [#1265]: https://github.com/stackabletech/operator-rs/pull/1265
 
