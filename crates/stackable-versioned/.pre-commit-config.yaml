@@ -11,6 +11,7 @@ repos:
         language: system
         env:
           K8S_OPENAPI_ENABLED_VERSION: "1.36"
+          RUSTDOCFLAGS: "-D warnings"
         entry: cargo doc --no-deps --document-private-items --package stackable-versioned
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
@@ -21,6 +22,7 @@ repos:
         language: system
         env:
           K8S_OPENAPI_ENABLED_VERSION: "1.36"
+          RUSTDOCFLAGS: "-D warnings"
         entry: cargo doc --no-deps --no-default-features --document-private-items --package stackable-versioned
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
@@ -31,6 +33,7 @@ repos:
         language: system
         env:
           K8S_OPENAPI_ENABLED_VERSION: "1.36"
+          RUSTDOCFLAGS: "-D warnings"
         entry: cargo doc --no-deps --all-features --document-private-items --package stackable-versioned
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
