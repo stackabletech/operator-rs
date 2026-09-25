@@ -16,10 +16,10 @@ use crate::v2::builder::pod::container::{EnvVarName, EnvVarSet};
 /// invalid names are accepted on `apply` and only rejected later, when the operator deserializes
 /// the resource.
 ///
-/// This uses a `BTreeMap<EnvVarName, String>` rather than an
-/// [`EnvVarSet`](crate::v2::builder::pod::container::EnvVarSet), because for overrides only plain
-/// values are supported at the moment. An `EnvVarSet` maps each name to a full `EnvVar`, which also
-/// allows the other variants (such as `valueFrom`); those are intentionally not exposed here.
+/// This uses a `BTreeMap<EnvVarName, String>` rather than an [`EnvVarSet`], because for overrides
+/// only plain values are supported at the moment. An `EnvVarSet` maps each name to a full `EnvVar`,
+/// which also allows the other variants (such as `valueFrom`); those are intentionally not exposed
+/// here.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct EnvOverrides(BTreeMap<EnvVarName, String>);
 
