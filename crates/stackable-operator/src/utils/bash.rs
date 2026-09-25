@@ -65,18 +65,22 @@ mod tests {
 
     use super::*;
 
-    fn container_command_exit_code(script: &str) -> i32 {
-        Command::new("/bin/bash")
+    fn run_container_command(script: &str) -> (i32, String) {
+        let output = Command::new("/bin/bash")
             .args(["-euo", "pipefail", "-c", script])
-            .status()
-            .expect("bash can be executed in the test environment")
+            .output()
+            .expect("bash can be executed in the test environment");
+        let exit_code = output
+            .status
             .code()
-            .expect("the shell terminated regularly and not by a signal")
+            .expect("the shell terminated regularly and not by a signal");
+        let stdout = String::from_utf8(output.stdout).expect("the script only prints UTF-8");
+        (exit_code, stdout)
     }
 
     #[test]
     fn crash_of_child_process() {
-        let exit_code = container_command_exit_code(&format!(
+        let (exit_code, _) = run_container_command(&format!(
             "{COMMON_BASH_TRAP_FUNCTIONS}
 prepare_signal_handlers
 bash -c 'exit 42' &
@@ -88,15 +92,43 @@ wait_for_termination $!"
 
     #[test]
     fn graceful_shutdown_of_child_process() {
-        let exit_code = container_command_exit_code(&format!(
+        let (exit_code, _) = run_container_command(&format!(
             "{COMMON_BASH_TRAP_FUNCTIONS}
 prepare_signal_handlers
-bash -c 'trap \"exit 7\" TERM; sleep 10 & wait $!' &
+bash -c 'trap \"exit 7\" TERM; sleep 10 >/dev/null 2>&1 & wait $!' &
 child_pid=$!
 (sleep 0.2; kill -TERM $$) &
 wait_for_termination $child_pid"
         ));
 
         assert_eq!(7, exit_code);
+    }
+
+    #[test]
+    fn crash_with_command_after_the_call() {
+        let (exit_code, stdout) = run_container_command(&format!(
+            "{COMMON_BASH_TRAP_FUNCTIONS}
+prepare_signal_handlers
+bash -c 'exit 42' &
+product_exit_code=0
+wait_for_termination $! || product_exit_code=$?
+echo tail-ran
+exit \"${{product_exit_code}}\""
+        ));
+        assert_eq!(42, exit_code);
+        assert!(stdout.contains("tail-ran\n"));
+    }
+
+    #[test]
+    fn sigterm_before_child_pid_is_known() {
+        let (exit_code, _) = run_container_command(&format!(
+            "{COMMON_BASH_TRAP_FUNCTIONS}
+prepare_signal_handlers
+kill -TERM $$
+sleep 10 &
+wait_for_termination $!
+"
+        ));
+        assert_eq!(143, exit_code);
     }
 }
