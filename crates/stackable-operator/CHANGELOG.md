@@ -16,19 +16,16 @@ All notable changes to this project will be documented in this file.
 
 - `ProductImage::resolve` no longer panics on long product versions or image tags containing
   non-ASCII characters and returns an error instead ([#1339]).
+- BREAKING: `wait_for_termination` in `COMMON_BASH_TRAP_FUNCTIONS` now returns the exit status of the process
+  it waited for instead of always returning `0` ([#1265]).
+- `handle_term_signal` in `COMMON_BASH_TRAP_FUNCTIONS` no longer aborts under `set -u` when SIGTERM arrives
+  before the child process ID is known ([#1265]).
 
 ### Removed
 
 - BREAKING: Remove the migration of immutable random Secrets from `create_random_secret_if_not_exists`.
   It was only needed when upgrading from SDP <= 26.3 to 26.7. The `DeleteRandomSecret` error variant
   is removed as well ([#1338]).
-
-### Fixed
-
-- BREAKING: `wait_for_termination` in `COMMON_BASH_TRAP_FUNCTIONS` now returns the exit status of the process
-  it waited for instead of always returning `0` ([#1265]).
-- `handle_term_signal` in `COMMON_BASH_TRAP_FUNCTIONS` no longer aborts under `set -u` when SIGTERM arrives
-  before the child process ID is known ([#1265]).
 
 [#1265]: https://github.com/stackabletech/operator-rs/pull/1265
 [#1326]: https://github.com/stackabletech/operator-rs/pull/1326
