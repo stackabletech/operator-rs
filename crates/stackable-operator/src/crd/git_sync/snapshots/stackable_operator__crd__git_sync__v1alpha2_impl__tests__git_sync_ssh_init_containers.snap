@@ -1,0 +1,40 @@
+---
+source: crates/stackable-operator/src/crd/git_sync/v1alpha2_impl.rs
+expression: "serde_yaml::to_string(&git_sync_resources.git_sync_init_containers).unwrap()"
+---
+- args:
+  - |-
+    mkdir --parents /stackable/log/git-sync-0-init && exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2)
+    /stackable/git-sync --depth=3 --git-config='safe.directory:/tmp/git,http.sslCAInfo:/tmp/ca-cert/ca.crt' --link=current --one-time=true --period=60s --ref=trunk --repo=ssh://git@github.com/stackabletech/repo.git --rev=HEAD --root=/tmp/git
+  command:
+  - /bin/bash
+  - -x
+  - -euo
+  - pipefail
+  - -c
+  env:
+  - name: GITSYNC_SSH_KEY_FILE
+    value: /stackable/gitssh-0/key
+  - name: GITSYNC_SSH_KNOWN_HOSTS_FILE
+    value: /stackable/gitssh-0/knownHosts
+  - name: VAR1
+    value: value1
+  image: oci.stackable.tech/sdp/product:latest
+  imagePullPolicy: Always
+  name: git-sync-0-init
+  resources:
+    limits:
+      cpu: 200m
+      memory: 64Mi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+  volumeMounts:
+  - mountPath: /tmp/git
+    name: content-from-git-0
+  - mountPath: /stackable/log
+    name: log-volume
+  - mountPath: /mnt/extra-volume
+    name: extra-volume
+  - mountPath: /stackable/gitssh-0
+    name: ssh-keys-info-0
