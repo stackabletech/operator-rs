@@ -13,6 +13,10 @@ repos:
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: .*\.rs$|Cargo\.toml
+        groups:
+          - rust
+          - cargo
+          - cargo-test
 
       - id: cargo-test-all-features
         name: cargo-test-no-default-features
@@ -21,3 +25,7 @@ repos:
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: .*\.rs$|Cargo\.toml
+        groups:
+          - rust
+          - cargo
+          - cargo-test

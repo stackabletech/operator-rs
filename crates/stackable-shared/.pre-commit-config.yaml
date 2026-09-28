@@ -15,6 +15,10 @@ repos:
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: \.rs$|Cargo\.(toml|lock)
+        groups:
+          - rust
+          - cargo
+          - cargo-doc
 
       - id: cargo-doc-no-default-features
         name: cargo-doc-no-default-features
@@ -25,6 +29,10 @@ repos:
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: \.rs$|Cargo\.(toml|lock)
+        groups:
+          - rust
+          - cargo
+          - cargo-doc
 
       - id: cargo-doc-all-features
         name: cargo-doc-all-features
@@ -35,6 +43,10 @@ repos:
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: \.rs$|Cargo\.(toml|lock)
+        groups:
+          - rust
+          - cargo
+          - cargo-doc
 
       - id: cargo-test-no-default-features
         name: cargo-test-no-default-features
@@ -43,6 +55,10 @@ repos:
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: .*\.rs$|Cargo\.toml
+        groups:
+          - rust
+          - cargo
+          - cargo-test
 
       - id: cargo-test-all-features
         name: cargo-test-no-default-features
@@ -51,3 +67,7 @@ repos:
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: .*\.rs$|Cargo\.toml
+        groups:
+          - rust
+          - cargo
+          - cargo-test

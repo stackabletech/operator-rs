@@ -46,6 +46,8 @@ repos:
         entry: .scripts/verify_crate_versions.sh
         stages: [pre-commit, pre-merge-commit, manual]
         pass_filenames: false
+        groups:
+          - rust
 
       - id: cargo-check-all-features
         name: cargo-check-all-features
@@ -54,6 +56,10 @@ repos:
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: Cargo\.(toml|lock)
+        groups:
+          - rust
+          - cargo
+          - cargo-check
 
       - id: cargo-check-no-default-features
         name: cargo-check-no-default-features
@@ -62,6 +68,10 @@ repos:
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: Cargo\.(toml|lock)
+        groups:
+          - rust
+          - cargo
+          - cargo-check
 
       - id: cargo-rustfmt
         name: cargo-rustfmt
@@ -71,6 +81,10 @@ repos:
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: \.rs$
+        groups:
+          - rust
+          - cargo
+          - cargo-fmt
 
       - id: cargo-clippy
         name: cargo-clippy
@@ -79,6 +93,10 @@ repos:
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: \.rs$
+        groups:
+          - rust
+          - cargo
+          - cargo-clippy
 
       - id: crd-preview
         name: crd-preview
@@ -87,3 +105,5 @@ repos:
         stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
         files: \.rs$
+        groups:
+          - rust
