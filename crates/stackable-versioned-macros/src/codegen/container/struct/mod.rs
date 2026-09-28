@@ -478,6 +478,8 @@ impl Struct {
     ) -> TokenStream {
         // TODO (@Techassi): A bunch this stuff is duplicated in self.generate_tracking_from_impl.
         // Ideally we remove that duplication.
+        let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
+
         let from_struct_ident = &self.common.idents.parameter;
         let struct_ident = &self.common.idents.original;
 
@@ -521,8 +523,12 @@ impl Struct {
         quote! {
             #automatically_derived
             #allow_attribute
-            impl ::core::convert::From<#from_module_ident::#struct_ident> for #for_module_ident::#struct_ident {
-                fn from(#from_struct_ident: #from_module_ident::#struct_ident) -> Self {
+            impl #impl_generics
+                ::core::convert::From<#from_module_ident::#struct_ident #type_generics>
+                for #for_module_ident::#struct_ident #type_generics
+            #where_clause
+            {
+                fn from(#from_struct_ident: #from_module_ident::#struct_ident #type_generics) -> Self {
                     Self {
                         #fields
                     }
