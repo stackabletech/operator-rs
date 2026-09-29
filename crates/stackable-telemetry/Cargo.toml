@@ -32,7 +32,6 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tokio.workspace = true
 tracing-opentelemetry.workspace = true
 rstest.workspace = true
-stackable-webhook = { path = "../stackable-webhook" }
 
 [lints]
 workspace = true
