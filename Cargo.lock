@@ -3857,6 +3857,7 @@ dependencies = [
  "http",
  "indexmap",
  "indoc",
+ "insta",
  "java-properties",
  "jiff",
  "json-patch",

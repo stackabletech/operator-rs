@@ -1,0 +1,105 @@
+---
+source: crates/stackable-operator/src/crd/git_sync/v1alpha2_impl.rs
+expression: "serde_yaml::to_string(&git_sync_resources.git_sync_init_containers).unwrap()"
+---
+- args:
+  - |-
+    mkdir --parents /stackable/log/git-sync-0-init && exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2)
+    /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git' --link=current --one-time=true --period=20s --ref=main --repo=https://github.com/stackabletech/repo1 --root=/tmp/git
+  command:
+  - /bin/bash
+  - -x
+  - -euo
+  - pipefail
+  - -c
+  env:
+  - name: GITSYNC_USERNAME
+    value: overridden-username
+  - name: VAR1
+    value: value1
+  image: oci.stackable.tech/sdp/product:latest
+  imagePullPolicy: Always
+  name: git-sync-0-init
+  resources:
+    limits:
+      cpu: 200m
+      memory: 64Mi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+  volumeMounts:
+  - mountPath: /tmp/git
+    name: content-from-git-0
+  - mountPath: /stackable/log
+    name: log-volume
+  - mountPath: /mnt/extra-volume
+    name: extra-volume
+- args:
+  - |-
+    mkdir --parents /stackable/log/git-sync-1-init && exec > >(tee /stackable/log/git-sync-1-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-1-init/container.stderr.log >&2)
+    /stackable/git-sync --depth=3 --git-config='safe.directory:/tmp/git,http.sslCAInfo:/tmp/ca-cert/ca.crt' --link=current --one-time=true --period=60s --ref=trunk --repo=https://github.com/stackabletech/repo2 --rev=HEAD --root=/tmp/git
+  command:
+  - /bin/bash
+  - -x
+  - -euo
+  - pipefail
+  - -c
+  env:
+  - name: GITSYNC_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        key: password
+        name: git-credentials
+  - name: GITSYNC_USERNAME
+    value: overridden-username
+  - name: VAR1
+    value: value1
+  image: oci.stackable.tech/sdp/product:latest
+  imagePullPolicy: Always
+  name: git-sync-1-init
+  resources:
+    limits:
+      cpu: 200m
+      memory: 64Mi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+  volumeMounts:
+  - mountPath: /tmp/git
+    name: content-from-git-1
+  - mountPath: /stackable/log
+    name: log-volume
+  - mountPath: /mnt/extra-volume
+    name: extra-volume
+- args:
+  - |-
+    mkdir --parents /stackable/log/git-sync-2-init && exec > >(tee /stackable/log/git-sync-2-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-2-init/container.stderr.log >&2)
+    /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git,key:value,safe.directory:/safe-dir' --link=current --one-time=true --period=20s --ref=feat/git-sync --repo=https://github.com/stackabletech/repo3 --root=/tmp/git
+  command:
+  - /bin/bash
+  - -x
+  - -euo
+  - pipefail
+  - -c
+  env:
+  - name: GITSYNC_USERNAME
+    value: overridden-username
+  - name: VAR1
+    value: value1
+  image: oci.stackable.tech/sdp/product:latest
+  imagePullPolicy: Always
+  name: git-sync-2-init
+  resources:
+    limits:
+      cpu: 200m
+      memory: 64Mi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+  volumeMounts:
+  - mountPath: /tmp/git
+    name: content-from-git-2
+  - mountPath: /stackable/log
+    name: log-volume
+  - mountPath: /mnt/extra-volume
+    name: extra-volume

@@ -66,6 +66,7 @@ xml.workspace = true
 
 [dev-dependencies]
 indoc.workspace = true
+insta.workspace = true
 rstest.workspace = true
 
 [lints]
