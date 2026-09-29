@@ -1,0 +1,57 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+expression: formatted
+input_file: crates/stackable-versioned-macros/tests/inputs/pass/generics.rs
+---
+#[automatically_derived]
+pub(crate) mod v1alpha1 {
+    use super::*;
+    pub struct FooSpec<Bar, Baz>
+    where
+        Bar: Default,
+        Baz: Clone,
+    {
+        pub bar: Bar,
+        pub baz: Baz,
+    }
+}
+#[automatically_derived]
+impl<Bar, Baz> ::core::convert::From<v1alpha1::FooSpec<Bar, Baz>>
+for v1alpha2::FooSpec<Bar, Baz>
+where
+    Bar: Default,
+    Baz: Clone,
+{
+    fn from(__sv_foospec: v1alpha1::FooSpec<Bar, Baz>) -> Self {
+        Self {
+            bar: __sv_foospec.bar.into(),
+            baz: __sv_foospec.baz.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl<Bar, Baz> ::core::convert::From<v1alpha2::FooSpec<Bar, Baz>>
+for v1alpha1::FooSpec<Bar, Baz>
+where
+    Bar: Default,
+    Baz: Clone,
+{
+    fn from(__sv_foospec: v1alpha2::FooSpec<Bar, Baz>) -> Self {
+        Self {
+            bar: __sv_foospec.bar.into(),
+            baz: __sv_foospec.baz.into(),
+        }
+    }
+}
+#[automatically_derived]
+pub(crate) mod v1alpha2 {
+    use super::*;
+    pub struct FooSpec<Bar, Baz>
+    where
+        Bar: Default,
+        Baz: Clone,
+    {
+        pub bar: Bar,
+        pub baz: Baz,
+    }
+}
