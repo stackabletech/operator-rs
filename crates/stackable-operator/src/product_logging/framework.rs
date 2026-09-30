@@ -7,6 +7,7 @@ use snafu::{ResultExt, Snafu};
 use crate::{
     builder::{self, pod::container::ContainerBuilder},
     commons::product_image_selection::ResolvedProductImage,
+    crd::role::RoleGroupRef,
     k8s_openapi::{
         api::core::v1::{Container, ResourceRequirements},
         apimachinery::pkg::api::resource::Quantity,
@@ -16,7 +17,6 @@ use crate::{
     product_logging::spec::{
         AutomaticContainerLogConfig, ContainerLogConfig, ContainerLogConfigChoice, LogLevel,
     },
-    role_utils::RoleGroupRef,
 };
 
 /// Config directory used in the Vector log agent container
@@ -653,7 +653,7 @@ pub fn create_logback_config(
 /// #     k8s_openapi::api::core::v1::Pod,
 /// #     kube::runtime::reflector::ObjectRef,
 /// #     product_logging::spec::default_logging,
-/// #     role_utils::RoleGroupRef,
+/// #     crd::role::RoleGroupRef,
 /// # };
 /// # use strum::{Display, EnumIter};
 /// #
