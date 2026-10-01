@@ -6,15 +6,12 @@ metadata:
 spec:
   group: lineage.stackable.tech
   names:
-    categories: []
     kind: OpenLineageConnection
     plural: openlineageconnections
-    shortNames: []
     singular: openlineageconnection
   scope: Namespaced
   versions:
-  - additionalPrinterColumns: []
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: A reusable definition of a connection to an OpenLineage backend.
@@ -107,4 +104,3 @@ spec:
         type: object
     served: true
     storage: true
-    subresources: {}

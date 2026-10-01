@@ -100,11 +100,6 @@ pub mod versioned {
         /// The OpenLineage namespace lineage is reported under.
         #[serde(default = "v1alpha1::OpenLineageConfig::default_namespace")]
         pub namespace: String,
-
-        /// A stable OpenLineage job name. Setting this prevents fragmented run history.
-        /// If unset, operators resolve a name from workload-specific configuration.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub job_name: Option<String>,
     }
 }
 
