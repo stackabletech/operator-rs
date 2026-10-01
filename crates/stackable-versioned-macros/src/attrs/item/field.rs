@@ -92,4 +92,5 @@ impl FieldAttributes {
 pub enum Hint {
     Option,
     Vec,
+    Map,
 }

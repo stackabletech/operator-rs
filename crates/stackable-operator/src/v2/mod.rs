@@ -5,6 +5,7 @@ pub mod cluster_resources;
 pub mod config_file_writer;
 pub mod config_overrides;
 pub mod controller_utils;
+pub mod env_overrides;
 pub mod flask_config_writer;
 pub mod jvm_argument_overrides;
 pub mod kvp;

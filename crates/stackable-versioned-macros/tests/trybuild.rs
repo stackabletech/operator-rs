@@ -28,6 +28,8 @@ mod inputs {
         // mod docs;
         // mod downgrade_with;
         // mod enum_fields;
+        // mod generics;
+        // mod hint_map;
         // mod module;
         // mod module_preserve;
         // mod renamed_field;

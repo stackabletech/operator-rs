@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use k8s_openapi::DeepMerge;
 use kube::api::DynamicObject;
 use schemars::JsonSchema;
@@ -27,13 +29,31 @@ impl ObjectOverrides {
     ///
     /// Merges are only applied to objects that have the same apiVersion, kind, name
     /// and namespace.
-    pub fn apply_to<R>(&self, base: &mut R) -> Result<(), super::Error>
+    ///
+    /// Returns the indices of the entries that matched `base` and were therefore merged into it.
+    pub fn apply_to<R>(&self, base: &mut R) -> Result<Vec<usize>, super::Error>
     where
         R: kube::Resource<DynamicType = ()> + DeepMerge + DeserializeOwned,
     {
-        for object_override in &self.0 {
-            apply_deep_merge(base, object_override)?;
+        let mut matched_indices = Vec::new();
+
+        for (index, object_override) in self.0.iter().enumerate() {
+            if apply_deep_merge(base, object_override)? {
+                matched_indices.push(index);
+            }
         }
-        Ok(())
+
+        Ok(matched_indices)
+    }
+
+    /// Returns all entries (and their index) that are not contained in `matched_indices`.
+    pub fn unmatched<'a>(
+        &'a self,
+        matched_indices: &'a HashSet<usize>,
+    ) -> impl Iterator<Item = (usize, &'a DynamicObject)> {
+        self.0
+            .iter()
+            .enumerate()
+            .filter(move |(index, _)| !matched_indices.contains(index))
     }
 }

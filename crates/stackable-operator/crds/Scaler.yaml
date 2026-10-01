@@ -6,15 +6,12 @@ metadata:
 spec:
   group: autoscaling.stackable.tech
   names:
-    categories: []
     kind: Scaler
     plural: scalers
-    shortNames: []
     singular: scaler
   scope: Namespaced
   versions:
-  - additionalPrinterColumns: []
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Controls the replica count of a Stackable component, integrating with the Kubernetes scale subresource to enable horizontal autoscaling.

@@ -11,10 +11,13 @@
 //!
 //! For usage please look at the [`WebhookServer`] docs as well as the specific [`Webhook`] you are
 //! using.
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    sync::Arc,
+};
 
 use ::x509_cert::Certificate;
-use axum::{Router, routing::get};
+use axum::{Router, response::IntoResponse, routing::get};
 use futures_util::TryFutureExt;
 use k8s_openapi::ByteString;
 use snafu::{ResultExt, Snafu};
@@ -24,8 +27,9 @@ use tower::ServiceBuilder;
 use webhooks::{Webhook, WebhookError};
 use x509_cert::der::{EncodePem, pem::LineEnding};
 
-use crate::tls::TlsServer;
+use crate::{health::HealthCheckRegistry, tls::TlsServer};
 
+pub mod health;
 pub mod tls;
 pub mod webhooks;
 
@@ -54,7 +58,9 @@ pub enum WebhookServerError {
 /// ### Example usage
 ///
 /// ```
-/// use stackable_webhook::{WebhookServer, WebhookServerOptions, webhooks::Webhook};
+/// use stackable_webhook::{
+///     WebhookServer, WebhookServerOptions, health::HealthCheckRegistry, webhooks::Webhook,
+/// };
 /// use tokio::time::{Duration, sleep};
 ///
 /// # async fn docs() {
@@ -65,7 +71,10 @@ pub enum WebhookServerError {
 ///     webhook_namespace: "my-namespace".to_owned(),
 ///     webhook_service_name: "my-operator".to_owned(),
 /// };
-/// let webhook_server = WebhookServer::new(webhooks, webhook_options).await.unwrap();
+/// let readiness_checks = HealthCheckRegistry::new();
+/// let webhook_server = WebhookServer::new(webhooks, webhook_options, readiness_checks)
+///     .await
+///     .unwrap();
 /// let shutdown_signal = sleep(Duration::from_millis(100));
 ///
 /// webhook_server.run(shutdown_signal).await.unwrap();
@@ -111,6 +120,7 @@ impl WebhookServer {
     pub async fn new(
         webhooks: Vec<Box<dyn Webhook>>,
         options: WebhookServerOptions,
+        readiness_checks: HealthCheckRegistry,
     ) -> Result<Self> {
         tracing::trace!("create new webhook server");
 
@@ -132,12 +142,17 @@ impl WebhookServer {
             router = webhook.register_routes(router);
         }
 
+        // Create the route handler for the startup probe.
+        let readiness_checks = Arc::new(readiness_checks);
+        let ready_route = move || async move { readiness_checks.as_ref().into_response() };
+
         let router = router
             // Enrich spans for routes added above.
             // Routes defined below it will not be instrumented to reduce noise.
             .layer(trace_service_builder)
-            // The health route is below the AxumTraceLayer so as not to be instrumented
-            .route("/health", get(|| async { "ok" }));
+            // The health and ready routes are below the AxumTraceLayer so as not to be instrumented
+            .route("/health", get(|| async { "ok" }))
+            .route("/ready", get(ready_route));
 
         tracing::debug!("create TLS server");
         let (tls_server, cert_rx) = TlsServer::new(router, &options)

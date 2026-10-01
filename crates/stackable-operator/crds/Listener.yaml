@@ -6,15 +6,12 @@ metadata:
 spec:
   group: listeners.stackable.tech
   names:
-    categories: []
     kind: Listener
     plural: listeners
-    shortNames: []
     singular: listener
   scope: Namespaced
   versions:
-  - additionalPrinterColumns: []
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Exposes a set of Pods to the outside world.

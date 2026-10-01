@@ -6,15 +6,91 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add `crd::openlineage` module with the `OpenLineageConnection` CRD (a reusable connection to an
-  OpenLineage backend, in the `lineage.stackable.tech` API group), an `InlineConnectionOrReference`
-  wrapper with `resolve()`, and an embeddable `OpenLineageConfig` type (with a `jobName` field) for
-  operators ([#1250]).
-  The connection spec selects one of the `OpenLineageTransport` variants, mirroring the transport
-  types of the OpenLineage client libraries. Currently only `http` (HTTP(S), with optional TLS and
-  API key) is supported.
+- Add `crd::openlineage` module with the `OpenLineageConnection` CRD ([#1250]).
 
 [#1250]: https://github.com/stackabletech/operator-rs/pull/1250
+
+## [0.119.0] - 2026-09-23
+
+### Removed
+
+- BREAKING: Removed `timeout_duration` parameter from `signal::crd_established`. It now waits indefinitely and
+  the timeout should be handled with a startup probe instead. As a consequence `DEFAULT_CRD_ESTABLISHED_TIMEOUT`
+  also got removed ([#1272]).
+
+[#1272]: https://github.com/stackabletech/operator-rs/pull/1272
+
+## [0.118.0] - 2026-09-14
+
+### Added
+
+- Add support for floating tags in product image selection ([#1226], [#1275]).
+- Add missing `SecurityContextBuilder::build` associated function ([#1271]).
+
+### Changed
+
+- BREAKING: The `AutoProductImage::stackable_version` field now accepts a `semver::Version` instead of a plain
+  `String` ([#1226]).
+- BREAKING: The `ProductImage::pull_policy` field's type is now `Option<PullPolicy>` instead of `PullPolicy` and
+  `ProductImage::resolve`'s `operator_version` argument now expects a `semver::Version` ([#1226]).
+- BREAKING: `PullPolicy` doesn't implement `Default` anymore ([#1226]).
+
+[#1226]: https://github.com/stackabletech/operator-rs/pull/1226
+[#1271]: https://github.com/stackabletech/operator-rs/pull/1271
+[#1275]: https://github.com/stackabletech/operator-rs/pull/1275
+
+## [0.117.0] - 2026-09-03
+
+### Added
+
+- Add the Cargo features `kube-http-proxy` and `kube-socks5` that enable the `http-proxy` and `socks5` features on the `kube` crate ([#1269]).
+
+### Changed
+
+- BREAKING: `ClusterResources` now warns about `objectOverrides` entries that did not match any of the objects it created.
+  To enable this, the signatures of `apply_deep_merge` and `ObjectOverrides::apply_to` needed to be adjusted ([#1264]).
+
+[#1264]: https://github.com/stackabletech/operator-rs/pull/1264
+[#1269]: https://github.com/stackabletech/operator-rs/pull/1269
+
+## [0.116.0] - 2026-08-14
+
+### Added
+
+- Add the Cargo feature `kube-cel` that enables the `cel` feature on the `kube` crate ([#1259]).
+- Add `length_enforcement::ensure_max_string_length` and `Key::shortened_to_valid_length` helper functions ([#1260]).
+
+### Changed
+
+- BREAKING: [v2] Improve functions for recommended labels in `v2::kvp::label` ([#1261]).
+- BREAKING: [v2] `env_overrides` in `v2::role_utils::CommonConfiguration` is now the new
+  `v2::env_overrides::EnvOverrides` type (a `BTreeMap<EnvVarName, String>`) instead of a
+  `HashMap<String, String>`, so environment variable names are validated on deserialization and
+  kept in a deterministic order ([#1262]).
+  `v2::role_utils` now defines its own `CommonConfiguration`, `Role` and `RoleGroup` instead of
+  re-exporting them from `crate::role_utils`.
+
+[#1259]: https://github.com/stackabletech/operator-rs/pull/1259
+[#1260]: https://github.com/stackabletech/operator-rs/pull/1260
+[#1261]: https://github.com/stackabletech/operator-rs/pull/1261
+[#1262]: https://github.com/stackabletech/operator-rs/pull/1262
+
+## [0.115.0] - 2026-08-04
+
+### Changed
+
+- BREAKING: `PodSecurityContextBuilder::new` was removed in favor of `PodSecurityContextBuilder::with_stackable_defaults`
+  (same for `SecurityContextBuilder`) ([#1205]).
+  This function already sets up some defaults we want to use across the platform.
+  Currently this is `runAsNonRoot: true` for `PodSecurityContextBuilder`, which might cause product Pods to crash and require changes.
+- BREAKING: `PodSecurityContextBuilder::run_as_non_root` now takes a `bool` instead of assuming consumers always want to set it to `true` ([#1205]).
+  This is needed to allow users setting it to `false` in case the new `with_stackable_defaults` function sets it to `true`.
+- BREAKING: `SecurityContextBuilder::run_as_root` has been removed ([#1205]).
+- BREAKING: Bump `kube` to `4.2.0` ([#1257]).
+  - This fixes a long-standing issue, where `additionalPrinterColumns`, `categories` and `shortNames` where always included in the CRD, which lead to ArgoCD thinking the CRs where out of sync.
+
+[#1205]: https://github.com/stackabletech/operator-rs/pull/1205
+[#1257]: https://github.com/stackabletech/operator-rs/pull/1257
 
 ## [0.114.0] - 2026-07-22
 

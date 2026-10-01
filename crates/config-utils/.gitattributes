@@ -1,0 +1,4 @@
+tests/resources/**/*.properties.expected linguist-language=properties
+tests/resources/**/*.properties.in linguist-language=properties
+tests/resources/**/*.xml.expected linguist-language=xml
+tests/resources/**/*.xml.in linguist-language=xml

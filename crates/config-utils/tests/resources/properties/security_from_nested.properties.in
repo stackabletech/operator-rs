@@ -1,0 +1,4 @@
+networkaddress.cache.negative.ttl=0
+networkaddress.cache.ttl=${file:UTF-8:${env:${env:FILE_TEST_42_FILE_ENV_NAME}}}
+meine.suß.Pröpertie=42
+example-password=${env:${env:ENV_TEST_PASSWORD_ENV_NAME}}

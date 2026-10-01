@@ -11,6 +11,10 @@ permissions: {}
 jobs:
   audit:
     runs-on: ubuntu-latest
+    env:
+      # cargo-audit is compiled during this job, and its dependencies sometimes require a newer compiler than we pin in rust-toolchain.toml.
+      # Because the result of the check does not at all depend on the Rust compiler we just use the latest stable one here to save us some trouble.
+      RUSTUP_TOOLCHAIN: stable
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:

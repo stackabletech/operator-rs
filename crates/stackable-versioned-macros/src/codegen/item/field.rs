@@ -442,6 +442,9 @@ impl VersionedField {
                 Hint::Vec => {
                     quote! { into_iter().map(|v| v.tracking_into(status, &#json_path_ident)).collect() }
                 }
+                Hint::Map => {
+                    quote! { into_iter().map(|(k, v)| (k, v.tracking_into(status, &#json_path_ident))).collect() }
+                }
             }
         } else {
             quote! { tracking_into(status, &#json_path_ident) }
@@ -454,6 +457,7 @@ impl VersionedField {
             match hint {
                 Hint::Option => quote! { map(Into::into) },
                 Hint::Vec => quote! { into_iter().map(Into::into).collect() },
+                Hint::Map => quote! { into_iter().map(|(k, v)| (k, v.into())).collect() },
             }
         } else {
             quote! { into() }

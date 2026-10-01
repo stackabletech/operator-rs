@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use base64::Engine;
 use k8s_openapi::api::core::v1::Secret;
 use kube::{Api, Resource, ResourceExt, api::DeleteParams};
-use rand::{RngCore, SeedableRng, rngs::StdRng};
+use rand::{Rng, rngs::StdRng};
 use snafu::{OptionExt, ResultExt, Snafu};
 
 use crate::{builder::meta::ObjectMetaBuilder, client::Client};
@@ -125,9 +125,9 @@ where
 
 /// Generates a cryptographically secure base64 String with the specified size in bytes.
 fn get_random_base64(size_bytes: usize) -> String {
-    // As we are using the OS rng, we are using `getrandom`, which should be cryptographically
-    // secure
-    let mut rng = StdRng::from_os_rng();
+    // As `make_rng` takes its entropy from the OS rng, we are using `getrandom`, which should be
+    // cryptographically secure
+    let mut rng: StdRng = rand::make_rng();
 
     let mut bytes = vec![0u8; size_bytes];
     rng.fill_bytes(&mut bytes);

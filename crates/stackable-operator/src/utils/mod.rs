@@ -2,6 +2,7 @@ pub mod bash;
 pub mod cluster_info;
 pub mod crds;
 pub mod kubelet;
+pub mod length_enforcement;
 pub mod logging;
 pub mod signal;
 

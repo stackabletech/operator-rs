@@ -6,15 +6,12 @@ metadata:
 spec:
   group: listeners.stackable.tech
   names:
-    categories: []
     kind: PodListeners
     plural: podlisteners
-    shortNames: []
     singular: podlisteners
   scope: Namespaced
   versions:
-  - additionalPrinterColumns: []
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Informs users about Listeners that are bound by a given Pod.
@@ -85,4 +82,3 @@ spec:
         type: object
     served: true
     storage: true
-    subresources: {}

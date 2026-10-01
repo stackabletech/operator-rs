@@ -6,15 +6,12 @@ metadata:
 spec:
   group: s3.stackable.tech
   names:
-    categories: []
     kind: S3Bucket
     plural: s3buckets
-    shortNames: []
     singular: s3bucket
   scope: Namespaced
   versions:
-  - additionalPrinterColumns: []
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: S3 bucket specification containing the bucket name and an inlined or referenced connection specification.
@@ -185,4 +182,3 @@ spec:
         type: object
     served: true
     storage: true
-    subresources: {}

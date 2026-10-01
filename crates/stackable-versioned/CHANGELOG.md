@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `#[versioned(hint(map))]` to provide a hint for map types during conversion ([#1285]).
+- Emit generics in plain `From` impl ([#1284]).
+
+[#1284]: https://github.com/stackabletech/operator-rs/pull/1284
+[#1285]: https://github.com/stackabletech/operator-rs/pull/1285
+
 ## [0.11.1] - 2026-07-06
 
 Note: There are only dependency bumps in this release.
