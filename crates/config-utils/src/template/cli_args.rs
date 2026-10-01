@@ -15,7 +15,7 @@ pub struct TemplateCommand {
     #[arg(value_enum)]
     pub file_type: Option<FileType>,
 
-    /// By default inserted values are automatically escaped according to the deteced file format. You can disable
+    /// By default inserted values are automatically escaped according to the detected file format. You can disable
     /// this, e.g. when you need to insert XML tags (as they otherwise would be escaped).
     /// NOTE: Please make sure to correctly escape the inserted text on your own!
     #[clap(long)]

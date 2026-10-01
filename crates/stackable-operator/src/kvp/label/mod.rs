@@ -450,7 +450,7 @@ impl Labels {
     ///
     /// This function returns a result, because the parameters `owner`, `app_name`,
     /// and `role` can contain invalid data or can exceed the maximum allowed
-    /// number fo characters.
+    /// number of characters.
     pub fn role_selector<R>(owner: &R, app_name: &str, role: &str) -> Result<Self, LabelError>
     where
         R: Resource,
