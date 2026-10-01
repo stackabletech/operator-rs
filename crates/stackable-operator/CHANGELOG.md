@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- BREAKING: Add the `OpenShiftRoute` Listener service type, configured by `ListenerClass.spec.openshiftRoute`.
+  Exhaustive matches on `ServiceType` must handle the new variant.
+
 ## [0.119.0] - 2026-09-23
 
 ### Removed

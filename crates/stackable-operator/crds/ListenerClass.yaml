@@ -38,6 +38,28 @@ spec:
                   Ignored unless serviceType is LoadBalancer.
                 nullable: true
                 type: string
+              openshiftRoute:
+                description: |-
+                  Configures the OpenShift Route when `serviceType` is `OpenShiftRoute`.
+
+                  Ignored for other service types.
+                nullable: true
+                properties:
+                  port:
+                    description: |-
+                      Name of the Listener port to expose.
+
+                      A Route can only expose a single port. May be omitted if the Listener only has one port.
+                    nullable: true
+                    type: string
+                  tls:
+                    default: Passthrough
+                    description: How the Route handles TLS. Defaults to `Passthrough`.
+                    enum:
+                    - Passthrough
+                    - None
+                    type: string
+                type: object
               pinnedNodePorts:
                 default: false
                 description: |-
@@ -106,6 +128,7 @@ spec:
                 - NodePort
                 - LoadBalancer
                 - ClusterIP
+                - OpenShiftRoute
                 type: string
             required:
             - serviceType

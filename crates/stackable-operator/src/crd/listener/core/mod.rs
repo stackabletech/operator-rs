@@ -26,6 +26,11 @@ pub mod versioned {
         /// Assigns an IP address from a pool of IP addresses that your cluster has reserved for
         /// that purpose.
         ClusterIP,
+
+        /// Expose a single port through an OpenShift Route, using a hostname assigned by OpenShift.
+        ///
+        /// Only available on OpenShift. Configured by `ListenerClass.spec.openshiftRoute`.
+        OpenShiftRoute,
     }
 
     /// Service Internal Traffic Policy enables internal traffic restrictions to only route internal

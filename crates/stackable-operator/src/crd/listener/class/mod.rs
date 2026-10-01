@@ -34,6 +34,12 @@ pub mod versioned {
     pub struct ListenerClassSpec {
         pub service_type: core_v1alpha1::ServiceType,
 
+        /// Configures the OpenShift Route when `serviceType` is `OpenShiftRoute`.
+        ///
+        /// Ignored for other service types.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub openshift_route: Option<OpenShiftRouteConfig>,
+
         /// Configures whether a LoadBalancer service should also allocate node ports (like NodePort).
         ///
         /// Ignored unless serviceType is LoadBalancer.
@@ -121,6 +127,32 @@ pub mod versioned {
         #[schemars(schema_with = "raw_object_schema")]
         pub service_overrides: Service,
     }
+
+    /// Configures how a Listener is exposed through an OpenShift Route.
+    #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct OpenShiftRouteConfig {
+        /// Name of the Listener port to expose.
+        ///
+        /// A Route can only expose a single port. May be omitted if the Listener only has one port.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub port: Option<String>,
+
+        /// How the Route handles TLS. Defaults to `Passthrough`.
+        #[serde(default)]
+        pub tls: OpenShiftRouteTls,
+    }
+
+    #[derive(Clone, Copy, Debug, Default, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
+    pub enum OpenShiftRouteTls {
+        /// Forward TLS traffic to the application, which must terminate TLS itself.
+        /// Exposed on port 443.
+        #[default]
+        Passthrough,
+
+        /// Forward plain HTTP traffic. Exposed on port 80.
+        None,
+    }
 }
 
 #[cfg(test)]
@@ -130,6 +162,13 @@ impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::ListenerCl
           - serviceType: ClusterIP
           - serviceType: NodePort
           - serviceType: LoadBalancer
+          - serviceType: OpenShiftRoute
+          - serviceType: OpenShiftRoute
+            openshiftRoute:
+              port: https
+          - serviceType: OpenShiftRoute
+            openshiftRoute:
+              tls: None
           - serviceType: ClusterIP
             loadBalancerAllocateNodePorts: false
             loadBalancerClass: foo
