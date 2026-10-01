@@ -635,7 +635,7 @@ mod utils;
 ///
 /// - `hint(option)`: Indicates that the field contains an `Option<T>`.
 /// - `hint(vec)`: Indicates that the field contains a `Vec<T>`.
-/// - `hint(map`: Indicates that the field contains a map, e.g. `HashMap` or `BTreeMap`.
+/// - `hint(map)`: Indicates that the field contains a map, e.g. `HashMap` or `BTreeMap`.
 ///
 /// These hints are especially useful for generated conversion functions. With
 /// these hints in place, the types are correctly mapped using `Into::into`
