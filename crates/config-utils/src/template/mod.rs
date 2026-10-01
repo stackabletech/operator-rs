@@ -31,7 +31,7 @@ pub enum Error {
     #[snafu(display(
         "The extension {extension} is not known, can not determine file type. Please specify the file type manually."
     ))]
-    ExtensionUnkown { extension: String },
+    ExtensionUnkown { extension: String }, // spellchecker:disable-line
 
     #[snafu(display("Failed to create temporary file {tmp_file_name:?}"))]
     CreateTemporaryFile {
@@ -63,6 +63,7 @@ pub enum Error {
     #[snafu(display(
         "Could not find the end pattern {end_pattern:?} in expression {expression:?}"
     ))]
+    // spellchecker:ignore-next-line
     FindEndPatten {
         end_pattern: String,
         expression: String,
@@ -95,7 +96,7 @@ pub fn template(file_name: &PathBuf, file_type: Option<&FileType>, escape: bool)
 
             KNOWN_FILE_TYPES
                 .get(extension)
-                .context(ExtensionUnkownSnafu { extension })?
+                .context(ExtensionUnkownSnafu { extension })? // spellchecker:disable-line
         }
     };
 
@@ -198,7 +199,7 @@ fn replacement_action_for_env_var(env_var_name: &str) -> Result<String> {
 /// * `replacement_action` must be a function that is called and get passed the [`&str`] content between the start and end
 ///   pattern. This can e.g. be the name of the env var or file name to read.
 ///
-/// Returns wether the `line` was modified.
+/// Returns whether the `line` was modified.
 fn replace_thingy_in_line(
     line: &mut String,
     start_pattern: &str,
@@ -223,6 +224,7 @@ fn replace_thingy_in_line(
         debug_assert_eq!(&line[index..index + start_pattern.len()], start_pattern);
         let (parameter, _) = line[index + start_pattern.len()..]
             .split_once(end_pattern)
+            // spellchecker:ignore-next-line
             .context(FindEndPattenSnafu {
                 // FIXME: Truncate string to not bloat error message
                 expression: &line[index..],
