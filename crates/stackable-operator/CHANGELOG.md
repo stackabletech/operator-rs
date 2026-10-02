@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `crd::openlineage` module with the `OpenLineageConnection` CRD ([#1250]).
+
+[#1250]: https://github.com/stackabletech/operator-rs/pull/1250
+
 ## [0.119.0] - 2026-09-23
 
 ### Removed
