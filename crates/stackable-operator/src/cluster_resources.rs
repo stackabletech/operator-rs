@@ -338,7 +338,6 @@ impl ClusterResource for Deployment {
 ///     client::Client,
 ///     cluster_resources::{self, ClusterResourceApplyStrategy, ClusterResources},
 ///     deep_merger::ObjectOverrides,
-///     role_utils::Role,
 /// };
 ///
 /// const APP_NAME: &str = "app";

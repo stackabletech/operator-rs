@@ -16,8 +16,8 @@ pub use stackable_operator_derive::Fragment;
 use super::merge::Atomic;
 #[cfg(doc)]
 use super::merge::Merge;
-#[cfg(doc)]
-use crate::role_utils::{Role, RoleGroup};
+#[cfg(all(doc, feature = "crds"))]
+use crate::crd::role::v1alpha2::{Role, RoleGroup};
 
 /// Contains context used for generating validation errors
 ///
@@ -93,13 +93,15 @@ enum ValidationProblem {
 /// A type that can be constructed by validating a "fragment" type.
 ///
 /// This is intended to be used together with [`Merge`], such that fragments are deserialized from multiple sources
-/// (for example: the [`RoleGroup`] and [`Role`] levels of a ProductCluster object), and then validated into the type implementing
+/// (for example: the [role group][role] and [role] levels of a ProductCluster object), and then validated into the type implementing
 /// `FromFragment`.
 ///
-/// It is recommended to use [`RoleGroup::validate_config`] to both merge and validate product [`RoleGroup`] configurations. For other use cases,
+/// It is recommended to use `RoleGroup::validate_config` to both merge and validate product [role group][role] configurations. For other use cases,
 /// [`validate`] can be used on the already-merged configuration.
 ///
 /// This will typically be derived using the [`Fragment`] macro, rather than implemented manually.
+///
+/// [role]: crate::crd::role
 pub trait FromFragment: Sized {
     /// The fragment type of `Self`.
     ///
@@ -206,7 +208,9 @@ impl FromFragment for PodTemplateSpec {
 
 /// Validates a [`Fragment`](`FromFragment::Fragment`), and turns it into its corresponding [`FromFragment`] type if successful.
 ///
-/// When validating a [`RoleGroup`]'s configuration, consider using [`RoleGroup::validate_config`] instead.
+/// When validating a [`RoleGroup`][role]'s configuration, consider using `RoleGroup::validate_config` instead.
+///
+/// [role]: crate::crd::role
 pub fn validate<T: FromFragment>(fragment: T::Fragment) -> Result<T, ValidationError> {
     T::from_fragment(
         fragment,
