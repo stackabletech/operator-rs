@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add utility for product agents ([#1290]):
+  - `TlsClientCredential`, enum for TLS-based platform access used for adding volumes and mounts.
+  - Labels and selectors for agents.
+
+[#1290]: https://github.com/stackabletech/operator-rs/pull/1290
+
 ## [0.119.0] - 2026-09-23
 
 ### Removed
