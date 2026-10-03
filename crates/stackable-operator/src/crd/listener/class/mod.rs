@@ -34,9 +34,7 @@ pub mod versioned {
     pub struct ListenerClassSpec {
         pub service_type: core_v1alpha1::ServiceType,
 
-        /// Configures the OpenShift Route when `serviceType` is `OpenShiftRoute`.
-        ///
-        /// Ignored for other service types.
+        /// Ignored unless `serviceType` is `OpenShiftRoute`.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub openshift_route: Option<OpenShiftRouteConfig>,
 
@@ -128,29 +126,23 @@ pub mod versioned {
         pub service_overrides: Service,
     }
 
-    /// Configures how a Listener is exposed through an OpenShift Route.
     #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct OpenShiftRouteConfig {
-        /// Name of the Listener port to expose.
-        ///
-        /// A Route can only expose a single port. May be omitted if the Listener only has one port.
+        /// Required when the Listener has more than one port.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub port: Option<String>,
 
-        /// How the Route handles TLS. Defaults to `Passthrough`.
+        /// `Passthrough` (default) uses port 443; `None` serves plain HTTP on port 80.
         #[serde(default)]
         pub tls: OpenShiftRouteTls,
     }
 
     #[derive(Clone, Copy, Debug, Default, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
     pub enum OpenShiftRouteTls {
-        /// Forward TLS traffic to the application, which must terminate TLS itself.
-        /// Exposed on port 443.
         #[default]
         Passthrough,
 
-        /// Forward plain HTTP traffic. Exposed on port 80.
         None,
     }
 }

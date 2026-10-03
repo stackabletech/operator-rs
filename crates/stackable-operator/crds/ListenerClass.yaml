@@ -39,22 +39,16 @@ spec:
                 nullable: true
                 type: string
               openshiftRoute:
-                description: |-
-                  Configures the OpenShift Route when `serviceType` is `OpenShiftRoute`.
-
-                  Ignored for other service types.
+                description: Ignored unless `serviceType` is `OpenShiftRoute`.
                 nullable: true
                 properties:
                   port:
-                    description: |-
-                      Name of the Listener port to expose.
-
-                      A Route can only expose a single port. May be omitted if the Listener only has one port.
+                    description: Required when the Listener has more than one port.
                     nullable: true
                     type: string
                   tls:
                     default: Passthrough
-                    description: How the Route handles TLS. Defaults to `Passthrough`.
+                    description: '`Passthrough` (default) uses port 443; `None` serves plain HTTP on port 80.'
                     enum:
                     - Passthrough
                     - None

@@ -6,8 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- BREAKING: Add the `OpenShiftRoute` Listener service type, configured by `ListenerClass.spec.openshiftRoute`.
-  Exhaustive matches on `ServiceType` must handle the new variant.
+- BREAKING: Add the `OpenShiftRoute` Listener `ServiceType` and `ListenerClass.spec.openshiftRoute` ([#1291]).
+
+[#1291]: https://github.com/stackabletech/operator-rs/pull/1291
 
 ## [0.119.0] - 2026-09-23
 

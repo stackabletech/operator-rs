@@ -27,9 +27,7 @@ pub mod versioned {
         /// that purpose.
         ClusterIP,
 
-        /// Expose a single port through an OpenShift Route, using a hostname assigned by OpenShift.
-        ///
-        /// Only available on OpenShift. Configured by `ListenerClass.spec.openshiftRoute`.
+        /// Expose a single port through an OpenShift Route.
         OpenShiftRoute,
     }
 
