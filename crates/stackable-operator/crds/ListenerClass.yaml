@@ -38,6 +38,22 @@ spec:
                   Ignored unless serviceType is LoadBalancer.
                 nullable: true
                 type: string
+              openshiftRoute:
+                description: Ignored unless `serviceType` is `OpenShiftRoute`.
+                nullable: true
+                properties:
+                  port:
+                    description: Required when the Listener has more than one port.
+                    nullable: true
+                    type: string
+                  tls:
+                    default: Passthrough
+                    description: '`Passthrough` (default) uses port 443; `None` serves plain HTTP on port 80.'
+                    enum:
+                    - Passthrough
+                    - None
+                    type: string
+                type: object
               pinnedNodePorts:
                 default: false
                 description: |-
@@ -106,6 +122,7 @@ spec:
                 - NodePort
                 - LoadBalancer
                 - ClusterIP
+                - OpenShiftRoute
                 type: string
             required:
             - serviceType
