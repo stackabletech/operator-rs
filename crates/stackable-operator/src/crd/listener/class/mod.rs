@@ -34,6 +34,10 @@ pub mod versioned {
     pub struct ListenerClassSpec {
         pub service_type: core_v1alpha1::ServiceType,
 
+        /// Ignored unless `serviceType` is `OpenShiftRoute`.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub openshift_route: Option<OpenShiftRouteConfig>,
+
         /// Configures whether a LoadBalancer service should also allocate node ports (like NodePort).
         ///
         /// Ignored unless serviceType is LoadBalancer.
@@ -121,6 +125,26 @@ pub mod versioned {
         #[schemars(schema_with = "raw_object_schema")]
         pub service_overrides: Service,
     }
+
+    #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct OpenShiftRouteConfig {
+        /// Required when the Listener has more than one port.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub port: Option<String>,
+
+        /// `Passthrough` (default) uses port 443; `None` serves plain HTTP on port 80.
+        #[serde(default)]
+        pub tls: OpenShiftRouteTls,
+    }
+
+    #[derive(Clone, Copy, Debug, Default, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
+    pub enum OpenShiftRouteTls {
+        #[default]
+        Passthrough,
+
+        None,
+    }
 }
 
 #[cfg(test)]
@@ -130,6 +154,13 @@ impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::ListenerCl
           - serviceType: ClusterIP
           - serviceType: NodePort
           - serviceType: LoadBalancer
+          - serviceType: OpenShiftRoute
+          - serviceType: OpenShiftRoute
+            openshiftRoute:
+              port: https
+          - serviceType: OpenShiftRoute
+            openshiftRoute:
+              tls: None
           - serviceType: ClusterIP
             loadBalancerAllocateNodePorts: false
             loadBalancerClass: foo
