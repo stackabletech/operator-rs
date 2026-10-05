@@ -34,15 +34,8 @@ impl HttpTransport {
     }
 
     /// Build the OpenLineage transport URL (without path) from this transport.
-    ///
-    /// The scheme is `https` when TLS server verification is configured
-    /// (`tls.verification.server`), otherwise `http`.
     pub fn url(&self) -> Result<url::Url, OpenLineageError> {
-        let scheme = if self.tls.uses_tls_verification() {
-            "https"
-        } else {
-            "http"
-        };
+        let scheme = if self.tls.uses_tls() { "https" } else { "http" };
 
         let endpoint = format!(
             "{scheme}://{host}:{port}",

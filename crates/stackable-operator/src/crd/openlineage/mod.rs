@@ -169,7 +169,7 @@ mod tests {
     }
 
     #[test]
-    fn https_transport_url_with_server_verification() {
+    fn https_transport_url_with_tls() {
         let transport = HttpTransport {
             host: "marquez"
                 .parse()
@@ -189,28 +189,6 @@ mod tests {
         assert_eq!(
             transport.url().expect("valid https transport url").as_str(),
             "https://marquez:5000/"
-        );
-    }
-
-    #[test]
-    fn http_transport_url_without_verification() {
-        let transport = HttpTransport {
-            host: "marquez"
-                .parse()
-                .expect("cannot parse [marquez] as host name"),
-            port: 5000,
-            path: HttpTransport::default_path(),
-            tls: TlsClientDetails {
-                tls: Some(Tls {
-                    verification: TlsVerification::None {},
-                }),
-            },
-            credentials_secret_name: None,
-        };
-
-        assert_eq!(
-            transport.url().expect("valid https transport url").as_str(),
-            "http://marquez:5000/"
         );
     }
 
@@ -235,7 +213,7 @@ mod tests {
                 .url_with_path()
                 .expect("valid https transport url")
                 .as_str(),
-            "http://marquez:5000/api/v1/lineage"
+            "https://marquez:5000/api/v1/lineage"
         );
     }
 }
