@@ -34,7 +34,7 @@ impl HttpTransport {
     }
 
     /// Build the OpenLineage transport URL (without path) from this transport.
-    pub fn url(&self) -> Result<url::Url, OpenLineageError> {
+    pub fn url_without_path(&self) -> Result<url::Url, OpenLineageError> {
         let scheme = if self.tls.uses_tls() { "https" } else { "http" };
 
         let endpoint = format!(
@@ -47,8 +47,8 @@ impl HttpTransport {
     }
 
     /// Build the OpenLineage transport URL (with path) from this transport.
-    pub fn url_with_path(&self) -> Result<url::Url, OpenLineageError> {
-        match self.url() {
+    pub fn url(&self) -> Result<url::Url, OpenLineageError> {
+        match self.url_without_path() {
             Ok(mut target) => {
                 target.set_path(&self.path);
                 Ok(target)

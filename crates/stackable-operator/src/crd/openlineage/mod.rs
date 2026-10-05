@@ -151,7 +151,7 @@ mod tests {
     };
 
     #[test]
-    fn http_transport_url_without_tls() {
+    fn http_transport_url_without_path_without_tls() {
         let transport = HttpTransport {
             host: "marquez"
                 .parse()
@@ -163,13 +163,16 @@ mod tests {
         };
 
         assert_eq!(
-            transport.url().expect("valid http transport url").as_str(),
+            transport
+                .url_without_path()
+                .expect("valid http transport url")
+                .as_str(),
             "http://marquez:5000/"
         );
     }
 
     #[test]
-    fn https_transport_url_with_tls() {
+    fn https_transport_url_without_path_with_tls() {
         let transport = HttpTransport {
             host: "marquez"
                 .parse()
@@ -187,13 +190,16 @@ mod tests {
         };
 
         assert_eq!(
-            transport.url().expect("valid https transport url").as_str(),
+            transport
+                .url_without_path()
+                .expect("valid https transport url")
+                .as_str(),
             "https://marquez:5000/"
         );
     }
 
     #[test]
-    fn http_transport_url_with_path() {
+    fn http_transport_url() {
         let transport = HttpTransport {
             host: "marquez"
                 .parse()
@@ -209,10 +215,7 @@ mod tests {
         };
 
         assert_eq!(
-            transport
-                .url_with_path()
-                .expect("valid https transport url")
-                .as_str(),
+            transport.url().expect("valid https transport url").as_str(),
             "https://marquez:5000/api/v1/lineage"
         );
     }
