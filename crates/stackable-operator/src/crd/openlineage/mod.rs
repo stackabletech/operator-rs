@@ -2,7 +2,10 @@ use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{commons::tls_verification::TlsClientDetails, versioned::versioned};
+use crate::{
+    commons::{networking::HostName, tls_verification::TlsClientDetails},
+    versioned::versioned,
+};
 
 mod v1alpha1_impl;
 
@@ -20,6 +23,7 @@ pub type ResolvedOpenLineageConnection = v1alpha1::OpenLineageConnectionSpec;
     )
 )]
 pub mod versioned {
+
     pub mod v1alpha1 {
         pub use v1alpha1_impl::OpenLineageError;
     }
@@ -54,8 +58,8 @@ pub mod versioned {
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct HttpTransport {
-        /// Host of the OpenLineage backend without any protocol or port. For example: `marquez`.
-        pub host: String,
+        /// Hostname or IP address of the OpenLineage backend without any protocol or port. For example: `marquez`.
+        pub host: HostName,
 
         /// Port the OpenLineage backend listens on. For example: `5000`.
         pub port: u16,
@@ -149,7 +153,9 @@ mod tests {
     #[test]
     fn http_transport_url_without_tls() {
         let transport = HttpTransport {
-            host: "marquez".to_string(),
+            host: "marquez"
+                .parse()
+                .expect("cannot parse [marquez] as host name"),
             port: 5000,
             path: HttpTransport::default_path(),
             tls: TlsClientDetails { tls: None },
@@ -162,7 +168,9 @@ mod tests {
     #[test]
     fn https_transport_url_with_server_verification() {
         let transport = HttpTransport {
-            host: "marquez".to_string(),
+            host: "marquez"
+                .parse()
+                .expect("cannot parse [marquez] as host name"),
             port: 5000,
             path: HttpTransport::default_path(),
             tls: TlsClientDetails {
@@ -181,7 +189,9 @@ mod tests {
     #[test]
     fn http_transport_url_without_verification() {
         let transport = HttpTransport {
-            host: "marquez".to_string(),
+            host: "marquez"
+                .parse()
+                .expect("cannot parse [marquez] as host name"),
             port: 5000,
             path: HttpTransport::default_path(),
             tls: TlsClientDetails {

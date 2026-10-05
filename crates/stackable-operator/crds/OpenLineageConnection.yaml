@@ -36,7 +36,7 @@ spec:
                     nullable: true
                     type: string
                   host:
-                    description: 'Host of the OpenLineage backend without any protocol or port. For example: `marquez`.'
+                    description: 'Hostname or IP address of the OpenLineage backend without any protocol or port. For example: `marquez`.'
                     type: string
                   path:
                     default: /api/v1/lineage
