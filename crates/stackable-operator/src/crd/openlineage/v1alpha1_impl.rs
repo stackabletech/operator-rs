@@ -12,6 +12,11 @@ use crate::{
 
 #[derive(Debug, Snafu)]
 pub enum OpenLineageError {
+    #[snafu(display("failed to build OpenLineage URL from endpoint '{endpoint}'"))]
+    HttpTransportUrl {
+        source: url::ParseError,
+        endpoint: String,
+    },
     #[snafu(display("failed to retrieve OpenLineage connection '{open_lineage_connection}'"))]
     RetrieveOpenLineageConnection {
         #[snafu(source(from(crate::client::Error, Box::new)))]
@@ -28,22 +33,35 @@ impl HttpTransport {
         Self::DEFAULT_PATH.to_string()
     }
 
-    /// Build the OpenLineage transport URL from this transport.
+    /// Build the OpenLineage transport URL (without path) from this transport.
     ///
     /// The scheme is `https` when TLS server verification is configured
     /// (`tls.verification.server`), otherwise `http`.
-    pub fn transport_url(&self) -> String {
+    pub fn url(&self) -> Result<url::Url, OpenLineageError> {
         let scheme = if self.tls.uses_tls_verification() {
             "https"
         } else {
             "http"
         };
 
-        format!(
+        let endpoint = format!(
             "{scheme}://{host}:{port}",
             host = self.host,
             port = self.port
-        )
+        );
+
+        url::Url::parse(&endpoint).context(HttpTransportUrlSnafu { endpoint })
+    }
+
+    /// Build the OpenLineage transport URL (with path) from this transport.
+    pub fn url_with_path(&self) -> Result<url::Url, OpenLineageError> {
+        match self.url() {
+            Ok(mut target) => {
+                target.set_path(&self.path);
+                Ok(target)
+            }
+            Err(err) => Err(err),
+        }
     }
 }
 
