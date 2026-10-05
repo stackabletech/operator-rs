@@ -21,13 +21,15 @@
 //! # Example
 //!
 //! ```
+//! # #[cfg(feature = "crds")]
+//! # mod wrapper {
 //! use kube::CustomResource;
 //! use schemars::JsonSchema;
 //! use serde::{Deserialize, Serialize};
 //! use stackable_operator::{
 //!     commons::resources::{JvmHeapLimits, PvcConfig, Resources},
 //!     config::fragment::Fragment,
-//!     role_utils::Role,
+//!     crd::role::v1alpha2::Role,
 //! };
 //!
 //! #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -71,6 +73,7 @@
 //!     metadata_storage: PvcConfig,
 //!     shared_storage: PvcConfig,
 //! }
+//! # }
 //! ```
 
 use std::{collections::BTreeMap, fmt::Debug};

@@ -418,13 +418,16 @@ spec:
                 type: string
               nodes:
                 description: |-
-                  This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a key-value-map containing
-                  all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable
-                  at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured
-                  on role level. There is also a second form of config, which can only be configured
-                  at role level, the `roleConfig`.
-                  You can learn more about this in the
-                  [Roles and role group concept documentation](https://docs.stackable.tech/home/nightly/concepts/roles-and-role-groups).
+                  This struct represents a role - e.g. HDFS datanodes or Trino workers.
+
+                  It has a key-value-map containing all the roleGroups that are part of this role. Additionally, there is a
+                  `config`, which is configurable at the role **and** roleGroup level. Everything at roleGroup level is merged on
+                  top of what is configured on role level.
+
+                  There is also a second form of config, which can only be configured at role level, the `roleConfig`. You can
+                  learn more about this in the [Roles and role group concept documentation][1].
+
+                  [1]: https://docs.stackable.tech/home/nightly/concepts/roles-and-role-groups
                 nullable: true
                 properties:
                   cliOverrides:
@@ -1744,11 +1747,34 @@ spec:
                           type: object
                           x-kubernetes-preserve-unknown-fields: true
                         replicas:
-                          format: uint16
-                          maximum: 65535.0
-                          minimum: 0.0
-                          nullable: true
-                          type: integer
+                          oneOf:
+                          - required:
+                            - fixed
+                          - required:
+                            - managed
+                          - required:
+                            - custom
+                          properties:
+                            custom:
+                              description: Use a auto-scaled number of replicas managed by external/custom mechanisms, e.g. HPA.
+                              type: object
+                            fixed:
+                              description: Use a fixed number of replicas.
+                              properties:
+                                count:
+                                  format: uint16
+                                  maximum: 65535.0
+                                  minimum: 0.0
+                                  type: integer
+                              required:
+                              - count
+                              type: object
+                            managed:
+                              description: Use a fully managed, auto-scaled number of replicas.
+                              type: object
+                          type: object
+                      required:
+                      - replicas
                       type: object
                     description: |-
                       The set of role groups for this role, keyed by their name.
