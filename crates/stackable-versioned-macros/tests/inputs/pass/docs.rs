@@ -35,6 +35,37 @@ mod versioned {
         #[versioned(changed(since = "v1beta1", from_name = "qoox"))]
         #[versioned(changed(since = "v1", from_name = "qaax"))]
         quux: String,
+
+        /// The docs of this field changed in v1beta1 and v2.
+        #[versioned(
+            changed(since = "v1beta1", from_docs = "These are the docs in v1alpha1."),
+            changed(
+                since = "v2",
+                from_docs = r#"
+                    These are the docs from v1beta1 until v1.
+
+                    Multi-line docs are also supported.
+                "#
+            )
+        )]
+        #[doc(alias = "grault")]
+        corge: String,
+
+        /// The docs of this field changed in v1, while it was renamed in v1beta1.
+        #[versioned(
+            changed(since = "v1beta1", from_name = "waldo"),
+            changed(since = "v1", from_docs = "These are the docs before v1.")
+        )]
+        fred: String,
+    }
+
+    /// Test
+    #[derive(Default)]
+    enum Bar {
+        /// The docs of this variant changed in v1.
+        #[versioned(changed(since = "v1", from_docs = "These are the docs before v1."))]
+        #[default]
+        Baz,
     }
 }
 // ---
