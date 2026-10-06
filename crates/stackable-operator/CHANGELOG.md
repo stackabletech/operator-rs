@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `crd::openlineage` module with the `OpenLineageConnection` CRD ([#1250]).
+
 ### Changed
 
 - `SecurityContextBuilder::with_stackable_defaults` sets `allowPrivilegeEscalation: false` and
@@ -18,6 +22,7 @@ All notable changes to this project will be documented in this file.
   `allowPrivilegeEscalation` and `capabilities` have no Pod-level equivalent, so a Pod is only
   covered once every one of its containers is built with `SecurityContextBuilder`.
 
+[#1250]: https://github.com/stackabletech/operator-rs/pull/1250
 [#1292]: https://github.com/stackabletech/operator-rs/pull/1292
 
 ## [0.119.0] - 2026-09-23
