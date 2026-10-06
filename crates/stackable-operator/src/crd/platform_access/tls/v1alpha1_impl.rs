@@ -1,7 +1,4 @@
-use const_format::concatcp;
 use k8s_openapi::api::core::v1::{SecretVolumeSource, Volume, VolumeMount};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     builder::pod::{
@@ -12,27 +9,8 @@ use crate::{
         },
     },
     commons::secret_class::SecretClassVolumeProvisionParts,
-    constants::secret::SECRET_BASE_PATH,
-    v2::types::kubernetes::{SecretClassName, SecretName},
+    crd::platform_access::tls::{MOUNT_PATH, VOLUME_NAME, v1alpha1::TlsClientCredential},
 };
-
-/// Name of the volume holding the TLS client certificate.
-pub const VOLUME_NAME: &str = "tls-client-cert";
-
-/// Mount path for the TLS client certificate.
-pub const MOUNT_PATH: &str = concatcp!(SECRET_BASE_PATH, "/", VOLUME_NAME);
-
-/// Source of a TLS client certificate: a secret-operator SecretClass or a static Secret.
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum TlsClientCredential {
-    /// An AutoTLS SecretClass used to provision the certificate.
-    SecretClass(SecretClassName),
-
-    /// A static Secret holding the certificate in the keys `tls.crt` and `tls.key` (PEM), e.g. as a
-    /// Secret of type `kubernetes.io/tls`.
-    Secret(SecretName),
-}
 
 impl TlsClientCredential {
     /// Adds the certificate volume to the Pod and mounts it into all given containers.
@@ -85,6 +63,7 @@ mod tests {
     use serde_json::json;
 
     use super::*;
+    use crate::v2::types::kubernetes::{SecretClassName, SecretName};
 
     #[test]
     fn secret_class_credential_is_provisioned_by_secret_operator() {

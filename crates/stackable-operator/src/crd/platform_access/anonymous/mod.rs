@@ -1,13 +1,18 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-/// No credential: the product does not authenticate the agent.
-#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-pub struct Anonymous {}
+use crate::versioned::versioned;
+
+#[versioned(version(name = "v1alpha1"))]
+pub mod versioned {
+    /// No credential: the product does not authenticate the agent.
+    #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    pub struct Anonymous {}
+}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::v1alpha1::Anonymous;
 
     #[test]
     fn deserialize_empty_object() {
