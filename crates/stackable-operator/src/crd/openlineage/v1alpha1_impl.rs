@@ -33,28 +33,17 @@ impl HttpTransport {
         Self::DEFAULT_PATH.to_string()
     }
 
-    /// Build the OpenLineage transport URL (without path) from this transport.
-    pub fn url_without_path(&self) -> Result<url::Url, OpenLineageError> {
-        let scheme = if self.tls.uses_tls() { "https" } else { "http" };
-
+    /// Build the OpenLineage transport URL (including path) from this transport.
+    pub fn url(&self) -> Result<url::Url, OpenLineageError> {
         let endpoint = format!(
-            "{scheme}://{host}:{port}",
+            "{scheme}://{host}:{port}/{path}",
+            scheme = if self.tls.uses_tls() { "https" } else { "http" },
             host = self.host,
-            port = self.port
+            port = self.port,
+            path = self.path.strip_prefix("/").unwrap_or(&self.path),
         );
 
         url::Url::parse(&endpoint).context(HttpTransportUrlSnafu { endpoint })
-    }
-
-    /// Build the OpenLineage transport URL (with path) from this transport.
-    pub fn url(&self) -> Result<url::Url, OpenLineageError> {
-        match self.url_without_path() {
-            Ok(mut target) => {
-                target.set_path(&self.path);
-                Ok(target)
-            }
-            Err(err) => Err(err),
-        }
     }
 }
 
