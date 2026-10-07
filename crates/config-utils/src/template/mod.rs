@@ -31,7 +31,7 @@ pub enum Error {
     #[snafu(display(
         "The extension {extension} is not known, can not determine file type. Please specify the file type manually."
     ))]
-    ExtensionUnkown { extension: String }, // spellchecker:disable-line
+    ExtensionUnkown { extension: String }, // typos:ignore-line
 
     #[snafu(display("Failed to create temporary file {tmp_file_name:?}"))]
     CreateTemporaryFile {
@@ -63,7 +63,7 @@ pub enum Error {
     #[snafu(display(
         "Could not find the end pattern {end_pattern:?} in expression {expression:?}"
     ))]
-    // spellchecker:ignore-next-line
+    // typos:ignore-next-line
     FindEndPatten {
         end_pattern: String,
         expression: String,
@@ -96,7 +96,7 @@ pub fn template(file_name: &PathBuf, file_type: Option<&FileType>, escape: bool)
 
             KNOWN_FILE_TYPES
                 .get(extension)
-                .context(ExtensionUnkownSnafu { extension })? // spellchecker:disable-line
+                .context(ExtensionUnkownSnafu { extension })? // typos:ignore-line
         }
     };
 
@@ -224,7 +224,7 @@ fn replace_thingy_in_line(
         debug_assert_eq!(&line[index..index + start_pattern.len()], start_pattern);
         let (parameter, _) = line[index + start_pattern.len()..]
             .split_once(end_pattern)
-            // spellchecker:ignore-next-line
+            // typos:ignore-next-line
             .context(FindEndPattenSnafu {
                 // FIXME: Truncate string to not bloat error message
                 expression: &line[index..],

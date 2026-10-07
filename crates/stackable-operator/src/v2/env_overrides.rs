@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn deserialize_rejects_invalid_names() {
         // "=" is not allowed in environment variable names.
-        // spellchecker:off
+        // typos:ignore-block-start
         let result: Result<EnvOverrides, serde_json::Error> = serde_json::from_value(json!({
             "FO=O": "1"
         }));
@@ -129,7 +129,7 @@ mod tests {
             ),
             result.map_err(|err| err.to_string())
         );
-        // spellchecker:on
+        // typos:ignore-block-end
     }
 
     #[test]
