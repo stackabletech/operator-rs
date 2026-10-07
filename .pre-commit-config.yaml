@@ -7,10 +7,10 @@ repos:
     rev: 00f422f3b19c57bc6338715ebfe3316d38768461  # v1.50.3
     hooks:
       - id: typos
-        # Drop the upstream default `--write-changes` so the hook reports and
-        # fails instead of rewriting files.
-        # Keep `--force-exclude` so the
-        # excludes in typos.toml still apply to the paths prek passes in.
+        # Drop the upstream default `--write-changes` so the hook only
+        # reports failures instead of writing changes.
+        # Keep `--force-exclude` so the excludes in typos.toml still
+        # apply to the paths prek passes in.
         args: ["--force-exclude"]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
