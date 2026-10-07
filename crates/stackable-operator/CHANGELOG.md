@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `crd::openlineage` module with the `OpenLineageConnection` CRD ([#1250]).
+
+### Changed
+
+- `SecurityContextBuilder::with_stackable_defaults` sets `allowPrivilegeEscalation: false` and
+  `capabilities.drop: [ALL]`, and `PodSecurityContextBuilder::with_stackable_defaults` additionally
+  sets `seccompProfile.type: RuntimeDefault` ([#1292]).
+  Together these satisfy the `restricted` Pod Security Standard, which plain Kubernetes enforces
+  only if the namespace opts in and which OpenShift's SCCs inject during admission either way, so
+  the Pods OpenShift ends up running are unchanged.
+  And because OpenShift has already applied these for years we're pretty sure that this change is safe for us.
+  Operators already call `PodSecurityContextBuilder::with_stackable_defaults`, so the
+  `seccompProfile` default reaches their Pods with the dependency bump alone, nothing else to do.
+  `allowPrivilegeEscalation` and `capabilities` have no Pod-level equivalent, so a Pod is only
+  covered once every one of its containers is built with `SecurityContextBuilder`.
+
+[#1250]: https://github.com/stackabletech/operator-rs/pull/1250
+[#1292]: https://github.com/stackabletech/operator-rs/pull/1292
+
 ## [0.119.0] - 2026-09-23
 
 ### Removed
