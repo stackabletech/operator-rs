@@ -90,16 +90,24 @@ where
     }
 }
 #[automatically_derived]
-impl ::core::convert::From<v1alpha1::Bar> for v1beta1::Bar {
-    fn from(__sv_bar: v1alpha1::Bar) -> Self {
+impl<S> ::stackable_versioned::TrackingFrom<v1alpha1::Bar, S> for v1beta1::Bar
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_bar: v1alpha1::Bar, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v1alpha1::Bar::Baz => v1beta1::Bar::Baz,
         }
     }
 }
 #[automatically_derived]
-impl ::core::convert::From<v1beta1::Bar> for v1alpha1::Bar {
-    fn from(__sv_bar: v1beta1::Bar) -> Self {
+impl<S> ::stackable_versioned::TrackingFrom<v1beta1::Bar, S> for v1alpha1::Bar
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_bar: v1beta1::Bar, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v1beta1::Bar::Baz => v1alpha1::Bar::Baz,
         }
@@ -182,16 +190,24 @@ where
     }
 }
 #[automatically_derived]
-impl ::core::convert::From<v1beta1::Bar> for v1beta2::Bar {
-    fn from(__sv_bar: v1beta1::Bar) -> Self {
+impl<S> ::stackable_versioned::TrackingFrom<v1beta1::Bar, S> for v1beta2::Bar
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_bar: v1beta1::Bar, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v1beta1::Bar::Baz => v1beta2::Bar::Baz,
         }
     }
 }
 #[automatically_derived]
-impl ::core::convert::From<v1beta2::Bar> for v1beta1::Bar {
-    fn from(__sv_bar: v1beta2::Bar) -> Self {
+impl<S> ::stackable_versioned::TrackingFrom<v1beta2::Bar, S> for v1beta1::Bar
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_bar: v1beta2::Bar, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v1beta2::Bar::Baz => v1beta1::Bar::Baz,
         }
@@ -268,16 +284,24 @@ where
     }
 }
 #[automatically_derived]
-impl ::core::convert::From<v1beta2::Bar> for v1::Bar {
-    fn from(__sv_bar: v1beta2::Bar) -> Self {
+impl<S> ::stackable_versioned::TrackingFrom<v1beta2::Bar, S> for v1::Bar
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_bar: v1beta2::Bar, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v1beta2::Bar::Baz => v1::Bar::Baz,
         }
     }
 }
 #[automatically_derived]
-impl ::core::convert::From<v1::Bar> for v1beta2::Bar {
-    fn from(__sv_bar: v1::Bar) -> Self {
+impl<S> ::stackable_versioned::TrackingFrom<v1::Bar, S> for v1beta2::Bar
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_bar: v1::Bar, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v1::Bar::Baz => v1beta2::Bar::Baz,
         }
@@ -354,16 +378,24 @@ where
     }
 }
 #[automatically_derived]
-impl ::core::convert::From<v1::Bar> for v2::Bar {
-    fn from(__sv_bar: v1::Bar) -> Self {
+impl<S> ::stackable_versioned::TrackingFrom<v1::Bar, S> for v2::Bar
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_bar: v1::Bar, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v1::Bar::Baz => v2::Bar::Baz,
         }
     }
 }
 #[automatically_derived]
-impl ::core::convert::From<v2::Bar> for v1::Bar {
-    fn from(__sv_bar: v2::Bar) -> Self {
+impl<S> ::stackable_versioned::TrackingFrom<v2::Bar, S> for v1::Bar
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_bar: v2::Bar, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v2::Bar::Baz => v1::Bar::Baz,
         }
