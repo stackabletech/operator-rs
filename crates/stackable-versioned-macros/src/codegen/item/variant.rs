@@ -14,6 +14,7 @@ use crate::{
         Direction, VersionDefinition,
         changes::{BTreeMapExt, ChangesetExt},
         item::{ItemStatus, generate_attributes},
+        module::ModuleGenerationContext,
     },
     utils::ItemIdents,
 };
@@ -24,12 +25,18 @@ pub struct VersionedVariant {
     pub changes: Option<BTreeMap<Version, ItemStatus>>,
     pub idents: VariantIdents,
     pub fields: Fields,
+    pub nested: bool,
 }
 
 impl VersionedVariant {
-    pub fn new(variant: Variant, versions: &[VersionDefinition]) -> Result<Self> {
+    pub fn new(
+        variant: Variant,
+        versions: &[VersionDefinition],
+        experimental_conversion_tracking: bool,
+    ) -> Result<Self> {
         let variant_attributes = VariantAttributes::from_variant(&variant)?;
         variant_attributes.validate_versions(versions)?;
+        variant_attributes.validate_nested_flag(experimental_conversion_tracking)?;
 
         let idents = VariantIdents::from(variant.ident);
 
@@ -41,6 +48,7 @@ impl VersionedVariant {
             bang_token: Not([Span::call_site()]),
         });
         let previous_docs = variant_attributes.common.previous_docs();
+        let nested = variant_attributes.nested.is_present();
         let changes = variant_attributes.common.into_changeset(&idents, ty);
 
         Ok(Self {
@@ -49,6 +57,7 @@ impl VersionedVariant {
             fields: variant.fields,
             idents,
             changes,
+            nested,
         })
     }
 
@@ -152,9 +161,10 @@ impl VersionedVariant {
         version: &VersionDefinition,
         next_version: &VersionDefinition,
         enum_ident: &IdentString,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
     ) -> Option<TokenStream> {
         let from_fields = self.generate_from_fields();
-        let for_fields = self.generate_for_fields();
+        let for_fields = self.generate_for_fields(mod_gen_ctx);
 
         #[allow(clippy::single_match_else)]
         match &self.changes {
@@ -203,18 +213,53 @@ impl VersionedVariant {
         }
     }
 
-    fn generate_for_fields(&self) -> Option<TokenStream> {
+    fn generate_for_fields(&self, mod_gen_ctx: ModuleGenerationContext<'_>) -> Option<TokenStream> {
         match &self.fields {
             Fields::Named(fields_named) => {
                 let fields = Self::named_field_idents(fields_named);
-                Some(quote! { { #(#fields: #fields.into(),)* } })
+                let conversions = fields.iter().map(|field| {
+                    self.generate_conversion_function(Some(&field.to_string()), mod_gen_ctx)
+                });
+
+                Some(quote! { { #(#fields: #fields.#conversions,)* } })
             }
             Fields::Unnamed(fields_unnamed) => {
                 let fields = Self::unnamed_field_ident(fields_unnamed);
-                Some(quote! { ( #(#fields.into())* ) })
+
+                // Newtype variants (which are the most common variants with data) don't need an
+                // additional path segment, as the variant only contains a single field.
+                let conversions = (0..fields.len()).map(|index| {
+                    let child = (fields.len() > 1).then(|| index.to_string());
+                    self.generate_conversion_function(child.as_deref(), mod_gen_ctx)
+                });
+
+                Some(quote! { ( #(#fields.#conversions),* ) })
             }
             Fields::Unit => None,
         }
+    }
+
+    /// Generates the conversion function for a single field of the variant data.
+    ///
+    /// The data of variants marked as nested is converted with support for tracking. The path
+    /// passed down consists of the variant name and the provided `child`, if any.
+    fn generate_conversion_function(
+        &self,
+        child: Option<&str>,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+    ) -> TokenStream {
+        if !self.nested {
+            return quote! { into() };
+        }
+
+        let versioned_path = &*mod_gen_ctx.crates.versioned;
+        let variant = &self.idents.original;
+        let child_string = match child {
+            Some(child) => format!("{variant}.{child}"),
+            None => variant.to_string(),
+        };
+
+        quote! { tracking_into(status, &#versioned_path::jthong_path(parent, #child_string)) }
     }
 
     fn generate_from_fields(&self) -> Option<TokenStream> {
@@ -225,7 +270,7 @@ impl VersionedVariant {
             }
             Fields::Unnamed(fields_unnamed) => {
                 let fields = Self::unnamed_field_ident(fields_unnamed);
-                Some(quote! { ( #(#fields)* ) })
+                Some(quote! { ( #(#fields),* ) })
             }
             Fields::Unit => None,
         }
