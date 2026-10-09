@@ -562,7 +562,7 @@ impl Tracing {
                 // NOTE (@NickLarsenNZ): There are various propagators. Eg: TraceContextPropagator
                 // standardises HTTP headers to propagate trace-id, parent-id, etc... while the
                 // BaggagePropagator sets a "baggage" header with the value being key=value pairs. There
-                // are other kinds too. There is also B3 and Jaeger, and some legacy stuff like OT Trace
+                // are other kinds too. There is also B3 and Jaeger, and some legacy stuff like OT Trace // typos:ignore-line
                 // and OpenCensus.
                 // See: https://opentelemetry.io/docs/specs/otel/context/api-propagators/
                 TraceContextPropagator::new(),
