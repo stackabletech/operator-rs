@@ -47,10 +47,10 @@ where
             fred: __sv_foo.waldo.into(),
         };
         if let Some(upgrades) = status.changes().upgrades.remove(&"v1beta1".to_owned()) {
-            for ::stackable_versioned::ChangedValue { json_path, value } in upgrades {
+            for ::stackable_versioned::ChangedValue { json_path, value, .. } in upgrades {
                 match json_path {
                     json_path if json_path == __sv_baz_path => {
-                        spec.baz = serde_yaml::from_value(value).unwrap();
+                        spec.baz = ::serde_json::from_value(value).unwrap();
                     }
                     _ => unreachable!(),
                 }
@@ -76,7 +76,8 @@ where
         upgrades
             .push(::stackable_versioned::ChangedValue {
                 json_path: __sv_baz_path,
-                value: ::serde_yaml::to_value(&__sv_foo.baz).unwrap(),
+                value: ::serde_json::to_value(&__sv_foo.baz).unwrap(),
+                downgraded_value: ::core::option::Option::None,
             });
         let mut spec = Self {
             foo: __sv_foo.foo.into(),

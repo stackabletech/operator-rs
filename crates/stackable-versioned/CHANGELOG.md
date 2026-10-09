@@ -12,6 +12,9 @@ All notable changes to this project will be documented in this file.
 - Support tracking changes through enums when `experimental_conversion_tracking` is enabled.
   Variants containing versioned structs or enums need to be marked with `#[versioned(nested)]`
   ([#YYYY]).
+- Track fields which changed their type when `experimental_conversion_tracking` is enabled. The
+  tracked value is only applied on upgrade if the field was not changed in the older version
+  ([#ZZZZ]).
 
 ### Changed
 
@@ -22,11 +25,15 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Fix `From` impls of enum variants with multiple unnamed fields ([#YYYY]).
+- BREAKING: Store tracked values as `serde_json::Value` instead of `serde_yaml::Value`. Tracked
+  enum values were serialized as YAML tags, which failed to deserialize after a roundtrip through
+  the JSON status ([#ZZZZ]).
 
 [#1284]: https://github.com/stackabletech/operator-rs/pull/1284
 [#1285]: https://github.com/stackabletech/operator-rs/pull/1285
 [#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
 [#YYYY]: https://github.com/stackabletech/operator-rs/pull/YYYY
+[#ZZZZ]: https://github.com/stackabletech/operator-rs/pull/ZZZZ
 
 ## [0.11.1] - 2026-07-06
 
