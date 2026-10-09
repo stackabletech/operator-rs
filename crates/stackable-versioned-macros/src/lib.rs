@@ -969,6 +969,50 @@ mod utils;
 /// # fn main() {}
 /// ```
 ///
+/// Changes can also be tracked through enums. With conversion tracking enabled,
+/// versioned structs and enums only implement `TrackingFrom` instead of `From`.
+/// As such, every field and every enum variant containing a versioned struct
+/// or enum needs to be marked with `#[versioned(nested)]`. All data of a nested
+/// variant is converted with tracking support. The path of tracked values
+/// contains the variant name, eg. `$.connector.Baz.quox`.
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// # use kube::CustomResource;
+/// # use schemars::JsonSchema;
+/// # use serde::{Deserialize, Serialize};
+/// #[versioned(
+///     version(name = "v1alpha1"),
+///     version(name = "v1beta1"),
+///     options(k8s(experimental_conversion_tracking))
+/// )]
+/// mod versioned {
+///     #[versioned(crd(group = "example.com", doc = "My custom resource."))]
+///     #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
+///     struct FooSpec {
+///         #[versioned(nested)]
+///         connector: Connector,
+///     }
+///
+///     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+///     enum Connector {
+///         #[versioned(nested)]
+///         Baz(Baz),
+///
+///         Unit,
+///     }
+///
+///     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+///     struct Baz {
+///         quax: String,
+///
+///         #[versioned(added(since = "v1beta1"))]
+///         quox: bool,
+///     }
+/// }
+/// # fn main() {}
+/// ```
+///
 /// # OpenTelemetry Semantic Conventions
 ///
 /// If tracing is enabled, various traces and events are emitted. The fields of

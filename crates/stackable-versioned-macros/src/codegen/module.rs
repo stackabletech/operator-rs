@@ -50,22 +50,24 @@ impl Module {
         let mut submodules = HashMap::new();
         let mut containers = Vec::new();
 
+        let experimental_conversion_tracking = module_attributes
+            .options
+            .kubernetes
+            .experimental_conversion_tracking
+            .is_present();
+
         for item in items {
             match item {
                 Item::Enum(item_enum) => {
-                    if let Some(container) =
-                        errors.handle(Container::new_enum(item_enum, &versions))
-                    {
+                    if let Some(container) = errors.handle(Container::new_enum(
+                        item_enum,
+                        &versions,
+                        experimental_conversion_tracking,
+                    )) {
                         containers.push(container);
                     }
                 }
                 Item::Struct(item_struct) => {
-                    let experimental_conversion_tracking = module_attributes
-                        .options
-                        .kubernetes
-                        .experimental_conversion_tracking
-                        .is_present();
-
                     if let Some(container) = errors.handle(Container::new_struct(
                         item_struct,
                         &versions,

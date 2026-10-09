@@ -3,7 +3,7 @@ use std::ops::Not;
 use darling::{FromAttributes, Result};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Generics, ItemEnum};
+use syn::{Generics, ItemEnum, parse_quote};
 
 use crate::{
     attrs::container::ContainerAttributes,
@@ -19,12 +19,17 @@ use crate::{
 };
 
 impl Container {
-    pub fn new_enum(item_enum: ItemEnum, versions: &[VersionDefinition]) -> Result<Self> {
+    pub fn new_enum(
+        item_enum: ItemEnum,
+        versions: &[VersionDefinition],
+        experimental_conversion_tracking: bool,
+    ) -> Result<Self> {
         let attributes = ContainerAttributes::from_attributes(&item_enum.attrs)?;
 
         let mut versioned_variants = Vec::new();
         for variant in item_enum.variants {
-            let mut versioned_variant = VersionedVariant::new(variant, versions)?;
+            let mut versioned_variant =
+                VersionedVariant::new(variant, versions, experimental_conversion_tracking)?;
             versioned_variant.insert_container_versions(versions);
             versioned_variants.push(versioned_variant);
         }
@@ -157,7 +162,7 @@ impl Enum {
                 self.variants
                     .iter()
                     .filter_map(|v| {
-                        v.generate_for_from_impl(direction, version, next_version, enum_ident)
+                        v.generate_for_from_impl(direction, version, next_version, enum_ident, gen_ctx)
                     })
                     .collect()
             };
@@ -176,6 +181,38 @@ impl Enum {
                     (variants(Direction::Downgrade), for_module_ident, from_module_ident)
                 },
             };
+
+            // With conversion tracking enabled, the enum needs to forward the status and the
+            // current path to the data of nested variants. As such, only a TrackingFrom impl is
+            // generated, which is in line with the impls generated for structs.
+            if gen_ctx.kubernetes_options.experimental_conversion_tracking.is_present() {
+                let versioned_path = &*gen_ctx.crates.versioned;
+
+                let mut tracking_generics = self.generics.clone();
+                tracking_generics.params.push(parse_quote! { S });
+                tracking_generics
+                    .make_where_clause()
+                    .predicates
+                    .push(parse_quote! { S: #versioned_path::TrackingStatus + ::core::default::Default });
+                let (impl_generics, _, where_clause) = tracking_generics.split_for_impl();
+
+                return quote! {
+                    #automatically_derived
+                    #allow_attribute
+                    impl #impl_generics #versioned_path::TrackingFrom<#from_module_ident::#enum_ident #type_generics, S> for #for_module_ident::#enum_ident #type_generics
+                        #where_clause
+                    {
+                        fn tracking_from(#from_enum_ident: #from_module_ident::#enum_ident #type_generics, status: &mut S, parent: &str) -> Self {
+                            // TODO (@Techassi): Only emit this if any of the variants below need it
+                            use #versioned_path::TrackingInto as _;
+
+                            match #from_enum_ident {
+                                #variants
+                            }
+                        }
+                    }
+                };
+            }
 
             quote! {
                 #automatically_derived
