@@ -496,6 +496,7 @@ mod utils;
 /// - `since` to indicate since which version the item is changed.
 /// - `from_name` to indicate from which previous name the field is renamed.
 /// - `from_type` to indicate from which previous type the field is changed.
+/// - `from_docs` to provide the previous doc comments of the item.
 /// - `upgrade_with` to provide a custom upgrade function. This argument can
 ///   only be used in combination with the `from_type` argument. The expected
 ///   function signature is: `fn (OLD_TYPE) -> NEW_TYPE`. This function must
@@ -555,6 +556,59 @@ mod utils;
 ///     use super::*;
 ///     pub struct Foo {
 ///         pub bar: usize,               // 2
+///         pub baz: bool,
+///     }
+/// }
+/// ```
+/// </details>
+///
+/// #### Changed Docs
+///
+/// The doc comments of an item can be changed using the `from_docs` argument.
+/// The doc comments attached to the item are used since the version of the
+/// change. All earlier versions use the doc comments provided via `from_docs`
+/// instead. This is especially useful to adjust the description of a field in
+/// the generated CRD schema without changing it for older versions. The
+/// argument can be used on its own or in combination with any other argument.
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
+/// mod versioned {
+///     pub struct Foo {
+///         /// The number of bars.
+///         #[versioned(changed(since = "v1beta1", from_docs = "The bar."))]
+///         bar: usize,
+///         baz: bool,
+///     }
+/// }
+/// ```
+///
+/// <details>
+/// <summary>Expand Generated Code</summary>
+///
+/// 1. In version `v1alpha1` the field uses the doc comments provided via
+///    `from_docs`.
+/// 2. In the next version, `v1beta1`, the field uses the doc comments attached
+///    to the field.
+///
+/// ```ignore
+/// pub mod v1alpha1 {
+///     use super::*;
+///     pub struct Foo {
+///         /// The bar.                // 1
+///         pub bar: usize,
+///         pub baz: bool,
+///     }
+/// }
+///
+/// // Snip
+///
+/// pub mod v1beta1 {
+///     use super::*;
+///     pub struct Foo {
+///         /// The number of bars.     // 2
+///         pub bar: usize,
 ///         pub baz: bool,
 ///     }
 /// }
