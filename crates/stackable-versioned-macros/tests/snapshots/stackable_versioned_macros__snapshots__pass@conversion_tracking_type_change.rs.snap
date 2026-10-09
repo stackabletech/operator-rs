@@ -61,7 +61,7 @@ where
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let __sv_bah_path = ::stackable_versioned::jthong_path(parent, "bah");
-        let __sv_bah_value = ::serde_yaml::to_value(&__sv_foospec.bah).unwrap();
+        let __sv_bah_value = ::serde_json::to_value(&__sv_foospec.bah).unwrap();
         let mut spec = Self {
             bah: __sv_foospec.bah.into(),
             qux: __sv_foospec.qux.into(),
@@ -74,10 +74,8 @@ where
             } in upgrades {
                 match json_path {
                     json_path if json_path == __sv_bah_path => {
-                        if downgraded_value.as_ref()
-                            == ::core::option::Option::Some(&__sv_bah_value)
-                        {
-                            spec.bah = ::serde_yaml::from_value(value).unwrap();
+                        if downgraded_value.unwrap_or_default() == __sv_bah_value {
+                            spec.bah = ::serde_json::from_value(value).unwrap();
                         }
                     }
                     _ => unreachable!(),
@@ -99,7 +97,7 @@ where
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let __sv_bah_path = ::stackable_versioned::jthong_path(parent, "bah");
-        let __sv_bah_value = ::serde_yaml::to_value(&__sv_foospec.bah).unwrap();
+        let __sv_bah_value = ::serde_json::to_value(&__sv_foospec.bah).unwrap();
         let mut spec = Self {
             bah: u32_to_u16(__sv_foospec.bah),
             qux: __sv_foospec.qux.into(),
@@ -114,7 +112,7 @@ where
                 json_path: __sv_bah_path,
                 value: __sv_bah_value,
                 downgraded_value: ::core::option::Option::Some(
-                    ::serde_yaml::to_value(&spec.bah).unwrap(),
+                    ::serde_json::to_value(&spec.bah).unwrap(),
                 ),
             });
         spec
@@ -179,7 +177,7 @@ where
         use ::stackable_versioned::TrackingInto as _;
         let __sv_bar_path = ::stackable_versioned::jthong_path(parent, "bar");
         let __sv_quux_path = ::stackable_versioned::jthong_path(parent, "quux");
-        let __sv_bar_value = ::serde_yaml::to_value(&__sv_foospec.bah).unwrap();
+        let __sv_bar_value = ::serde_json::to_value(&__sv_foospec.bah).unwrap();
         let mut spec = Self {
             bar: __sv_foospec.bah.into(),
             baz: __sv_foospec.qux.into(),
@@ -193,14 +191,12 @@ where
             } in upgrades {
                 match json_path {
                     json_path if json_path == __sv_bar_path => {
-                        if downgraded_value.as_ref()
-                            == ::core::option::Option::Some(&__sv_bar_value)
-                        {
-                            spec.bar = ::serde_yaml::from_value(value).unwrap();
+                        if downgraded_value.unwrap_or_default() == __sv_bar_value {
+                            spec.bar = ::serde_json::from_value(value).unwrap();
                         }
                     }
                     json_path if json_path == __sv_quux_path => {
-                        spec.quux = ::serde_yaml::from_value(value).unwrap();
+                        spec.quux = ::serde_json::from_value(value).unwrap();
                     }
                     _ => unreachable!(),
                 }
@@ -222,10 +218,10 @@ where
         upgrades
             .push(::stackable_versioned::ChangedValue {
                 json_path: __sv_quux_path,
-                value: ::serde_yaml::to_value(&__sv_foospec.quux).unwrap(),
+                value: ::serde_json::to_value(&__sv_foospec.quux).unwrap(),
                 downgraded_value: ::core::option::Option::None,
             });
-        let __sv_bar_value = ::serde_yaml::to_value(&__sv_foospec.bar).unwrap();
+        let __sv_bar_value = ::serde_json::to_value(&__sv_foospec.bar).unwrap();
         let mut spec = Self {
             bah: u64_to_u32(__sv_foospec.bar),
             qux: __sv_foospec.baz.into(),
@@ -236,7 +232,7 @@ where
                 json_path: __sv_bar_path,
                 value: __sv_bar_value,
                 downgraded_value: ::core::option::Option::Some(
-                    ::serde_yaml::to_value(&spec.bah).unwrap(),
+                    ::serde_json::to_value(&spec.bah).unwrap(),
                 ),
             });
         spec

@@ -234,7 +234,7 @@ where
             for ::stackable_versioned::ChangedValue { json_path, value, .. } in upgrades {
                 match json_path {
                     json_path if json_path == __sv_rest_catalog_uri_path => {
-                        spec.rest_catalog_uri = ::serde_yaml::from_value(value).unwrap();
+                        spec.rest_catalog_uri = ::serde_json::from_value(value).unwrap();
                     }
                     _ => unreachable!(),
                 }
@@ -267,7 +267,7 @@ where
         upgrades
             .push(::stackable_versioned::ChangedValue {
                 json_path: __sv_rest_catalog_uri_path,
-                value: ::serde_yaml::to_value(&__sv_icebergconnector.rest_catalog_uri)
+                value: ::serde_json::to_value(&__sv_icebergconnector.rest_catalog_uri)
                     .unwrap(),
                 downgraded_value: ::core::option::Option::None,
             });

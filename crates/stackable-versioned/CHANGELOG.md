@@ -25,7 +25,9 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Fix `From` impls of enum variants with multiple unnamed fields ([#YYYY]).
-- Use the configured `serde_yaml` crate path when applying tracked values ([#ZZZZ]).
+- BREAKING: Store tracked values as `serde_json::Value` instead of `serde_yaml::Value`. Tracked
+  enum values were serialized as YAML tags, which failed to deserialize after a roundtrip through
+  the JSON status ([#ZZZZ]).
 
 [#1284]: https://github.com/stackabletech/operator-rs/pull/1284
 [#1285]: https://github.com/stackabletech/operator-rs/pull/1285

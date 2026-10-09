@@ -306,7 +306,7 @@ impl VersionedField {
             Direction::Downgrade => {
                 let next_change = changes.get_expect(&next_version.inner);
 
-                let serde_yaml_path = &*mod_gen_ctx.crates.serde_yaml;
+                let serde_json_path = &*mod_gen_ctx.crates.serde_json;
                 let versioned_path = &*mod_gen_ctx.crates.versioned;
 
                 match next_change {
@@ -318,7 +318,7 @@ impl VersionedField {
                         Some(quote! {
                             upgrades.push(#versioned_path::ChangedValue {
                                 json_path: #json_path_ident,
-                                value: #serde_yaml_path::to_value(&#from_struct_ident.#ident).unwrap(),
+                                value: #serde_json_path::to_value(&#from_struct_ident.#ident).unwrap(),
                                 downgraded_value: ::core::option::Option::None,
                             });
                         })
@@ -351,7 +351,7 @@ impl VersionedField {
                 to_ident,
                 ..
             } if next_change.is_type_change() => {
-                let serde_yaml_path = &*mod_gen_ctx.crates.serde_yaml;
+                let serde_json_path = &*mod_gen_ctx.crates.serde_json;
                 let value_ident = to_ident.tracked_value_ident();
 
                 let field_ident = match direction {
@@ -360,7 +360,7 @@ impl VersionedField {
                 };
 
                 Some(quote! {
-                    let #value_ident = #serde_yaml_path::to_value(&#from_struct_ident.#field_ident).unwrap();
+                    let #value_ident = #serde_json_path::to_value(&#from_struct_ident.#field_ident).unwrap();
                 })
             }
             _ => None,
@@ -383,7 +383,7 @@ impl VersionedField {
             Direction::Downgrade => {
                 let next_change = changes.get_expect(&next_version.inner);
 
-                let serde_yaml_path = &*mod_gen_ctx.crates.serde_yaml;
+                let serde_json_path = &*mod_gen_ctx.crates.serde_json;
                 let versioned_path = &*mod_gen_ctx.crates.versioned;
 
                 match next_change {
@@ -400,7 +400,7 @@ impl VersionedField {
                                 json_path: #json_path_ident,
                                 value: #value_ident,
                                 downgraded_value: ::core::option::Option::Some(
-                                    #serde_yaml_path::to_value(&spec.#from_ident).unwrap()
+                                    #serde_json_path::to_value(&spec.#from_ident).unwrap()
                                 ),
                             });
                         })
@@ -426,7 +426,7 @@ impl VersionedField {
         match direction {
             Direction::Upgrade => {
                 let next_change = changes.get_expect(&next_version.inner);
-                let serde_yaml_path = &*mod_gen_ctx.crates.serde_yaml;
+                let serde_json_path = &*mod_gen_ctx.crates.serde_json;
 
                 match next_change {
                     ItemStatus::Addition { ident, .. } => {
@@ -434,21 +434,24 @@ impl VersionedField {
 
                         Some(quote! {
                             json_path if json_path == #json_path_ident => {
-                                spec.#ident = #serde_yaml_path::from_value(value).unwrap();
+                                spec.#ident = #serde_json_path::from_value(value).unwrap();
                             },
                         })
                     }
                     // The tracked value is only applied if the field still contains the value it
                     // was downgraded to. Otherwise, a user changed the field in the older version
                     // and that change takes precedence over the tracked value.
+                    //
+                    // A downgraded value of null is serialized as `downgradedValue: null`, which is
+                    // deserialized as None. As such, a missing downgraded value is treated as null.
                     ItemStatus::Change { to_ident, .. } if next_change.is_type_change() => {
                         let json_path_ident = to_ident.json_path_ident();
                         let value_ident = to_ident.tracked_value_ident();
 
                         Some(quote! {
                             json_path if json_path == #json_path_ident => {
-                                if downgraded_value.as_ref() == ::core::option::Option::Some(&#value_ident) {
-                                    spec.#to_ident = #serde_yaml_path::from_value(value).unwrap();
+                                if downgraded_value.unwrap_or_default() == #value_ident {
+                                    spec.#to_ident = #serde_json_path::from_value(value).unwrap();
                                 }
                             },
                         })
