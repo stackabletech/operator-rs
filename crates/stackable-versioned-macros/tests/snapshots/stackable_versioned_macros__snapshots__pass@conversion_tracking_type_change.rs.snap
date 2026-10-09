@@ -1,7 +1,7 @@
 ---
 source: crates/stackable-versioned-macros/src/lib.rs
 expression: formatted
-input_file: crates/stackable-versioned-macros/tests/inputs/pass/conversion_tracking.rs
+input_file: crates/stackable-versioned-macros/tests/inputs/pass/conversion_tracking_type_change.rs
 ---
 #[automatically_derived]
 pub(crate) mod v1alpha1 {
@@ -15,7 +15,8 @@ pub(crate) mod v1alpha1 {
         status = FooStatusWithChangedValues
     )]
     pub struct FooSpec {
-        pub baz: bool,
+        pub bah: u16,
+        pub qux: bool,
     }
 }
 #[automatically_derived]
@@ -60,15 +61,24 @@ where
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let __sv_bah_path = ::stackable_versioned::jthong_path(parent, "bah");
+        let __sv_bah_value = ::serde_yaml::to_value(&__sv_foospec.bah).unwrap();
         let mut spec = Self {
-            bah: ::std::default::Default::default(),
-            baz: __sv_foospec.baz.into(),
+            bah: __sv_foospec.bah.into(),
+            qux: __sv_foospec.qux.into(),
         };
         if let Some(upgrades) = status.changes().upgrades.remove(&"v1beta1".to_owned()) {
-            for ::stackable_versioned::ChangedValue { json_path, value, .. } in upgrades {
+            for ::stackable_versioned::ChangedValue {
+                json_path,
+                value,
+                downgraded_value,
+            } in upgrades {
                 match json_path {
                     json_path if json_path == __sv_bah_path => {
-                        spec.bah = ::serde_yaml::from_value(value).unwrap();
+                        if downgraded_value.as_ref()
+                            == ::core::option::Option::Some(&__sv_bah_value)
+                        {
+                            spec.bah = ::serde_yaml::from_value(value).unwrap();
+                        }
                     }
                     _ => unreachable!(),
                 }
@@ -89,6 +99,11 @@ where
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let __sv_bah_path = ::stackable_versioned::jthong_path(parent, "bah");
+        let __sv_bah_value = ::serde_yaml::to_value(&__sv_foospec.bah).unwrap();
+        let mut spec = Self {
+            bah: u32_to_u16(__sv_foospec.bah),
+            qux: __sv_foospec.qux.into(),
+        };
         let upgrades = status
             .changes()
             .upgrades
@@ -97,12 +112,11 @@ where
         upgrades
             .push(::stackable_versioned::ChangedValue {
                 json_path: __sv_bah_path,
-                value: ::serde_yaml::to_value(&__sv_foospec.bah).unwrap(),
-                downgraded_value: ::core::option::Option::None,
+                value: __sv_bah_value,
+                downgraded_value: ::core::option::Option::Some(
+                    ::serde_yaml::to_value(&spec.bah).unwrap(),
+                ),
             });
-        let mut spec = Self {
-            baz: __sv_foospec.baz.into(),
-        };
         spec
     }
 }
@@ -118,8 +132,8 @@ pub(crate) mod v1beta1 {
         status = FooStatusWithChangedValues
     )]
     pub struct FooSpec {
-        pub bah: usize,
-        pub baz: bool,
+        pub bah: u32,
+        pub qux: bool,
     }
 }
 #[automatically_derived]
@@ -163,10 +177,35 @@ where
         parent: &str,
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
+        let __sv_bar_path = ::stackable_versioned::jthong_path(parent, "bar");
+        let __sv_quux_path = ::stackable_versioned::jthong_path(parent, "quux");
+        let __sv_bar_value = ::serde_yaml::to_value(&__sv_foospec.bah).unwrap();
         let mut spec = Self {
             bar: __sv_foospec.bah.into(),
-            baz: __sv_foospec.baz.into(),
+            baz: __sv_foospec.qux.into(),
+            quux: ::std::default::Default::default(),
         };
+        if let Some(upgrades) = status.changes().upgrades.remove(&"v1".to_owned()) {
+            for ::stackable_versioned::ChangedValue {
+                json_path,
+                value,
+                downgraded_value,
+            } in upgrades {
+                match json_path {
+                    json_path if json_path == __sv_bar_path => {
+                        if downgraded_value.as_ref()
+                            == ::core::option::Option::Some(&__sv_bar_value)
+                        {
+                            spec.bar = ::serde_yaml::from_value(value).unwrap();
+                        }
+                    }
+                    json_path if json_path == __sv_quux_path => {
+                        spec.quux = ::serde_yaml::from_value(value).unwrap();
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
         spec
     }
 }
@@ -177,10 +216,29 @@ where
 {
     fn tracking_from(__sv_foospec: v1::FooSpec, status: &mut S, parent: &str) -> Self {
         use ::stackable_versioned::TrackingInto as _;
+        let __sv_bar_path = ::stackable_versioned::jthong_path(parent, "bar");
+        let __sv_quux_path = ::stackable_versioned::jthong_path(parent, "quux");
+        let upgrades = status.changes().upgrades.entry("v1".to_owned()).or_default();
+        upgrades
+            .push(::stackable_versioned::ChangedValue {
+                json_path: __sv_quux_path,
+                value: ::serde_yaml::to_value(&__sv_foospec.quux).unwrap(),
+                downgraded_value: ::core::option::Option::None,
+            });
+        let __sv_bar_value = ::serde_yaml::to_value(&__sv_foospec.bar).unwrap();
         let mut spec = Self {
-            bah: __sv_foospec.bar.into(),
-            baz: __sv_foospec.baz.into(),
+            bah: u64_to_u32(__sv_foospec.bar),
+            qux: __sv_foospec.baz.into(),
         };
+        let upgrades = status.changes().upgrades.entry("v1".to_owned()).or_default();
+        upgrades
+            .push(::stackable_versioned::ChangedValue {
+                json_path: __sv_bar_path,
+                value: __sv_bar_value,
+                downgraded_value: ::core::option::Option::Some(
+                    ::serde_yaml::to_value(&spec.bah).unwrap(),
+                ),
+            });
         spec
     }
 }
@@ -196,8 +254,9 @@ pub(crate) mod v1 {
         status = FooStatusWithChangedValues
     )]
     pub struct FooSpec {
-        pub bar: usize,
+        pub bar: u64,
         pub baz: bool,
+        pub quux: String,
     }
 }
 #[automatically_derived]
@@ -508,8 +567,6 @@ fn FooSpec_roundtrip_up_down() {
 #[serde(rename_all = "camelCase")]
 pub struct FooStatusWithChangedValues {
     pub changed_values: ::stackable_versioned::ChangedValues,
-    #[serde(flatten)]
-    pub status: FooStatus,
 }
 #[automatically_derived]
 impl ::stackable_versioned::TrackingStatus for FooStatusWithChangedValues {

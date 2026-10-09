@@ -61,10 +61,10 @@ where
         };
         if let Some(upgrades) = status.changes().upgrades.remove(&"v1alpha2".to_owned())
         {
-            for ::stackable_versioned::ChangedValue { json_path, value } in upgrades {
+            for ::stackable_versioned::ChangedValue { json_path, value, .. } in upgrades {
                 match json_path {
                     json_path if json_path == __sv_baz_baz_path => {
-                        spec.baz_baz = serde_yaml::from_value(value).unwrap();
+                        spec.baz_baz = ::serde_yaml::from_value(value).unwrap();
                     }
                     _ => unreachable!(),
                 }
@@ -90,6 +90,7 @@ where
             .push(::stackable_versioned::ChangedValue {
                 json_path: __sv_baz_baz_path,
                 value: ::serde_yaml::to_value(&__sv_bar.baz_baz).unwrap(),
+                downgraded_value: ::core::option::Option::None,
             });
         let mut spec = Self {
             bar_bar: __sv_bar.bar_bar.into(),

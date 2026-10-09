@@ -168,6 +168,13 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
                   "jsonPath": "$.gender",
                   "value": "Male"
                 }
+              ],
+              "v3": [
+                {
+                  "downgradedValue": "Male",
+                  "jsonPath": "$.gender",
+                  "value": "Male"
+                }
               ]
             }
           }
