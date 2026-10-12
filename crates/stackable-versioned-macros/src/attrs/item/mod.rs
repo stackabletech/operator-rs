@@ -8,7 +8,7 @@ use syn::{Attribute, Path, Type, spanned::Spanned};
 
 use crate::{
     codegen::{VersionDefinition, item::ItemStatus},
-    utils::ItemIdents,
+    utils::{ItemIdents, doc_comments::DocComments as _},
 };
 
 mod field;
@@ -223,9 +223,12 @@ impl CommonItemAttributes {
         let mut errors = Error::accumulator();
 
         for change in &self.changes {
-            if change.from_name.is_none() && change.from_type.is_none() {
+            if change.from_name.is_none()
+                && change.from_type.is_none()
+                && change.from_docs.is_none()
+            {
                 errors.push(Error::custom(
-                    "both `from_name` and `from_type` are unset. Is this `changed()` action needed?"
+                    "`from_name`, `from_type` and `from_docs` are unset. Is this `changed()` action needed?"
                 ).with_span(&change.since.span()));
             }
 
@@ -288,6 +291,26 @@ impl CommonItemAttributes {
 }
 
 impl CommonItemAttributes {
+    /// Returns a sparse map of the changed doc comments of the item, keyed by the version of the
+    /// change.
+    ///
+    /// Sparse in this context means that not every version is present as a key. Only versions
+    /// containing a doc change are included. This is explicitly different from
+    /// `VersionedField::changes` for which the code guarantees that there is an entry for all
+    /// versions.
+    //
+    // NOTE (@Techassi): Potentially roll this into the changeset below so that there will be a
+    // single sure of truth for field generation again.
+    pub fn changed_docs(&self) -> BTreeMap<Version, Vec<String>> {
+        self.changes
+            .iter()
+            .filter_map(|change| {
+                let docs = change.from_docs.as_deref()?;
+                Some((*change.since, docs.into_doc_comments()))
+            })
+            .collect()
+    }
+
     #[expect(clippy::too_many_lines)]
     pub fn into_changeset(
         self,
@@ -458,11 +481,13 @@ fn default_default_fn() -> SpannedValue<Path> {
 /// - `changed(since = "...", from_name = "...", from_type="...")`
 /// - `changed(since = "...", from_name = "...", from_type="...", upgrade_with = "...")`
 /// - `changed(since = "...", from_name = "...", from_type="...", downgrade_with = "...")`
+/// - `changed(since = "...", from_docs = "...")`
 #[derive(Clone, Debug, FromMeta)]
 pub struct ChangedAttributes {
     pub since: SpannedValue<Version>,
     pub from_name: Option<SpannedValue<String>>,
     pub from_type: Option<SpannedValue<Type>>,
+    pub from_docs: Option<SpannedValue<String>>,
     pub upgrade_with: Option<SpannedValue<Path>>,
     pub downgrade_with: Option<SpannedValue<Path>>,
 }
