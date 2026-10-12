@@ -490,8 +490,9 @@ mod utils;
 /// ### Changed Action
 ///
 /// This action indicates that an item is changed in a particular version. It
-/// combines renames and type changes into a single action. You can choose to
-/// change the name, change the type or do both. Available arguments are:
+/// combines renames, type changes and doc comment changes into a single action.
+/// You can choose to change the name, change the type, change the doc comment
+/// or combine multiple changes. Available arguments are:
 ///
 /// - `since` to indicate since which version the item is changed.
 /// - `from_name` to indicate from which previous name the field is renamed.
@@ -565,11 +566,10 @@ mod utils;
 /// #### Changed Docs
 ///
 /// The doc comments of an item can be changed using the `from_docs` argument.
-/// The doc comments attached to the item are used since the version of the
-/// change. All earlier versions use the doc comments provided via `from_docs`
-/// instead. This is especially useful to adjust the description of a field in
-/// the generated CRD schema without changing it for older versions. The
-/// argument can be used on its own or in combination with any other argument.
+/// The doc comments attached to the item are used after the version of the
+/// last relevant change. All earlier versions use the doc comments provided via
+/// `from_docs` instead. This is especially useful to adjust the description of
+/// a field in the generated CRD schema without changing it for older versions.
 ///
 /// ```
 /// # use stackable_versioned_macros::versioned;
@@ -596,7 +596,7 @@ mod utils;
 /// pub mod v1alpha1 {
 ///     use super::*;
 ///     pub struct Foo {
-///         /// The bar.                // 1
+///         /// The bar.            // 1
 ///         pub bar: usize,
 ///         pub baz: bool,
 ///     }
@@ -607,7 +607,7 @@ mod utils;
 /// pub mod v1beta1 {
 ///     use super::*;
 ///     pub struct Foo {
-///         /// The number of bars.     // 2
+///         /// The number of bars. // 2
 ///         pub bar: usize,
 ///         pub baz: bool,
 ///     }
