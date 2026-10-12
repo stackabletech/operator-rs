@@ -291,9 +291,17 @@ impl CommonItemAttributes {
 }
 
 impl CommonItemAttributes {
-    /// Returns the doc comments of the item before each change which provides `from_docs`, keyed
-    /// by the version of the change.
-    pub fn previous_docs(&self) -> BTreeMap<Version, Vec<String>> {
+    /// Returns a sparse map of the changed doc comments of the item, keyed by the version of the
+    /// change.
+    ///
+    /// Sparse in this context means that not every version is present as a key. Only versions
+    /// containing a doc change are included. This is explicitly different from
+    /// `VersionedField::changes` for which the code guarantees that there is an entry for all
+    /// versions.
+    //
+    // NOTE (@Techassi): Potentially roll this into the changeset below so that there will be a
+    // single sure of truth for field generation again.
+    pub fn changed_docs(&self) -> BTreeMap<Version, Vec<String>> {
         self.changes
             .iter()
             .filter_map(|change| {

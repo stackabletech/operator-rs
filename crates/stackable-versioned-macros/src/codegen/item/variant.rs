@@ -20,7 +20,7 @@ use crate::{
 
 pub struct VersionedVariant {
     pub original_attributes: Vec<Attribute>,
-    pub previous_docs: BTreeMap<Version, Vec<String>>,
+    pub changed_docs: BTreeMap<Version, Vec<String>>,
     pub changes: Option<BTreeMap<Version, ItemStatus>>,
     pub idents: VariantIdents,
     pub fields: Fields,
@@ -40,12 +40,12 @@ impl VersionedVariant {
             attrs: Vec::new(),
             bang_token: Not([Span::call_site()]),
         });
-        let previous_docs = variant_attributes.common.previous_docs();
+        let changed_docs = variant_attributes.common.changed_docs();
         let changes = variant_attributes.common.into_changeset(&idents, ty);
 
         Ok(Self {
             original_attributes: variant_attributes.attrs,
-            previous_docs,
+            changed_docs,
             fields: variant.fields,
             idents,
             changes,
@@ -68,7 +68,7 @@ impl VersionedVariant {
     pub fn generate_for_container(&self, version: &VersionDefinition) -> Option<TokenStream> {
         let attributes = generate_attributes(
             &self.original_attributes,
-            &self.previous_docs,
+            &self.changed_docs,
             &version.inner,
         );
         let fields = &self.fields;

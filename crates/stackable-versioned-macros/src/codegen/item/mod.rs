@@ -20,12 +20,12 @@ pub use variant::*;
 /// comments are replaced by the docs which are valid in `version`.
 pub fn generate_attributes(
     original_attributes: &[Attribute],
-    previous_docs: &BTreeMap<Version, Vec<String>>,
+    changed_docs: &BTreeMap<Version, Vec<String>>,
     version: &Version,
 ) -> TokenStream {
     // The docs valid in this version are the previous docs of the closest change after this
     // version. If there is no such change, the original docs are still valid.
-    let Some((_, docs)) = previous_docs.up_bound(Bound::Excluded(version)) else {
+    let Some((_, docs)) = changed_docs.up_bound(Bound::Excluded(version)) else {
         return quote! { #(#original_attributes)* };
     };
 
