@@ -1751,8 +1751,6 @@ spec:
                           - required:
                             - fixed
                           - required:
-                            - managed
-                          - required:
                             - custom
                           properties:
                             custom:
@@ -1768,9 +1766,6 @@ spec:
                                   type: integer
                               required:
                               - count
-                              type: object
-                            managed:
-                              description: Use a fully managed, auto-scaled number of replicas.
                               type: object
                           type: object
                       required:

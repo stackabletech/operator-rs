@@ -288,9 +288,11 @@ pub enum Replicas {
     // with the shape of an object AND primitive types, like a u16 in this case.
     Fixed { count: u16 },
 
-    /// Use a fully managed, auto-scaled number of replicas.
-    Managed {},
-
+    // NOTE (@Techassi): Commented out for now, because fully managed autoscaling is tricky and will
+    // only come later.
+    // /// Use a fully managed, auto-scaled number of replicas.
+    // Managed {},
+    //
     /// Use a auto-scaled number of replicas managed by external/custom mechanisms, e.g. HPA.
     Custom {},
 }
@@ -308,7 +310,10 @@ impl From<Replicas> for Option<u16> {
     fn from(replicas: Replicas) -> Self {
         match replicas {
             Replicas::Fixed { count } => Some(count),
-            Replicas::Managed {} => None,
+            // NOTE (@Techassi): Commented out for now, because fully managed autoscaling is tricky and will
+            // only come later.
+            // Replicas::Managed {} => None,
+
             // FIXME (@Techassi): Deal with this (we need fallible conversions or we need to support
             // tracking type changes). Alternatively, we could map this to None as well, but that
             // would be a lossy conversion.
