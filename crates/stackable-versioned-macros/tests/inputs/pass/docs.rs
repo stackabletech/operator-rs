@@ -18,7 +18,7 @@ use stackable_versioned::versioned;
 // ---
 mod versioned {
     /// Test
-    #[derive(Default)]
+    #[derive(Default, serde::Deserialize)]
     struct Foo {
         /// This field is available in every version (so far).
         foo: String,
@@ -48,7 +48,9 @@ mod versioned {
                 "#
             )
         )]
+        // Those must be preserved.
         #[doc(alias = "grault")]
+        #[serde(rename = "corge")]
         corge: String,
 
         /// The docs of this field changed in v1, while it was renamed in v1beta1.

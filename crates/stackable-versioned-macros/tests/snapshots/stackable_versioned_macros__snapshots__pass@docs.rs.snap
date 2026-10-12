@@ -7,7 +7,7 @@ input_file: crates/stackable-versioned-macros/tests/inputs/pass/docs.rs
 mod v1alpha1 {
     use super::*;
     /// Test
-    #[derive(Default)]
+    #[derive(Default, serde::Deserialize)]
     pub struct Foo {
         /// This field is available in every version (so far).
         pub foo: String,
@@ -15,16 +15,17 @@ mod v1alpha1 {
         pub bar: String,
         /// This is will keep changing over time.
         pub qoox: String,
-        ///These are the docs in v1alpha1.
+        /// These are the docs in v1alpha1.
         #[doc(alias = "grault")]
+        #[serde(rename = "corge")]
         pub corge: String,
-        ///These are the docs before v1.
+        /// These are the docs before v1.
         pub waldo: String,
     }
     /// Test
     #[derive(Default)]
     pub enum Bar {
-        ///These are the docs before v1.
+        /// These are the docs before v1.
         #[default]
         Baz,
     }
@@ -107,11 +108,11 @@ impl ::core::convert::From<v1beta1::Bar> for v1alpha1::Bar {
 #[automatically_derived]
 mod v1beta1 {
     use super::*;
-    ///Additional docs for this version which are purposefully long to
-    ///show how manual line wrapping works. \
-    ///Multi-line docs are also supported, as per regular doc-comments.
+    /// Additional docs for this version which are purposefully long to
+    /// show how manual line wrapping works. \
+    /// Multi-line docs are also supported, as per regular doc-comments.
     /// Test
-    #[derive(Default)]
+    #[derive(Default, serde::Deserialize)]
     pub struct Foo {
         /// This field is available in every version (so far).
         pub foo: String,
@@ -122,21 +123,22 @@ mod v1beta1 {
         pub baz: String,
         /// This is will keep changing over time.
         pub qaax: String,
-        ///These are the docs from v1beta1 until v1.
+        /// These are the docs from v1beta1 until v1.
         ///
-        ///Multi-line docs are also supported.
+        /// Multi-line docs are also supported.
         #[doc(alias = "grault")]
+        #[serde(rename = "corge")]
         pub corge: String,
-        ///These are the docs before v1.
+        /// These are the docs before v1.
         pub fred: String,
     }
-    ///Additional docs for this version which are purposefully long to
-    ///show how manual line wrapping works. \
-    ///Multi-line docs are also supported, as per regular doc-comments.
+    /// Additional docs for this version which are purposefully long to
+    /// show how manual line wrapping works. \
+    /// Multi-line docs are also supported, as per regular doc-comments.
     /// Test
     #[derive(Default)]
     pub enum Bar {
-        ///These are the docs before v1.
+        /// These are the docs before v1.
         #[default]
         Baz,
     }
@@ -199,7 +201,7 @@ impl ::core::convert::From<v1beta2::Bar> for v1beta1::Bar {
 mod v1beta2 {
     use super::*;
     /// Test
-    #[derive(Default)]
+    #[derive(Default, serde::Deserialize)]
     pub struct Foo {
         /// This field is available in every version (so far).
         pub foo: String,
@@ -210,18 +212,19 @@ mod v1beta2 {
         pub baz: String,
         /// This is will keep changing over time.
         pub qaax: String,
-        ///These are the docs from v1beta1 until v1.
+        /// These are the docs from v1beta1 until v1.
         ///
-        ///Multi-line docs are also supported.
+        /// Multi-line docs are also supported.
         #[doc(alias = "grault")]
+        #[serde(rename = "corge")]
         pub corge: String,
-        ///These are the docs before v1.
+        /// These are the docs before v1.
         pub fred: String,
     }
     /// Test
     #[derive(Default)]
     pub enum Bar {
-        ///These are the docs before v1.
+        /// These are the docs before v1.
         #[default]
         Baz,
     }
@@ -284,7 +287,7 @@ impl ::core::convert::From<v1::Bar> for v1beta2::Bar {
 mod v1 {
     use super::*;
     /// Test
-    #[derive(Default)]
+    #[derive(Default, serde::Deserialize)]
     pub struct Foo {
         /// This field is available in every version (so far).
         pub foo: String,
@@ -295,10 +298,11 @@ mod v1 {
         pub baz: String,
         /// This is will keep changing over time.
         pub quux: String,
-        ///These are the docs from v1beta1 until v1.
+        /// These are the docs from v1beta1 until v1.
         ///
-        ///Multi-line docs are also supported.
+        /// Multi-line docs are also supported.
         #[doc(alias = "grault")]
+        #[serde(rename = "corge")]
         pub corge: String,
         /// The docs of this field changed in v1, while it was renamed in v1beta1.
         pub fred: String,
@@ -369,7 +373,7 @@ impl ::core::convert::From<v2::Bar> for v1::Bar {
 mod v2 {
     use super::*;
     /// Test
-    #[derive(Default)]
+    #[derive(Default, serde::Deserialize)]
     pub struct Foo {
         /// This field is available in every version (so far).
         pub foo: String,
@@ -382,6 +386,7 @@ mod v2 {
         pub quux: String,
         /// The docs of this field changed in v1beta1 and v2.
         #[doc(alias = "grault")]
+        #[serde(rename = "corge")]
         pub corge: String,
         /// The docs of this field changed in v1, while it was renamed in v1beta1.
         pub fred: String,
