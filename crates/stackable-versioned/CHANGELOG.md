@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-12
+
 ### Added
 
 - Add `#[versioned(hint(map))]` to provide a hint for map types during conversion ([#1285]).
