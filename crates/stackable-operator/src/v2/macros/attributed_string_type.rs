@@ -767,7 +767,7 @@ mod tests {
     }
 
     #[test]
-    fn test_attributed_string_type_json_schema_without_constaints() {
+    fn test_attributed_string_type_json_schema_without_constraints() {
         type T = JsonSchemaWithoutConstraintsTest;
 
         T::test_example();

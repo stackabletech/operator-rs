@@ -132,7 +132,7 @@ pub struct ResolvedProductImage {
 
 /// Kubernetes' supported image pull policies.
 ///
-/// Our product image selection choses the policy automatically based on two factors:
+/// Our product image selection chooses the policy automatically based on two factors:
 ///
 /// - If the image pull policy is explicitly set by the user
 /// - If the used Stackable version is considered floating/the user opted for

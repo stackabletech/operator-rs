@@ -14,15 +14,30 @@ pub struct SecurityContextBuilder {
 impl SecurityContextBuilder {
     /// Construct a new [`SecurityContextBuilder`] that is pre-filled with Stackable's defaults.
     ///
-    /// We currently don't have any defaults we set.
+    /// The defaults are:
     ///
-    /// We intentionally don't set `runAsNonRoot`, as we set that in
+    /// * `allowPrivilegeEscalation: false`
+    /// * `capabilities.drop: [ALL]`
+    ///
+    /// Neither field exists on [`PodSecurityContext`],
+    /// so both have to be set on every container to take effect.
+    ///
+    /// We intentionally don't set `runAsNonRoot` or `seccompProfile`, as we set those in
     /// [`PodSecurityContextBuilder::with_stackable_defaults`] already and don't want to confuse
-    /// users by setting it on the Pod and container.
+    /// users by setting them on the Pod and container.
     pub fn with_stackable_defaults() -> Self {
-        Self {
+        let mut builder = Self {
             security_context: SecurityContext::default(),
-        }
+        };
+
+        builder
+            .allow_privilege_escalation(false)
+            .capabilities(Capabilities {
+                drop: Some(vec!["ALL".to_owned()]),
+                ..Capabilities::default()
+            });
+
+        builder
     }
 
     pub fn allow_privilege_escalation(&mut self, value: bool) -> &mut Self {
@@ -175,6 +190,10 @@ impl PodSecurityContextBuilder {
     /// Currently the defaults are:
     ///
     /// * `runAsNonRoot: true`
+    /// * `seccompProfile.type: RuntimeDefault`
+    ///
+    /// `seccompProfile` is set here rather than per container so that it also covers containers
+    /// built elsewhere.
     pub fn with_stackable_defaults() -> Self {
         // We are using the builder functions to ensure that builder functions exist to override these settings.
         let mut builder = Self {
@@ -183,6 +202,10 @@ impl PodSecurityContextBuilder {
 
         // Reason: Running as root is bad
         builder.run_as_non_root(true);
+
+        // Reason: The runtime's default profile blocks dangerous syscalls without breaking
+        // ordinary applications.
+        builder.seccomp_profile_type("RuntimeDefault");
 
         builder
     }
@@ -435,6 +458,44 @@ mod tests {
                 run_as_non_root: Some(true),
                 run_as_user: Some(1001),
                 run_as_group: Some(1001),
+                capabilities: Some(Capabilities {
+                    drop: Some(vec!["ALL".to_owned()]),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn security_context_builder_defaults() {
+        let context = SecurityContextBuilder::with_stackable_defaults().build();
+
+        assert_eq!(
+            context,
+            SecurityContext {
+                allow_privilege_escalation: Some(false),
+                capabilities: Some(Capabilities {
+                    drop: Some(vec!["ALL".to_owned()]),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn pod_security_context_builder_defaults() {
+        let context = PodSecurityContextBuilder::with_stackable_defaults().build();
+
+        assert_eq!(
+            context,
+            PodSecurityContext {
+                run_as_non_root: Some(true),
+                seccomp_profile: Some(SeccompProfile {
+                    type_: "RuntimeDefault".to_owned(),
+                    ..Default::default()
+                }),
                 ..Default::default()
             }
         );
