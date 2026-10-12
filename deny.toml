@@ -80,17 +80,23 @@ private = { ignore = true }
 [[licenses.clarify]]
 name = "ring"
 expression = "LicenseRef-ring"
-license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 },
+]
 
 [[licenses.clarify]]
 name = "webpki"
 expression = "LicenseRef-webpki"
-license-files = [{ path = "LICENSE", hash = 0x001c7e6c }]
+license-files = [
+    { path = "LICENSE", hash = 0x001c7e6c },
+]
 
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
-allow-git = ["https://github.com/kube-rs/kube-rs"]
+allow-git = [
+    "https://github.com/kube-rs/kube-rs",
+]
 
 [sources.allow-org]
 github = ["stackabletech"]
