@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.120.0] - 2026-10-12
+
 ### Added
 
 - Add `crd::openlineage` module with the `OpenLineageConnection` CRD ([#1250]).
