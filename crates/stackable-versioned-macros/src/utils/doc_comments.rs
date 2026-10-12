@@ -12,8 +12,10 @@ impl DocComments for &str {
             .trim()
             .lines()
             // Trim the leading and trailing whitespace on each line that can be
-            // introduced when the developer indents multi-line comments.
-            .map(|line| line.trim().to_owned())
+            // introduced when the developer indents multi-line comments. We then
+            // re-add a leading space to be in line with all other, non-generated
+            // dod comments.
+            .map(|line| format!(" {line}", line = line.trim()))
             .collect()
     }
 }
