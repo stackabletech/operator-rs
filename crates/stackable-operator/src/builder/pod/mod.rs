@@ -391,7 +391,7 @@ impl PodBuilder {
     ///           storageClassName: listeners.stackable.tech
     ///     name: listener
     /// ",
-    ///     serde_yaml::to_string(&pod).unwrap()
+    ///     yaml_serde::to_string(&pod).unwrap()
     /// )
     /// ```
     pub fn add_listener_volume_by_listener_class(
@@ -481,7 +481,7 @@ impl PodBuilder {
     ///           storageClassName: listeners.stackable.tech
     ///     name: listener
     /// ",
-    ///     serde_yaml::to_string(&pod).unwrap()
+    ///     yaml_serde::to_string(&pod).unwrap()
     /// )
     /// ```
     pub fn add_listener_volume_by_listener_name(

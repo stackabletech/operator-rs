@@ -260,7 +260,7 @@ mod tests {
         )]
         #[kube(group = "test", version = "v1", kind = "TrinoCluster", namespaced)]
         pub struct TrinoClusterSpec {}
-        let trino: TrinoCluster = serde_yaml::from_str(
+        let trino: TrinoCluster = yaml_serde::from_str(
             "
             apiVersion: test/v1
             kind: TrinoCluster

@@ -27,7 +27,7 @@
 //!     opa: Option<OpaConfig>,
 //! }
 //!
-//! let cluster: TestCluster = serde_yaml::from_str(
+//! let cluster: TestCluster = yaml_serde::from_str(
 //!     "
 //!     apiVersion: test.stackable.tech/v1alpha1
 //!     kind: TestCluster
@@ -353,7 +353,7 @@ mod tests {
     }
 
     fn build_test_cluster() -> TestCluster {
-        serde_yaml::from_str(&format!(
+        yaml_serde::from_str(&format!(
             "
             apiVersion: test/v1
             kind: TestCluster
