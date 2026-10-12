@@ -6,13 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add `from_docs` argument to the `changed()` action to provide the previous doc comments of an item ([#1293]).
 - Add `#[versioned(hint(map))]` to provide a hint for map types during conversion ([#1285]).
 - Emit generics in plain `From` impl ([#1284]).
-- Add `from_docs` argument to the `changed()` action to provide the previous doc comments of an item ([#XXXX]).
 
 [#1284]: https://github.com/stackabletech/operator-rs/pull/1284
 [#1285]: https://github.com/stackabletech/operator-rs/pull/1285
-[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+[#1293]: https://github.com/stackabletech/operator-rs/pull/1293
 
 ## [0.11.1] - 2026-07-06
 
