@@ -32,15 +32,45 @@ pub mod versioned {
     #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct IcebergConnector {
-        metastore: Option<String>,
-
-        #[versioned(added(since = "v1alpha2"))]
-        rest_catalog_uri: Option<String>,
+        #[versioned(changed(
+            since = "v1alpha2",
+            from_name = "metastore",
+            from_type = "Option<String>"
+        ))]
+        catalog: IcebergCatalog,
     }
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
 pub struct TpchConnector {}
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum IcebergCatalog {
+    Rest { uri: String },
+    HiveMetastore { config_map: String },
+    UserProvided {},
+}
+
+// Before v1alpha2, only Hive metastores were supported. Other catalogs had to be configured by
+// users manually, so there is no way to represent a REST catalog in v1alpha1.
+impl From<IcebergCatalog> for Option<String> {
+    fn from(catalog: IcebergCatalog) -> Self {
+        match catalog {
+            IcebergCatalog::HiveMetastore { config_map } => Some(config_map),
+            IcebergCatalog::Rest { .. } | IcebergCatalog::UserProvided {} => None,
+        }
+    }
+}
+
+impl From<Option<String>> for IcebergCatalog {
+    fn from(metastore: Option<String>) -> Self {
+        match metastore {
+            Some(config_map) => Self::HiveMetastore { config_map },
+            None => Self::UserProvided {},
+        }
+    }
+}
 
 impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::CatalogSpec {
     fn roundtrip_test_data() -> Vec<Self> {
@@ -48,6 +78,11 @@ impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::CatalogSpe
             Self {
                 connector: v1alpha1::Connector::Iceberg(v1alpha1::IcebergConnector {
                     metastore: Some("hive".to_owned()),
+                }),
+            },
+            Self {
+                connector: v1alpha1::Connector::Iceberg(v1alpha1::IcebergConnector {
+                    metastore: None,
                 }),
             },
             Self {
@@ -60,18 +95,25 @@ impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::CatalogSpe
 impl stackable_versioned::test_utils::RoundtripTestData for v1alpha2::CatalogSpec {
     fn roundtrip_test_data() -> Vec<Self> {
         vec![
-            // The REST catalog URI doesn't exist in v1alpha1. It is tracked in the status and
-            // restored when upgrading again.
+            // The REST catalog can not be represented in v1alpha1. It is tracked in the status
+            // and restored when upgrading again.
             Self {
                 connector: v1alpha2::Connector::Iceberg(v1alpha2::IcebergConnector {
-                    metastore: None,
-                    rest_catalog_uri: Some("http://rest-catalog:8181".to_owned()),
+                    catalog: IcebergCatalog::Rest {
+                        uri: "http://rest-catalog:8181".to_owned(),
+                    },
                 }),
             },
             Self {
                 connector: v1alpha2::Connector::Iceberg(v1alpha2::IcebergConnector {
-                    metastore: Some("hive".to_owned()),
-                    rest_catalog_uri: None,
+                    catalog: IcebergCatalog::HiveMetastore {
+                        config_map: "hive".to_owned(),
+                    },
+                }),
+            },
+            Self {
+                connector: v1alpha2::Connector::Iceberg(v1alpha2::IcebergConnector {
+                    catalog: IcebergCatalog::UserProvided {},
                 }),
             },
             Self {
@@ -96,8 +138,11 @@ fn tracks_values_through_enum_variants() {
                 "spec": {
                     "connector": {
                         "iceberg": {
-                            "metastore": null,
-                            "restCatalogUri": "http://rest-catalog:8181"
+                            "catalog": {
+                                "rest": {
+                                    "uri": "http://rest-catalog:8181"
+                                }
+                            }
                         }
                     }
                 }
@@ -118,14 +163,19 @@ fn tracks_values_through_enum_variants() {
         .expect("there must be at least one object");
 
     assert_eq!(
-        object["spec"]["connector"]["iceberg"],
-        serde_json::json!({ "metastore": null })
+        object["spec"]["connector"]["iceberg"]["metastore"],
+        serde_json::Value::Null
     );
     assert_eq!(
         object["status"]["changedValues"]["upgrades"]["v1alpha2"],
         serde_json::json!([{
-            "jsonPath": "$.connector.Iceberg.rest_catalog_uri",
-            "value": "http://rest-catalog:8181"
+            "jsonPath": "$.connector.Iceberg.catalog",
+            "value": {
+                "rest": {
+                    "uri": "http://rest-catalog:8181"
+                }
+            },
+            "downgradedValue": null
         }])
     );
 }

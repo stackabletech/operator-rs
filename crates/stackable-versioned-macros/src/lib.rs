@@ -881,8 +881,8 @@ mod utils;
 ///
 /// <div class="warning">
 ///
-/// Currently, only tracking of **added** fields is supported. This will be
-/// expanded to removed fields, field type changes, and fields containing
+/// Currently, only tracking of **added** fields and **field type changes** is
+/// supported. This will be expanded to removed fields and fields containing
 /// collections in the future.
 ///
 /// </div>
@@ -927,6 +927,29 @@ mod utils;
 /// value for the `bar` field is applied and removed from the status afterwards.
 /// The final upgrade to `v1` will apply the tracked value for the field `baz`.
 /// Again, it is removed from the status afterwards.
+///
+/// #### Tracking Type Changes
+///
+/// Fields which changed their type via `changed(from_type = "...")` are tracked
+/// as well, because converting to the older type might lose data. Renaming a
+/// field without changing its type is lossless and is not tracked. In addition
+/// to the original value, the value the field was downgraded to is tracked:
+///
+/// ```yaml
+/// status:
+///   changedValues:
+///     upgrades:
+///       v1:
+///         - jsonPath: "$.gender"
+///           value: "It's complicated"
+///           downgradedValue: "Unknown"
+/// ```
+///
+/// Unlike added fields, the field also exists in the older version and can be
+/// changed by users there. When upgrading again, the tracked value is only
+/// applied if the field still contains the downgraded value. Otherwise, the
+/// change made by the user in the older version takes precedence and the
+/// tracked value is discarded.
 ///
 /// ### Tracking Nested Changes
 ///
