@@ -11,7 +11,7 @@ use crate::{
     codegen::{
         Direction, VersionDefinition,
         changes::{BTreeMapExt, ChangesetExt},
-        item::ItemStatus,
+        item::{ItemStatus, generate_attributes},
         module::ModuleGenerationContext,
     },
     utils::{ItemIdentExt, ItemIdents},
@@ -20,6 +20,7 @@ use crate::{
 #[derive(Debug)]
 pub struct VersionedField {
     pub original_attributes: Vec<Attribute>,
+    pub previous_docs: BTreeMap<Version, Vec<String>>,
     pub changes: Option<BTreeMap<Version, ItemStatus>>,
     pub idents: FieldIdents,
     pub hint: Option<Hint>,
@@ -45,6 +46,7 @@ impl VersionedField {
         })?;
         let idents = FieldIdents::from(ident);
 
+        let previous_docs = field_attributes.common.previous_docs();
         let changes = field_attributes
             .common
             .into_changeset(&idents, field.ty.clone());
@@ -53,6 +55,7 @@ impl VersionedField {
         Ok(Self {
             original_attributes: field_attributes.attrs,
             hint: field_attributes.hint,
+            previous_docs,
             ty: field.ty,
             changes,
             idents,
@@ -82,7 +85,11 @@ impl VersionedField {
     /// }
     /// ```
     pub fn generate_for_container(&self, version: &VersionDefinition) -> Option<TokenStream> {
-        let original_attributes = &self.original_attributes;
+        let attributes = generate_attributes(
+            &self.original_attributes,
+            &self.previous_docs,
+            &version.inner,
+        );
 
         #[allow(clippy::single_match_else)]
         match &self.changes {
@@ -106,13 +113,13 @@ impl VersionedField {
                     )
                 }) {
                     ItemStatus::Addition { ident, ty, .. } => Some(quote! {
-                        #(#original_attributes)*
+                        #attributes
                         pub #ident: #ty,
                     }),
                     ItemStatus::Change {
                         to_ident, to_type, ..
                     } => Some(quote! {
-                        #(#original_attributes)*
+                        #attributes
                         pub #to_ident: #to_type,
                     }),
                     ItemStatus::Deprecation {
@@ -133,7 +140,7 @@ impl VersionedField {
                         };
 
                         Some(quote! {
-                            #(#original_attributes)*
+                            #attributes
                             #deprecated_attr
                             pub #field_ident: #field_type,
                         })
@@ -149,7 +156,7 @@ impl VersionedField {
                         let deprecated_attr = previously_deprecated.then(|| quote! {#[deprecated]});
 
                         Some(quote! {
-                            #(#original_attributes)*
+                            #attributes
                             #deprecated_attr
                             pub #ident: #ty,
                         })
@@ -163,7 +170,7 @@ impl VersionedField {
                 let field_type = &self.ty;
 
                 Some(quote! {
-                    #(#original_attributes)*
+                    #attributes
                     pub #field_ident: #field_type,
                 })
             }

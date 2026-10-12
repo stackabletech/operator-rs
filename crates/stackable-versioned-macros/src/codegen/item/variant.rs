@@ -13,13 +13,14 @@ use crate::{
     codegen::{
         Direction, VersionDefinition,
         changes::{BTreeMapExt, ChangesetExt},
-        item::ItemStatus,
+        item::{ItemStatus, generate_attributes},
     },
     utils::ItemIdents,
 };
 
 pub struct VersionedVariant {
     pub original_attributes: Vec<Attribute>,
+    pub previous_docs: BTreeMap<Version, Vec<String>>,
     pub changes: Option<BTreeMap<Version, ItemStatus>>,
     pub idents: VariantIdents,
     pub fields: Fields,
@@ -39,10 +40,12 @@ impl VersionedVariant {
             attrs: Vec::new(),
             bang_token: Not([Span::call_site()]),
         });
+        let previous_docs = variant_attributes.common.previous_docs();
         let changes = variant_attributes.common.into_changeset(&idents, ty);
 
         Ok(Self {
             original_attributes: variant_attributes.attrs,
+            previous_docs,
             fields: variant.fields,
             idents,
             changes,
@@ -63,7 +66,11 @@ impl VersionedVariant {
 
     /// Generates tokens to be used in a container definition.
     pub fn generate_for_container(&self, version: &VersionDefinition) -> Option<TokenStream> {
-        let original_attributes = &self.original_attributes;
+        let attributes = generate_attributes(
+            &self.original_attributes,
+            &self.previous_docs,
+            &version.inner,
+        );
         let fields = &self.fields;
 
         #[allow(clippy::single_match_else)]
@@ -80,11 +87,11 @@ impl VersionedVariant {
                 )
             }) {
                 ItemStatus::Addition { ident, .. } => Some(quote! {
-                    #(#original_attributes)*
+                    #attributes
                     #ident #fields,
                 }),
                 ItemStatus::Change { to_ident, .. } => Some(quote! {
-                    #(#original_attributes)*
+                    #attributes
                     #to_ident #fields,
                 }),
                 ItemStatus::Deprecation { ident, note, .. } => {
@@ -103,7 +110,7 @@ impl VersionedVariant {
                     };
 
                     Some(quote! {
-                        #(#original_attributes)*
+                        #attributes
                         #deprecated_attr
                         #ident #fields,
                     })
@@ -118,7 +125,7 @@ impl VersionedVariant {
                     let deprecated_attr = previously_deprecated.then(|| quote! {#[deprecated]});
 
                     Some(quote! {
-                        #(#original_attributes)*
+                        #attributes
                         #deprecated_attr
                         #ident #fields,
                     })
@@ -132,7 +139,7 @@ impl VersionedVariant {
                 let ident = &self.idents.original;
 
                 Some(quote! {
-                    #(#original_attributes)*
+                    #attributes
                     #ident #fields,
                 })
             }

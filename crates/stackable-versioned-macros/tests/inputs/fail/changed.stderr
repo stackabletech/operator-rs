@@ -10,7 +10,7 @@ error: the previous name must not start with the deprecation prefix
 13 |             changed(since = "v1", from_name = "deprecated_baz"),
    |                                               ^^^^^^^^^^^^^^^^
 
-error: both `from_name` and `from_type` are unset. Is this `changed()` action needed?
+error: `from_name`, `from_type` and `from_docs` are unset. Is this `changed()` action needed?
   --> tests/inputs/fail/changed.rs:14:29
    |
 14 |             changed(since = "v2")
