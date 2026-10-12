@@ -38,6 +38,19 @@ ignore = [
     #
     # This can only be removed again if we decide to use a different crate.
     "RUSTSEC-2024-0436",
+
+    # https://rustsec.org/advisories/RUSTSEC-2024-0449
+    # The https://github.com/dtolnay/unsafe-libyaml repository was archived by
+    # its owner on 2024-03-25 and is read-only. The last release is 0.2.11
+    # (March 2024).
+    #
+    # `unsafe-libyaml` is a machine translation of libyaml's C code into unsafe
+    # Rust (c2rust). Bugs found in it will not be fixed upstream. It is used by
+    # `serde_yaml` (itself deprecated) and by forks such as `serde_yaml_ng`.
+    #
+    # This can only be removed again once we decide which alternative YAML crate we want to migrate
+    # to. Currently, we favor `serde-saphyr`.
+    "RUSTSEC-2024-0449",
 ]
 
 [bans]
@@ -67,23 +80,17 @@ private = { ignore = true }
 [[licenses.clarify]]
 name = "ring"
 expression = "LicenseRef-ring"
-license-files = [
-    { path = "LICENSE", hash = 0xbd0eed23 },
-]
+license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
 
 [[licenses.clarify]]
 name = "webpki"
 expression = "LicenseRef-webpki"
-license-files = [
-    { path = "LICENSE", hash = 0x001c7e6c },
-]
+license-files = [{ path = "LICENSE", hash = 0x001c7e6c }]
 
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
-allow-git = [
-    "https://github.com/kube-rs/kube-rs",
-]
+allow-git = ["https://github.com/kube-rs/kube-rs"]
 
 [sources.allow-org]
 github = ["stackabletech"]
