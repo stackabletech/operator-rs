@@ -20,6 +20,18 @@ impl DocComments for &str {
     }
 }
 
+impl DocComments for String {
+    fn into_doc_comments(self) -> Vec<String> {
+        self.as_str().into_doc_comments()
+    }
+}
+
+impl DocComments for &String {
+    fn into_doc_comments(self) -> Vec<String> {
+        self.as_str().into_doc_comments()
+    }
+}
+
 impl DocComments for Option<&str> {
     fn into_doc_comments(self) -> Vec<String> {
         self.map_or(vec![], DocComments::into_doc_comments)

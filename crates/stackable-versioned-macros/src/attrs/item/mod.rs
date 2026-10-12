@@ -298,7 +298,7 @@ impl CommonItemAttributes {
             .iter()
             .filter_map(|change| {
                 let docs = change.from_docs.as_deref()?;
-                Some((*change.since, docs.as_str().into_doc_comments()))
+                Some((*change.since, docs.into_doc_comments()))
             })
             .collect()
     }
