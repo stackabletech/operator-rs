@@ -15,3 +15,14 @@ where
         ))
     })
 }
+
+/// Deserialize a YAML string with recursive singleton maps instead of expecting custom tags.
+pub fn deserialize_from_yaml_with_singleton_map<'a, T>(
+    input: &'a str,
+) -> Result<T, serde_yaml::Error>
+where
+    T: serde::Deserialize<'a>,
+{
+    let deserializer = serde_yaml::Deserializer::from_str(input);
+    serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
+}

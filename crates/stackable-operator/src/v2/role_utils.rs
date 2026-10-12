@@ -18,8 +18,8 @@ use crate::{
         fragment::{self, FromFragment},
         merge::{self, Merge, merge},
     },
+    crd::role::GenericRoleConfig,
     k8s_openapi::{DeepMerge, api::core::v1::PodTemplateSpec},
-    role_utils::GenericRoleConfig,
     schemars::{self, JsonSchema},
     utils::crds::raw_object_schema,
     v2::env_overrides::EnvOverrides,
@@ -213,11 +213,13 @@ pub struct JavaCommonConfig {
     pub jvm_argument_overrides: JvmArgumentOverrides,
 }
 
-/// Variant of [`crate::role_utils::RoleGroup`] that is easier to work with
+/// Variant of [`RoleGroup`][role] that is easier to work with
 ///
 /// Differences are:
 /// * `config` is flattened.
 /// * The [`EnvOverrides`] in `env_overrides` is replaced with an [`EnvVarSet`].
+///
+/// [role]: crate::crd::role
 #[derive(Clone, Debug, PartialEq)]
 pub struct RoleGroupConfig<Config, CommonConfig, ConfigOverrides> {
     pub replicas: Option<u16>,
@@ -385,9 +387,9 @@ mod tests {
     use super::*;
     use crate::{
         config::{fragment::Fragment, merge::Merge},
+        crd::role::GenericRoleConfig,
         k8s_openapi::api::core::v1::PodTemplateSpec,
         kube::api::ObjectMeta,
-        role_utils::GenericRoleConfig,
         schemars::{self, JsonSchema},
         v2::{
             builder::pod::container::EnvVarName,
