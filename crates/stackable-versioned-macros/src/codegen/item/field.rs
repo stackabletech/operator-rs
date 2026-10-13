@@ -343,10 +343,13 @@ impl VersionedField {
         &self,
         direction: Direction,
         next_version: &VersionDefinition,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
     ) -> Option<TokenStream> {
         // If there are no changes for this field, there is also no need to generate a match arm
         // for applying a tracked value.
         let changes = self.changes.as_ref()?;
+
+        let yaml_serde_path = &*mod_gen_ctx.crates.yaml_serde;
 
         match direction {
             Direction::Upgrade => {
@@ -360,7 +363,7 @@ impl VersionedField {
 
                         Some(quote! {
                             json_path if json_path == #json_path_ident => {
-                                spec.#ident = yaml_serde::from_value(value).unwrap();
+                                spec.#ident = #yaml_serde_path::from_value(value).unwrap();
                             },
                         })
                     }

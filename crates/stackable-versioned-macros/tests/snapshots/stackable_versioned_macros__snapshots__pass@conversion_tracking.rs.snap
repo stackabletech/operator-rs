@@ -68,7 +68,7 @@ where
             for ::stackable_versioned::ChangedValue { json_path, value } in upgrades {
                 match json_path {
                     json_path if json_path == __sv_bah_path => {
-                        spec.bah = yaml_serde::from_value(value).unwrap();
+                        spec.bah = ::yaml_serde::from_value(value).unwrap();
                     }
                     _ => unreachable!(),
                 }
