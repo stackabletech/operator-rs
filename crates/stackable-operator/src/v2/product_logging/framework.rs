@@ -196,7 +196,7 @@ pub fn vector_container(
             .args(vec![format!(
                 "mkdir --parents {STACKABLE_LOG_DIR}/{VECTOR_STATE_DIR}\n\
                 # Vector will ignore SIGTERM (as PID != 1) and must be shut down by writing a shutdown trigger file\n\
-                vector & vector_pid=$!\n\
+                /stackable/bin/vector-with-env-var-interpolation & vector_pid=$!\n\
                 if [ ! -f \"{vector_control_directory}/{SHUTDOWN_FILE}\" ]; then\n\
                     mkdir -p {vector_control_directory}\n\
                     inotifywait -qq --event create {vector_control_directory};\n\
