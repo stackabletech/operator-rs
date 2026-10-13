@@ -72,7 +72,7 @@ mod tests {
 
     #[test]
     fn deserialize() {
-        let _: Group = serde_yaml::from_str("extensions.k8s.io").expect("group is valid");
+        let _: Group = yaml_serde::from_str("extensions.k8s.io").expect("group is valid");
     }
 
     #[test]
@@ -80,7 +80,7 @@ mod tests {
         let group = Group("extensions.k8s.io".into());
         assert_eq!(
             "extensions.k8s.io\n",
-            serde_yaml::to_string(&group).expect("group must serialize")
+            yaml_serde::to_string(&group).expect("group must serialize")
         );
     }
 }

@@ -25,7 +25,7 @@ pub struct DynamicValues {
 
     /// All other keys and values.
     #[serde(flatten)]
-    pub data: serde_yaml::Value,
+    pub data: yaml_serde::Value,
 }
 
 impl DynamicValues {
@@ -85,14 +85,14 @@ mod tests {
     #[rstest]
     fn deserialize(#[files("fixtures/helm/input-*.yaml")] path: PathBuf) {
         let contents = std::fs::read_to_string(path).unwrap();
-        let values: DynamicValues = serde_yaml::from_str(&contents).unwrap();
+        let values: DynamicValues = yaml_serde::from_str(&contents).unwrap();
         assert_eq!(values.labels().len(), 2);
     }
 
     #[rstest]
     fn serialize(#[files("fixtures/helm/input-required.yaml")] input: PathBuf) {
         let contents = std::fs::read_to_string(input).unwrap();
-        let mut values: DynamicValues = serde_yaml::from_str(&contents).unwrap();
+        let mut values: DynamicValues = yaml_serde::from_str(&contents).unwrap();
 
         values
             .labels_mut()

@@ -177,7 +177,7 @@ mod tests {
 
     #[test]
     fn minimal() {
-        let ldap = serde_yaml::from_str::<AuthenticationProvider>(
+        let ldap = yaml_serde::from_str::<AuthenticationProvider>(
             "
             hostname: my.ldap.server
             ",
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn with_bind_credentials() {
-        let _ldap = serde_yaml::from_str::<AuthenticationProvider>(
+        let _ldap = yaml_serde::from_str::<AuthenticationProvider>(
             "
             hostname: my.ldap.server
             port: 389

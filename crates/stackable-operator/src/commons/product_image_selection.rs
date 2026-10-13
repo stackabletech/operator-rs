@@ -760,7 +760,7 @@ mod tests {
         #[case] input: String,
         #[case] expected: ResolvedProductImage,
     ) {
-        let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
+        let product_image: ProductImage = yaml_serde::from_str(&input).expect("Illegal test input");
         let operator_version = operator_version.parse().expect("invalid operator version");
         let resolved_product_image = product_image
             .resolve(&image_name, &image_repository, &operator_version)
@@ -787,7 +787,7 @@ mod tests {
         "data did not match any variant of untagged enum ProductImageSelection"
     )]
     fn resolved_image_fail(#[case] input: String, #[case] expected: String) {
-        let err = serde_yaml::from_str::<ProductImage>(&input).expect_err("Must be error");
+        let err = yaml_serde::from_str::<ProductImage>(&input).expect_err("Must be error");
 
         assert_eq!(err.to_string(), expected);
     }

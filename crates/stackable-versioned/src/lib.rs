@@ -114,7 +114,7 @@ pub struct ChangedValue {
 
     /// The value to be used when upgrading or downgrading the custom resource.
     #[schemars(schema_with = "raw_object_schema")]
-    pub value: serde_yaml::Value,
+    pub value: yaml_serde::Value,
 }
 
 // TODO (@Techassi): Think about where this should live. Basically this already exists in
