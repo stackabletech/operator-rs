@@ -52,7 +52,7 @@ mod tests {
                   effect: "NoSchedule"
         "#;
 
-        serde_yaml::from_str::<Test>(input).expect("Failed to parse valid podOverride");
+        yaml_serde::from_str::<Test>(input).expect("Failed to parse valid podOverride");
     }
 
     #[test]
@@ -64,7 +64,7 @@ mod tests {
                 my-custom-label: super-important-label
         ";
 
-        serde_yaml::from_str::<Test>(input).expect("Failed to parse valid podOverride");
+        yaml_serde::from_str::<Test>(input).expect("Failed to parse valid podOverride");
     }
 
     #[test]
@@ -80,7 +80,7 @@ mod tests {
                     - "/dev/null"
         "#;
 
-        serde_yaml::from_str::<Test>(input).expect("Failed to parse valid podOverride");
+        yaml_serde::from_str::<Test>(input).expect("Failed to parse valid podOverride");
     }
 
     #[test]
@@ -104,7 +104,7 @@ mod tests {
                     claimName: nifi-jar
         "#;
 
-        serde_yaml::from_str::<Test>(input).expect("Failed to parse valid podOverride");
+        yaml_serde::from_str::<Test>(input).expect("Failed to parse valid podOverride");
     }
 
     #[test]
@@ -118,6 +118,6 @@ mod tests {
 
         // FIXME: Ideally we would require the names of the containers to be set. We had users using podOverrides
         // without setting the name of the container and wondering why it didn't work.
-        serde_yaml::from_str::<Test>(input).expect("Failed to parse valid podOverride");
+        yaml_serde::from_str::<Test>(input).expect("Failed to parse valid podOverride");
     }
 }

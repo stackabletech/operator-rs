@@ -47,7 +47,7 @@ mod tests {
     #[test]
     fn deserialize() {
         let _: ApiVersion =
-            serde_yaml::from_str("extensions.k8s.io/v1alpha1").expect("api version is valid");
+            yaml_serde::from_str("extensions.k8s.io/v1alpha1").expect("api version is valid");
     }
 
     #[test]
@@ -56,7 +56,7 @@ mod tests {
             ApiVersion::from_str("extensions.k8s.io/v1alpha1").expect("api version is valid");
         assert_eq!(
             "extensions.k8s.io/v1alpha1\n",
-            serde_yaml::to_string(&api_version).expect("api version must serialize")
+            yaml_serde::to_string(&api_version).expect("api version must serialize")
         );
     }
 }

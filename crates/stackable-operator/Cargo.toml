@@ -50,7 +50,7 @@ regex.workspace = true
 schemars.workspace = true
 semver = { workspace = true, features = ["serde"] }
 serde_json.workspace = true
-serde_yaml.workspace = true
+yaml_serde.workspace = true
 serde.workspace = true
 sha2.workspace = true
 snafu.workspace = true

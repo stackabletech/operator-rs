@@ -46,7 +46,7 @@ mod tests {
 
     #[test]
     fn deserialize() {
-        let _: Level = serde_yaml::from_str("alpha1").expect("level is valid");
+        let _: Level = yaml_serde::from_str("alpha1").expect("level is valid");
     }
 
     #[test]
@@ -54,7 +54,7 @@ mod tests {
         let api_version = Level::from_str("alpha1").expect("level is valid");
         assert_eq!(
             "alpha1\n",
-            serde_yaml::to_string(&api_version).expect("level must serialize")
+            yaml_serde::to_string(&api_version).expect("level must serialize")
         );
     }
 }

@@ -170,7 +170,7 @@ mod tests {
 
     #[test]
     fn test_minimal_example() {
-        let postgres_connection: PostgresqlConnection = serde_yaml::from_str(
+        let postgres_connection: PostgresqlConnection = yaml_serde::from_str(
             "
             host: airflow-postgresql
             database: airflow
@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn test_parameters() {
-        let postgres_connection: PostgresqlConnection = serde_yaml::from_str(
+        let postgres_connection: PostgresqlConnection = yaml_serde::from_str(
             "
             host: my-airflow.default.svc.cluster.local
             database: my_database

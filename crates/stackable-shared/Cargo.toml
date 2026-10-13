@@ -20,7 +20,7 @@ kube.workspace = true
 schemars.workspace = true
 semver.workspace = true
 serde.workspace = true
-serde_yaml.workspace = true
+yaml_serde.workspace = true
 snafu.workspace = true
 strum.workspace = true
 time = { workspace = true, optional = true }

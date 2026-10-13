@@ -97,7 +97,7 @@ mod tests {
 
     #[test]
     fn test_deserialization() {
-        let my_cache: MyCache = serde_yaml::from_str("entryTimeToLive: 13h\n").unwrap();
+        let my_cache: MyCache = yaml_serde::from_str("entryTimeToLive: 13h\n").unwrap();
 
         assert_eq!(
             my_cache.entry_time_to_live,
