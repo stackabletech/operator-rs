@@ -263,7 +263,7 @@ impl Struct {
         let match_arms: TokenStream = self
             .fields
             .iter()
-            .filter_map(|f| f.generate_for_status_removal(direction, next_version))
+            .filter_map(|f| f.generate_for_status_removal(direction, next_version, mod_gen_ctx))
             .collect();
 
         match direction {

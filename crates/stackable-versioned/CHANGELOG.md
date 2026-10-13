@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Replace serde_yaml with yaml_serde ([#1298]).
+  The `#[versioned(crates(serde_yaml))]` argument got renamed to `yaml_serde`. Users of this argument need to at least
+  adjust the name. They can keep using `serde_yaml` (with an import alias), or switch to `yaml_serde`, which is a
+  drop-in replacement.
+
+[#1298]: https://github.com/stackabletech/operator-rs/pull/1298
+
 ## [0.12.0] - 2026-10-12
 
 ### Added

@@ -751,7 +751,7 @@ mod utils;
 ///
 /// # fn main() {
 /// let merged_crd = Foo::merged_crd(FooVersion::V1Beta1).unwrap();
-/// println!("{yaml}", yaml = serde_yaml::to_string(&merged_crd).unwrap());
+/// println!("{yaml}", yaml = yaml_serde::to_string(&merged_crd).unwrap());
 /// # }
 /// ```
 ///

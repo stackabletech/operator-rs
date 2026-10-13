@@ -546,7 +546,7 @@ volumeMounts:
 - mountPath: /mnt/extra-volume
   name: extra-volume
 "#,
-            serde_yaml::to_string(&git_sync_resources.git_sync_containers.first()).unwrap()
+            yaml_serde::to_string(&git_sync_resources.git_sync_containers.first()).unwrap()
         );
 
         assert_eq!(
@@ -620,7 +620,7 @@ volumeMounts:
 - mountPath: /mnt/extra-volume
   name: extra-volume
 "#,
-            serde_yaml::to_string(&git_sync_resources.git_sync_containers.get(1)).unwrap()
+            yaml_serde::to_string(&git_sync_resources.git_sync_containers.get(1)).unwrap()
         );
 
         assert_eq!(
@@ -689,7 +689,7 @@ volumeMounts:
 - mountPath: /mnt/extra-volume
   name: extra-volume
 "#,
-            serde_yaml::to_string(&git_sync_resources.git_sync_containers.get(2)).unwrap()
+            yaml_serde::to_string(&git_sync_resources.git_sync_containers.get(2)).unwrap()
         );
 
         assert_eq!(3, git_sync_resources.git_sync_init_containers.len());
@@ -728,7 +728,7 @@ volumeMounts:
 - mountPath: /mnt/extra-volume
   name: extra-volume
 ",
-            serde_yaml::to_string(&git_sync_resources.git_sync_init_containers.first()).unwrap()
+            yaml_serde::to_string(&git_sync_resources.git_sync_init_containers.first()).unwrap()
         );
 
         assert_eq!(
@@ -770,7 +770,7 @@ volumeMounts:
 - mountPath: /mnt/extra-volume
   name: extra-volume
 ",
-            serde_yaml::to_string(&git_sync_resources.git_sync_init_containers.get(1)).unwrap()
+            yaml_serde::to_string(&git_sync_resources.git_sync_init_containers.get(1)).unwrap()
         );
 
         assert_eq!(
@@ -807,7 +807,7 @@ volumeMounts:
 - mountPath: /mnt/extra-volume
   name: extra-volume
 ",
-            serde_yaml::to_string(&git_sync_resources.git_sync_init_containers.get(2)).unwrap()
+            yaml_serde::to_string(&git_sync_resources.git_sync_init_containers.get(2)).unwrap()
         );
 
         assert_eq!(3, git_sync_resources.git_content_volumes.len());
@@ -816,21 +816,21 @@ volumeMounts:
             "emptyDir: {}
 name: content-from-git-0
 ",
-            serde_yaml::to_string(&git_sync_resources.git_content_volumes.first()).unwrap()
+            yaml_serde::to_string(&git_sync_resources.git_content_volumes.first()).unwrap()
         );
 
         assert_eq!(
             "emptyDir: {}
 name: content-from-git-1
 ",
-            serde_yaml::to_string(&git_sync_resources.git_content_volumes.get(1)).unwrap()
+            yaml_serde::to_string(&git_sync_resources.git_content_volumes.get(1)).unwrap()
         );
 
         assert_eq!(
             "emptyDir: {}
 name: content-from-git-2
 ",
-            serde_yaml::to_string(&git_sync_resources.git_content_volumes.get(2)).unwrap()
+            yaml_serde::to_string(&git_sync_resources.git_content_volumes.get(2)).unwrap()
         );
 
         assert_eq!(3, git_sync_resources.git_content_volume_mounts.len());
@@ -839,21 +839,21 @@ name: content-from-git-2
             "mountPath: /stackable/app/git-0
 name: content-from-git-0
 ",
-            serde_yaml::to_string(&git_sync_resources.git_content_volume_mounts.first()).unwrap()
+            yaml_serde::to_string(&git_sync_resources.git_content_volume_mounts.first()).unwrap()
         );
 
         assert_eq!(
             "mountPath: /stackable/app/git-1
 name: content-from-git-1
 ",
-            serde_yaml::to_string(&git_sync_resources.git_content_volume_mounts.get(1)).unwrap()
+            yaml_serde::to_string(&git_sync_resources.git_content_volume_mounts.get(1)).unwrap()
         );
 
         assert_eq!(
             "mountPath: /stackable/app/git-2
 name: content-from-git-2
 ",
-            serde_yaml::to_string(&git_sync_resources.git_content_volume_mounts.get(2)).unwrap()
+            yaml_serde::to_string(&git_sync_resources.git_content_volume_mounts.get(2)).unwrap()
         );
 
         assert_eq!(3, git_sync_resources.git_content_folders.len());

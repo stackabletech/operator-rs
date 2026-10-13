@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Replace serde_yaml with yaml_serde ([#1298]).
+
+[#1298]: https://github.com/stackabletech/operator-rs/pull/1298
+
 ## [0.120.0] - 2026-10-12
 
 ### Added

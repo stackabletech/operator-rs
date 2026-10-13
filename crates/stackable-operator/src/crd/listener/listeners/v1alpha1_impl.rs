@@ -97,7 +97,7 @@ mod tests {
 
     #[test]
     fn deep_merge_listener() {
-        let mut base: ListenerSpec = serde_yaml::from_str(indoc! {"
+        let mut base: ListenerSpec = yaml_serde::from_str(indoc! {"
             className: my-listener-class
             extraPodSelectorLabels:
             foo: bar
@@ -112,7 +112,7 @@ mod tests {
         "})
         .expect("test YAML is valid");
 
-        let merge: ListenerSpec = serde_yaml::from_str(indoc! {"
+        let merge: ListenerSpec = yaml_serde::from_str(indoc! {"
             className: custom-listener-class
             extraPodSelectorLabels:
             foo: overridden
@@ -125,7 +125,7 @@ mod tests {
         .expect("test YAML is valid");
 
         base.merge_from(merge);
-        let expected: ListenerSpec = serde_yaml::from_str(indoc! {"
+        let expected: ListenerSpec = yaml_serde::from_str(indoc! {"
             className: custom-listener-class
             extraPodSelectorLabels:
             foo: overridden

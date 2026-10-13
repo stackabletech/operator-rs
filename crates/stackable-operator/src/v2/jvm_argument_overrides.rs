@@ -162,7 +162,7 @@ mod tests {
             EmptyConfigOverrides,
             GenericRoleConfig,
             JavaCommonConfig,
-        > = serde_yaml::from_str(
+        > = yaml_serde::from_str(
             "
                 # Let's say we want to set some additional HTTP Proxy and IPv4 settings
                 # And we don't like the garbage collector for some reason...
@@ -227,7 +227,7 @@ mod tests {
             EmptyConfigOverrides,
             GenericRoleConfig,
             JavaCommonConfig,
-        > = serde_yaml::from_str(
+        > = yaml_serde::from_str(
             "
                 jvmArgumentOverrides:
                   add:
