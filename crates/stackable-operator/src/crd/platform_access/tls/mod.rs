@@ -11,7 +11,7 @@ use crate::{
 mod v1alpha1_impl;
 
 /// Name of the volume holding the TLS client certificate.
-pub const VOLUME_NAME: &str = "tls-client-cert";
+pub const VOLUME_NAME: &str = "tls-platform-access";
 
 /// Mount path for the TLS client certificate.
 pub const MOUNT_PATH: &str = concatcp!(SECRET_BASE_PATH, "/", VOLUME_NAME);

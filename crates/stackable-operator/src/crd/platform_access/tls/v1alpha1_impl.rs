@@ -72,7 +72,7 @@ mod tests {
         let (volumes, mounts) = credential.volumes_and_mounts();
         let volumes = serde_json::to_value(volumes).expect("serializable");
 
-        assert_eq!(volumes[0]["name"], "tls-client-cert");
+        assert_eq!(volumes[0]["name"], "tls-platform-access");
         assert_eq!(
             volumes[0]["ephemeral"]["volumeClaimTemplate"]["metadata"]["annotations"],
             json!({
@@ -84,7 +84,7 @@ mod tests {
         );
         assert_eq!(
             serde_json::to_value(mounts).expect("serializable"),
-            json!([{"mountPath": "/stackable/secrets/tls-client-cert", "name": "tls-client-cert"}])
+            json!([{"mountPath": "/stackable/secrets/tls-platform-access", "name": "tls-platform-access"}])
         );
     }
 
@@ -96,11 +96,11 @@ mod tests {
 
         assert_eq!(
             serde_json::to_value(volumes).expect("serializable"),
-            json!([{"name": "tls-client-cert", "secret": {"secretName": "my-cert"}}])
+            json!([{"name": "tls-platform-access", "secret": {"secretName": "my-cert"}}])
         );
         assert_eq!(
             serde_json::to_value(mounts).expect("serializable"),
-            json!([{"mountPath": "/stackable/secrets/tls-client-cert", "name": "tls-client-cert"}])
+            json!([{"mountPath": "/stackable/secrets/tls-platform-access", "name": "tls-platform-access"}])
         );
     }
 }
