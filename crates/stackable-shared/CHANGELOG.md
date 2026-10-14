@@ -10,8 +10,8 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: Replace serde_yaml with yaml_serde ([#1298]).
   The `source` field of `yaml::Error::SerializeYaml` changed from `serde_yaml::Error` to
-  `yaml_serde::Error`. `yaml_serde` is a drop-in replacement, so users matching on this variant only
-  need to adjust the dependency and imports.
+  `yaml_serde::Error`. `yaml_serde` is a drop-in replacement, so users only need to adjust the
+  dependency and imports.
 
 [#1298]: https://github.com/stackabletech/operator-rs/pull/1298
 
