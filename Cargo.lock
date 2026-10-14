@@ -2060,7 +2060,7 @@ dependencies = [
 
 [[package]]
 name = "k8s-version"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "darling 0.24.1",
  "proc-macro2",
@@ -3837,7 +3837,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.120.0"
+version = "0.121.0"
 dependencies = [
  "base64 0.23.1",
  "clap",
@@ -3895,7 +3895,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-shared"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "jiff",
  "k8s-openapi",
@@ -3937,7 +3937,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "insta",
  "k8s-openapi",
@@ -3952,7 +3952,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned-macros"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "convert_case",
  "darling 0.24.1",

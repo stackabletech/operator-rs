@@ -4,9 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.121.0] - 2026-10-14
+
 ### Changed
 
-- Replace serde_yaml with yaml_serde ([#1298]).
+- BREAKING: Replace serde_yaml with yaml_serde ([#1298]).
+  The public signatures using `serde_yaml` types changed accordingly, e.g.
+  `utils::yaml_from_str_singleton_map` now returns a `yaml_serde::Error` on failure. `yaml_serde` is
+  a drop-in replacement, so users only need to adjust the dependency and imports.
 - BREAKING: The Vector container created by `v2::product_logging::framework::vector_container` now
   starts Vector with the wrapper script `/stackable/bin/vector-with-env-var-interpolation` instead
   of calling `vector` directly ([#1299]).
