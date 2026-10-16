@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-14
+
 ### Changed
 
 - BREAKING: Replace serde_yaml with yaml_serde ([#1298]).

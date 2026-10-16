@@ -4,11 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.121.0] - 2026-10-14
+
 ### Changed
 
-- Replace serde_yaml with yaml_serde ([#1298]).
+- BREAKING: Replace serde_yaml with yaml_serde ([#1298]).
+  The public signatures using `serde_yaml` types changed accordingly, e.g.
+  `utils::yaml_from_str_singleton_map` now returns a `yaml_serde::Error` on failure. `yaml_serde` is
+  a drop-in replacement, so users only need to adjust the dependency and imports.
+- BREAKING: The Vector container created by `v2::product_logging::framework::vector_container` now
+  starts Vector with the wrapper script `/stackable/bin/vector-with-env-var-interpolation` instead
+  of calling `vector` directly ([#1299]).
+  Vector 0.57.0 disabled the interpolation of environment variables in configuration files by
+  default, while the generated `vector.yaml` uses `${...}` placeholders for the log directory and
+  file names, the log levels, the role group the Pod belongs to, and the address of the Vector
+  aggregator. The wrapper script re-enables the interpolation by passing
+  `--dangerously-allow-env-var-interpolation` to Vector. The product image must contain this script,
+  which is the case for images with Vector 0.58.0 or later.
 
 [#1298]: https://github.com/stackabletech/operator-rs/pull/1298
+[#1299]: https://github.com/stackabletech/operator-rs/pull/1299
 
 ## [0.120.0] - 2026-10-12
 
