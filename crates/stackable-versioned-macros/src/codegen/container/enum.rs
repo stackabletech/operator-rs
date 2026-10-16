@@ -70,7 +70,7 @@ pub struct Enum {
     /// Generic types of the enum
     pub generics: Generics,
 
-    /// Generic types of the enum which additionally also includes the tracking state generic type
+    /// Generic types of the enum which additionally also include the tracking state generic type
     /// and where clause.
     ///
     /// We use a [`OnceCell`] here to avoid outer mutability and instead rely on interior mutability
