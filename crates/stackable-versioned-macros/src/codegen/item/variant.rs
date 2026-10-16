@@ -156,10 +156,10 @@ impl VersionedVariant {
     }
 
     // TODO (@Techassi): Make this section of code more similar to the VersionStruct/VersionedField
-    // code. Also see if we can change VersionedVariant's fields field contain VersionedFields
+    // code. Also see if we can change VersionedVariant's `fields`` field to contain VersionedFields
     // instead. This would allow us to hook into already existing machinery. The biggest blocker for
     // this is currently that VersionedField assumes there is always an ident. This is not the case
-    // unnamed variant fields.
+    // for unnamed variant fields.
     pub fn generate_for_from_impl(
         &self,
         direction: Direction,
