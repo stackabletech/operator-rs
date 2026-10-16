@@ -1,9 +1,9 @@
-use std::ops::Not;
+use std::{cell::OnceCell, ops::Not};
 
 use darling::{FromAttributes, Result};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Generics, ItemEnum};
+use syn::{Generics, ItemEnum, parse_quote};
 
 use crate::{
     attrs::container::ContainerAttributes,
@@ -19,12 +19,17 @@ use crate::{
 };
 
 impl Container {
-    pub fn new_enum(item_enum: ItemEnum, versions: &[VersionDefinition]) -> Result<Self> {
+    pub fn new_enum(
+        item_enum: ItemEnum,
+        versions: &[VersionDefinition],
+        experimental_conversion_tracking: bool,
+    ) -> Result<Self> {
         let attributes = ContainerAttributes::from_attributes(&item_enum.attrs)?;
 
         let mut versioned_variants = Vec::new();
         for variant in item_enum.variants {
-            let mut versioned_variant = VersionedVariant::new(variant, versions)?;
+            let mut versioned_variant =
+                VersionedVariant::new(variant, versions, experimental_conversion_tracking)?;
             versioned_variant.insert_container_versions(versions);
             versioned_variants.push(versioned_variant);
         }
@@ -45,6 +50,7 @@ impl Container {
         };
 
         Ok(Self::Enum(Enum {
+            tracking_generics: OnceCell::new(),
             generics: item_enum.generics,
             variants: versioned_variants,
             common,
@@ -63,6 +69,17 @@ pub struct Enum {
 
     /// Generic types of the enum
     pub generics: Generics,
+
+    /// Generic types of the enum which additionally also include the tracking state generic type
+    /// and where clause.
+    ///
+    /// We use a [`OnceCell`] here to avoid outer mutability and instead rely on interior mutability
+    /// to lazily initialize this field. This is done to avoid the macro the re-clone and
+    /// re-construct these generics over and over again.
+    ///
+    /// SAFETY: Using [`OnceCell`] instead of `OnceLock` is fine here, because proc-macros run in a
+    /// single thread.
+    tracking_generics: OnceCell<Generics>,
 }
 
 // Common token generation
@@ -70,7 +87,7 @@ impl Enum {
     pub fn generate_tokens<'a>(
         &'a self,
         versions: &'a [VersionDefinition],
-        gen_ctx: ModuleGenerationContext<'a>,
+        mod_gen_ctx: ModuleGenerationContext<'a>,
     ) -> ContainerTokens<'a> {
         let mut versions = versions.iter().peekable();
         let mut container_tokens = ContainerTokens::default();
@@ -80,8 +97,9 @@ impl Enum {
             let ver_ctx = VersionContext::new(version, next_version);
 
             let enum_definition = self.generate_definition(ver_ctx);
-            let upgrade_from = self.generate_from_impl(Direction::Upgrade, ver_ctx, gen_ctx);
-            let downgrade_from = self.generate_from_impl(Direction::Downgrade, ver_ctx, gen_ctx);
+            let upgrade_from = self.generate_from_impl(Direction::Upgrade, ver_ctx, mod_gen_ctx);
+            let downgrade_from =
+                self.generate_from_impl(Direction::Downgrade, ver_ctx, mod_gen_ctx);
 
             container_tokens
                 .extend_inner(&version.inner, enum_definition)
@@ -116,11 +134,11 @@ impl Enum {
     }
 
     // TODO (@Techassi): Add doc comments
-    pub fn generate_from_impl(
+    fn generate_from_impl(
         &self,
         direction: Direction,
         ver_ctx: VersionContext<'_>,
-        gen_ctx: ModuleGenerationContext<'_>,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
     ) -> Option<TokenStream> {
         if ver_ctx.version.skip_from || self.common.options.skip_from {
             return None;
@@ -149,7 +167,7 @@ impl Enum {
 
             // Only add the #[automatically_derived] attribute only if this impl is used
             // outside of a module (in standalone mode).
-            let automatically_derived = gen_ctx.add_attributes
+            let automatically_derived = mod_gen_ctx.add_attributes
                 .not()
                 .then(|| quote! {#[automatically_derived]});
 
@@ -157,7 +175,7 @@ impl Enum {
                 self.variants
                     .iter()
                     .filter_map(|v| {
-                        v.generate_for_from_impl(direction, version, next_version, enum_ident)
+                        v.generate_for_from_impl(direction, version, next_version, enum_ident, mod_gen_ctx)
                     })
                     .collect()
             };
@@ -177,19 +195,65 @@ impl Enum {
                 },
             };
 
-            quote! {
-                #automatically_derived
-                #allow_attribute
-                impl #impl_generics ::core::convert::From<#from_module_ident::#enum_ident #type_generics> for #for_module_ident::#enum_ident #type_generics
-                    #where_clause
-                {
-                    fn from(#from_enum_ident: #from_module_ident::#enum_ident #type_generics) -> Self {
-                        match #from_enum_ident {
-                            #variants
+            // TODO (@Techassi): This currently does NOT support tracking changes to the enum itself,
+            // only changes in nested structs are tracked.
+            if mod_gen_ctx.kubernetes_options.experimental_conversion_tracking.is_present() {
+                let versioned_path = &*mod_gen_ctx.crates.versioned;
+
+                let (impl_generics, _, where_clause) = self.get_tracking_generics(mod_gen_ctx).split_for_impl();
+
+                quote! {
+                    #automatically_derived
+                    #allow_attribute
+                    impl #impl_generics #versioned_path::TrackingFrom<#from_module_ident::#enum_ident #type_generics, S> for #for_module_ident::#enum_ident #type_generics
+                        #where_clause
+                    {
+                        fn tracking_from(#from_enum_ident: #from_module_ident::#enum_ident #type_generics, status: &mut S, parent: &str) -> Self {
+                            // TODO (@Techassi): Only emit this if any of the variants below need it
+                            use #versioned_path::TrackingInto as _;
+
+                            match #from_enum_ident {
+                                #variants
+                            }
+                        }
+                    }
+                }
+            } else {
+                quote! {
+                    #automatically_derived
+                    #allow_attribute
+                    impl #impl_generics ::core::convert::From<#from_module_ident::#enum_ident #type_generics> for #for_module_ident::#enum_ident #type_generics
+                        #where_clause
+                    {
+                        fn from(#from_enum_ident: #from_module_ident::#enum_ident #type_generics) -> Self {
+                            match #from_enum_ident {
+                                #variants
+                            }
                         }
                     }
                 }
             }
+        })
+    }
+
+    /// Construct (if needed) and return the [`Enum`]'s generics extended with the tracking status
+    /// generic type and where clause.
+    ///
+    /// This function lazily initializes the underlying field in [`Enum`]. Afterwards, the value is
+    /// re-used without constructing the value from scratch over and over again. This is achieved
+    /// through interior mutability via [`OnceCell`]. See [`Enum`]'s `tracking_generics` field for
+    /// more details.
+    pub fn get_tracking_generics(&self, mod_gen_ctx: ModuleGenerationContext<'_>) -> &Generics {
+        self.tracking_generics.get_or_init(|| {
+            let versioned_path = &*mod_gen_ctx.crates.versioned;
+
+            let mut tracking_generics = self.generics.clone();
+            tracking_generics.params.push(parse_quote! { S });
+            tracking_generics.make_where_clause().predicates.push(
+                parse_quote! { S: #versioned_path::TrackingStatus + ::core::default::Default },
+            );
+
+            tracking_generics
         })
     }
 

@@ -14,6 +14,7 @@ use crate::{
         Direction, VersionDefinition,
         changes::{BTreeMapExt, ChangesetExt},
         item::{ItemStatus, generate_attributes},
+        module::ModuleGenerationContext,
     },
     utils::ItemIdents,
 };
@@ -24,12 +25,18 @@ pub struct VersionedVariant {
     pub changes: Option<BTreeMap<Version, ItemStatus>>,
     pub idents: VariantIdents,
     pub fields: Fields,
+    pub nested: bool,
 }
 
 impl VersionedVariant {
-    pub fn new(variant: Variant, versions: &[VersionDefinition]) -> Result<Self> {
+    pub fn new(
+        variant: Variant,
+        versions: &[VersionDefinition],
+        experimental_conversion_tracking: bool,
+    ) -> Result<Self> {
         let variant_attributes = VariantAttributes::from_variant(&variant)?;
         variant_attributes.validate_versions(versions)?;
+        variant_attributes.validate_nested_flag(experimental_conversion_tracking)?;
 
         let idents = VariantIdents::from(variant.ident);
 
@@ -41,6 +48,7 @@ impl VersionedVariant {
             bang_token: Not([Span::call_site()]),
         });
         let changed_docs = variant_attributes.common.changed_docs();
+        let nested = variant_attributes.nested.is_present();
         let changes = variant_attributes.common.into_changeset(&idents, ty);
 
         Ok(Self {
@@ -49,6 +57,7 @@ impl VersionedVariant {
             fields: variant.fields,
             idents,
             changes,
+            nested,
         })
     }
 
@@ -146,15 +155,21 @@ impl VersionedVariant {
         }
     }
 
+    // TODO (@Techassi): Make this section of code more similar to the VersionStruct/VersionedField
+    // code. Also see if we can change VersionedVariant's `fields`` field to contain VersionedFields
+    // instead. This would allow us to hook into already existing machinery. The biggest blocker for
+    // this is currently that VersionedField assumes there is always an ident. This is not the case
+    // for unnamed variant fields.
     pub fn generate_for_from_impl(
         &self,
         direction: Direction,
         version: &VersionDefinition,
         next_version: &VersionDefinition,
         enum_ident: &IdentString,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
     ) -> Option<TokenStream> {
         let from_fields = self.generate_from_fields();
-        let for_fields = self.generate_for_fields();
+        let for_fields = self.generate_for_fields(mod_gen_ctx);
 
         #[allow(clippy::single_match_else)]
         match &self.changes {
@@ -203,20 +218,6 @@ impl VersionedVariant {
         }
     }
 
-    fn generate_for_fields(&self) -> Option<TokenStream> {
-        match &self.fields {
-            Fields::Named(fields_named) => {
-                let fields = Self::named_field_idents(fields_named);
-                Some(quote! { { #(#fields: #fields.into(),)* } })
-            }
-            Fields::Unnamed(fields_unnamed) => {
-                let fields = Self::unnamed_field_ident(fields_unnamed);
-                Some(quote! { ( #(#fields.into())* ) })
-            }
-            Fields::Unit => None,
-        }
-    }
-
     fn generate_from_fields(&self) -> Option<TokenStream> {
         match &self.fields {
             Fields::Named(fields_named) => {
@@ -225,10 +226,83 @@ impl VersionedVariant {
             }
             Fields::Unnamed(fields_unnamed) => {
                 let fields = Self::unnamed_field_ident(fields_unnamed);
-                Some(quote! { ( #(#fields)* ) })
+                Some(quote! { ( #(#fields),* ) })
             }
             Fields::Unit => None,
         }
+    }
+
+    fn generate_for_fields(&self, mod_gen_ctx: ModuleGenerationContext<'_>) -> Option<TokenStream> {
+        match &self.fields {
+            Fields::Named(fields_named) => {
+                let fields = Self::named_field_idents(fields_named);
+
+                if self.nested {
+                    let funcs = fields.iter().map(|field| {
+                        self.generate_tracking_conversion_function_for_field(
+                            // NOTE (@Techassi): Switching to VersionedField would also have the
+                            // benefit that we can use IdentString here, which has as_str().
+                            &field.to_string(),
+                            mod_gen_ctx,
+                        )
+                    });
+
+                    Some(quote! { { #(#fields: #fields.#funcs,)* } })
+                } else {
+                    let funcs = fields
+                        .iter()
+                        .map(|_| self.generate_conversion_function_for_field());
+
+                    Some(quote! { { #(#fields: #fields.#funcs,)* } })
+                }
+            }
+            Fields::Unnamed(fields_unnamed) => {
+                let fields = Self::unnamed_field_ident(fields_unnamed);
+
+                if self.nested {
+                    let funcs = (0..fields.len()).map(|index| {
+                        self.generate_tracking_conversion_function_for_field(
+                            &index.to_string(),
+                            mod_gen_ctx,
+                        )
+                    });
+
+                    Some(quote! { ( #(#fields.#funcs),* ) })
+                } else {
+                    let funcs = fields
+                        .iter()
+                        .map(|_| self.generate_conversion_function_for_field());
+
+                    Some(quote! { ( #(#fields.#funcs),* ) })
+                }
+            }
+            Fields::Unit => None,
+        }
+    }
+
+    /// Generates the conversion function for a single field of the variant data.
+    ///
+    /// The data of variants marked as nested is converted with support for tracking. The path
+    /// passed down consists of the variant name and the provided `child`, if any.
+    fn generate_tracking_conversion_function_for_field(
+        &self,
+        field_ident_or_index: &str,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+    ) -> TokenStream {
+        // TODO (@Techassi): Add support for hints
+
+        let versioned_path = &*mod_gen_ctx.crates.versioned;
+        let variant = &self.idents.original;
+        let child_string = format!("{variant}.{field_ident_or_index}");
+
+        quote! { tracking_into(status, &#versioned_path::jthong_path(parent, #child_string)) }
+    }
+
+    // NOTE (@Techassi): We will need self in the future to support hints.
+    #[allow(clippy::unused_self)]
+    fn generate_conversion_function_for_field(&self) -> TokenStream {
+        // TODO (@Techassi): Add support for hints
+        quote! { into() }
     }
 
     fn named_field_idents(fields_named: &FieldsNamed) -> Vec<&Ident> {

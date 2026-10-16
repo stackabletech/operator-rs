@@ -426,6 +426,10 @@ impl VersionedField {
         custom_conversion_function: Option<&Path>,
     ) -> TokenStream {
         match custom_conversion_function {
+            // TODO (@Techassi): We should also support tracking here. Currently, the nested hint is
+            // ignored and the generated code doesn't force the custom conversion function to accept
+            // a tracking status.
+            //
             // The user specified a custom conversion function which will be used here instead of the
             // default conversion call which utilizes From impls.
             Some(convert_fn) => quote! {

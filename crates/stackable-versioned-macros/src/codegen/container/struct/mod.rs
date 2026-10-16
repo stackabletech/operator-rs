@@ -478,6 +478,8 @@ impl Struct {
     ) -> TokenStream {
         // TODO (@Techassi): A bunch this stuff is duplicated in self.generate_tracking_from_impl.
         // Ideally we remove that duplication.
+        // The enum's codegen code removes a whole bunch of the duplication. Implement something
+        // similar here.
         let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
 
         let from_struct_ident = &self.common.idents.parameter;
