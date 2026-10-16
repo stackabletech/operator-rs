@@ -969,12 +969,9 @@ mod utils;
 /// # fn main() {}
 /// ```
 ///
-/// Changes can also be tracked through enums. With conversion tracking enabled,
-/// versioned structs and enums only implement `TrackingFrom` instead of `From`.
-/// As such, every field and every enum variant containing a versioned struct
-/// or enum needs to be marked with `#[versioned(nested)]`. All data of a nested
-/// variant is converted with tracking support. The path of tracked values
-/// contains the variant name, eg. `$.connector.Baz.quox`.
+/// Changes can also be tracked through enums. All data of a nested variant is
+/// converted with tracking support. The path of tracked values contains the
+/// variant name, eg. `$.connector.Baz.0.quox`.
 ///
 /// ```
 /// # use stackable_versioned_macros::versioned;
@@ -999,7 +996,9 @@ mod utils;
 ///         #[versioned(nested)]
 ///         Baz(Baz),
 ///
-///         Unit,
+///         // Kubernetes doesn't allow unit and struct variants in the same
+///         // enum.
+///         Unit {},
 ///     }
 ///
 ///     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
