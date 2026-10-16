@@ -195,9 +195,6 @@ impl Enum {
                 },
             };
 
-            // With conversion tracking enabled, the enum needs to forward the status and the
-            // current path to the data of nested variants. As such, only a TrackingFrom impl is
-            // generated, which is in line with the impls generated for structs.
             // TODO (@Techassi): This currently does NOT support tracking changes to the enum itself,
             // only changes in nested structs are tracked.
             if mod_gen_ctx.kubernetes_options.experimental_conversion_tracking.is_present() {
