@@ -22,22 +22,22 @@ All notable changes to this project will be documented in this file.
 - Emit generics in plain `From` impl ([#1284]).
 - Support tracking changes through enums when `experimental_conversion_tracking` is enabled.
   Variants containing versioned structs or enums need to be marked with `#[versioned(nested)]`
-  ([#YYYY]).
+  ([#1294]).
 
 ### Changed
 
 - BREAKING: With `experimental_conversion_tracking` enabled, versioned enums only implement
   `TrackingFrom` instead of `From`, in line with structs. Fields using versioned enums need to be
-  marked with `#[versioned(nested)]` ([#YYYY]).
+  marked with `#[versioned(nested)]` ([#1294]).
 
 ### Fixed
 
-- Fix `From` impls of enum variants with multiple unnamed fields ([#YYYY]).
+- Fix `From` impls of enum variants with multiple unnamed fields ([#1294]).
 
 [#1284]: https://github.com/stackabletech/operator-rs/pull/1284
 [#1285]: https://github.com/stackabletech/operator-rs/pull/1285
 [#1293]: https://github.com/stackabletech/operator-rs/pull/1293
-[#YYYY]: https://github.com/stackabletech/operator-rs/pull/YYYY
+[#1294]: https://github.com/stackabletech/operator-rs/pull/1294
 
 ## [0.11.1] - 2026-07-06
 
