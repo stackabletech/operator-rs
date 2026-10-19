@@ -184,10 +184,10 @@ impl Struct {
         quote! {
             #automatically_derived
             #allow_attribute
-            impl #impl_generics #versioned_path::TrackingFrom<#from_module_ident::#struct_ident #type_generics, S> for #for_module_ident::#struct_ident #type_generics
+            impl #impl_generics #versioned_path::TrackingFrom<#from_module_ident::#struct_ident #type_generics, __SvStatus> for #for_module_ident::#struct_ident #type_generics
                 #where_clause
             {
-                fn tracking_from(#from_struct_ident: #from_module_ident::#struct_ident #type_generics, status: &mut S, parent: &str) -> Self {
+                fn tracking_from(#from_struct_ident: #from_module_ident::#struct_ident #type_generics, status: &mut __SvStatus, parent: &str) -> Self {
                     // TODO (@Techassi): Only emit this if any of the fields below need it
                     use #versioned_path::TrackingInto as _;
 
@@ -825,11 +825,16 @@ impl Struct {
         self.tracking_generics.get_or_init(|| {
             let versioned_path = &*mod_gen_ctx.crates.versioned;
 
+            // The generic type is prefixed to avoid collisions with generic types declared on the
+            // struct, like `struct Foo<S>`.
             let mut tracking_generics = self.generics.clone();
-            tracking_generics.params.push(parse_quote! { S });
-            tracking_generics.make_where_clause().predicates.push(
-                parse_quote! { S: #versioned_path::TrackingStatus + ::core::default::Default },
-            );
+            tracking_generics.params.push(parse_quote! { __SvStatus });
+            tracking_generics
+                .make_where_clause()
+                .predicates
+                .push(parse_quote! {
+                    __SvStatus: #versioned_path::TrackingStatus + ::core::default::Default
+                });
 
             tracking_generics
         })

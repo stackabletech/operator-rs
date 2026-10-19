@@ -49,13 +49,14 @@ impl ::core::convert::From<v1beta1::Foo> for v1alpha1::Foo {
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha1::FooSpec, S> for v1beta1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1alpha1::FooSpec, __SvStatus>
+for v1beta1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_foospec: v1alpha1::FooSpec,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
@@ -78,13 +79,14 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, S> for v1alpha1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, __SvStatus>
+for v1alpha1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_foospec: v1beta1::FooSpec,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
@@ -152,13 +154,14 @@ impl ::core::convert::From<v1::Foo> for v1beta1::Foo {
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, S> for v1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, __SvStatus>
+for v1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_foospec: v1beta1::FooSpec,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
@@ -170,11 +173,16 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1::FooSpec, S> for v1beta1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1::FooSpec, __SvStatus>
+for v1beta1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_foospec: v1::FooSpec, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_foospec: v1::FooSpec,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let mut spec = Self {
             bah: __sv_foospec.bar.into(),
