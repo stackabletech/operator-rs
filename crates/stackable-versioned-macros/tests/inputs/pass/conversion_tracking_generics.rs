@@ -38,6 +38,11 @@ pub(crate) mod versioned {
         // is used and if so, emit it. Otherwise, don't emit it.
         // #[versioned(added(since = "v1beta1"))]
         inner_2: B,
+
+        // Concrete type on purpose, see the FIXME above. Added in v1 (not v1beta1) so it doesn't
+        // share the v1beta1 upgrade bucket with FooSpec::bar.
+        #[versioned(added(since = "v1"))]
+        inner_3: String,
     }
 }
 // ---
