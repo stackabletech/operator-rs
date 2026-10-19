@@ -74,10 +74,10 @@ pub struct Enum {
     /// and where clause.
     ///
     /// We use a [`OnceCell`] here to avoid outer mutability and instead rely on interior mutability
-    /// to lazily initialize this field. This is done to avoid the macro the re-clone and
+    /// to lazily initialize this field. This is done to avoid the macro re-cloning and
     /// re-construct these generics over and over again.
     ///
-    /// NOTE: Do **NOT** make public. Access to this field and it's value is handled in a controlled
+    /// NOTE: Do **NOT** make public. Access to this field and its value is handled in a controlled
     /// fashion via [`Enum::get_tracking_generics`].
     ///
     /// SAFETY: Using [`OnceCell`] instead of `OnceLock` is fine here, because proc-macros run in a
