@@ -19,12 +19,12 @@ pub(crate) mod v1alpha1 {
     }
     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
     #[allow(dead_code)]
-    pub struct Baz<B>
+    pub struct Baz<S>
     where
-        B: Clone + Default,
+        S: Clone + Default,
     {
         pub inner_1: bool,
-        pub inner_2: B,
+        pub inner_2: S,
     }
 }
 #[automatically_derived]
@@ -58,13 +58,14 @@ impl ::core::convert::From<v1beta1::Foo> for v1alpha1::Foo {
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha1::FooSpec, S> for v1beta1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1alpha1::FooSpec, __SvStatus>
+for v1beta1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_foospec: v1alpha1::FooSpec,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
@@ -88,13 +89,14 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, S> for v1alpha1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, __SvStatus>
+for v1alpha1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_foospec: v1beta1::FooSpec,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
@@ -117,12 +119,17 @@ where
     }
 }
 #[automatically_derived]
-impl<B, S> ::stackable_versioned::TrackingFrom<v1alpha1::Baz<B>, S> for v1beta1::Baz<B>
+impl<S, __SvStatus> ::stackable_versioned::TrackingFrom<v1alpha1::Baz<S>, __SvStatus>
+for v1beta1::Baz<S>
 where
-    B: Clone + Default,
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    S: Clone + Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_baz: v1alpha1::Baz<B>, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_baz: v1alpha1::Baz<S>,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let mut spec = Self {
             inner_1: __sv_baz.inner_1.into(),
@@ -132,12 +139,17 @@ where
     }
 }
 #[automatically_derived]
-impl<B, S> ::stackable_versioned::TrackingFrom<v1beta1::Baz<B>, S> for v1alpha1::Baz<B>
+impl<S, __SvStatus> ::stackable_versioned::TrackingFrom<v1beta1::Baz<S>, __SvStatus>
+for v1alpha1::Baz<S>
 where
-    B: Clone + Default,
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    S: Clone + Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_baz: v1beta1::Baz<B>, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_baz: v1beta1::Baz<S>,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let mut spec = Self {
             inner_1: __sv_baz.inner_1.into(),
@@ -163,12 +175,12 @@ pub(crate) mod v1beta1 {
     }
     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
     #[allow(dead_code)]
-    pub struct Baz<B>
+    pub struct Baz<S>
     where
-        B: Clone + Default,
+        S: Clone + Default,
     {
         pub inner_1: bool,
-        pub inner_2: B,
+        pub inner_2: S,
     }
 }
 #[automatically_derived]
@@ -202,13 +214,14 @@ impl ::core::convert::From<v1::Foo> for v1beta1::Foo {
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, S> for v1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, __SvStatus>
+for v1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_foospec: v1beta1::FooSpec,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
@@ -221,11 +234,16 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1::FooSpec, S> for v1beta1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1::FooSpec, __SvStatus>
+for v1beta1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_foospec: v1::FooSpec, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_foospec: v1::FooSpec,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let __sv_baz_path = ::stackable_versioned::jthong_path(parent, "baz");
         let mut spec = Self {
@@ -236,12 +254,17 @@ where
     }
 }
 #[automatically_derived]
-impl<B, S> ::stackable_versioned::TrackingFrom<v1beta1::Baz<B>, S> for v1::Baz<B>
+impl<S, __SvStatus> ::stackable_versioned::TrackingFrom<v1beta1::Baz<S>, __SvStatus>
+for v1::Baz<S>
 where
-    B: Clone + Default,
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    S: Clone + Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_baz: v1beta1::Baz<B>, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_baz: v1beta1::Baz<S>,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let __sv_inner_3_path = ::stackable_versioned::jthong_path(parent, "inner_3");
         let mut spec = Self {
@@ -263,12 +286,17 @@ where
     }
 }
 #[automatically_derived]
-impl<B, S> ::stackable_versioned::TrackingFrom<v1::Baz<B>, S> for v1beta1::Baz<B>
+impl<S, __SvStatus> ::stackable_versioned::TrackingFrom<v1::Baz<S>, __SvStatus>
+for v1beta1::Baz<S>
 where
-    B: Clone + Default,
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    S: Clone + Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_baz: v1::Baz<B>, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_baz: v1::Baz<S>,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let __sv_inner_3_path = ::stackable_versioned::jthong_path(parent, "inner_3");
         let upgrades = status.changes().upgrades.entry("v1".to_owned()).or_default();
@@ -301,12 +329,12 @@ pub(crate) mod v1 {
     }
     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
     #[allow(dead_code)]
-    pub struct Baz<B>
+    pub struct Baz<S>
     where
-        B: Clone + Default,
+        S: Clone + Default,
     {
         pub inner_1: bool,
-        pub inner_2: B,
+        pub inner_2: S,
         pub inner_3: String,
     }
 }
