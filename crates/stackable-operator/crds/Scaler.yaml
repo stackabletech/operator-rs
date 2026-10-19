@@ -24,7 +24,7 @@ spec:
 
                   Written by the horizontal pod autoscaling mechanism via the /scale subresource.
 
-                  NOTE: This and other replica fields)use a [`u16`] instead of a [`i32`] used by
+                  NOTE: This (and other replica fields) use a [`u16`] instead of a [`i32`] used by
                   [`k8s_openapi`] types to force a non-negative replica count. All [`u16`]s can be
                   converted losslessly to [`i32`]s where needed.
 
