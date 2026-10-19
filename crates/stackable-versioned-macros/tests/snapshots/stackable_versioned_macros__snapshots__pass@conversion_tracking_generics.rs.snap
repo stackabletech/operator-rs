@@ -243,10 +243,22 @@ where
 {
     fn tracking_from(__sv_baz: v1beta1::Baz<B>, status: &mut S, parent: &str) -> Self {
         use ::stackable_versioned::TrackingInto as _;
+        let __sv_inner_3_path = ::stackable_versioned::jthong_path(parent, "inner_3");
         let mut spec = Self {
             inner_1: __sv_baz.inner_1.into(),
             inner_2: __sv_baz.inner_2.into(),
+            inner_3: ::std::default::Default::default(),
         };
+        if let Some(upgrades) = status.changes().upgrades.remove(&"v1".to_owned()) {
+            for ::stackable_versioned::ChangedValue { json_path, value } in upgrades {
+                match json_path {
+                    json_path if json_path == __sv_inner_3_path => {
+                        spec.inner_3 = ::yaml_serde::from_value(value).unwrap();
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
         spec
     }
 }
@@ -258,6 +270,13 @@ where
 {
     fn tracking_from(__sv_baz: v1::Baz<B>, status: &mut S, parent: &str) -> Self {
         use ::stackable_versioned::TrackingInto as _;
+        let __sv_inner_3_path = ::stackable_versioned::jthong_path(parent, "inner_3");
+        let upgrades = status.changes().upgrades.entry("v1".to_owned()).or_default();
+        upgrades
+            .push(::stackable_versioned::ChangedValue {
+                json_path: __sv_inner_3_path,
+                value: ::yaml_serde::to_value(&__sv_baz.inner_3).unwrap(),
+            });
         let mut spec = Self {
             inner_1: __sv_baz.inner_1.into(),
             inner_2: __sv_baz.inner_2.into(),
@@ -288,6 +307,7 @@ pub(crate) mod v1 {
     {
         pub inner_1: bool,
         pub inner_2: B,
+        pub inner_3: String,
     }
 }
 #[automatically_derived]
