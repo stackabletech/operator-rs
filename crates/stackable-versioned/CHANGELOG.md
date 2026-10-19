@@ -16,6 +16,12 @@ All notable changes to this project will be documented in this file.
   enum values were serialized as YAML tags, which failed to deserialize after a roundtrip through
   the JSON status ([#ZZZZ]).
 
+### Fixed
+
+- Fix a panic during conversions when multiple (nested) containers track values for the same
+  version. Each container now only applies the tracked values matching its JSON paths and keeps
+  all others ([#ZZZZ]).
+
 [#ZZZZ]: https://github.com/stackabletech/operator-rs/pull/ZZZZ
 
 ## [0.13.0] - 2026-10-14

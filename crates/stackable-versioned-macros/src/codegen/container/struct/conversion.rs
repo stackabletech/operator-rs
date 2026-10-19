@@ -324,28 +324,25 @@ impl Struct {
                 let next_version_string = next_version.inner.to_string();
                 let versioned_path = &*mod_gen_ctx.crates.versioned;
 
-                // The downgraded value is only needed by fields which changed their type. Binding
-                // it unconditionally would result in an unused variable otherwise.
-                let has_type_changes = self.fields.iter().any(|f| {
-                    f.changes.as_ref().is_some_and(|c| {
-                        c.value_is(&next_version.inner, ItemStatus::is_type_change)
-                    })
-                });
-
-                let downgraded_value = if has_type_changes {
-                    quote! { downgraded_value }
-                } else {
-                    quote! { .. }
-                };
-
+                // Multiple (nested) containers can track values for the same version. As such, only
+                // the values matching the JSON paths of this container are applied. All other values
+                // are kept, so that they can be applied by the other containers. The entry for the
+                // version is only removed once all values have been applied.
                 Some(quote! {
-                    // NOTE (@Techassi): This is an awkward thing to do. Can we possibly use &str for the keys here?
-                    if let Some(upgrades) = status.changes().upgrades.remove(&#next_version_string.to_owned()) {
-                        for #versioned_path::ChangedValue { json_path, value, #downgraded_value } in upgrades {
+                    if let Some(upgrades) = status.changes().upgrades.get_mut(#next_version_string) {
+                        for #versioned_path::ChangedValue { json_path, value, downgraded_value } in ::std::mem::take(upgrades) {
                             match json_path {
                                 #match_arms
-                                _ => unreachable!(),
+                                json_path => upgrades.push(#versioned_path::ChangedValue {
+                                    json_path,
+                                    value,
+                                    downgraded_value,
+                                }),
                             }
+                        }
+
+                        if upgrades.is_empty() {
+                            status.changes().upgrades.remove(#next_version_string);
                         }
                     }
                 })

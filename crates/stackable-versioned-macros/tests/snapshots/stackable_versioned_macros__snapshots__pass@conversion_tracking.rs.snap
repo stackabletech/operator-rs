@@ -64,14 +64,28 @@ where
             bah: ::std::default::Default::default(),
             baz: __sv_foospec.baz.into(),
         };
-        if let Some(upgrades) = status.changes().upgrades.remove(&"v1beta1".to_owned()) {
-            for ::stackable_versioned::ChangedValue { json_path, value, .. } in upgrades {
+        if let Some(upgrades) = status.changes().upgrades.get_mut("v1beta1") {
+            for ::stackable_versioned::ChangedValue {
+                json_path,
+                value,
+                downgraded_value,
+            } in ::std::mem::take(upgrades) {
                 match json_path {
                     json_path if json_path == __sv_bah_path => {
                         spec.bah = ::serde_json::from_value(value).unwrap();
                     }
-                    _ => unreachable!(),
+                    json_path => {
+                        upgrades
+                            .push(::stackable_versioned::ChangedValue {
+                                json_path,
+                                value,
+                                downgraded_value,
+                            })
+                    }
                 }
+            }
+            if upgrades.is_empty() {
+                status.changes().upgrades.remove("v1beta1");
             }
         }
         spec

@@ -66,20 +66,30 @@ where
             bah: __sv_foospec.bah.into(),
             qux: __sv_foospec.qux.into(),
         };
-        if let Some(upgrades) = status.changes().upgrades.remove(&"v1beta1".to_owned()) {
+        if let Some(upgrades) = status.changes().upgrades.get_mut("v1beta1") {
             for ::stackable_versioned::ChangedValue {
                 json_path,
                 value,
                 downgraded_value,
-            } in upgrades {
+            } in ::std::mem::take(upgrades) {
                 match json_path {
                     json_path if json_path == __sv_bah_path => {
                         if downgraded_value.unwrap_or_default() == __sv_bah_value {
                             spec.bah = ::serde_json::from_value(value).unwrap();
                         }
                     }
-                    _ => unreachable!(),
+                    json_path => {
+                        upgrades
+                            .push(::stackable_versioned::ChangedValue {
+                                json_path,
+                                value,
+                                downgraded_value,
+                            })
+                    }
                 }
+            }
+            if upgrades.is_empty() {
+                status.changes().upgrades.remove("v1beta1");
             }
         }
         spec
@@ -183,12 +193,12 @@ where
             baz: __sv_foospec.qux.into(),
             quux: ::std::default::Default::default(),
         };
-        if let Some(upgrades) = status.changes().upgrades.remove(&"v1".to_owned()) {
+        if let Some(upgrades) = status.changes().upgrades.get_mut("v1") {
             for ::stackable_versioned::ChangedValue {
                 json_path,
                 value,
                 downgraded_value,
-            } in upgrades {
+            } in ::std::mem::take(upgrades) {
                 match json_path {
                     json_path if json_path == __sv_bar_path => {
                         if downgraded_value.unwrap_or_default() == __sv_bar_value {
@@ -198,8 +208,18 @@ where
                     json_path if json_path == __sv_quux_path => {
                         spec.quux = ::serde_json::from_value(value).unwrap();
                     }
-                    _ => unreachable!(),
+                    json_path => {
+                        upgrades
+                            .push(::stackable_versioned::ChangedValue {
+                                json_path,
+                                value,
+                                downgraded_value,
+                            })
+                    }
                 }
+            }
+            if upgrades.is_empty() {
+                status.changes().upgrades.remove("v1");
             }
         }
         spec
