@@ -122,7 +122,7 @@ mod tests {
     }
 
     fn build_test_resource() -> TestCluster {
-        serde_yaml::from_str(&format!(
+        yaml_serde::from_str(&format!(
             "
             apiVersion: test/v1
             kind: TestCluster

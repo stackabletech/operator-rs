@@ -20,7 +20,16 @@ use crate::{
 #[derive(Debug)]
 pub struct VersionedField {
     pub original_attributes: Vec<Attribute>,
-    pub previous_docs: BTreeMap<Version, Vec<String>>,
+
+    /// A sparse map of changed doc comments.
+    ///
+    /// This map being sparse means that access to it must be able to deal with a version not being
+    /// present. Using `unwrap()`, [`BTreeMapExt::get_expect`] or other similar functions is not
+    /// recommended. Also see `CommonItemAttributes::changed_docs` for further details.
+    //
+    // NOTE (@Techassi): Potentially roll this into the changeset below so that there will be a
+    // single sure of truth for field generation again.
+    pub changed_docs: BTreeMap<Version, Vec<String>>,
     pub changes: Option<BTreeMap<Version, ItemStatus>>,
     pub idents: FieldIdents,
     pub hint: Option<Hint>,
@@ -46,7 +55,7 @@ impl VersionedField {
         })?;
         let idents = FieldIdents::from(ident);
 
-        let previous_docs = field_attributes.common.previous_docs();
+        let changed_docs = field_attributes.common.changed_docs();
         let changes = field_attributes
             .common
             .into_changeset(&idents, field.ty.clone());
@@ -55,7 +64,7 @@ impl VersionedField {
         Ok(Self {
             original_attributes: field_attributes.attrs,
             hint: field_attributes.hint,
-            previous_docs,
+            changed_docs,
             ty: field.ty,
             changes,
             idents,
@@ -87,7 +96,7 @@ impl VersionedField {
     pub fn generate_for_container(&self, version: &VersionDefinition) -> Option<TokenStream> {
         let attributes = generate_attributes(
             &self.original_attributes,
-            &self.previous_docs,
+            &self.changed_docs,
             &version.inner,
         );
 
@@ -516,6 +525,10 @@ impl VersionedField {
         custom_conversion_function: Option<&Path>,
     ) -> TokenStream {
         match custom_conversion_function {
+            // TODO (@Techassi): We should also support tracking here. Currently, the nested hint is
+            // ignored and the generated code doesn't force the custom conversion function to accept
+            // a tracking status.
+            //
             // The user specified a custom conversion function which will be used here instead of the
             // default conversion call which utilizes From impls.
             Some(convert_fn) => quote! {

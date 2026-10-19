@@ -21,6 +21,11 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "uid": "d41e2019-5de3-409c-a7b2-0799ecb95e4b"
         },
         "spec": {
+          "relationship": {
+            "married": {
+              "with": "Jane Doe"
+            }
+          },
           "socials": {
             "email": "jdoe@example.com"
           },
@@ -32,6 +37,11 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "kind": "Person",
         "metadata": {},
         "spec": {
+          "relationship": {
+            "married": {
+              "with": "Jane Doe"
+            }
+          },
           "socials": {
             "email": "jdoe@example.com"
           },
@@ -61,6 +71,11 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "kind": "Person",
         "metadata": {},
         "spec": {
+          "relationship": {
+            "married": {
+              "with": "Jane Doe"
+            }
+          },
           "socials": {
             "email": "jdoe@example.com"
           },
@@ -96,6 +111,11 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "kind": "Person",
         "metadata": {},
         "spec": {
+          "relationship": {
+            "married": {
+              "with": "Jane Doe"
+            }
+          },
           "socials": {
             "email": "jdoe@example.com"
           },
@@ -137,6 +157,11 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "kind": "Person",
         "metadata": {},
         "spec": {
+          "relationship": {
+            "married": {
+              "with": "Jane Doe"
+            }
+          },
           "socials": {
             "email": "jdoe@example.com"
           },
@@ -170,6 +195,10 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
                 }
               ],
               "v3": [
+                {
+                  "jsonPath": "$.relationship.Married.0.since",
+                  "value": "1970-01-01"
+                },
                 {
                   "downgradedValue": "Male",
                   "jsonPath": "$.gender",

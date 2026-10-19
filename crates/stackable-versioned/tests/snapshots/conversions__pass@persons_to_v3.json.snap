@@ -24,6 +24,12 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "firstName": "",
           "gender": "Unknown",
           "lastName": "",
+          "relationship": {
+            "married": {
+              "since": "",
+              "with": "Jane Doe"
+            }
+          },
           "socials": {
             "email": "jdoe@example.com",
             "mastodon": ""
@@ -46,6 +52,12 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "firstName": "John",
           "gender": "Unknown",
           "lastName": "Doe",
+          "relationship": {
+            "married": {
+              "since": "",
+              "with": "Jane Doe"
+            }
+          },
           "socials": {
             "email": "jdoe@example.com",
             "mastodon": ""
@@ -68,6 +80,12 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "firstName": "John",
           "gender": "Unknown",
           "lastName": "Doe",
+          "relationship": {
+            "married": {
+              "since": "",
+              "with": "Jane Doe"
+            }
+          },
           "socials": {
             "email": "jdoe@example.com",
             "mastodon": "@jdoe@example.com"
@@ -90,6 +108,12 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "firstName": "John",
           "gender": "Male",
           "lastName": "Doe",
+          "relationship": {
+            "married": {
+              "since": "",
+              "with": "Jane Doe"
+            }
+          },
           "socials": {
             "email": "jdoe@example.com",
             "mastodon": "@jdoe@example.com"
@@ -112,6 +136,12 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "firstName": "John",
           "gender": "Male",
           "lastName": "Doe",
+          "relationship": {
+            "married": {
+              "since": "1970-01-01",
+              "with": "Jane Doe"
+            }
+          },
           "socials": {
             "email": "jdoe@example.com",
             "mastodon": "@jdoe@example.com"

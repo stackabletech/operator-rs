@@ -169,7 +169,7 @@ fn tracks_values_through_enum_variants() {
     assert_eq!(
         object["status"]["changedValues"]["upgrades"]["v1alpha2"],
         serde_json::json!([{
-            "jsonPath": "$.connector.Iceberg.catalog",
+            "jsonPath": "$.connector.Iceberg.0.catalog",
             "value": {
                 "rest": {
                     "uri": "http://rest-catalog:8181"

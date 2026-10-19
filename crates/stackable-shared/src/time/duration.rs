@@ -515,7 +515,7 @@ mod test {
             dur: Duration,
         }
 
-        let s: S = serde_yaml::from_str("dur: 15d2m2s").expect("valid duration must deserialize");
+        let s: S = yaml_serde::from_str("dur: 15d2m2s").expect("valid duration must deserialize");
         assert_eq!(s.dur.as_secs(), 1_296_122);
     }
 
@@ -533,7 +533,7 @@ mod test {
         };
 
         assert_eq!(
-            serde_yaml::to_string(&s).expect("valid duration must serialize"),
+            yaml_serde::to_string(&s).expect("valid duration must serialize"),
             "dur: 15d2m2s\n"
         );
     }

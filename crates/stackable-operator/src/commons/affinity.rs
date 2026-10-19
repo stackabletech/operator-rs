@@ -59,7 +59,7 @@ pub struct StackableAffinity {
 // We can not mark it as [`Atomic`], as [`crate::config::fragment::FromFragment`] is already implemented for
 // [`BTreeMap<String, String>`].
 //
-// We `#[serde(flatten)]` the contained [`BTreeMap<String, String>`], so `serde_yaml` can deserialize everything as
+// We `#[serde(flatten)]` the contained [`BTreeMap<String, String>`], so `yaml_serde` can deserialize everything as
 // expected.
 #[derive(Clone, Debug, Eq, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -176,7 +176,7 @@ mod tests {
             disktype: ssd
           ";
         let mut role_affinity: StackableAffinityFragment =
-            serde_yaml::from_str(role_input).expect("illegal test input");
+            yaml_serde::from_str(role_input).expect("illegal test input");
 
         role_affinity.merge(&default_affinity);
         let merged_affinity: StackableAffinity = fragment::validate(role_affinity).unwrap();
@@ -277,7 +277,7 @@ mod tests {
                 topologyKey: topology.kubernetes.io/zone
           ";
         let mut role_affinity: StackableAffinityFragment =
-            serde_yaml::from_str(role_input).expect("illegal test input");
+            yaml_serde::from_str(role_input).expect("illegal test input");
 
         role_affinity.merge(&default_affinity);
         let merged_affinity: StackableAffinity = fragment::validate(role_affinity).unwrap();

@@ -72,6 +72,9 @@ fn person_v3_v2_v3_keeps_changes_made_in_v2() {
                     "firstName": "John",
                     "lastName": "Doe",
                     "gender": "It's complicated",
+                    "relationship": {
+                        "single": {}
+                    },
                     "socials": {
                         "email": "jdoe@example.com",
                         "mastodon": "@jdoe@example.com"
