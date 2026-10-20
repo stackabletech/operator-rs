@@ -62,13 +62,14 @@ impl ::core::convert::From<v1alpha2::Foo> for v1alpha1::Foo {
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha1::FooSpec, S> for v1alpha2::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1alpha1::FooSpec, __SvStatus>
+for v1alpha2::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_foospec: v1alpha1::FooSpec,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
@@ -83,13 +84,14 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha2::FooSpec, S> for v1alpha1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1alpha2::FooSpec, __SvStatus>
+for v1alpha1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_foospec: v1alpha2::FooSpec,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
@@ -104,14 +106,14 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha1::Connector, S>
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1alpha1::Connector, __SvStatus>
 for v1alpha2::Connector
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_connector: v1alpha1::Connector,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
@@ -157,14 +159,14 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha2::Connector, S>
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1alpha2::Connector, __SvStatus>
 for v1alpha1::Connector
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_connector: v1alpha2::Connector,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
@@ -210,14 +212,16 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha1::IcebergConnector, S>
+impl<
+    __SvStatus,
+> ::stackable_versioned::TrackingFrom<v1alpha1::IcebergConnector, __SvStatus>
 for v1alpha2::IcebergConnector
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_icebergconnector: v1alpha1::IcebergConnector,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
@@ -244,14 +248,16 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha2::IcebergConnector, S>
+impl<
+    __SvStatus,
+> ::stackable_versioned::TrackingFrom<v1alpha2::IcebergConnector, __SvStatus>
 for v1alpha1::IcebergConnector
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_icebergconnector: v1alpha2::IcebergConnector,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
         use ::stackable_versioned::TrackingInto as _;

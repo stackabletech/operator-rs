@@ -74,8 +74,11 @@ pub struct Enum {
     /// and where clause.
     ///
     /// We use a [`OnceCell`] here to avoid outer mutability and instead rely on interior mutability
-    /// to lazily initialize this field. This is done to avoid the macro the re-clone and
+    /// to lazily initialize this field. This is done to avoid the macro re-cloning and
     /// re-construct these generics over and over again.
+    ///
+    /// NOTE: Do **NOT** make public. Access to this field and its value is handled in a controlled
+    /// fashion via [`Enum::get_tracking_generics`].
     ///
     /// SAFETY: Using [`OnceCell`] instead of `OnceLock` is fine here, because proc-macros run in a
     /// single thread.
@@ -205,10 +208,10 @@ impl Enum {
                 quote! {
                     #automatically_derived
                     #allow_attribute
-                    impl #impl_generics #versioned_path::TrackingFrom<#from_module_ident::#enum_ident #type_generics, S> for #for_module_ident::#enum_ident #type_generics
+                    impl #impl_generics #versioned_path::TrackingFrom<#from_module_ident::#enum_ident #type_generics, __SvStatus> for #for_module_ident::#enum_ident #type_generics
                         #where_clause
                     {
-                        fn tracking_from(#from_enum_ident: #from_module_ident::#enum_ident #type_generics, status: &mut S, parent: &str) -> Self {
+                        fn tracking_from(#from_enum_ident: #from_module_ident::#enum_ident #type_generics, status: &mut __SvStatus, parent: &str) -> Self {
                             // TODO (@Techassi): Only emit this if any of the variants below need it
                             use #versioned_path::TrackingInto as _;
 
@@ -247,11 +250,16 @@ impl Enum {
         self.tracking_generics.get_or_init(|| {
             let versioned_path = &*mod_gen_ctx.crates.versioned;
 
+            // The generic type is prefixed to avoid collisions with generic types declared on the
+            // enum, like `enum Foo<S>`.
             let mut tracking_generics = self.generics.clone();
-            tracking_generics.params.push(parse_quote! { S });
-            tracking_generics.make_where_clause().predicates.push(
-                parse_quote! { S: #versioned_path::TrackingStatus + ::core::default::Default },
-            );
+            tracking_generics.params.push(parse_quote! { __SvStatus });
+            tracking_generics
+                .make_where_clause()
+                .predicates
+                .push(parse_quote! {
+                    __SvStatus: #versioned_path::TrackingStatus + ::core::default::Default
+                });
 
             tracking_generics
         })
