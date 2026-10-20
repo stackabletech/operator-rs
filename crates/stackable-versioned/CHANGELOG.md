@@ -6,23 +6,25 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Re-add support for generics in tracking impls ([#1304]).
 - Track fields which changed their type when `experimental_conversion_tracking` is enabled. The
   tracked value is only applied on upgrade if the field was not changed in the older version
-  ([#ZZZZ]).
+  ([#1296]).
 
 ### Changed
 
 - BREAKING: Store tracked values as `serde_json::Value` instead of `yaml_serde::Value`. Tracked
   enum values were serialized as YAML tags, which failed to deserialize after a roundtrip through
-  the JSON status ([#ZZZZ]).
+  the JSON status ([#1296]).
 
 ### Fixed
 
 - Fix a panic during conversions when multiple (nested) containers track values for the same
   version. Each container now only applies the tracked values matching its JSON paths and keeps
-  all others ([#ZZZZ]).
+  all others ([#1296]).
 
-[#ZZZZ]: https://github.com/stackabletech/operator-rs/pull/ZZZZ
+[#1304]: https://github.com/stackabletech/operator-rs/pull/1304
+[#1296]: https://github.com/stackabletech/operator-rs/pull/1296
 
 ## [0.13.0] - 2026-10-14
 

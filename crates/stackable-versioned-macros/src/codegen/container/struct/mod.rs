@@ -1,3 +1,5 @@
+use std::cell::OnceCell;
+
 use darling::{Error, FromAttributes, Result, util::IdentString};
 use itertools::Itertools;
 use proc_macro2::TokenStream;
@@ -78,6 +80,7 @@ impl Container {
         };
 
         Ok(Self::Struct(Struct {
+            tracking_generics: OnceCell::new(),
             generics: item_struct.generics,
             kubernetes_data,
             fields: versioned_fields,
@@ -100,6 +103,20 @@ pub struct Struct {
 
     /// Generic types of the struct
     pub generics: Generics,
+
+    /// Generic types of the struct which additionally also include the tracking state generic type
+    /// and where clause.
+    ///
+    /// We use a [`OnceCell`] here to avoid outer mutability and instead rely on interior mutability
+    /// to lazily initialize this field. This is done to avoid the macro re-cloning and
+    /// re-construct these generics over and over again.
+    ///
+    /// NOTE: Do **NOT** make public. Access to this field and its value is handled in a controlled
+    /// fashion via [`Struct::get_tracking_generics`].
+    ///
+    /// SAFETY: Using [`OnceCell`] instead of `OnceLock` is fine here, because proc-macros run in a
+    /// single thread.
+    tracking_generics: OnceCell<Generics>,
 }
 
 #[derive(Debug)]

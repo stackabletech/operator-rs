@@ -32,11 +32,16 @@ mod v1alpha1 {
 }
 #[automatically_derived]
 #[allow(deprecated)]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha1::Foo, S> for v1beta1::Foo
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1alpha1::Foo, __SvStatus>
+for v1beta1::Foo
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_foo: v1alpha1::Foo, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_foo: v1alpha1::Foo,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let __sv_baz_path = ::stackable_versioned::jthong_path(parent, "baz");
         let mut spec = Self {
@@ -76,11 +81,16 @@ where
 }
 #[automatically_derived]
 #[allow(deprecated)]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta1::Foo, S> for v1alpha1::Foo
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta1::Foo, __SvStatus>
+for v1alpha1::Foo
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_foo: v1beta1::Foo, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_foo: v1beta1::Foo,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let __sv_baz_path = ::stackable_versioned::jthong_path(parent, "baz");
         let upgrades = status
@@ -105,11 +115,16 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha1::Bar, S> for v1beta1::Bar
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1alpha1::Bar, __SvStatus>
+for v1beta1::Bar
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_bar: v1alpha1::Bar, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_bar: v1alpha1::Bar,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v1alpha1::Bar::Baz => v1beta1::Bar::Baz,
@@ -117,11 +132,16 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta1::Bar, S> for v1alpha1::Bar
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta1::Bar, __SvStatus>
+for v1alpha1::Bar
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_bar: v1beta1::Bar, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_bar: v1beta1::Bar,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v1beta1::Bar::Baz => v1alpha1::Bar::Baz,
@@ -168,11 +188,16 @@ mod v1beta1 {
 }
 #[automatically_derived]
 #[allow(deprecated)]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta1::Foo, S> for v1beta2::Foo
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta1::Foo, __SvStatus>
+for v1beta2::Foo
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_foo: v1beta1::Foo, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_foo: v1beta1::Foo,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let mut spec = Self {
             foo: __sv_foo.foo.into(),
@@ -187,11 +212,16 @@ where
 }
 #[automatically_derived]
 #[allow(deprecated)]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta2::Foo, S> for v1beta1::Foo
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta2::Foo, __SvStatus>
+for v1beta1::Foo
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_foo: v1beta2::Foo, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_foo: v1beta2::Foo,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let mut spec = Self {
             foo: __sv_foo.foo.into(),
@@ -205,11 +235,16 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta1::Bar, S> for v1beta2::Bar
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta1::Bar, __SvStatus>
+for v1beta2::Bar
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_bar: v1beta1::Bar, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_bar: v1beta1::Bar,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v1beta1::Bar::Baz => v1beta2::Bar::Baz,
@@ -217,11 +252,16 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta2::Bar, S> for v1beta1::Bar
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta2::Bar, __SvStatus>
+for v1beta1::Bar
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_bar: v1beta2::Bar, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_bar: v1beta2::Bar,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v1beta2::Bar::Baz => v1beta1::Bar::Baz,
@@ -262,11 +302,16 @@ mod v1beta2 {
 }
 #[automatically_derived]
 #[allow(deprecated)]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta2::Foo, S> for v1::Foo
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta2::Foo, __SvStatus>
+for v1::Foo
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_foo: v1beta2::Foo, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_foo: v1beta2::Foo,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let mut spec = Self {
             foo: __sv_foo.foo.into(),
@@ -281,11 +326,12 @@ where
 }
 #[automatically_derived]
 #[allow(deprecated)]
-impl<S> ::stackable_versioned::TrackingFrom<v1::Foo, S> for v1beta2::Foo
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1::Foo, __SvStatus>
+for v1beta2::Foo
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_foo: v1::Foo, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(__sv_foo: v1::Foo, status: &mut __SvStatus, parent: &str) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let mut spec = Self {
             foo: __sv_foo.foo.into(),
@@ -299,11 +345,16 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta2::Bar, S> for v1::Bar
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta2::Bar, __SvStatus>
+for v1::Bar
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_bar: v1beta2::Bar, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(
+        __sv_bar: v1beta2::Bar,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v1beta2::Bar::Baz => v1::Bar::Baz,
@@ -311,11 +362,12 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1::Bar, S> for v1beta2::Bar
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1::Bar, __SvStatus>
+for v1beta2::Bar
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_bar: v1::Bar, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(__sv_bar: v1::Bar, status: &mut __SvStatus, parent: &str) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v1::Bar::Baz => v1beta2::Bar::Baz,
@@ -356,11 +408,11 @@ mod v1 {
 }
 #[automatically_derived]
 #[allow(deprecated)]
-impl<S> ::stackable_versioned::TrackingFrom<v1::Foo, S> for v2::Foo
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1::Foo, __SvStatus> for v2::Foo
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_foo: v1::Foo, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(__sv_foo: v1::Foo, status: &mut __SvStatus, parent: &str) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let mut spec = Self {
             foo: __sv_foo.foo.into(),
@@ -375,11 +427,11 @@ where
 }
 #[automatically_derived]
 #[allow(deprecated)]
-impl<S> ::stackable_versioned::TrackingFrom<v2::Foo, S> for v1::Foo
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v2::Foo, __SvStatus> for v1::Foo
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_foo: v2::Foo, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(__sv_foo: v2::Foo, status: &mut __SvStatus, parent: &str) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         let mut spec = Self {
             foo: __sv_foo.foo.into(),
@@ -393,11 +445,11 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1::Bar, S> for v2::Bar
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1::Bar, __SvStatus> for v2::Bar
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_bar: v1::Bar, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(__sv_bar: v1::Bar, status: &mut __SvStatus, parent: &str) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v1::Bar::Baz => v2::Bar::Baz,
@@ -405,11 +457,11 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v2::Bar, S> for v1::Bar
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v2::Bar, __SvStatus> for v1::Bar
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_bar: v2::Bar, status: &mut S, parent: &str) -> Self {
+    fn tracking_from(__sv_bar: v2::Bar, status: &mut __SvStatus, parent: &str) -> Self {
         use ::stackable_versioned::TrackingInto as _;
         match __sv_bar {
             v2::Bar::Baz => v1::Bar::Baz,

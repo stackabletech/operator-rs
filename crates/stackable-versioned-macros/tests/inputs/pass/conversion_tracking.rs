@@ -30,7 +30,3 @@ fn main() {}
 pub struct FooStatus {
     foo: String,
 }
-
-fn usize_to_u16(input: usize) -> u16 {
-    input.try_into().unwrap()
-}

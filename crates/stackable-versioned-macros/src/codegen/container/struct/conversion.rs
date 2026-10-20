@@ -1,10 +1,12 @@
+#[cfg(doc)]
+use std::cell::OnceCell;
 use std::{borrow::Cow, cmp::Ordering};
 
 use indoc::formatdoc;
 use itertools::Itertools as _;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::parse_quote;
+use syn::{Generics, parse_quote};
 
 use crate::{
     codegen::{
@@ -122,6 +124,10 @@ impl Struct {
         // defined struct always represents the latest version. I guess we could generally
         // advise against using generic types, but if you have to, avoid removing it in
         // later versions.
+        let (_, type_generics, _) = self.generics.split_for_impl();
+        let (impl_generics, _, where_clause) =
+            self.get_tracking_generics(mod_gen_ctx).split_for_impl();
+
         let from_struct_ident = &self.common.idents.parameter;
         let struct_ident = &self.common.idents.original;
 
@@ -176,17 +182,15 @@ impl Struct {
         let json_paths = self.generate_json_paths(next_version, mod_gen_ctx);
         let tracked_values = self.generate_tracked_values(direction, next_version, mod_gen_ctx);
 
-        // TODO (@Techassi): Re-add support for generics
         // TODO (@Techassi): We know the status, so we can hard-code it, but hard to track across structs
 
         quote! {
             #automatically_derived
             #allow_attribute
-            impl<S> #versioned_path::TrackingFrom<#from_module_ident::#struct_ident, S> for #for_module_ident::#struct_ident
-            where
-                S: #versioned_path::TrackingStatus + ::core::default::Default
+            impl #impl_generics #versioned_path::TrackingFrom<#from_module_ident::#struct_ident #type_generics, __SvStatus> for #for_module_ident::#struct_ident #type_generics
+                #where_clause
             {
-                fn tracking_from(#from_struct_ident: #from_module_ident::#struct_ident, status: &mut S, parent: &str) -> Self {
+                fn tracking_from(#from_struct_ident: #from_module_ident::#struct_ident #type_generics, status: &mut __SvStatus, parent: &str) -> Self {
                     // TODO (@Techassi): Only emit this if any of the fields below need it
                     use #versioned_path::TrackingInto as _;
 
@@ -892,6 +896,32 @@ impl Struct {
         } else {
             TracingTokens::default()
         }
+    }
+
+    /// Construct (if needed) and return the [`Struct`]'s generics extended with the tracking status
+    /// generic type and where clause.
+    ///
+    /// This function lazily initializes the underlying field in [`Struct`]. Afterwards, the value
+    /// is re-used without constructing the value from scratch over and over again. This is achieved
+    /// through interior mutability via [`OnceCell`]. See [`Struct`]'s `tracking_generics` field for
+    /// more details.
+    fn get_tracking_generics(&self, mod_gen_ctx: ModuleGenerationContext<'_>) -> &Generics {
+        self.tracking_generics.get_or_init(|| {
+            let versioned_path = &*mod_gen_ctx.crates.versioned;
+
+            // The generic type is prefixed to avoid collisions with generic types declared on the
+            // struct, like `struct Foo<S>`.
+            let mut tracking_generics = self.generics.clone();
+            tracking_generics.params.push(parse_quote! { __SvStatus });
+            tracking_generics
+                .make_where_clause()
+                .predicates
+                .push(parse_quote! {
+                    __SvStatus: #versioned_path::TrackingStatus + ::core::default::Default
+                });
+
+            tracking_generics
+        })
     }
 }
 
