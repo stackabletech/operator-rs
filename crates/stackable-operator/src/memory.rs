@@ -687,7 +687,7 @@ mod tests {
         }
 
         let memory = Memory { memory };
-        let output = serde_yaml::to_string(&memory).unwrap();
+        let output = yaml_serde::to_string(&memory).unwrap();
 
         assert_eq!(output, expected);
     }
@@ -703,7 +703,7 @@ mod tests {
             memory: MemoryQuantity,
         }
 
-        let memory: Memory = serde_yaml::from_str(input).unwrap();
+        let memory: Memory = yaml_serde::from_str(input).unwrap();
         assert_eq!(memory.memory, expected);
     }
 }

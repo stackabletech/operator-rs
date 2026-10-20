@@ -1,6 +1,6 @@
 [package]
 name = "stackable-versioned-macros"
-version = "0.12.0"
+version = "0.13.0"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -19,7 +19,7 @@ development = [
   "k8s-openapi",
   "kube",
   "schemars",
-  "serde_yaml",
+  "yaml_serde",
   "stackable-versioned",
   "tracing",
 ]
@@ -51,7 +51,7 @@ rstest.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-serde_yaml.workspace = true
+yaml_serde.workspace = true
 snafu.workspace = true
 tracing.workspace = true
 trybuild.workspace = true

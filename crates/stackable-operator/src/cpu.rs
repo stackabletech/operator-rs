@@ -286,7 +286,7 @@ mod tests {
         }
 
         let cpu = Cpu { cpu };
-        let output = serde_yaml::to_string(&cpu).unwrap();
+        let output = yaml_serde::to_string(&cpu).unwrap();
 
         assert_eq!(output, expected);
     }
@@ -305,7 +305,7 @@ mod tests {
             cpu: CpuQuantity,
         }
 
-        let cpu: Cpu = serde_yaml::from_str(input).unwrap();
+        let cpu: Cpu = yaml_serde::from_str(input).unwrap();
         assert_eq!(cpu.cpu, expected);
     }
 }

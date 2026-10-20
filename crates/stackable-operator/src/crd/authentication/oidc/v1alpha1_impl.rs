@@ -191,7 +191,7 @@ mod test {
 
     #[test]
     fn minimal() {
-        let oidc = serde_yaml::from_str::<AuthenticationProvider>(
+        let oidc = yaml_serde::from_str::<AuthenticationProvider>(
             "
             hostname: my.keycloak.server
             scopes: [openid]
@@ -203,7 +203,7 @@ mod test {
 
     #[test]
     fn full() {
-        let oidc = serde_yaml::from_str::<AuthenticationProvider>(
+        let oidc = yaml_serde::from_str::<AuthenticationProvider>(
             "
             hostname: my.keycloak.server
             rootPath: /
@@ -217,7 +217,7 @@ mod test {
 
     #[test]
     fn http_endpoint_url() {
-        let oidc = serde_yaml::from_str::<AuthenticationProvider>(
+        let oidc = yaml_serde::from_str::<AuthenticationProvider>(
             "
             hostname: my.keycloak.server
             rootPath: my-root-path
@@ -236,7 +236,7 @@ mod test {
 
     #[test]
     fn https_endpoint_url() {
-        let oidc = serde_yaml::from_str::<AuthenticationProvider>(
+        let oidc = yaml_serde::from_str::<AuthenticationProvider>(
             "
             hostname: my.keycloak.server
             tls:
@@ -258,7 +258,7 @@ mod test {
 
     #[test]
     fn ipv6_endpoint_url() {
-        let oidc = serde_yaml::from_str::<AuthenticationProvider>(
+        let oidc = yaml_serde::from_str::<AuthenticationProvider>(
             "
             hostname: 2606:2800:220:1:248:1893:25c8:1946
             rootPath: my-root-path
@@ -285,7 +285,7 @@ mod test {
         "http://my.keycloak.server:1234/realms/my/realm/with/slashes"
     )]
     fn root_path_endpoint_url(#[case] root_path: String, #[case] expected_endpoint_url: &str) {
-        let oidc = serde_yaml::from_str::<AuthenticationProvider>(&format!(
+        let oidc = yaml_serde::from_str::<AuthenticationProvider>(&format!(
             "
             hostname: my.keycloak.server
             port: 1234
@@ -318,7 +318,7 @@ mod test {
         "https://my.keycloak.server/realms/my/realm/with/slashes/.well-known/openid-configuration"
     )]
     fn root_path_well_known_url(#[case] root_path: String, #[case] expected_well_known_url: &str) {
-        let oidc = serde_yaml::from_str::<AuthenticationProvider>(&format!(
+        let oidc = yaml_serde::from_str::<AuthenticationProvider>(&format!(
             "
             hostname: my.keycloak.server
             rootPath: {root_path}

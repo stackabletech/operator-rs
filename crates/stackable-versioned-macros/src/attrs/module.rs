@@ -118,8 +118,8 @@ pub struct CrateArguments {
     #[darling(default = default_serde_json)]
     pub serde_json: Override<Path>,
 
-    #[darling(default = default_serde_yaml)]
-    pub serde_yaml: Override<Path>,
+    #[darling(default = default_yaml_serde)]
+    pub yaml_serde: Override<Path>,
 
     #[darling(default = default_versioned)]
     pub versioned: Override<Path>,
@@ -135,7 +135,7 @@ impl Default for CrateArguments {
             schemars: default_schemars(),
             serde: default_serde(),
             serde_json: default_serde_json(),
-            serde_yaml: default_serde_yaml(),
+            yaml_serde: default_yaml_serde(),
             versioned: default_versioned(),
         }
     }
@@ -189,8 +189,8 @@ fn default_serde_json() -> Override<Path> {
     Override::Default(parse_quote! { ::serde_json })
 }
 
-fn default_serde_yaml() -> Override<Path> {
-    Override::Default(parse_quote! { ::serde_yaml })
+fn default_yaml_serde() -> Override<Path> {
+    Override::Default(parse_quote! { ::yaml_serde })
 }
 
 fn default_versioned() -> Override<Path> {

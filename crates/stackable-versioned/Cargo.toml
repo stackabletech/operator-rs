@@ -1,6 +1,6 @@
 [package]
 name = "stackable-versioned"
-version = "0.12.0"
+version = "0.13.0"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -17,7 +17,7 @@ kube.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-serde_yaml.workspace = true
+yaml_serde.workspace = true
 snafu.workspace = true
 
 [dev-dependencies]

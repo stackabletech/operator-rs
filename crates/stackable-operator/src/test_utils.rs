@@ -1,17 +1,17 @@
-/// Please use only in tests, as we have non-ideal error handling in case serde_yaml produced
+/// Please use only in tests, as we have non-ideal error handling in case yaml_serde produced
 /// non-utf8 output.
-pub fn serialize_to_yaml_with_singleton_map<S>(input: &S) -> Result<String, serde_yaml::Error>
+pub fn serialize_to_yaml_with_singleton_map<S>(input: &S) -> Result<String, yaml_serde::Error>
 where
     S: serde::Serialize,
 {
     use serde::ser::Error as _;
 
     let mut buffer = Vec::new();
-    let mut serializer = serde_yaml::Serializer::new(&mut buffer);
-    serde_yaml::with::singleton_map_recursive::serialize(input, &mut serializer)?;
+    let mut serializer = yaml_serde::Serializer::new(&mut buffer);
+    yaml_serde::with::singleton_map_recursive::serialize(input, &mut serializer)?;
     String::from_utf8(buffer).map_err(|err| {
-        serde_yaml::Error::custom(format!(
-            "For *some* reason, serde_yaml produced non-utf8 output: {err}"
+        yaml_serde::Error::custom(format!(
+            "For *some* reason, yaml_serde produced non-utf8 output: {err}"
         ))
     })
 }
@@ -19,10 +19,10 @@ where
 /// Deserialize a YAML string with recursive singleton maps instead of expecting custom tags.
 pub fn deserialize_from_yaml_with_singleton_map<'a, T>(
     input: &'a str,
-) -> Result<T, serde_yaml::Error>
+) -> Result<T, yaml_serde::Error>
 where
     T: serde::Deserialize<'a>,
 {
-    let deserializer = serde_yaml::Deserializer::from_str(input);
-    serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
+    let deserializer = yaml_serde::Deserializer::from_str(input);
+    yaml_serde::with::singleton_map_recursive::deserialize(deserializer)
 }

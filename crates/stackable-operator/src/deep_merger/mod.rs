@@ -93,9 +93,9 @@ mod tests {
 
     use super::*;
 
-    /// Using [`serde_yaml`] to generate the test data
+    /// Using [`yaml_serde`] to generate the test data
     fn generate_service_account() -> ServiceAccount {
-        serde_yaml::from_str(indoc! {"
+        yaml_serde::from_str(indoc! {"
             apiVersion: v1
             kind: ServiceAccount
             metadata:
@@ -172,7 +172,7 @@ mod tests {
     fn service_account_merged() {
         let mut sa = generate_service_account();
 
-        let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
+        let object_overrides: ObjectOverrides = yaml_serde::from_str(indoc! {"
             - apiVersion: v1
               kind: ServiceAccount
               metadata:
@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn service_account_not_merged_as_different_name() {
         let mut sa = generate_service_account();
-        let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
+        let object_overrides: ObjectOverrides = yaml_serde::from_str(indoc! {"
             - apiVersion: v1
               kind: ServiceAccount
               metadata:
@@ -216,7 +216,7 @@ mod tests {
     #[test]
     fn service_account_not_merged_as_different_namespace() {
         let mut sa = generate_service_account();
-        let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
+        let object_overrides: ObjectOverrides = yaml_serde::from_str(indoc! {"
             - apiVersion: v1
               kind: ServiceAccount
               metadata:
@@ -238,7 +238,7 @@ mod tests {
     #[test]
     fn service_account_not_merged_as_namespace_missing() {
         let mut sa = generate_service_account();
-        let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
+        let object_overrides: ObjectOverrides = yaml_serde::from_str(indoc! {"
             - apiVersion: v1
               kind: ServiceAccount
               metadata:
@@ -261,7 +261,7 @@ mod tests {
     #[test]
     fn unmatched_overrides_are_reported() {
         let mut sa = generate_service_account();
-        let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
+        let object_overrides: ObjectOverrides = yaml_serde::from_str(indoc! {"
             - apiVersion: v1
               kind: ServiceAccount
               metadata:
@@ -295,7 +295,7 @@ mod tests {
     #[test]
     fn service_account_not_merged_as_different_api_version() {
         let mut sa = generate_service_account();
-        let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
+        let object_overrides: ObjectOverrides = yaml_serde::from_str(indoc! {"
             - apiVersion: v42 # apiVersion mismatch
               kind: ServiceAccount
               metadata:
@@ -317,7 +317,7 @@ mod tests {
     #[test]
     fn statefulset_merged_multiple_merges() {
         let mut sts = generate_stateful_set();
-        let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
+        let object_overrides: ObjectOverrides = yaml_serde::from_str(indoc! {"
             - apiVersion: v1
               kind: ServiceAccount
               metadata:
@@ -384,7 +384,7 @@ mod tests {
 
     #[test]
     fn configmap_merged() {
-        let mut cm: ConfigMap = serde_yaml::from_str(indoc! {"
+        let mut cm: ConfigMap = yaml_serde::from_str(indoc! {"
             apiVersion: v1
             kind: ConfigMap
             metadata:
@@ -398,7 +398,7 @@ mod tests {
                 =info
         "})
         .expect("test YAML is valid");
-        let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
+        let object_overrides: ObjectOverrides = yaml_serde::from_str(indoc! {"
             - apiVersion: v1
               kind: ConfigMap
               metadata:
@@ -442,7 +442,7 @@ mod tests {
 
     #[test]
     fn secret_merged() {
-        let mut secret: Secret = serde_yaml::from_str(indoc! {"
+        let mut secret: Secret = yaml_serde::from_str(indoc! {"
             apiVersion: v1
             kind: Secret
             metadata:
@@ -453,7 +453,7 @@ mod tests {
               raw: YmFyCg== # echo bar | base64
         "})
         .expect("test YAML is valid");
-        let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
+        let object_overrides: ObjectOverrides = yaml_serde::from_str(indoc! {"
             - apiVersion: v1
               kind: Secret
               metadata:
@@ -489,7 +489,7 @@ mod tests {
 
     #[test]
     fn cluster_scoped_object_merged() {
-        let mut storage_class: StorageClass = serde_yaml::from_str(indoc! {"
+        let mut storage_class: StorageClass = yaml_serde::from_str(indoc! {"
             apiVersion: storage.k8s.io/v1
             kind: StorageClass
             metadata:
@@ -501,7 +501,7 @@ mod tests {
             provisioner: csi-driver.example-vendor.example
         "})
         .expect("test YAML is valid");
-        let object_overrides: ObjectOverrides = serde_yaml::from_str(indoc! {"
+        let object_overrides: ObjectOverrides = yaml_serde::from_str(indoc! {"
             - apiVersion: v1
               kind: ServiceAccount
             - apiVersion: storage.k8s.io/v1

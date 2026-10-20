@@ -51,7 +51,11 @@ pub fn roundtrip_conversion_review(
     options(k8s(experimental_conversion_tracking))
 )]
 pub mod versioned {
-    #[versioned(crd(group = "test.stackable.tech", status = "PersonStatus", doc = "Test"))]
+    #[versioned(crd(
+        group = "test.stackable.tech",
+        status = "PersonStatus",
+        doc = "A Person resource used for testing"
+    ))]
     #[derive(Clone, Debug, CustomResource, Deserialize, JsonSchema, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct PersonSpec {
@@ -71,8 +75,45 @@ pub mod versioned {
         #[versioned(added(since = "v2"), changed(since = "v3", from_type = "Gender"))]
         gender: String,
 
+        // FIXME (@Techassi): This currently breaks because of how enum are serialized by default
+        // by yaml_serde (singleton map)
+        // #[versioned(added(since = "v1alpha2"), nested)]
+        #[versioned(nested)]
+        relationship: Relationship,
+
         #[versioned(nested)]
         socials: Socials,
+    }
+
+    // NOTE (@Techassi): This technically only needs two versions, but we cannot opt out of
+    // versions (for now).
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+    #[serde(rename_all = "camelCase")]
+    pub enum Relationship {
+        #[versioned(nested)]
+        Married(Married),
+        Single {},
+        Other {},
+    }
+
+    // NOTE (@Techassi): This technically only needs two versions, but we cannot opt out of
+    // versions (for now).
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+    pub struct Married {
+        with: String,
+
+        // FIXME (@Techassi): Any other version than v3 leads to a panic. There are two issues here:
+        //
+        // - The tracking impls for each container assume they are the only container which need to
+        //   access to ChangedValues' `upgrades` and/or `downgrades` fields and currently removes
+        //   the list of `ChangedValue`s for a particular version. The code must only remove the
+        //   entire entry once the list inside is empty. Otherwise, other containers won't be able
+        //   to access the tracked changes.
+        // - Each tracking impl must only look and remove the changes which matched with the
+        //   expected JSON path. Unmatched JSON paths currently lead to a panic. They should instead
+        //   be ignored.
+        #[versioned(added(since = "v3"))]
+        since: String,
     }
 
     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
@@ -90,12 +131,16 @@ impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::PersonSpec
         vec![
             Self {
                 username: "jdoe".to_string(),
+                relationship: v1alpha1::Relationship::Married(v1alpha1::Married {
+                    with: "Jane Doe".into(),
+                }),
                 socials: v1alpha1::Socials {
                     email: "jdoe@example.com".to_owned(),
                 },
             },
             Self {
                 username: String::new(),
+                relationship: v1alpha1::Relationship::Single {},
                 socials: v1alpha1::Socials {
                     email: String::new(),
                 },
@@ -113,6 +158,10 @@ impl stackable_versioned::test_utils::RoundtripTestData for v3::PersonSpec {
                 first_name: "John".to_owned(),
                 last_name: "Doe".to_owned(),
                 gender: "Unknown".to_owned(),
+                relationship: v3::Relationship::Married(v3::Married {
+                    with: "Jane Doe".into(),
+                    since: "1970-01-01".into(),
+                }),
                 socials: v3::Socials {
                     email: "jdoe@example.com".to_owned(),
                     mastodon: "@jdoe@example.com".to_owned(),
@@ -123,6 +172,7 @@ impl stackable_versioned::test_utils::RoundtripTestData for v3::PersonSpec {
                 first_name: "John".to_owned(),
                 last_name: "Doe".to_owned(),
                 gender: "Male".to_owned(),
+                relationship: v3::Relationship::Single {},
                 socials: v3::Socials {
                     email: "jdoe@example.com".to_owned(),
                     mastodon: "@jdoe@example.com".to_owned(),

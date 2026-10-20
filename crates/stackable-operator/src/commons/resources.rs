@@ -657,14 +657,14 @@ mod tests {
         #[case] expected: String,
     ) {
         let input_pvcconfig_fragment: PvcConfigFragment =
-            serde_yaml::from_str(&input).expect("illegal test input");
+            yaml_serde::from_str(&input).expect("illegal test input");
         let input_pvcconfig = fragment::validate::<PvcConfig>(input_pvcconfig_fragment)
             .expect("test input failed validation");
 
         let result = input_pvcconfig.build_pvc(&name, access_modes);
 
         let expected_volumeclaim: PersistentVolumeClaim =
-            serde_yaml::from_str(&expected).expect("illegal expected output");
+            yaml_serde::from_str(&expected).expect("illegal expected output");
 
         assert_eq!(result, expected_volumeclaim);
     }
@@ -708,13 +708,13 @@ mod tests {
     )]
     fn into_resourcelimits(#[case] input: String, #[case] expected: String) {
         let input_resources_fragment: ResourcesFragment<TestStorageConfig> =
-            serde_yaml::from_str(&input).expect("illegal test input");
+            yaml_serde::from_str(&input).expect("illegal test input");
         let input_resources: Resources<TestStorageConfig> =
             fragment::validate(input_resources_fragment).expect("test input failed validation");
 
         let result: ResourceRequirements = input_resources.into();
         let expected_requirements: ResourceRequirements =
-            serde_yaml::from_str(&expected).expect("illegal expected output");
+            yaml_serde::from_str(&expected).expect("illegal expected output");
 
         assert_eq!(result, expected_requirements);
     }

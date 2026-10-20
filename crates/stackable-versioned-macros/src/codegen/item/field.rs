@@ -11,7 +11,7 @@ use crate::{
     codegen::{
         Direction, VersionDefinition,
         changes::{BTreeMapExt, ChangesetExt},
-        item::ItemStatus,
+        item::{ItemStatus, generate_attributes},
         module::ModuleGenerationContext,
     },
     utils::{ItemIdentExt, ItemIdents},
@@ -20,6 +20,16 @@ use crate::{
 #[derive(Debug)]
 pub struct VersionedField {
     pub original_attributes: Vec<Attribute>,
+
+    /// A sparse map of changed doc comments.
+    ///
+    /// This map being sparse means that access to it must be able to deal with a version not being
+    /// present. Using `unwrap()`, [`BTreeMapExt::get_expect`] or other similar functions is not
+    /// recommended. Also see `CommonItemAttributes::changed_docs` for further details.
+    //
+    // NOTE (@Techassi): Potentially roll this into the changeset below so that there will be a
+    // single sure of truth for field generation again.
+    pub changed_docs: BTreeMap<Version, Vec<String>>,
     pub changes: Option<BTreeMap<Version, ItemStatus>>,
     pub idents: FieldIdents,
     pub hint: Option<Hint>,
@@ -45,6 +55,7 @@ impl VersionedField {
         })?;
         let idents = FieldIdents::from(ident);
 
+        let changed_docs = field_attributes.common.changed_docs();
         let changes = field_attributes
             .common
             .into_changeset(&idents, field.ty.clone());
@@ -53,6 +64,7 @@ impl VersionedField {
         Ok(Self {
             original_attributes: field_attributes.attrs,
             hint: field_attributes.hint,
+            changed_docs,
             ty: field.ty,
             changes,
             idents,
@@ -82,7 +94,11 @@ impl VersionedField {
     /// }
     /// ```
     pub fn generate_for_container(&self, version: &VersionDefinition) -> Option<TokenStream> {
-        let original_attributes = &self.original_attributes;
+        let attributes = generate_attributes(
+            &self.original_attributes,
+            &self.changed_docs,
+            &version.inner,
+        );
 
         #[allow(clippy::single_match_else)]
         match &self.changes {
@@ -106,13 +122,13 @@ impl VersionedField {
                     )
                 }) {
                     ItemStatus::Addition { ident, ty, .. } => Some(quote! {
-                        #(#original_attributes)*
+                        #attributes
                         pub #ident: #ty,
                     }),
                     ItemStatus::Change {
                         to_ident, to_type, ..
                     } => Some(quote! {
-                        #(#original_attributes)*
+                        #attributes
                         pub #to_ident: #to_type,
                     }),
                     ItemStatus::Deprecation {
@@ -133,7 +149,7 @@ impl VersionedField {
                         };
 
                         Some(quote! {
-                            #(#original_attributes)*
+                            #attributes
                             #deprecated_attr
                             pub #field_ident: #field_type,
                         })
@@ -149,7 +165,7 @@ impl VersionedField {
                         let deprecated_attr = previously_deprecated.then(|| quote! {#[deprecated]});
 
                         Some(quote! {
-                            #(#original_attributes)*
+                            #attributes
                             #deprecated_attr
                             pub #ident: #ty,
                         })
@@ -163,7 +179,7 @@ impl VersionedField {
                 let field_type = &self.ty;
 
                 Some(quote! {
-                    #(#original_attributes)*
+                    #attributes
                     pub #field_ident: #field_type,
                 })
             }
@@ -299,7 +315,7 @@ impl VersionedField {
             Direction::Downgrade => {
                 let next_change = changes.get_expect(&next_version.inner);
 
-                let serde_yaml_path = &*mod_gen_ctx.crates.serde_yaml;
+                let yaml_serde_path = &*mod_gen_ctx.crates.yaml_serde;
                 let versioned_path = &*mod_gen_ctx.crates.versioned;
 
                 match next_change {
@@ -311,7 +327,7 @@ impl VersionedField {
                         Some(quote! {
                             upgrades.push(#versioned_path::ChangedValue {
                                 json_path: #json_path_ident,
-                                value: #serde_yaml_path::to_value(&#from_struct_ident.#ident).unwrap(),
+                                value: #yaml_serde_path::to_value(&#from_struct_ident.#ident).unwrap(),
                             });
                         })
                     }
@@ -327,10 +343,13 @@ impl VersionedField {
         &self,
         direction: Direction,
         next_version: &VersionDefinition,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
     ) -> Option<TokenStream> {
         // If there are no changes for this field, there is also no need to generate a match arm
         // for applying a tracked value.
         let changes = self.changes.as_ref()?;
+
+        let yaml_serde_path = &*mod_gen_ctx.crates.yaml_serde;
 
         match direction {
             Direction::Upgrade => {
@@ -344,7 +363,7 @@ impl VersionedField {
 
                         Some(quote! {
                             json_path if json_path == #json_path_ident => {
-                                spec.#ident = serde_yaml::from_value(value).unwrap();
+                                spec.#ident = #yaml_serde_path::from_value(value).unwrap();
                             },
                         })
                     }
@@ -407,6 +426,10 @@ impl VersionedField {
         custom_conversion_function: Option<&Path>,
     ) -> TokenStream {
         match custom_conversion_function {
+            // TODO (@Techassi): We should also support tracking here. Currently, the nested hint is
+            // ignored and the generated code doesn't force the custom conversion function to accept
+            // a tracking status.
+            //
             // The user specified a custom conversion function which will be used here instead of the
             // default conversion call which utilizes From impls.
             Some(convert_fn) => quote! {
