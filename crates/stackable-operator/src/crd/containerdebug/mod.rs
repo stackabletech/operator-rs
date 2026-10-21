@@ -89,7 +89,7 @@ impl v1alpha1::ContainerDebugConfig {
     }
 }
 
-/// A validated [`ContainerDebugConfig`].
+/// A validated [`v1alpha1::ContainerDebugConfig`].
 ///
 /// Unlike the user-facing configuration, this cannot carry an interval while `containerdebug` is
 /// disabled, nor an interval below [`MINIMUM_INTERVAL`].
