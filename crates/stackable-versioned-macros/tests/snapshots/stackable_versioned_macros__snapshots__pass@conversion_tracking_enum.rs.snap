@@ -72,7 +72,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
         let __sv_connector_path = ::stackable_versioned::jthong_path(
             parent,
             "connector",
@@ -94,7 +94,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
         let __sv_connector_path = ::stackable_versioned::jthong_path(
             parent,
             "connector",
@@ -224,7 +224,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
         let __sv_rest_catalog_uri_path = ::stackable_versioned::jthong_path(
             parent,
             "rest_catalog_uri",
@@ -233,15 +233,17 @@ where
             metastore: __sv_icebergconnector.metastore.into(),
             rest_catalog_uri: ::std::default::Default::default(),
         };
-        if let Some(upgrades) = status.changes().upgrades.remove(&"v1alpha2".to_owned())
-        {
-            for ::stackable_versioned::ChangedValue { json_path, value } in upgrades {
-                match json_path {
-                    json_path if json_path == __sv_rest_catalog_uri_path => {
-                        spec.rest_catalog_uri = ::yaml_serde::from_value(value).unwrap();
-                    }
-                    _ => unreachable!(),
-                }
+        if let Some(upgrades) = status.changes().upgrades.get_mut("v1alpha2") {
+            if let Some(::stackable_versioned::ChangedValue { value, .. }) = upgrades
+                .remove_if(|u| u.json_path == __sv_rest_catalog_uri_path)
+            {
+                spec.rest_catalog_uri = ::yaml_serde::from_value(value)
+                    .expect(
+                        "internal error: {__sv_rest_catalog_uri_path} must be serializable for spec.rest_catalog_uri",
+                    );
+            }
+            if upgrades.is_empty() {
+                status.changes().upgrades.remove("v1alpha2");
             }
         }
         spec
@@ -260,7 +262,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
         let __sv_rest_catalog_uri_path = ::stackable_versioned::jthong_path(
             parent,
             "rest_catalog_uri",

@@ -189,7 +189,7 @@ impl Struct {
             {
                 fn tracking_from(#from_struct_ident: #from_module_ident::#struct_ident #type_generics, status: &mut __SvStatus, parent: &str) -> Self {
                     // TODO (@Techassi): Only emit this if any of the fields below need it
-                    use #versioned_path::TrackingInto as _;
+                    use #versioned_path::{RemoveIf as _, TrackingInto as _};
 
                     #json_paths
                     // Depending on the direction, we need to either insert changed values into
@@ -264,7 +264,7 @@ impl Struct {
             return None;
         }
 
-        let match_arms: TokenStream = self
+        let removals: TokenStream = self
             .fields
             .iter()
             .filter_map(|f| f.generate_for_status_removal(direction, next_version, mod_gen_ctx))
@@ -273,16 +273,13 @@ impl Struct {
         match direction {
             Direction::Upgrade => {
                 let next_version_string = next_version.inner.to_string();
-                let versioned_path = &*mod_gen_ctx.crates.versioned;
 
                 Some(quote! {
-                    // NOTE (@Techassi): This is an awkward thing to do. Can we possibly use &str for the keys here?
-                    if let Some(upgrades) = status.changes().upgrades.remove(&#next_version_string.to_owned()) {
-                        for #versioned_path::ChangedValue { json_path, value } in upgrades {
-                            match json_path {
-                                #match_arms
-                                _ => unreachable!(),
-                            }
+                    if let Some(upgrades) = status.changes().upgrades.get_mut(#next_version_string) {
+                        #removals
+
+                        if upgrades.is_empty() {
+                            status.changes().upgrades.remove(#next_version_string);
                         }
                     }
                 })
