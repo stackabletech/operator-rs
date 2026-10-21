@@ -78,7 +78,7 @@ where
             if let Some(::stackable_versioned::ChangedValue { value, .. }) = upgrades
                 .extract_first_if(|u| u.json_path == __sv_baz_baz_path)
             {
-                spec.baz_baz = ::yaml_serde::from_value(value)
+                spec.baz_baz = ::serde_json::from_value(value)
                     .expect(
                         "internal error: {__sv_baz_baz_path} must be serializable for spec.baz_baz",
                     );
@@ -111,7 +111,7 @@ where
         upgrades
             .push(::stackable_versioned::ChangedValue {
                 json_path: __sv_baz_baz_path,
-                value: ::yaml_serde::to_value(&__sv_bar.baz_baz).unwrap(),
+                value: ::serde_json::to_value(&__sv_bar.baz_baz).unwrap(),
             });
         let mut spec = Self {
             bar_bar: __sv_bar.bar_bar.into(),
