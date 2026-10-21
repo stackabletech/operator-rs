@@ -102,17 +102,7 @@ pub mod versioned {
     pub struct Married {
         with: String,
 
-        // FIXME (@Techassi): Any other version than v3 leads to a panic. There are two issues here:
-        //
-        // - The tracking impls for each container assume they are the only container which need to
-        //   access to ChangedValues' `upgrades` and/or `downgrades` fields and currently removes
-        //   the list of `ChangedValue`s for a particular version. The code must only remove the
-        //   entire entry once the list inside is empty. Otherwise, other containers won't be able
-        //   to access the tracked changes.
-        // - Each tracking impl must only look and remove the changes which matched with the
-        //   expected JSON path. Unmatched JSON paths currently lead to a panic. They should instead
-        //   be ignored.
-        #[versioned(added(since = "v3"))]
+        #[versioned(added(since = "v2"))]
         since: String,
     }
 
