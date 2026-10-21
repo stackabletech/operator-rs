@@ -25,10 +25,7 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "gender": "Unknown",
           "lastName": "",
           "relationship": {
-            "married": {
-              "since": "",
-              "with": "Jane Doe"
-            }
+            "other": {}
           },
           "socials": {
             "email": "jdoe@example.com",

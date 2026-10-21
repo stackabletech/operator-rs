@@ -315,7 +315,7 @@ impl VersionedField {
             Direction::Downgrade => {
                 let next_change = changes.get_expect(&next_version.inner);
 
-                let yaml_serde_path = &*mod_gen_ctx.crates.yaml_serde;
+                let serde_json_path = &*mod_gen_ctx.crates.serde_json;
                 let versioned_path = &*mod_gen_ctx.crates.versioned;
 
                 match next_change {
@@ -327,7 +327,7 @@ impl VersionedField {
                         Some(quote! {
                             upgrades.push(#versioned_path::ChangedValue {
                                 json_path: #json_path_ident,
-                                value: #yaml_serde_path::to_value(&#from_struct_ident.#ident).unwrap(),
+                                value: #serde_json_path::to_value(&#from_struct_ident.#ident).unwrap(),
                             });
                         })
                     }
@@ -349,7 +349,7 @@ impl VersionedField {
         // for applying a tracked value.
         let changes = self.changes.as_ref()?;
 
-        let yaml_serde_path = &*mod_gen_ctx.crates.yaml_serde;
+        let serde_json_path = &*mod_gen_ctx.crates.serde_json;
         let versioned_path = &*mod_gen_ctx.crates.versioned;
 
         match direction {
@@ -368,7 +368,7 @@ impl VersionedField {
                         Some(quote! {
                             if let Some(#versioned_path::ChangedValue { value, .. }) = upgrades.extract_first_if(|u| u.json_path == #json_path_ident) {
                                 // TODO (@Techassi): Switch to serde_json
-                                spec.#ident = #yaml_serde_path::from_value(value).expect(#expect_message);
+                                spec.#ident = #serde_json_path::from_value(value).expect(#expect_message);
                             }
                         })
                     }
