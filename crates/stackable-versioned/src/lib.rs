@@ -194,15 +194,15 @@ pub struct UnknownDesiredApiVersionError {
     pub api_version: String,
 }
 
-/// This extension trait for (currently only) [`Vec`]s enables the removal of the first matched
+/// This extension trait for (currently only) [`Vec`]s enables the extraction of the first matched
 /// element based on a predicate.
-pub trait RemoveIf<T> {
-    /// Removes an element if the `predicate` evaluates to `true` and returns it.
-    fn remove_if(&mut self, predicate: impl FnMut(&T) -> bool) -> Option<T>;
+pub trait ExtractIfExt<T> {
+    /// Extracts the first element for which the `predicate` evaluates to `true` and returns it.
+    fn extract_first_if(&mut self, predicate: impl FnMut(&T) -> bool) -> Option<T>;
 }
 
-impl<T> RemoveIf<T> for Vec<T> {
-    fn remove_if(&mut self, predicate: impl FnMut(&T) -> bool) -> Option<T> {
+impl<T> ExtractIfExt<T> for Vec<T> {
+    fn extract_first_if(&mut self, predicate: impl FnMut(&T) -> bool) -> Option<T> {
         let index = self.iter().position(predicate)?;
         Some(self.remove(index))
     }
@@ -217,10 +217,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn remove_if() {
+    fn extract_first_if() {
         let mut all = vec![1, 2, 3, 4, 5, 6];
         let first_even = all
-            .remove_if(|i| i % 2 == 0)
+            .extract_first_if(|i| i % 2 == 0)
             .expect("source vec contains 2, 4, 6 which are even");
 
         assert_eq!(first_even, 2);

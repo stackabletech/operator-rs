@@ -59,7 +59,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_bah_path = ::stackable_versioned::jthong_path(parent, "bah");
         let mut spec = Self {
             bah: ::std::default::Default::default(),
@@ -67,7 +67,7 @@ where
         };
         if let Some(upgrades) = status.changes().upgrades.get_mut("v1beta1") {
             if let Some(::stackable_versioned::ChangedValue { value, .. }) = upgrades
-                .remove_if(|u| u.json_path == __sv_bah_path)
+                .extract_first_if(|u| u.json_path == __sv_bah_path)
             {
                 spec.bah = ::yaml_serde::from_value(value)
                     .expect(
@@ -92,7 +92,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_bah_path = ::stackable_versioned::jthong_path(parent, "bah");
         let upgrades = status
             .changes()
@@ -167,7 +167,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let mut spec = Self {
             bar: __sv_foospec.bah.into(),
             baz: __sv_foospec.baz.into(),
@@ -186,7 +186,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let mut spec = Self {
             bah: __sv_foospec.bar.into(),
             baz: __sv_foospec.baz.into(),

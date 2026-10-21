@@ -189,7 +189,7 @@ impl Struct {
             {
                 fn tracking_from(#from_struct_ident: #from_module_ident::#struct_ident #type_generics, status: &mut __SvStatus, parent: &str) -> Self {
                     // TODO (@Techassi): Only emit this if any of the fields below need it
-                    use #versioned_path::{RemoveIf as _, TrackingInto as _};
+                    use #versioned_path::{ExtractIfExt as _, TrackingInto as _};
 
                     #json_paths
                     // Depending on the direction, we need to either insert changed values into

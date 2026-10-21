@@ -26,7 +26,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_bar_path = ::stackable_versioned::jthong_path(parent, "bar");
         let mut spec = Self {
             bar: __sv_foo.bar.map(|v| v.tracking_into(status, &__sv_bar_path)),
@@ -47,7 +47,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_bar_path = ::stackable_versioned::jthong_path(parent, "bar");
         let mut spec = Self {
             bar: __sv_foo.bar.map(|v| v.tracking_into(status, &__sv_bar_path)),
@@ -68,7 +68,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_baz_baz_path = ::stackable_versioned::jthong_path(parent, "baz_baz");
         let mut spec = Self {
             bar_bar: __sv_bar.bar_bar.into(),
@@ -76,7 +76,7 @@ where
         };
         if let Some(upgrades) = status.changes().upgrades.get_mut("v1alpha2") {
             if let Some(::stackable_versioned::ChangedValue { value, .. }) = upgrades
-                .remove_if(|u| u.json_path == __sv_baz_baz_path)
+                .extract_first_if(|u| u.json_path == __sv_baz_baz_path)
             {
                 spec.baz_baz = ::yaml_serde::from_value(value)
                     .expect(
@@ -101,7 +101,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_baz_baz_path = ::stackable_versioned::jthong_path(parent, "baz_baz");
         let upgrades = status
             .changes()

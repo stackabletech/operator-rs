@@ -366,7 +366,7 @@ impl VersionedField {
                         );
 
                         Some(quote! {
-                            if let Some(#versioned_path::ChangedValue { value, .. }) = upgrades.remove_if(|u| u.json_path == #json_path_ident) {
+                            if let Some(#versioned_path::ChangedValue { value, .. }) = upgrades.extract_first_if(|u| u.json_path == #json_path_ident) {
                                 // TODO (@Techassi): Switch to serde_json
                                 spec.#ident = #yaml_serde_path::from_value(value).expect(#expect_message);
                             }

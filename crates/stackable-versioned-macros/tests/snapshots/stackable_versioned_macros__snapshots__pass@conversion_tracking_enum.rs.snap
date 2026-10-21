@@ -72,7 +72,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_connector_path = ::stackable_versioned::jthong_path(
             parent,
             "connector",
@@ -94,7 +94,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_connector_path = ::stackable_versioned::jthong_path(
             parent,
             "connector",
@@ -224,7 +224,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_rest_catalog_uri_path = ::stackable_versioned::jthong_path(
             parent,
             "rest_catalog_uri",
@@ -235,7 +235,7 @@ where
         };
         if let Some(upgrades) = status.changes().upgrades.get_mut("v1alpha2") {
             if let Some(::stackable_versioned::ChangedValue { value, .. }) = upgrades
-                .remove_if(|u| u.json_path == __sv_rest_catalog_uri_path)
+                .extract_first_if(|u| u.json_path == __sv_rest_catalog_uri_path)
             {
                 spec.rest_catalog_uri = ::yaml_serde::from_value(value)
                     .expect(
@@ -262,7 +262,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::{RemoveIf as _, TrackingInto as _};
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_rest_catalog_uri_path = ::stackable_versioned::jthong_path(
             parent,
             "rest_catalog_uri",
