@@ -9,12 +9,19 @@ All notable changes to this project will be documented in this file.
 - Add public `ExtractIfExt` trait ([#13006]).
 - Re-add support for generics in tracking impls ([#1304]).
 
+### Changed
+
+- BREAKING: `stackable_versioned::ChangedValue`'s `value` field type is now `serde_json::Value` instead
+  of `yaml_serde::Value` ([#1307]).
+
 ### Fixed
 
+- Fix how the generated code (de)serializes enums in the tracking status ([#1307]).
 - Correctly handle tracked per-version changes across multiple containers ([#1306]).
 
 [#1304]: https://github.com/stackabletech/operator-rs/pull/1304
 [#1306]: https://github.com/stackabletech/operator-rs/pull/1306
+[#1307]: https://github.com/stackabletech/operator-rs/pull/1307
 
 ## [0.13.0] - 2026-10-14
 
