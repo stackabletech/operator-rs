@@ -350,6 +350,7 @@ impl VersionedField {
         let changes = self.changes.as_ref()?;
 
         let yaml_serde_path = &*mod_gen_ctx.crates.yaml_serde;
+        let versioned_path = &*mod_gen_ctx.crates.versioned;
 
         match direction {
             Direction::Upgrade => {
@@ -360,11 +361,15 @@ impl VersionedField {
                     // we only need to generate code if the next change is "Addition".
                     ItemStatus::Addition { ident, .. } => {
                         let json_path_ident = ident.json_path_ident();
+                        let expect_message = format!(
+                            "internal error: {{{json_path_ident}}} must be serializable for spec.{ident}"
+                        );
 
                         Some(quote! {
-                            json_path if json_path == #json_path_ident => {
-                                spec.#ident = #yaml_serde_path::from_value(value).unwrap();
-                            },
+                            if let Some(#versioned_path::ChangedValue { value, .. }) = upgrades.extract_first_if(|u| u.json_path == #json_path_ident) {
+                                // TODO (@Techassi): Switch to serde_json
+                                spec.#ident = #yaml_serde_path::from_value(value).expect(#expect_message);
+                            }
                         })
                     }
                     _ => None,

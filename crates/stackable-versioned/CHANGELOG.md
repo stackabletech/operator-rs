@@ -6,9 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add public `ExtractIfExt` trait ([#13006]).
 - Re-add support for generics in tracking impls ([#1304]).
 
+### Fixed
+
+- Correctly handle tracked per-version changes across multiple containers ([#1306]).
+
 [#1304]: https://github.com/stackabletech/operator-rs/pull/1304
+[#1306]: https://github.com/stackabletech/operator-rs/pull/1306
 
 ## [0.13.0] - 2026-10-14
 

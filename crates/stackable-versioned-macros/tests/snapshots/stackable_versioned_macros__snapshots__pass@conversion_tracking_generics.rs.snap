@@ -68,21 +68,24 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_bah_path = ::stackable_versioned::jthong_path(parent, "bah");
         let __sv_baz_path = ::stackable_versioned::jthong_path(parent, "baz");
         let mut spec = Self {
             bah: ::std::default::Default::default(),
             baz: __sv_foospec.baz.tracking_into(status, &__sv_baz_path),
         };
-        if let Some(upgrades) = status.changes().upgrades.remove(&"v1beta1".to_owned()) {
-            for ::stackable_versioned::ChangedValue { json_path, value } in upgrades {
-                match json_path {
-                    json_path if json_path == __sv_bah_path => {
-                        spec.bah = ::yaml_serde::from_value(value).unwrap();
-                    }
-                    _ => unreachable!(),
-                }
+        if let Some(upgrades) = status.changes().upgrades.get_mut("v1beta1") {
+            if let Some(::stackable_versioned::ChangedValue { value, .. }) = upgrades
+                .extract_first_if(|u| u.json_path == __sv_bah_path)
+            {
+                spec.bah = ::yaml_serde::from_value(value)
+                    .expect(
+                        "internal error: {__sv_bah_path} must be serializable for spec.bah",
+                    );
+            }
+            if upgrades.is_empty() {
+                status.changes().upgrades.remove("v1beta1");
             }
         }
         spec
@@ -99,7 +102,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_bah_path = ::stackable_versioned::jthong_path(parent, "bah");
         let __sv_baz_path = ::stackable_versioned::jthong_path(parent, "baz");
         let upgrades = status
@@ -130,7 +133,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let mut spec = Self {
             inner_1: __sv_baz.inner_1.into(),
             inner_2: __sv_baz.inner_2.into(),
@@ -150,7 +153,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let mut spec = Self {
             inner_1: __sv_baz.inner_1.into(),
             inner_2: __sv_baz.inner_2.into(),
@@ -224,7 +227,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_baz_path = ::stackable_versioned::jthong_path(parent, "baz");
         let mut spec = Self {
             bar: __sv_foospec.bah.into(),
@@ -244,7 +247,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_baz_path = ::stackable_versioned::jthong_path(parent, "baz");
         let mut spec = Self {
             bah: __sv_foospec.bar.into(),
@@ -265,21 +268,24 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_inner_3_path = ::stackable_versioned::jthong_path(parent, "inner_3");
         let mut spec = Self {
             inner_1: __sv_baz.inner_1.into(),
             inner_2: __sv_baz.inner_2.into(),
             inner_3: ::std::default::Default::default(),
         };
-        if let Some(upgrades) = status.changes().upgrades.remove(&"v1".to_owned()) {
-            for ::stackable_versioned::ChangedValue { json_path, value } in upgrades {
-                match json_path {
-                    json_path if json_path == __sv_inner_3_path => {
-                        spec.inner_3 = ::yaml_serde::from_value(value).unwrap();
-                    }
-                    _ => unreachable!(),
-                }
+        if let Some(upgrades) = status.changes().upgrades.get_mut("v1") {
+            if let Some(::stackable_versioned::ChangedValue { value, .. }) = upgrades
+                .extract_first_if(|u| u.json_path == __sv_inner_3_path)
+            {
+                spec.inner_3 = ::yaml_serde::from_value(value)
+                    .expect(
+                        "internal error: {__sv_inner_3_path} must be serializable for spec.inner_3",
+                    );
+            }
+            if upgrades.is_empty() {
+                status.changes().upgrades.remove("v1");
             }
         }
         spec
@@ -297,7 +303,7 @@ where
         status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_inner_3_path = ::stackable_versioned::jthong_path(parent, "inner_3");
         let upgrades = status.changes().upgrades.entry("v1".to_owned()).or_default();
         upgrades
