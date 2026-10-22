@@ -25,10 +25,10 @@ pub(crate) mod versioned {
     pub struct FooSpec {
         bar: usize,
 
-        #[versioned(added(since = "v1"))]
+        #[versioned(added(in = "v1"))]
         baz: bool,
 
-        #[versioned(deprecated(since = "v2alpha1"))]
+        #[versioned(deprecated(in = "v2alpha1"))]
         deprecated_foo: String,
     }
 

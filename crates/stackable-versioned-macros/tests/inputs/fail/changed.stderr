@@ -1,17 +1,17 @@
 error: the previous name must not start with the deprecation prefix
-  --> tests/inputs/fail/changed.rs:12:52
+  --> tests/inputs/fail/changed.rs:12:49
    |
-12 |             changed(since = "v1beta1", from_name = "deprecated_bar"),
-   |                                                    ^^^^^^^^^^^^^^^^
+12 |             changed(in = "v1beta1", from_name = "deprecated_bar"),
+   |                                                 ^^^^^^^^^^^^^^^^
 
 error: the previous name must not start with the deprecation prefix
-  --> tests/inputs/fail/changed.rs:13:47
+  --> tests/inputs/fail/changed.rs:13:44
    |
-13 |             changed(since = "v1", from_name = "deprecated_baz"),
-   |                                               ^^^^^^^^^^^^^^^^
+13 |             changed(in = "v1", from_name = "deprecated_baz"),
+   |                                            ^^^^^^^^^^^^^^^^
 
 error: `from_name`, `from_type` and `from_docs` are unset. Is this `changed()` action needed?
-  --> tests/inputs/fail/changed.rs:14:29
+  --> tests/inputs/fail/changed.rs:14:26
    |
-14 |             changed(since = "v2")
-   |                             ^^^^
+14 |             changed(in = "v2")
+   |                          ^^^^

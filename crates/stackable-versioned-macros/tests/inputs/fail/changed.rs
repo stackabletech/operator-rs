@@ -9,9 +9,9 @@ use stackable_versioned_macros::versioned;
 mod versioned {
     struct Foo {
         #[versioned(
-            changed(since = "v1beta1", from_name = "deprecated_bar"),
-            changed(since = "v1", from_name = "deprecated_baz"),
-            changed(since = "v2")
+            changed(in = "v1beta1", from_name = "deprecated_bar"),
+            changed(in = "v1", from_name = "deprecated_baz"),
+            changed(in = "v2")
         )]
         bar: usize,
     }
