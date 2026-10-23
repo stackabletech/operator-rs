@@ -4,12 +4,19 @@ use crate::{
     kvp::{Label, Labels, consts::K8S_APP_MANAGED_BY_KEY},
     v2::{
         NameIsValidLabelValue,
+        macros::attributed_string_type::MAX_LABEL_VALUE_LENGTH,
         types::operator::{
             ClusterName, ControllerName, OperatorName, ProductName, ProductVersion, RoleGroupName,
             RoleName,
         },
     },
 };
+
+const AGENT_COMPONENT_SUFFIX: &str = "-agent";
+const _: () = assert!(
+    ProductName::MAX_LENGTH + AGENT_COMPONENT_SUFFIX.len() <= MAX_LABEL_VALUE_LENGTH,
+    "The string `<product_name>-agent` must not exceed the limit of label values."
+);
 
 /// Creates the recommended labels for cluster resources, like ServiceAccounts.
 pub fn recommended_labels_for_cluster_resources(
@@ -25,6 +32,35 @@ pub fn recommended_labels_for_cluster_resources(
         label_app_kubernetes_io_version(product_version),
         label_app_kubernetes_io_managed_by(operator_name, controller_name),
         label_stackable_tech_vendor(),
+    ])
+}
+
+/// Creates the recommended labels for agent resources, like the agent Deployment.
+pub fn recommended_labels_for_agent_resources(
+    cluster_name: &ClusterName,
+    product_name: &ProductName,
+    product_version: &ProductVersion,
+    operator_name: &OperatorName,
+    controller_name: &ControllerName,
+) -> Labels {
+    Labels::from_iter([
+        label_app_kubernetes_io_instance(cluster_name),
+        label_app_kubernetes_io_name(product_name),
+        label_app_kubernetes_io_version(product_version),
+        label_app_kubernetes_io_component_agent(product_name),
+        label_app_kubernetes_io_managed_by(operator_name, controller_name),
+        label_stackable_tech_vendor(),
+    ])
+}
+
+/// Creates the agent selector.
+///
+/// The returned labels are a subset of the recommended labels for agent resources.
+pub fn agent_selector(cluster_name: &ClusterName, product_name: &ProductName) -> Labels {
+    Labels::from_iter([
+        label_app_kubernetes_io_instance(cluster_name),
+        label_app_kubernetes_io_name(product_name),
+        label_app_kubernetes_io_component_agent(product_name),
     ])
 }
 
@@ -155,6 +191,15 @@ pub fn label_app_kubernetes_io_component(role_name: &RoleName) -> Label {
         .expect("the value implements NameIsValidLabelValue and is therefore a valid label value")
 }
 
+/// Creates the `app.kubernetes.io/component` label with the value `<product>-agent`.
+pub fn label_app_kubernetes_io_component_agent(product_name: &ProductName) -> Label {
+    Label::component(&format!(
+        "{}{AGENT_COMPONENT_SUFFIX}",
+        product_name.to_label_value()
+    ))
+    .expect("the product name is a valid label value and the suffix keeps it within the limit")
+}
+
 /// Creates the `app.kubernetes.io/role-group` label with the given role group as value.
 pub fn label_app_kubernetes_io_role_group(role_group_name: &RoleGroupName) -> Label {
     Label::role_group(&role_group_name.to_label_value())
@@ -212,6 +257,52 @@ mod tests {
         .into();
 
         assert_eq!(expected_labels, actual_labels.into());
+    }
+
+    #[test]
+    fn recommended_labels_for_agent_resources_produces_expected_labels() {
+        let actual_labels = recommended_labels_for_agent_resources(
+            &ClusterName::from_str_unsafe("cluster-name"),
+            &ProductName::from_str_unsafe("my-product"),
+            &ProductVersion::from_str_unsafe("1.0.0"),
+            &OperatorName::from_str_unsafe("my-operator"),
+            &ControllerName::from_str_unsafe("my-controller"),
+        );
+
+        let expected_labels: BTreeMap<_, _> = [
+            ("app.kubernetes.io/component", "my-product-agent"),
+            ("app.kubernetes.io/instance", "cluster-name"),
+            ("app.kubernetes.io/managed-by", "my-operator_my-controller"),
+            ("app.kubernetes.io/name", "my-product"),
+            ("app.kubernetes.io/version", "1.0.0"),
+            ("stackable.tech/vendor", "Stackable"),
+        ]
+        .map(|(k, v)| (k.to_owned(), v.to_owned()))
+        .into();
+
+        assert_eq!(expected_labels, actual_labels.into());
+    }
+
+    #[test]
+    fn agent_selector_is_subset_of_recommended_agent_labels() {
+        let cluster_name = ClusterName::from_str_unsafe("cluster-name");
+        let product_name = ProductName::from_str_unsafe("my-product");
+
+        let agent_labels = recommended_labels_for_agent_resources(
+            &cluster_name,
+            &product_name,
+            &ProductVersion::from_str_unsafe("1.0.0"),
+            &OperatorName::from_str_unsafe("my-operator"),
+            &ControllerName::from_str_unsafe("my-controller"),
+        );
+
+        let agent_selector = agent_selector(&cluster_name, &product_name);
+
+        assert!(
+            agent_selector
+                .iter()
+                .all(|selector| agent_labels.contains(selector))
+        );
     }
 
     #[test]
