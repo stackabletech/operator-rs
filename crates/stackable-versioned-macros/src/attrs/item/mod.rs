@@ -308,6 +308,10 @@ impl CommonItemAttributes {
                 let docs = change.from_docs.as_deref()?;
                 Some((*change.since, docs.into_doc_comments()))
             })
+            .chain(self.deprecated.iter().filter_map(|deprecation| {
+                let docs = deprecation.previous_docs.as_deref()?;
+                Some((*deprecation.since, docs.into_doc_comments()))
+            }))
             .collect()
     }
 
@@ -497,8 +501,10 @@ pub struct ChangedAttributes {
 /// Example usage:
 /// - `deprecated(since = "...")`
 /// - `deprecated(since = "...", note = "...")`
+/// - `deprecated(since = "...", note = "..."), previous_docs = "..."`
 #[derive(Clone, Debug, FromMeta)]
 pub struct DeprecatedAttributes {
     pub since: SpannedValue<Version>,
     pub note: Option<SpannedValue<String>>,
+    pub previous_docs: Option<SpannedValue<String>>,
 }

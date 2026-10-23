@@ -408,7 +408,7 @@ where
             baz: __sv_foo.baz.into(),
             quux: __sv_foo.quux.into(),
             corge: __sv_foo.corge.into(),
-            fred: __sv_foo.fred.into(),
+            deprecated_fred: __sv_foo.fred.into(),
         };
         spec
     }
@@ -427,7 +427,7 @@ where
             baz: __sv_foo.baz.into(),
             quux: __sv_foo.quux.into(),
             corge: __sv_foo.corge.into(),
-            fred: __sv_foo.fred.into(),
+            fred: __sv_foo.deprecated_fred.into(),
         };
         spec
     }
@@ -475,8 +475,11 @@ mod v2 {
         #[doc(alias = "grault")]
         #[serde(rename = "corge")]
         pub corge: String,
-        /// The docs of this field changed in v1, while it was renamed in v1beta1.
-        pub fred: String,
+        /// This field is now deprecated.
+        ///
+        /// Previously, the docs of this field changed in v1, while it was renamed in v1beta1.
+        #[deprecated]
+        pub deprecated_fred: String,
     }
     /// Test
     #[derive(Default)]

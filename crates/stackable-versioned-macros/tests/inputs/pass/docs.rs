@@ -53,12 +53,18 @@ mod versioned {
         #[serde(rename = "corge")]
         corge: String,
 
-        /// The docs of this field changed in v1, while it was renamed in v1beta1.
+        /// This field is now deprecated.
+        ///
+        /// Previously, the docs of this field changed in v1, while it was renamed in v1beta1.
         #[versioned(
             changed(since = "v1beta1", from_name = "waldo"),
-            changed(since = "v1", from_docs = "These are the docs before v1.")
+            changed(since = "v1", from_docs = "These are the docs before v1."),
+            deprecated(
+                since = "v2",
+                previous_docs = "The docs of this field changed in v1, while it was renamed in v1beta1."
+            )
         )]
-        fred: String,
+        deprecated_fred: String,
     }
 
     /// Test

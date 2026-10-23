@@ -567,58 +567,6 @@ mod utils;
 /// ```
 /// </details>
 ///
-/// #### Changed Docs
-///
-/// The doc comments of an item can be changed using the `from_docs` argument.
-/// The doc comments attached to the item are used after the version of the
-/// last relevant change. All earlier versions use the doc comments provided via
-/// `from_docs` instead. This is especially useful to adjust the description of
-/// a field in the generated CRD schema without changing it for older versions.
-///
-/// ```
-/// # use stackable_versioned_macros::versioned;
-/// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
-/// mod versioned {
-///     pub struct Foo {
-///         /// The number of bars.
-///         #[versioned(changed(since = "v1beta1", from_docs = "The bar."))]
-///         bar: usize,
-///         baz: bool,
-///     }
-/// }
-/// ```
-///
-/// <details>
-/// <summary>Expand Generated Code</summary>
-///
-/// 1. In version `v1alpha1` the field uses the doc comments provided via
-///    `from_docs`.
-/// 2. In the next version, `v1beta1`, the field uses the doc comments attached
-///    to the field.
-///
-/// ```ignore
-/// pub mod v1alpha1 {
-///     use super::*;
-///     pub struct Foo {
-///         /// The bar.            // 1
-///         pub bar: usize,
-///         pub baz: bool,
-///     }
-/// }
-///
-/// // Snip
-///
-/// pub mod v1beta1 {
-///     use super::*;
-///     pub struct Foo {
-///         /// The number of bars. // 2
-///         pub bar: usize,
-///         pub baz: bool,
-///     }
-/// }
-/// ```
-/// </details>
-///
 /// ### Deprecated Action
 ///
 /// This action indicates that an item is deprecated in a particular version.
@@ -626,6 +574,7 @@ mod utils;
 ///
 /// - `since` to indicate since which version the item is deprecated.
 /// - `note` to specify an optional deprecation note.
+/// - `previous_docs` to provide the previous doc comments of the item.
 ///
 /// ```
 /// # use stackable_versioned_macros::versioned;
@@ -674,6 +623,60 @@ mod utils;
 ///     pub struct Foo {
 ///         #[deprecated]                       // 2
 ///         pub deprecated_bar: usize,
+///         pub baz: bool,
+///     }
+/// }
+/// ```
+/// </details>
+///
+/// ### Changed Docs
+///
+/// The doc comments of an item can be changed using the `from_docs` or
+/// `previous_docs` argument in the `changed` and `deprecated` actions.
+/// The doc comments attached to the item are used after the version of the
+/// last relevant change. All earlier versions use the doc comments provided via
+/// `from_docs`/`previous_docs` instead. This is especially useful to adjust the
+/// description of a field in the generated CRD schema without changing it for
+/// older versions.
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
+/// mod versioned {
+///     pub struct Foo {
+///         /// The number of bars.
+///         #[versioned(changed(since = "v1beta1", from_docs = "The bar."))]
+///         bar: usize,
+///         baz: bool,
+///     }
+/// }
+/// ```
+///
+/// <details>
+/// <summary>Expand Generated Code</summary>
+///
+/// 1. In version `v1alpha1` the field uses the doc comments provided via
+///    `from_docs`.
+/// 2. In the next version, `v1beta1`, the field uses the doc comments attached
+///    to the field.
+///
+/// ```ignore
+/// pub mod v1alpha1 {
+///     use super::*;
+///     pub struct Foo {
+///         /// The bar.            // 1
+///         pub bar: usize,
+///         pub baz: bool,
+///     }
+/// }
+///
+/// // Snip
+///
+/// pub mod v1beta1 {
+///     use super::*;
+///     pub struct Foo {
+///         /// The number of bars. // 2
+///         pub bar: usize,
 ///         pub baz: bool,
 ///     }
 /// }

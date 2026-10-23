@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add support to provide the `previous_docs` argument in the `deprecated` action ([#1314]).
 - Add public `ExtractIfExt` trait ([#1306]).
 - Re-add support for generics in tracking impls ([#1304]).
 - Add support to provide `#[versioned(crd(selectable = "..."))]` arguments to configure selectable fields ([#1312]).
@@ -29,6 +30,7 @@ All notable changes to this project will be documented in this file.
 [#1307]: https://github.com/stackabletech/operator-rs/pull/1307
 [#1309]: https://github.com/stackabletech/operator-rs/pull/1309
 [#1312]: https://github.com/stackabletech/operator-rs/pull/1312
+[#1314]: https://github.com/stackabletech/operator-rs/pull/1314
 
 ## [0.13.0] - 2026-10-14
 
