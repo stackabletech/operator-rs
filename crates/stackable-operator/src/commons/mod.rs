@@ -3,7 +3,6 @@
 pub mod affinity;
 pub mod cache;
 pub mod cluster_operation;
-pub mod management_access;
 pub mod networking;
 pub mod opa;
 pub mod pdb;

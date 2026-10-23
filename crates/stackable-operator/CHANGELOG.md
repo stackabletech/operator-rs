@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
   - `TlsClientCredential`, enum for TLS-based management access used for adding volumes and mounts.
   - `Anonymous`, for management access to products that don't authenticate the agent.
   - `DeletionPolicy`, whether an agent deletes a resource in the product.
-  - `Ready`/`Synced` conditions of resources managed by agents.
+  - `Ready`/`Synced` conditions of resources managed by agents (`status::condition::managed_resource`).
   - Labels and selectors for agents.
 
 [#1290]: https://github.com/stackabletech/operator-rs/pull/1290

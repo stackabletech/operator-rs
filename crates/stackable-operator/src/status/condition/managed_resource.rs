@@ -1,5 +1,9 @@
+//! Conditions of resources an agent manages inside a product, as `metav1.Condition`.
+
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, Time};
 use strum::Display;
+
+use crate::status::condition::ClusterConditionStatus;
 
 /// Condition types of resources an agent manages inside a product.
 #[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
@@ -16,7 +20,9 @@ pub enum ManagedConditionType {
 pub struct ManagedCondition {
     pub type_: ManagedConditionType,
 
-    pub status: bool,
+    /// `Unknown` if the agent could not determine the state, e.g. because the product is not
+    /// reachable.
+    pub status: ClusterConditionStatus,
 
     /// A CamelCase reason like `Created` or `UnsupportedChange`.
     pub reason: String,
@@ -27,17 +33,24 @@ pub struct ManagedCondition {
 /// Merges the given conditions into the current ones.
 ///
 /// `lastTransitionTime` only changes if the status of a condition changes. Conditions of other
-/// types are kept.
+/// types are kept. `observed_generation` is the `metadata.generation` of the object the conditions
+/// were determined for.
 pub fn update_conditions(
     current: &[Condition],
     updates: Vec<ManagedCondition>,
     now: &Time,
+    observed_generation: Option<i64>,
 ) -> Vec<Condition> {
     let mut conditions = current.to_vec();
 
     for update in updates {
         let type_ = update.type_.to_string();
-        let status = if update.status { "True" } else { "False" }.to_owned();
+        let status = match update.status {
+            ClusterConditionStatus::True => "True",
+            ClusterConditionStatus::False => "False",
+            ClusterConditionStatus::Unknown => "Unknown",
+        }
+        .to_owned();
         let existing = conditions
             .iter()
             .position(|condition| condition.type_ == type_);
@@ -52,7 +65,7 @@ pub fn update_conditions(
         let condition = Condition {
             last_transition_time,
             message: update.message,
-            observed_generation: None,
+            observed_generation,
             reason: update.reason,
             status,
             type_,
@@ -77,7 +90,7 @@ mod tests {
         Time(Timestamp::from_second(seconds).expect("the timestamp should be valid"))
     }
 
-    fn ready(status: bool, reason: &str) -> ManagedCondition {
+    fn ready(status: ClusterConditionStatus, reason: &str) -> ManagedCondition {
         ManagedCondition {
             type_: ManagedConditionType::Ready,
             status,
@@ -88,33 +101,59 @@ mod tests {
 
     #[test]
     fn add_missing_condition() {
-        let conditions = update_conditions(&[], vec![ready(true, "Created")], &time(10));
+        let conditions = update_conditions(
+            &[],
+            vec![ready(ClusterConditionStatus::True, "Created")],
+            &time(10),
+            Some(3),
+        );
 
         assert_eq!(1, conditions.len());
         assert_eq!("Ready", conditions[0].type_);
         assert_eq!("True", conditions[0].status);
         assert_eq!("Created", conditions[0].reason);
         assert_eq!(time(10), conditions[0].last_transition_time);
+        assert_eq!(Some(3), conditions[0].observed_generation);
     }
 
     #[test]
     fn keep_transition_time_if_status_is_unchanged() {
-        let current = update_conditions(&[], vec![ready(true, "Created")], &time(10));
+        let current = update_conditions(
+            &[],
+            vec![ready(ClusterConditionStatus::True, "Created")],
+            &time(10),
+            Some(1),
+        );
 
-        let conditions = update_conditions(&current, vec![ready(true, "Updated")], &time(20));
+        let conditions = update_conditions(
+            &current,
+            vec![ready(ClusterConditionStatus::True, "Updated")],
+            &time(20),
+            Some(2),
+        );
 
         assert_eq!("Updated", conditions[0].reason);
         assert_eq!(time(10), conditions[0].last_transition_time);
+        assert_eq!(Some(2), conditions[0].observed_generation);
     }
 
     #[test]
     fn update_transition_time_if_status_changes() {
-        let current = update_conditions(&[], vec![ready(true, "Created")], &time(10));
+        let current = update_conditions(
+            &[],
+            vec![ready(ClusterConditionStatus::True, "Created")],
+            &time(10),
+            Some(1),
+        );
 
-        let conditions =
-            update_conditions(&current, vec![ready(false, "KafkaRejected")], &time(20));
+        let conditions = update_conditions(
+            &current,
+            vec![ready(ClusterConditionStatus::Unknown, "ConnectionFailed")],
+            &time(20),
+            Some(1),
+        );
 
-        assert_eq!("False", conditions[0].status);
+        assert_eq!("Unknown", conditions[0].status);
         assert_eq!(time(20), conditions[0].last_transition_time);
     }
 
@@ -131,8 +170,9 @@ mod tests {
 
         let conditions = update_conditions(
             std::slice::from_ref(&other),
-            vec![ready(true, "Created")],
+            vec![ready(ClusterConditionStatus::True, "Created")],
             &time(10),
+            Some(1),
         );
 
         let types: Vec<_> = conditions
@@ -140,5 +180,6 @@ mod tests {
             .map(|condition| condition.type_.as_str())
             .collect();
         assert_eq!(vec!["Other", "Ready"], types);
+        assert_eq!(None, conditions[0].observed_generation);
     }
 }
