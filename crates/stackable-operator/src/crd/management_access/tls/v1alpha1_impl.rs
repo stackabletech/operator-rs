@@ -1,4 +1,4 @@
-use k8s_openapi::api::core::v1::{SecretVolumeSource, Volume, VolumeMount};
+use k8s_openapi::api::core::v1::{Volume, VolumeMount};
 use snafu::{ResultExt as _, Snafu};
 
 use crate::{
@@ -62,10 +62,7 @@ impl TlsClientCredential {
                 )
                 .build(),
             Self::SecretName(secret) => VolumeBuilder::new(VOLUME_NAME)
-                .secret(SecretVolumeSource {
-                    secret_name: Some(secret.to_string()),
-                    ..SecretVolumeSource::default()
-                })
+                .with_secret(secret.to_string(), false)
                 .build(),
         };
         let mount = VolumeMountBuilder::new(VOLUME_NAME, MOUNT_PATH).build();
@@ -112,7 +109,7 @@ mod tests {
 
         assert_eq!(
             serde_json::to_value(volumes).expect("the volumes should be serializable"),
-            json!([{"name": "tls-management-access", "secret": {"secretName": "my-cert"}}])
+            json!([{"name": "tls-management-access", "secret": {"optional": false, "secretName": "my-cert"}}])
         );
         assert_eq!(
             serde_json::to_value(mounts).expect("the volume mounts should be serializable"),
