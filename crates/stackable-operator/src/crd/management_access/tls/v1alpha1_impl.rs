@@ -1,16 +1,31 @@
 use k8s_openapi::api::core::v1::{SecretVolumeSource, Volume, VolumeMount};
+use snafu::{ResultExt as _, Snafu};
 
 use crate::{
-    builder::pod::{
-        PodBuilder,
-        container::ContainerBuilder,
-        volume::{
-            SecretFormat, SecretOperatorVolumeSourceBuilder, VolumeBuilder, VolumeMountBuilder,
+    builder::{
+        self,
+        pod::{
+            PodBuilder,
+            container::ContainerBuilder,
+            volume::{
+                SecretFormat, SecretOperatorVolumeSourceBuilder, VolumeBuilder, VolumeMountBuilder,
+            },
         },
     },
     commons::secret_class::SecretClassVolumeProvisionParts,
     crd::management_access::tls::{MOUNT_PATH, VOLUME_NAME, v1alpha1::TlsClientCredential},
 };
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("failed to add the TLS client certificate volume"))]
+    AddVolumes { source: builder::pod::Error },
+
+    #[snafu(display("failed to add the TLS client certificate volumeMount"))]
+    AddVolumeMounts {
+        source: builder::pod::container::Error,
+    },
+}
 
 impl TlsClientCredential {
     /// Adds the certificate volume to the Pod and mounts it into all given containers.
@@ -20,16 +35,16 @@ impl TlsClientCredential {
         &self,
         pod_builder: &mut PodBuilder,
         container_builders: Vec<&mut ContainerBuilder>,
-    ) {
+    ) -> Result<(), Error> {
         let (volumes, mounts) = self.volumes_and_mounts();
-        pod_builder
-            .add_volumes(volumes)
-            .expect("Only a single management access authentication variant can be chosen.");
+        pod_builder.add_volumes(volumes).context(AddVolumesSnafu)?;
         for container_builder in container_builders {
             container_builder
                 .add_volume_mounts(mounts.clone())
-                .expect("Only a single management access authentication variant can be chosen.");
+                .context(AddVolumeMountsSnafu)?;
         }
+
+        Ok(())
     }
 
     fn volumes_and_mounts(&self) -> (Vec<Volume>, Vec<VolumeMount>) {
@@ -43,7 +58,7 @@ impl TlsClientCredential {
                     .with_pod_scope()
                     .with_format(SecretFormat::TlsPem)
                     .build()
-                    .expect("the annotations are built from a valid SecretClass name"),
+                    .expect("the annotations are built from a valid SecretClass name and constant values"),
                 )
                 .build(),
             Self::SecretName(secret) => VolumeBuilder::new(VOLUME_NAME)
@@ -71,7 +86,7 @@ mod tests {
             TlsClientCredential::SecretClassName(SecretClassName::from_str_unsafe("tls"));
 
         let (volumes, mounts) = credential.volumes_and_mounts();
-        let volumes = serde_json::to_value(volumes).expect("serializable");
+        let volumes = serde_json::to_value(volumes).expect("the volumes should be serializable");
 
         assert_eq!(volumes[0]["name"], "tls-management-access");
         assert_eq!(
@@ -84,7 +99,7 @@ mod tests {
             })
         );
         assert_eq!(
-            serde_json::to_value(mounts).expect("serializable"),
+            serde_json::to_value(mounts).expect("the volume mounts should be serializable"),
             json!([{"mountPath": "/stackable/secrets/tls-management-access", "name": "tls-management-access"}])
         );
     }
@@ -96,11 +111,11 @@ mod tests {
         let (volumes, mounts) = credential.volumes_and_mounts();
 
         assert_eq!(
-            serde_json::to_value(volumes).expect("serializable"),
+            serde_json::to_value(volumes).expect("the volumes should be serializable"),
             json!([{"name": "tls-management-access", "secret": {"secretName": "my-cert"}}])
         );
         assert_eq!(
-            serde_json::to_value(mounts).expect("serializable"),
+            serde_json::to_value(mounts).expect("the volume mounts should be serializable"),
             json!([{"mountPath": "/stackable/secrets/tls-management-access", "name": "tls-management-access"}])
         );
     }

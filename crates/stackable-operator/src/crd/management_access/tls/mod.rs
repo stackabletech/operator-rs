@@ -18,6 +18,10 @@ pub const MOUNT_PATH: &str = concatcp!(SECRET_BASE_PATH, "/", VOLUME_NAME);
 
 #[versioned(version(name = "v1alpha1"))]
 pub mod versioned {
+    pub mod v1alpha1 {
+        pub use v1alpha1_impl::Error;
+    }
+
     /// Source of a TLS client certificate: a secret-operator SecretClass or a static Secret.
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
