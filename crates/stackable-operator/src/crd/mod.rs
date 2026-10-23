@@ -4,12 +4,22 @@ use educe::Educe;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-pub mod authentication;
-pub mod git_sync;
-pub mod listener;
-pub mod openlineage;
-pub mod s3;
-pub mod scaler;
+use crate::cfg_block;
+
+cfg_block! {
+    "crds";
+
+    pub mod authentication;
+    pub mod git_sync;
+    pub mod listener;
+    pub mod openlineage;
+    pub mod s3;
+    pub mod scaler;
+}
+
+// Not gated as a whole as there are other items which should not be gated, but are still related to
+// role and role group.
+pub mod role;
 
 /// A reference to a product cluster (for example, a `ZookeeperCluster`)
 ///

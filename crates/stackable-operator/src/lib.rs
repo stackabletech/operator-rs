@@ -15,7 +15,6 @@ pub mod config;
 pub mod config_overrides;
 pub mod constants;
 pub mod cpu;
-#[cfg(feature = "crds")]
 pub mod crd;
 pub mod database_connections;
 pub mod deep_merger;
@@ -28,7 +27,6 @@ pub mod memory;
 pub mod namespace;
 pub mod pod_utils;
 pub mod product_logging;
-pub mod role_utils;
 pub mod status;
 pub mod test_utils;
 pub mod utils;
@@ -51,3 +49,25 @@ pub use stackable_telemetry as telemetry;
 pub use stackable_versioned as versioned;
 #[cfg(feature = "webhook")]
 pub use stackable_webhook as webhook;
+
+/// This macro can be used to gate every contained item behind `feature`.
+///
+/// ```ignore
+/// use crate::cfg_block;
+///
+/// cfg_block! {
+///     "crds";
+///
+///     pub use foo;
+///     pub use bar;
+/// }
+/// ```
+#[macro_export]
+macro_rules! cfg_block {
+    ($feature:literal; $($item:item)*) => {
+        $(
+            #[cfg(feature = $feature)]
+            $item
+        )*
+    }
+}

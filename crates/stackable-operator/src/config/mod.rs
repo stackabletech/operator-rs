@@ -3,8 +3,8 @@
 //! # But oh god why is this monstrosity a thing?
 //!
 //! Products are complicated. They need to be supplied many kinds of configuration.
-//! Some of it applies to the whole installation (Stacklet). Some of it applies only to one [role](`Role`).
-//! Some of it applies only to a subset of the instances of that role (we call this a [`RoleGroup`]).
+//! Some of it applies to the whole installation (Stacklet). Some of it applies only to one [role].
+//! Some of it applies only to a subset of the instances of that role (we call this a [role group][role]).
 //!
 //! We (usually) don't know at what level it makes sense to apply a given piece of configuration, but we also
 //! don't want to force users to repeat themselves constantly! Instead, we model the configuration as a tree:
@@ -145,6 +145,7 @@
 //! # Fine, how do I actually use it, then?
 //!
 //! For declarations (in CRDs):
+//!
 //! - Apply `#[derive(Fragment)] #[fragment_attrs(derive(Merge))]` for your product configuration (and any of its nested types).
 //!   - DON'T: `#[derive(Fragment, Merge)]`
 //! - Pretty much always derive deserialization and defaulting on the `Fragment`, not the validated type:
@@ -155,12 +156,14 @@
 //! - Define the "validated form" of your configuration: only make fields [`Option`]al if [`None`] is actually a legal value.
 //!
 //! For runtime code:
-//! - Validate and merge with [`RoleGroup::validate_config`] for CRDs, otherwise [`merge`] manually and then validate with [`validate`].
+//!
+//! - Validate and merge with `RoleGroup::validate_config` for CRDs, otherwise [`merge`] manually and then validate with [`validate`].
 //! - Validate as soon as possible, user code should never read the contents of `Fragment`s.
 //! - Defaults are just another layer to be [`merge`]d.
 //!
 //! [parsing]: https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/
 //! [`merge`]: Merge::merge
+//! [role]: crate::crd::role
 
 pub mod fragment;
 pub mod merge;
@@ -169,6 +172,3 @@ pub mod merge;
 use fragment::{Fragment, FromFragment, validate};
 #[cfg(doc)]
 use merge::{Atomic, Merge};
-
-#[cfg(doc)]
-use crate::role_utils::{Role, RoleGroup};
