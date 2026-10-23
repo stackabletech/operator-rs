@@ -11,10 +11,10 @@ mod versioned {
     struct Foo {
         username: String,
 
-        #[versioned(added(since = "v1alpha2", default = default_first_name))]
+        #[versioned(added(in = "v1alpha2", default = default_first_name))]
         first_name: String,
 
-        #[versioned(added(since = "v1beta1"))]
+        #[versioned(added(in = "v1beta1"))]
         last_name: String,
     }
 }

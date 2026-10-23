@@ -356,7 +356,7 @@ mod utils;
 ///     ))]
 /// #   #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
 ///     pub struct FooSpec {
-///         #[versioned(deprecated(since = "v1beta1"))]
+///         #[versioned(deprecated(in = "v1beta1"))]
 ///         deprecated_bar: usize,
 ///         baz: bool,
 ///     }
@@ -393,7 +393,7 @@ mod utils;
 /// This action indicates that an item is added in a particular version.
 /// Available arguments are:
 ///
-/// - `since` to indicate since which version the item is present.
+/// - `in` to indicate in which version the item was added.
 /// - `default` to customize the default function used to populate the item
 ///   in auto-generated conversion implementations.
 ///
@@ -402,7 +402,7 @@ mod utils;
 /// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
 /// mod versioned {
 ///     pub struct Foo {
-///         #[versioned(added(since = "v1beta1"))]
+///         #[versioned(added(in = "v1beta1"))]
 ///         bar: usize,
 ///         baz: bool,
 ///     }
@@ -457,7 +457,7 @@ mod utils;
 /// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
 /// mod versioned {
 ///     pub struct Foo {
-///         #[versioned(added(since = "v1beta1", default = "default_bar"))]
+///         #[versioned(added(in = "v1beta1", default = "default_bar"))]
 ///         bar: usize,
 ///         baz: bool,
 ///     }
@@ -498,7 +498,7 @@ mod utils;
 /// You can choose to change the name, change the type, change the doc comment
 /// or combine multiple changes. Available arguments are:
 ///
-/// - `since` to indicate since which version the item is changed.
+/// - `in` to indicate in which version the item is changed.
 /// - `previous_name` to declare the previous name of the field.
 /// - `previous_type` to declare the previous type of the field.
 /// - `previous_docs` to declare the previous doc comments of the item.
@@ -516,7 +516,7 @@ mod utils;
 /// mod versioned {
 ///     pub struct Foo {
 ///         #[versioned(changed(
-///             since = "v1beta1",
+///             in = "v1beta1",
 ///             previous_name = "prev_bar",
 ///             previous_type = "u16",
 ///             downgrade_with = usize_to_u16
@@ -581,7 +581,7 @@ mod utils;
 /// mod versioned {
 ///     pub struct Foo {
 ///         /// The number of bars.
-///         #[versioned(changed(since = "v1beta1", previous_docs = "The bar."))]
+///         #[versioned(changed(in = "v1beta1", previous_docs = "The bar."))]
 ///         bar: usize,
 ///         baz: bool,
 ///     }
@@ -621,10 +621,10 @@ mod utils;
 ///
 /// ### Deprecated Action
 ///
-/// This action indicates that an item is deprecated in a particular version.
+/// This action indicates that an item was deprecated in a particular version.
 /// Deprecated items are not removed. Available arguments are:
 ///
-/// - `since` to indicate since which version the item is deprecated.
+/// - `in` to indicate in which version the item was deprecated.
 /// - `note` to specify an optional deprecation note.
 ///
 /// ```
@@ -632,7 +632,7 @@ mod utils;
 /// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
 /// mod versioned {
 ///     pub struct Foo {
-///         #[versioned(deprecated(since = "v1beta1"))]
+///         #[versioned(deprecated(in = "v1beta1"))]
 ///         deprecated_bar: usize,
 ///         baz: bool,
 ///     }
@@ -705,7 +705,7 @@ mod utils;
 /// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
 /// mod versioned {
 ///     pub struct Foo {
-///         #[versioned(changed(since = "v1beta1", previous_type = "Vec<usize>"), hint(vec))]
+///         #[versioned(changed(in = "v1beta1", previous_type = "Vec<usize>"), hint(vec))]
 ///         bar: Vec<usize>,
 ///         baz: bool,
 ///     }
@@ -747,7 +747,7 @@ mod utils;
 ///     #[versioned(crd(group = "example.com", doc = "My custom resource."))]
 ///     #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
 ///     pub struct FooSpec {
-///         #[versioned(added(since = "v1beta1"))]
+///         #[versioned(added(in = "v1beta1"))]
 ///         bar: usize,
 ///         baz: bool,
 ///     }
@@ -818,10 +818,10 @@ mod utils;
 ///     #[versioned(crd(group = "example.com", doc = "My custom resource."))]
 ///     #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
 ///     pub struct FooSpec {
-///         #[versioned(added(since = "v1beta1"))]
+///         #[versioned(added(in = "v1beta1"))]
 ///         bar: usize,
 ///
-///         #[versioned(added(since = "v1"))]
+///         #[versioned(added(in = "v1"))]
 ///         baz: bool,
 ///
 ///         quox: String,
@@ -966,7 +966,7 @@ mod utils;
 ///     struct Baz {
 ///         quax: String,
 ///
-///         #[versioned(added(since = "v1beta1"))]
+///         #[versioned(added(in = "v1beta1"))]
 ///         quox: bool,
 ///     }
 /// }
@@ -1009,7 +1009,7 @@ mod utils;
 ///     struct Baz {
 ///         quax: String,
 ///
-///         #[versioned(added(since = "v1beta1"))]
+///         #[versioned(added(in = "v1beta1"))]
 ///         quox: bool,
 ///     }
 /// }

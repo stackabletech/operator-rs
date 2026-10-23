@@ -20,7 +20,7 @@ mod versioned {
     struct Bar {
         bar_bar: String,
 
-        #[versioned(added(since = "v1alpha2"))]
+        #[versioned(added(in = "v1alpha2"))]
         baz_baz: u8,
     }
 }
