@@ -4,12 +4,19 @@ use crate::{
     kvp::{Label, Labels, consts::K8S_APP_MANAGED_BY_KEY},
     v2::{
         NameIsValidLabelValue,
+        macros::attributed_string_type::MAX_LABEL_VALUE_LENGTH,
         types::operator::{
             ClusterName, ControllerName, OperatorName, ProductName, ProductVersion, RoleGroupName,
             RoleName,
         },
     },
 };
+
+const AGENT_COMPONENT_SUFFIX: &str = "-agent";
+const _: () = assert!(
+    ProductName::MAX_LENGTH + AGENT_COMPONENT_SUFFIX.len() <= MAX_LABEL_VALUE_LENGTH,
+    "The string `<product_name>-agent` must not exceed the limit of label values."
+);
 
 /// Creates the recommended labels for cluster resources, like ServiceAccounts.
 pub fn recommended_labels_for_cluster_resources(
@@ -40,7 +47,7 @@ pub fn recommended_labels_for_agent_resources(
         label_app_kubernetes_io_instance(cluster_name),
         label_app_kubernetes_io_name(product_name),
         label_app_kubernetes_io_version(product_version),
-        label_app_kubernetes_io_component_agent(),
+        label_app_kubernetes_io_component_agent(product_name),
         label_app_kubernetes_io_managed_by(operator_name, controller_name),
         label_stackable_tech_vendor(),
     ])
@@ -53,7 +60,7 @@ pub fn agent_selector(cluster_name: &ClusterName, product_name: &ProductName) ->
     Labels::from_iter([
         label_app_kubernetes_io_instance(cluster_name),
         label_app_kubernetes_io_name(product_name),
-        label_app_kubernetes_io_component_agent(),
+        label_app_kubernetes_io_component_agent(product_name),
     ])
 }
 
@@ -184,9 +191,13 @@ pub fn label_app_kubernetes_io_component(role_name: &RoleName) -> Label {
         .expect("the value implements NameIsValidLabelValue and is therefore a valid label value")
 }
 
-/// Creates the `app.kubernetes.io/component` label with the value `agent`.
-pub fn label_app_kubernetes_io_component_agent() -> Label {
-    Label::component("agent").expect("\"agent\" is a valid label value")
+/// Creates the `app.kubernetes.io/component` label with the value `<product>-agent`.
+pub fn label_app_kubernetes_io_component_agent(product_name: &ProductName) -> Label {
+    Label::component(&format!(
+        "{}{AGENT_COMPONENT_SUFFIX}",
+        product_name.to_label_value()
+    ))
+    .expect("the product name is a valid label value and the suffix keeps it within the limit")
 }
 
 /// Creates the `app.kubernetes.io/role-group` label with the given role group as value.
@@ -259,7 +270,7 @@ mod tests {
         );
 
         let expected_labels: BTreeMap<_, _> = [
-            ("app.kubernetes.io/component", "agent"),
+            ("app.kubernetes.io/component", "my-product-agent"),
             ("app.kubernetes.io/instance", "cluster-name"),
             ("app.kubernetes.io/managed-by", "my-operator_my-controller"),
             ("app.kubernetes.io/name", "my-product"),
