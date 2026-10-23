@@ -21,7 +21,7 @@ pub mod versioned {
         kube::CustomResource,
     )]
     pub struct FooSpec {
-        #[versioned(added(since = "v1beta1"), changed(since = "v1", from_name = "bah"))]
+        #[versioned(added(since = "v1beta1"), changed(since = "v1", previous_name = "bah"))]
         bar: usize,
         baz: bool,
     }

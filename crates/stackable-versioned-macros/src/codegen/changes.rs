@@ -100,6 +100,7 @@ pub trait ChangesetExt {
 }
 
 impl ChangesetExt for BTreeMap<Version, ItemStatus> {
+    #[allow(clippy::too_many_lines)]
     fn insert_container_versions(&mut self, versions: &[VersionDefinition], ty: &Type) {
         for version in versions {
             if self.contains_key(&version.inner) {

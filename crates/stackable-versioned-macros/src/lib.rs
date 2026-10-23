@@ -513,8 +513,8 @@ mod utils;
 ///     pub struct Foo {
 ///         #[versioned(changed(
 ///             since = "v1beta1",
-///             from_name = "prev_bar",
-///             from_type = "u16",
+///             previous_name = "prev_bar",
+///             previous_type = "u16",
 ///             downgrade_with = usize_to_u16
 ///         ))]
 ///         bar: usize,
@@ -577,7 +577,7 @@ mod utils;
 /// mod versioned {
 ///     pub struct Foo {
 ///         /// The number of bars.
-///         #[versioned(changed(since = "v1beta1", from_docs = "The bar."))]
+///         #[versioned(changed(since = "v1beta1", previous_docs = "The bar."))]
 ///         bar: usize,
 ///         baz: bool,
 ///     }
@@ -701,7 +701,7 @@ mod utils;
 /// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
 /// mod versioned {
 ///     pub struct Foo {
-///         #[versioned(changed(since = "v1beta1", from_type = "Vec<usize>"), hint(vec))]
+///         #[versioned(changed(since = "v1beta1", previous_type = "Vec<usize>"), hint(vec))]
 ///         bar: Vec<usize>,
 ///         baz: bool,
 ///     }

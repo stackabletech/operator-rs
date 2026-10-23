@@ -18,7 +18,7 @@ pub(crate) mod versioned {
     ))]
     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
     pub(crate) struct FooSpec {
-        #[versioned(added(since = "v1beta1"), changed(since = "v1", from_name = "bah"))]
+        #[versioned(added(since = "v1beta1"), changed(since = "v1", previous_name = "bah"))]
         bar: usize,
 
         #[versioned(nested)]
