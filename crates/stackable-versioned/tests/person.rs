@@ -70,8 +70,6 @@ pub mod versioned {
 
         // We started out with a enum. As we *need* to provide a default, we have a Unknown variant.
         // Afterwards we figured let's be more flexible and accept any arbitrary String.
-
-        // FIXME: The roundtrips are currently broken, see the `roundtrip_test_data` below.
         #[versioned(added(since = "v2"), changed(since = "v3", from_type = "Gender"))]
         gender: String,
 
@@ -102,7 +100,9 @@ pub mod versioned {
     pub struct Married {
         with: String,
 
-        #[versioned(added(since = "v2"))]
+        // This field is added in the same version in which `gender` changed its type. This ensures
+        // that multiple (nested) containers can track values for the same version.
+        #[versioned(added(since = "v3"))]
         since: String,
     }
 
@@ -208,20 +208,19 @@ impl stackable_versioned::test_utils::RoundtripTestData for v3::PersonSpec {
                     mastodon: "@jdoe@example.com".to_owned(),
                 },
             },
-            // FIXME: The following test case fails.  See the docs on the `versioned` macro, as of
-            // writing it only supports tracking `added` fields.
-            // Hence, the firstName, lastName, socials.mastodon work, while gender is broken.
-            // Self {
-            //     username: "".to_owned(),
-            //     first_name: "".to_owned(),
-            //     last_name: "".to_owned(),
-            //     // FIXME: Currently, the roundtrip results in "Unknown", although it should be "It's complicated"
-            //     gender: "It's complicated".to_owned(),
-            //     socials: v3::Socials {
-            //         email: "".to_owned(),
-            //         mastodon: "".to_owned(),
-            //     },
-            // },
+            // Downgrading to v2 turns the gender into Gender::Unknown. The original value is
+            // tracked in the status and restored when upgrading again.
+            Self {
+                username: String::new(),
+                first_name: String::new(),
+                last_name: String::new(),
+                gender: "It's complicated".to_owned(),
+                relationship: v3::Relationship::Other {},
+                socials: v3::Socials {
+                    email: String::new(),
+                    mastodon: String::new(),
+                },
+            },
         ]
     }
 }

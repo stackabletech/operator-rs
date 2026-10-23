@@ -328,6 +328,89 @@ impl VersionedField {
                             upgrades.push(#versioned_path::ChangedValue {
                                 json_path: #json_path_ident,
                                 value: #serde_json_path::to_value(&#from_struct_ident.#ident).unwrap(),
+                                downgraded_value: ::core::option::Option::None,
+                            });
+                        })
+                    }
+                    _ => None,
+                }
+            }
+        }
+    }
+
+    /// Generates code which serializes the value of this field before it is converted. This is only
+    /// needed for fields which changed their type, because the conversion consumes the value.
+    ///
+    /// - When downgrading, this is the value of the newer type, which is tracked in the status.
+    /// - When upgrading, this is the value of the older type, which is compared against the tracked
+    ///   downgraded value to detect if a user changed the field in the older version.
+    pub fn generate_for_tracked_value(
+        &self,
+        direction: Direction,
+        next_version: &VersionDefinition,
+        from_struct_ident: &IdentString,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+    ) -> Option<TokenStream> {
+        let changes = self.changes.as_ref()?;
+        let next_change = changes.get_expect(&next_version.inner);
+
+        match next_change {
+            ItemStatus::Change {
+                from_ident,
+                to_ident,
+                ..
+            } if next_change.is_type_change() => {
+                let serde_json_path = &*mod_gen_ctx.crates.serde_json;
+                let value_ident = to_ident.tracked_value_ident();
+
+                let field_ident = match direction {
+                    Direction::Upgrade => from_ident,
+                    Direction::Downgrade => to_ident,
+                };
+
+                Some(quote! {
+                    let #value_ident = #serde_json_path::to_value(&#from_struct_ident.#field_ident).unwrap();
+                })
+            }
+            _ => None,
+        }
+    }
+
+    /// Generates code needed when a tracked type change of this field needs to be inserted into the
+    /// status. In contrast to added fields, this can only be done after the conversion, because the
+    /// downgraded value is tracked as well.
+    pub fn generate_for_status_post_insertion(
+        &self,
+        direction: Direction,
+        next_version: &VersionDefinition,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+    ) -> Option<TokenStream> {
+        let changes = self.changes.as_ref()?;
+
+        match direction {
+            Direction::Upgrade => None,
+            Direction::Downgrade => {
+                let next_change = changes.get_expect(&next_version.inner);
+
+                let serde_json_path = &*mod_gen_ctx.crates.serde_json;
+                let versioned_path = &*mod_gen_ctx.crates.versioned;
+
+                match next_change {
+                    ItemStatus::Change {
+                        from_ident,
+                        to_ident,
+                        ..
+                    } if next_change.is_type_change() => {
+                        let json_path_ident = to_ident.json_path_ident();
+                        let value_ident = to_ident.tracked_value_ident();
+
+                        Some(quote! {
+                            upgrades.push(#versioned_path::ChangedValue {
+                                json_path: #json_path_ident,
+                                value: #value_ident,
+                                downgraded_value: ::core::option::Option::Some(
+                                    #serde_json_path::to_value(&spec.#from_ident).unwrap()
+                                ),
                             });
                         })
                     }
@@ -357,8 +440,6 @@ impl VersionedField {
                 let next_change = changes.get_expect(&next_version.inner);
 
                 match next_change {
-                    // NOTE (@Techassi): We currently only support tracking added fields. As such
-                    // we only need to generate code if the next change is "Addition".
                     ItemStatus::Addition { ident, .. } => {
                         let json_path_ident = ident.json_path_ident();
                         let expect_message = format!(
@@ -369,6 +450,27 @@ impl VersionedField {
                             if let Some(#versioned_path::ChangedValue { value, .. }) = upgrades.extract_first_if(|u| u.json_path == #json_path_ident) {
                                 // TODO (@Techassi): Switch to serde_json
                                 spec.#ident = #serde_json_path::from_value(value).expect(#expect_message);
+                            }
+                        })
+                    }
+                    // The tracked value is only applied if the field still contains the value it
+                    // was downgraded to. Otherwise, a user changed the field in the older version
+                    // and that change takes precedence over the tracked value.
+                    //
+                    // A downgraded value of null is serialized as `downgradedValue: null`, which is
+                    // deserialized as None. As such, a missing downgraded value is treated as null.
+                    ItemStatus::Change { to_ident, .. } if next_change.is_type_change() => {
+                        let json_path_ident = to_ident.json_path_ident();
+                        let value_ident = to_ident.tracked_value_ident();
+                        let expect_message = format!(
+                            "internal error: {{{json_path_ident}}} must be serializable for spec.{to_ident}"
+                        );
+
+                        Some(quote! {
+                            if let Some(#versioned_path::ChangedValue { value, downgraded_value, .. }) = upgrades.extract_first_if(|u| u.json_path == #json_path_ident) {
+                                if downgraded_value.unwrap_or_default() == #value_ident {
+                                    spec.#to_ident = #serde_json_path::from_value(value).expect(#expect_message);
+                                }
                             }
                         })
                     }
@@ -407,17 +509,18 @@ impl VersionedField {
             (Some(changes), _) => {
                 let next_change = changes.get_expect(&next_version.inner);
 
-                match next_change {
-                    ItemStatus::Addition { ident, .. } => {
-                        let field_ident = ident.json_path_ident();
-                        let child_string = ident.to_string();
+                let ident = match next_change {
+                    ItemStatus::Addition { ident, .. } => ident,
+                    ItemStatus::Change { to_ident, .. } if next_change.is_type_change() => to_ident,
+                    _ => return None,
+                };
 
-                        Some(quote! {
-                            let #field_ident = #versioned_path::jthong_path(parent, #child_string);
-                        })
-                    }
-                    _ => None,
-                }
+                let field_ident = ident.json_path_ident();
+                let child_string = ident.to_string();
+
+                Some(quote! {
+                    let #field_ident = #versioned_path::jthong_path(parent, #child_string);
+                })
             }
         }
     }

@@ -91,6 +91,7 @@ where
             .push(::stackable_versioned::ChangedValue {
                 json_path: __sv_baz_path,
                 value: ::serde_json::to_value(&__sv_foo.baz).unwrap(),
+                downgraded_value: ::core::option::Option::None,
             });
         let mut spec = Self {
             foo: __sv_foo.foo.into(),
