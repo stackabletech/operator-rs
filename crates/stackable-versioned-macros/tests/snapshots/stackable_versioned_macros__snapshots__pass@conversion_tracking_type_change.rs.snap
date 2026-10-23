@@ -50,16 +50,17 @@ impl ::core::convert::From<v1beta1::Foo> for v1alpha1::Foo {
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha1::FooSpec, S> for v1beta1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1alpha1::FooSpec, __SvStatus>
+for v1beta1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_foospec: v1alpha1::FooSpec,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_bah_path = ::stackable_versioned::jthong_path(parent, "bah");
         let __sv_bah_value = ::serde_json::to_value(&__sv_foospec.bah).unwrap();
         let mut spec = Self {
@@ -67,25 +68,15 @@ where
             qux: __sv_foospec.qux.into(),
         };
         if let Some(upgrades) = status.changes().upgrades.get_mut("v1beta1") {
-            for ::stackable_versioned::ChangedValue {
-                json_path,
-                value,
-                downgraded_value,
-            } in ::std::mem::take(upgrades) {
-                match json_path {
-                    json_path if json_path == __sv_bah_path => {
-                        if downgraded_value.unwrap_or_default() == __sv_bah_value {
-                            spec.bah = ::serde_json::from_value(value).unwrap();
-                        }
-                    }
-                    json_path => {
-                        upgrades
-                            .push(::stackable_versioned::ChangedValue {
-                                json_path,
-                                value,
-                                downgraded_value,
-                            })
-                    }
+            if let Some(
+                ::stackable_versioned::ChangedValue { value, downgraded_value, .. },
+            ) = upgrades.extract_first_if(|u| u.json_path == __sv_bah_path)
+            {
+                if downgraded_value.unwrap_or_default() == __sv_bah_value {
+                    spec.bah = ::serde_json::from_value(value)
+                        .expect(
+                            "internal error: {__sv_bah_path} must be serializable for spec.bah",
+                        );
                 }
             }
             if upgrades.is_empty() {
@@ -96,16 +87,17 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, S> for v1alpha1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, __SvStatus>
+for v1alpha1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_foospec: v1beta1::FooSpec,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_bah_path = ::stackable_versioned::jthong_path(parent, "bah");
         let __sv_bah_value = ::serde_json::to_value(&__sv_foospec.bah).unwrap();
         let mut spec = Self {
@@ -175,16 +167,17 @@ impl ::core::convert::From<v1::Foo> for v1beta1::Foo {
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, S> for v1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, __SvStatus>
+for v1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_foospec: v1beta1::FooSpec,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_bar_path = ::stackable_versioned::jthong_path(parent, "bar");
         let __sv_quux_path = ::stackable_versioned::jthong_path(parent, "quux");
         let __sv_bar_value = ::serde_json::to_value(&__sv_foospec.bah).unwrap();
@@ -194,29 +187,24 @@ where
             quux: ::std::default::Default::default(),
         };
         if let Some(upgrades) = status.changes().upgrades.get_mut("v1") {
-            for ::stackable_versioned::ChangedValue {
-                json_path,
-                value,
-                downgraded_value,
-            } in ::std::mem::take(upgrades) {
-                match json_path {
-                    json_path if json_path == __sv_bar_path => {
-                        if downgraded_value.unwrap_or_default() == __sv_bar_value {
-                            spec.bar = ::serde_json::from_value(value).unwrap();
-                        }
-                    }
-                    json_path if json_path == __sv_quux_path => {
-                        spec.quux = ::serde_json::from_value(value).unwrap();
-                    }
-                    json_path => {
-                        upgrades
-                            .push(::stackable_versioned::ChangedValue {
-                                json_path,
-                                value,
-                                downgraded_value,
-                            })
-                    }
+            if let Some(
+                ::stackable_versioned::ChangedValue { value, downgraded_value, .. },
+            ) = upgrades.extract_first_if(|u| u.json_path == __sv_bar_path)
+            {
+                if downgraded_value.unwrap_or_default() == __sv_bar_value {
+                    spec.bar = ::serde_json::from_value(value)
+                        .expect(
+                            "internal error: {__sv_bar_path} must be serializable for spec.bar",
+                        );
                 }
+            }
+            if let Some(::stackable_versioned::ChangedValue { value, .. }) = upgrades
+                .extract_first_if(|u| u.json_path == __sv_quux_path)
+            {
+                spec.quux = ::serde_json::from_value(value)
+                    .expect(
+                        "internal error: {__sv_quux_path} must be serializable for spec.quux",
+                    );
             }
             if upgrades.is_empty() {
                 status.changes().upgrades.remove("v1");
@@ -226,12 +214,17 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1::FooSpec, S> for v1beta1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1::FooSpec, __SvStatus>
+for v1beta1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_foospec: v1::FooSpec, status: &mut S, parent: &str) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+    fn tracking_from(
+        __sv_foospec: v1::FooSpec,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_bar_path = ::stackable_versioned::jthong_path(parent, "bar");
         let __sv_quux_path = ::stackable_versioned::jthong_path(parent, "quux");
         let upgrades = status.changes().upgrades.entry("v1".to_owned()).or_default();

@@ -348,7 +348,11 @@ mod utils;
 ///         // the generated tracking status struct.
 ///         status = "FooStatus",
 ///         // Set a shortname. This can be specified multiple times.
-///         shortname = "..."
+///         shortname = "...",
+///         // Set the JSON path of a field which can be used as a field
+///         // selector. This can be specified multiple times. The path is used
+///         // for all versions, so the field must exist in every version.
+///         selectable = ".spec.baz"
 ///     ))]
 /// #   #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
 ///     pub struct FooSpec {

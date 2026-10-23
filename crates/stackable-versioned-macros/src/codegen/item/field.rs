@@ -432,19 +432,25 @@ impl VersionedField {
         // for applying a tracked value.
         let changes = self.changes.as_ref()?;
 
+        let serde_json_path = &*mod_gen_ctx.crates.serde_json;
+        let versioned_path = &*mod_gen_ctx.crates.versioned;
+
         match direction {
             Direction::Upgrade => {
                 let next_change = changes.get_expect(&next_version.inner);
-                let serde_json_path = &*mod_gen_ctx.crates.serde_json;
 
                 match next_change {
                     ItemStatus::Addition { ident, .. } => {
                         let json_path_ident = ident.json_path_ident();
+                        let expect_message = format!(
+                            "internal error: {{{json_path_ident}}} must be serializable for spec.{ident}"
+                        );
 
                         Some(quote! {
-                            json_path if json_path == #json_path_ident => {
-                                spec.#ident = #serde_json_path::from_value(value).unwrap();
-                            },
+                            if let Some(#versioned_path::ChangedValue { value, .. }) = upgrades.extract_first_if(|u| u.json_path == #json_path_ident) {
+                                // TODO (@Techassi): Switch to serde_json
+                                spec.#ident = #serde_json_path::from_value(value).expect(#expect_message);
+                            }
                         })
                     }
                     // The tracked value is only applied if the field still contains the value it
@@ -456,13 +462,16 @@ impl VersionedField {
                     ItemStatus::Change { to_ident, .. } if next_change.is_type_change() => {
                         let json_path_ident = to_ident.json_path_ident();
                         let value_ident = to_ident.tracked_value_ident();
+                        let expect_message = format!(
+                            "internal error: {{{json_path_ident}}} must be serializable for spec.{to_ident}"
+                        );
 
                         Some(quote! {
-                            json_path if json_path == #json_path_ident => {
+                            if let Some(#versioned_path::ChangedValue { value, downgraded_value, .. }) = upgrades.extract_first_if(|u| u.json_path == #json_path_ident) {
                                 if downgraded_value.unwrap_or_default() == #value_ident {
-                                    spec.#to_ident = #serde_json_path::from_value(value).unwrap();
+                                    spec.#to_ident = #serde_json_path::from_value(value).expect(#expect_message);
                                 }
-                            },
+                            }
                         })
                     }
                     _ => None,

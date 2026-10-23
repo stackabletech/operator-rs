@@ -192,7 +192,7 @@ impl Struct {
             {
                 fn tracking_from(#from_struct_ident: #from_module_ident::#struct_ident #type_generics, status: &mut __SvStatus, parent: &str) -> Self {
                     // TODO (@Techassi): Only emit this if any of the fields below need it
-                    use #versioned_path::TrackingInto as _;
+                    use #versioned_path::{ExtractIfExt as _, TrackingInto as _};
 
                     #json_paths
                     // Depending on the direction, we need to either insert changed values into
@@ -317,7 +317,7 @@ impl Struct {
             return None;
         }
 
-        let match_arms: TokenStream = self
+        let removals: TokenStream = self
             .fields
             .iter()
             .filter_map(|f| f.generate_for_status_removal(direction, next_version, mod_gen_ctx))
@@ -326,7 +326,6 @@ impl Struct {
         match direction {
             Direction::Upgrade => {
                 let next_version_string = next_version.inner.to_string();
-                let versioned_path = &*mod_gen_ctx.crates.versioned;
 
                 // Multiple (nested) containers can track values for the same version. As such, only
                 // the values matching the JSON paths of this container are applied. All other values
@@ -334,16 +333,7 @@ impl Struct {
                 // version is only removed once all values have been applied.
                 Some(quote! {
                     if let Some(upgrades) = status.changes().upgrades.get_mut(#next_version_string) {
-                        for #versioned_path::ChangedValue { json_path, value, downgraded_value } in ::std::mem::take(upgrades) {
-                            match json_path {
-                                #match_arms
-                                json_path => upgrades.push(#versioned_path::ChangedValue {
-                                    json_path,
-                                    value,
-                                    downgraded_value,
-                                }),
-                            }
-                        }
+                        #removals
 
                         if upgrades.is_empty() {
                             status.changes().upgrades.remove(#next_version_string);

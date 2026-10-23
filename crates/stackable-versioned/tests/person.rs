@@ -73,10 +73,10 @@ pub mod versioned {
         #[versioned(added(since = "v2"), changed(since = "v3", from_type = "Gender"))]
         gender: String,
 
-        // FIXME (@Techassi): This currently breaks because of how enum are serialized by default
-        // by yaml_serde (singleton map)
-        // #[versioned(added(since = "v1alpha2"), nested)]
-        #[versioned(nested)]
+        // TODO (@Techassi): Dealing with Default here is kinda meh UX wise. What would really help
+        // is enabling per-container versioning and maybe the ability to place impl blocks in here
+        // for automatic implementations for all versions of a container.
+        #[versioned(added(since = "v1alpha2", default = default_relationship), nested)]
         relationship: Relationship,
 
         #[versioned(nested)]
@@ -115,22 +115,62 @@ pub mod versioned {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+pub struct PersonStatus {
+    pub alive: bool,
+}
+
+impl Default for PersonStatus {
+    fn default() -> Self {
+        Self { alive: true }
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
+#[serde(rename_all = "PascalCase")]
+pub enum Gender {
+    #[default]
+    Unknown,
+    Male,
+    Female,
+}
+
+impl From<Gender> for String {
+    fn from(value: Gender) -> Self {
+        match value {
+            Gender::Unknown => "Unknown".to_owned(),
+            Gender::Male => "Male".to_owned(),
+            Gender::Female => "Female".to_owned(),
+        }
+    }
+}
+
+impl From<String> for Gender {
+    fn from(value: String) -> Self {
+        match value.as_str() {
+            "Male" => Self::Male,
+            "Female" => Self::Female,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+fn default_relationship() -> v1alpha2::Relationship {
+    v1alpha2::Relationship::Other {}
+}
+
 #[cfg(test)]
 impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::PersonSpec {
     fn roundtrip_test_data() -> Vec<Self> {
         vec![
             Self {
                 username: "jdoe".to_string(),
-                relationship: v1alpha1::Relationship::Married(v1alpha1::Married {
-                    with: "Jane Doe".into(),
-                }),
                 socials: v1alpha1::Socials {
                     email: "jdoe@example.com".to_owned(),
                 },
             },
             Self {
                 username: String::new(),
-                relationship: v1alpha1::Relationship::Single {},
                 socials: v1alpha1::Socials {
                     email: String::new(),
                 },
@@ -182,45 +222,5 @@ impl stackable_versioned::test_utils::RoundtripTestData for v3::PersonSpec {
                 },
             },
         ]
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
-pub struct PersonStatus {
-    pub alive: bool,
-}
-
-impl Default for PersonStatus {
-    fn default() -> Self {
-        Self { alive: true }
-    }
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
-#[serde(rename_all = "PascalCase")]
-pub enum Gender {
-    #[default]
-    Unknown,
-    Male,
-    Female,
-}
-
-impl From<Gender> for String {
-    fn from(value: Gender) -> Self {
-        match value {
-            Gender::Unknown => "Unknown".to_owned(),
-            Gender::Male => "Male".to_owned(),
-            Gender::Female => "Female".to_owned(),
-        }
-    }
-}
-
-impl From<String> for Gender {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            "Male" => Self::Male,
-            "Female" => Self::Female,
-            _ => Self::Unknown,
-        }
     }
 }
