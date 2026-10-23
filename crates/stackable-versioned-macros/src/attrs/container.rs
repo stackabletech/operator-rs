@@ -53,6 +53,8 @@ pub struct ContainerSkipArguments {
 /// - `scale`: Configure the scale subresource for horizontal pod autoscaling integration.
 /// - `shortname`: Set a shortname for the CR object. This can be specified multiple
 ///   times.
+/// - `selectable`: Set the JSON path of a field which can be used as a field selector.
+///   This can be specified multiple times.
 /// - `doc`: Set the root description of the generated CRD. This argument is required, so
 ///   that every CRD has a meaningful description instead of the generic one that kube
 ///   generates by default.
@@ -73,7 +75,8 @@ pub struct StructCrdArguments {
     #[darling(multiple, rename = "shortname")]
     pub shortnames: Vec<String>,
     // category
-    // selectable
+    #[darling(multiple, rename = "selectable")]
+    pub selectable_fields: Vec<String>,
     pub doc: String,
     // annotation
     // label
