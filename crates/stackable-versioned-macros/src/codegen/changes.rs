@@ -112,15 +112,15 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
                         self.insert(version.inner, ItemStatus::NotPresent)
                     }
                     ItemStatus::Change {
-                        from_ident,
-                        from_type,
+                        previous_ident,
+                        previous_type,
                         ..
                     } => self.insert(
                         version.inner,
                         ItemStatus::NoChange {
                             previously_deprecated: false,
-                            ident: from_ident.clone(),
-                            ty: from_type.clone(),
+                            ident: previous_ident.clone(),
+                            ty: previous_type.clone(),
                         },
                     ),
                     ItemStatus::Deprecation { previous_ident, .. } => self.insert(
@@ -149,8 +149,10 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
                     let (ident, ty, previously_deprecated) = match status {
                         ItemStatus::Addition { ident, ty, .. } => (ident, ty, false),
                         ItemStatus::Change {
-                            to_ident, to_type, ..
-                        } => (to_ident, to_type, false),
+                            current_ident,
+                            current_type,
+                            ..
+                        } => (current_ident, current_type, false),
                         ItemStatus::Deprecation { ident, .. } => {
                             (ident, &Box::new(ty.clone()), true)
                         }
@@ -176,8 +178,10 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
                     let (ident, ty, previously_deprecated) = match status {
                         ItemStatus::Addition { ident, ty, .. } => (ident, ty, false),
                         ItemStatus::Change {
-                            to_ident, to_type, ..
-                        } => (to_ident, to_type, false),
+                            current_ident,
+                            current_type,
+                            ..
+                        } => (current_ident, current_type, false),
                         ItemStatus::NoChange {
                             previously_deprecated,
                             ident,
