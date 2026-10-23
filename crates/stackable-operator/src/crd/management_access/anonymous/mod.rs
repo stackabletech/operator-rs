@@ -5,7 +5,7 @@ use crate::versioned::versioned;
 
 #[versioned(version(name = "v1alpha1"))]
 pub mod versioned {
-    /// No credential: the product does not authenticate the agent.
+    /// No credential: the product does not require authentication.
     #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
     pub struct Anonymous {}
 }
