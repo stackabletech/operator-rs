@@ -16,12 +16,17 @@ mod v1alpha1 {
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha1::Foo, S> for v1alpha2::Foo
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1alpha1::Foo, __SvStatus>
+for v1alpha2::Foo
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_foo: v1alpha1::Foo, status: &mut S, parent: &str) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+    fn tracking_from(
+        __sv_foo: v1alpha1::Foo,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_bar_path = ::stackable_versioned::jthong_path(parent, "bar");
         let mut spec = Self {
             bar: __sv_foo.bar.map(|v| v.tracking_into(status, &__sv_bar_path)),
@@ -32,12 +37,17 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha2::Foo, S> for v1alpha1::Foo
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1alpha2::Foo, __SvStatus>
+for v1alpha1::Foo
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_foo: v1alpha2::Foo, status: &mut S, parent: &str) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+    fn tracking_from(
+        __sv_foo: v1alpha2::Foo,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_bar_path = ::stackable_versioned::jthong_path(parent, "bar");
         let mut spec = Self {
             bar: __sv_foo.bar.map(|v| v.tracking_into(status, &__sv_bar_path)),
@@ -48,38 +58,50 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha1::Bar, S> for v1alpha2::Bar
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1alpha1::Bar, __SvStatus>
+for v1alpha2::Bar
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_bar: v1alpha1::Bar, status: &mut S, parent: &str) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+    fn tracking_from(
+        __sv_bar: v1alpha1::Bar,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_baz_baz_path = ::stackable_versioned::jthong_path(parent, "baz_baz");
         let mut spec = Self {
             bar_bar: __sv_bar.bar_bar.into(),
             baz_baz: ::std::default::Default::default(),
         };
-        if let Some(upgrades) = status.changes().upgrades.remove(&"v1alpha2".to_owned())
-        {
-            for ::stackable_versioned::ChangedValue { json_path, value } in upgrades {
-                match json_path {
-                    json_path if json_path == __sv_baz_baz_path => {
-                        spec.baz_baz = serde_yaml::from_value(value).unwrap();
-                    }
-                    _ => unreachable!(),
-                }
+        if let Some(upgrades) = status.changes().upgrades.get_mut("v1alpha2") {
+            if let Some(::stackable_versioned::ChangedValue { value, .. }) = upgrades
+                .extract_first_if(|u| u.json_path == __sv_baz_baz_path)
+            {
+                spec.baz_baz = ::serde_json::from_value(value)
+                    .expect(
+                        "internal error: {__sv_baz_baz_path} must be serializable for spec.baz_baz",
+                    );
+            }
+            if upgrades.is_empty() {
+                status.changes().upgrades.remove("v1alpha2");
             }
         }
         spec
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha2::Bar, S> for v1alpha1::Bar
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1alpha2::Bar, __SvStatus>
+for v1alpha1::Bar
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_bar: v1alpha2::Bar, status: &mut S, parent: &str) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+    fn tracking_from(
+        __sv_bar: v1alpha2::Bar,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_baz_baz_path = ::stackable_versioned::jthong_path(parent, "baz_baz");
         let upgrades = status
             .changes()
@@ -89,7 +111,7 @@ where
         upgrades
             .push(::stackable_versioned::ChangedValue {
                 json_path: __sv_baz_baz_path,
-                value: ::serde_yaml::to_value(&__sv_bar.baz_baz).unwrap(),
+                value: ::serde_json::to_value(&__sv_bar.baz_baz).unwrap(),
             });
         let mut spec = Self {
             bar_bar: __sv_bar.bar_bar.into(),

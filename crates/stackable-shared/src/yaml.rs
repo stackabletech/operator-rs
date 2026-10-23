@@ -13,7 +13,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("failed to serialize YAML"))]
-    SerializeYaml { source: serde_yaml::Error },
+    SerializeYaml { source: yaml_serde::Error },
 
     #[snafu(display("failed to write YAML document separator"))]
     WriteDocumentSeparator { source: std::io::Error },
@@ -150,10 +150,10 @@ where
             .context(WriteDocumentSeparatorSnafu)?;
     }
 
-    let mut serializer = serde_yaml::Serializer::new(writer);
+    let mut serializer = yaml_serde::Serializer::new(writer);
 
     if options.singleton_map {
-        serde_yaml::with::singleton_map_recursive::serialize(value, &mut serializer)
+        yaml_serde::with::singleton_map_recursive::serialize(value, &mut serializer)
             .context(SerializeYamlSnafu)?;
     } else {
         value

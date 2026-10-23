@@ -114,7 +114,7 @@ pub struct ChangedValue {
 
     /// The value to be used when upgrading or downgrading the custom resource.
     #[schemars(schema_with = "raw_object_schema")]
-    pub value: serde_yaml::Value,
+    pub value: serde_json::Value,
 }
 
 // TODO (@Techassi): Think about where this should live. Basically this already exists in
@@ -194,6 +194,36 @@ pub struct UnknownDesiredApiVersionError {
     pub api_version: String,
 }
 
+/// This extension trait for (currently only) [`Vec`]s enables the extraction of the first matched
+/// element based on a predicate.
+pub trait ExtractIfExt<T> {
+    /// Extracts the first element for which the `predicate` evaluates to `true` and returns it.
+    fn extract_first_if(&mut self, predicate: impl FnMut(&T) -> bool) -> Option<T>;
+}
+
+impl<T> ExtractIfExt<T> for Vec<T> {
+    fn extract_first_if(&mut self, predicate: impl FnMut(&T) -> bool) -> Option<T> {
+        let index = self.iter().position(predicate)?;
+        Some(self.remove(index))
+    }
+}
+
 pub fn jthong_path(parent: &str, child: &str) -> String {
     format!("{parent}.{child}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extract_first_if() {
+        let mut all = vec![1, 2, 3, 4, 5, 6];
+        let first_even = all
+            .extract_first_if(|i| i % 2 == 0)
+            .expect("source vec contains 2, 4, 6 which are even");
+
+        assert_eq!(first_even, 2);
+        assert_eq!(all.len(), 5);
+    }
 }

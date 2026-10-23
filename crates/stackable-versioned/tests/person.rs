@@ -51,7 +51,11 @@ pub fn roundtrip_conversion_review(
     options(k8s(experimental_conversion_tracking))
 )]
 pub mod versioned {
-    #[versioned(crd(group = "test.stackable.tech", status = "PersonStatus", doc = "Test"))]
+    #[versioned(crd(
+        group = "test.stackable.tech",
+        status = "PersonStatus",
+        doc = "A Person resource used for testing"
+    ))]
     #[derive(Clone, Debug, CustomResource, Deserialize, JsonSchema, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct PersonSpec {
@@ -68,11 +72,38 @@ pub mod versioned {
         // Afterwards we figured let's be more flexible and accept any arbitrary String.
 
         // FIXME: The roundtrips are currently broken, see the `roundtrip_test_data` below.
-        #[versioned(added(since = "v2"), changed(since = "v3", from_type = "Gender"))]
+        #[versioned(added(since = "v2"), changed(since = "v3", previous_type = "Gender"))]
         gender: String,
+
+        // TODO (@Techassi): Dealing with Default here is kinda meh UX wise. What would really help
+        // is enabling per-container versioning and maybe the ability to place impl blocks in here
+        // for automatic implementations for all versions of a container.
+        #[versioned(added(since = "v1alpha2", default = default_relationship), nested)]
+        relationship: Relationship,
 
         #[versioned(nested)]
         socials: Socials,
+    }
+
+    // NOTE (@Techassi): This technically only needs two versions, but we cannot opt out of
+    // versions (for now).
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+    #[serde(rename_all = "camelCase")]
+    pub enum Relationship {
+        #[versioned(nested)]
+        Married(Married),
+        Single {},
+        Other {},
+    }
+
+    // NOTE (@Techassi): This technically only needs two versions, but we cannot opt out of
+    // versions (for now).
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+    pub struct Married {
+        with: String,
+
+        #[versioned(added(since = "v2"))]
+        since: String,
     }
 
     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
@@ -81,68 +112,6 @@ pub mod versioned {
 
         #[versioned(added(since = "v1beta1"))]
         mastodon: String,
-    }
-}
-
-#[cfg(test)]
-impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::PersonSpec {
-    fn roundtrip_test_data() -> Vec<Self> {
-        vec![
-            Self {
-                username: "jdoe".to_string(),
-                socials: v1alpha1::Socials {
-                    email: "jdoe@example.com".to_owned(),
-                },
-            },
-            Self {
-                username: String::new(),
-                socials: v1alpha1::Socials {
-                    email: String::new(),
-                },
-            },
-        ]
-    }
-}
-
-#[cfg(test)]
-impl stackable_versioned::test_utils::RoundtripTestData for v3::PersonSpec {
-    fn roundtrip_test_data() -> Vec<Self> {
-        vec![
-            Self {
-                username: "jdoe".to_owned(),
-                first_name: "John".to_owned(),
-                last_name: "Doe".to_owned(),
-                gender: "Unknown".to_owned(),
-                socials: v3::Socials {
-                    email: "jdoe@example.com".to_owned(),
-                    mastodon: "@jdoe@example.com".to_owned(),
-                },
-            },
-            Self {
-                username: "jdoe".to_owned(),
-                first_name: "John".to_owned(),
-                last_name: "Doe".to_owned(),
-                gender: "Male".to_owned(),
-                socials: v3::Socials {
-                    email: "jdoe@example.com".to_owned(),
-                    mastodon: "@jdoe@example.com".to_owned(),
-                },
-            },
-            // FIXME: The following test case fails.  See the docs on the `versioned` macro, as of
-            // writing it only supports tracking `added` fields.
-            // Hence, the firstName, lastName, socials.mastodon work, while gender is broken.
-            // Self {
-            //     username: "".to_owned(),
-            //     first_name: "".to_owned(),
-            //     last_name: "".to_owned(),
-            //     // FIXME: Currently, the roundtrip results in "Unknown", although it should be "It's complicated"
-            //     gender: "It's complicated".to_owned(),
-            //     socials: v3::Socials {
-            //         email: "".to_owned(),
-            //         mastodon: "".to_owned(),
-            //     },
-            // },
-        ]
     }
 }
 
@@ -183,5 +152,76 @@ impl From<String> for Gender {
             "Female" => Self::Female,
             _ => Self::Unknown,
         }
+    }
+}
+
+fn default_relationship() -> v1alpha2::Relationship {
+    v1alpha2::Relationship::Other {}
+}
+
+#[cfg(test)]
+impl stackable_versioned::test_utils::RoundtripTestData for v1alpha1::PersonSpec {
+    fn roundtrip_test_data() -> Vec<Self> {
+        vec![
+            Self {
+                username: "jdoe".to_string(),
+                socials: v1alpha1::Socials {
+                    email: "jdoe@example.com".to_owned(),
+                },
+            },
+            Self {
+                username: String::new(),
+                socials: v1alpha1::Socials {
+                    email: String::new(),
+                },
+            },
+        ]
+    }
+}
+
+#[cfg(test)]
+impl stackable_versioned::test_utils::RoundtripTestData for v3::PersonSpec {
+    fn roundtrip_test_data() -> Vec<Self> {
+        vec![
+            Self {
+                username: "jdoe".to_owned(),
+                first_name: "John".to_owned(),
+                last_name: "Doe".to_owned(),
+                gender: "Unknown".to_owned(),
+                relationship: v3::Relationship::Married(v3::Married {
+                    with: "Jane Doe".into(),
+                    since: "1970-01-01".into(),
+                }),
+                socials: v3::Socials {
+                    email: "jdoe@example.com".to_owned(),
+                    mastodon: "@jdoe@example.com".to_owned(),
+                },
+            },
+            Self {
+                username: "jdoe".to_owned(),
+                first_name: "John".to_owned(),
+                last_name: "Doe".to_owned(),
+                gender: "Male".to_owned(),
+                relationship: v3::Relationship::Single {},
+                socials: v3::Socials {
+                    email: "jdoe@example.com".to_owned(),
+                    mastodon: "@jdoe@example.com".to_owned(),
+                },
+            },
+            // FIXME: The following test case fails.  See the docs on the `versioned` macro, as of
+            // writing it only supports tracking `added` fields.
+            // Hence, the firstName, lastName, socials.mastodon work, while gender is broken.
+            // Self {
+            //     username: "".to_owned(),
+            //     first_name: "".to_owned(),
+            //     last_name: "".to_owned(),
+            //     // FIXME: Currently, the roundtrip results in "Unknown", although it should be "It's complicated"
+            //     gender: "It's complicated".to_owned(),
+            //     socials: v3::Socials {
+            //         email: "".to_owned(),
+            //         mastodon: "".to_owned(),
+            //     },
+            // },
+        ]
     }
 }

@@ -348,7 +348,11 @@ mod utils;
 ///         // the generated tracking status struct.
 ///         status = "FooStatus",
 ///         // Set a shortname. This can be specified multiple times.
-///         shortname = "..."
+///         shortname = "...",
+///         // Set the JSON path of a field which can be used as a field
+///         // selector. This can be specified multiple times. The path is used
+///         // for all versions, so the field must exist in every version.
+///         selectable = ".spec.baz"
 ///     ))]
 /// #   #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
 ///     pub struct FooSpec {
@@ -490,18 +494,20 @@ mod utils;
 /// ### Changed Action
 ///
 /// This action indicates that an item is changed in a particular version. It
-/// combines renames and type changes into a single action. You can choose to
-/// change the name, change the type or do both. Available arguments are:
+/// combines renames, type changes and doc comment changes into a single action.
+/// You can choose to change the name, change the type, change the doc comment
+/// or combine multiple changes. Available arguments are:
 ///
 /// - `since` to indicate since which version the item is changed.
-/// - `from_name` to indicate from which previous name the field is renamed.
-/// - `from_type` to indicate from which previous type the field is changed.
+/// - `previous_name` to declare the previous name of the field.
+/// - `previous_type` to declare the previous type of the field.
+/// - `previous_docs` to declare the previous doc comments of the item.
 /// - `upgrade_with` to provide a custom upgrade function. This argument can
-///   only be used in combination with the `from_type` argument. The expected
+///   only be used in combination with the `previous_type` argument. The expected
 ///   function signature is: `fn (OLD_TYPE) -> NEW_TYPE`. This function must
 ///   not fail.
 /// - `downgrade_with` to provide a custom downgrade function. This argument can
-///   only be used in combination with the `from_type` argument. The expected
+///   only be used in combination with the `previous_type` argument. The expected
 ///   function signature is: `fn (NEW_TYPE) -> OLD_TYPE`. This function must
 ///   not fail.
 /// ```
@@ -511,8 +517,8 @@ mod utils;
 ///     pub struct Foo {
 ///         #[versioned(changed(
 ///             since = "v1beta1",
-///             from_name = "prev_bar",
-///             from_type = "u16",
+///             previous_name = "prev_bar",
+///             previous_type = "u16",
 ///             downgrade_with = usize_to_u16
 ///         ))]
 ///         bar: usize,
@@ -555,6 +561,58 @@ mod utils;
 ///     use super::*;
 ///     pub struct Foo {
 ///         pub bar: usize,               // 2
+///         pub baz: bool,
+///     }
+/// }
+/// ```
+/// </details>
+///
+/// #### Changed Docs
+///
+/// The doc comments of an item can be changed using the `previous_docs` argument.
+/// The doc comments attached to the item are used after the version of the
+/// last relevant change. All earlier versions use the doc comments provided via
+/// `previous_docs` instead. This is especially useful to adjust the description of
+/// a field in the generated CRD schema without changing it for older versions.
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
+/// mod versioned {
+///     pub struct Foo {
+///         /// The number of bars.
+///         #[versioned(changed(since = "v1beta1", previous_docs = "The bar."))]
+///         bar: usize,
+///         baz: bool,
+///     }
+/// }
+/// ```
+///
+/// <details>
+/// <summary>Expand Generated Code</summary>
+///
+/// 1. In version `v1alpha1` the field uses the doc comments provided via
+///    `previous_docs`.
+/// 2. In the next version, `v1beta1`, the field uses the doc comments attached
+///    to the field.
+///
+/// ```ignore
+/// pub mod v1alpha1 {
+///     use super::*;
+///     pub struct Foo {
+///         /// The bar.            // 1
+///         pub bar: usize,
+///         pub baz: bool,
+///     }
+/// }
+///
+/// // Snip
+///
+/// pub mod v1beta1 {
+///     use super::*;
+///     pub struct Foo {
+///         /// The number of bars. // 2
+///         pub bar: usize,
 ///         pub baz: bool,
 ///     }
 /// }
@@ -635,6 +693,7 @@ mod utils;
 ///
 /// - `hint(option)`: Indicates that the field contains an `Option<T>`.
 /// - `hint(vec)`: Indicates that the field contains a `Vec<T>`.
+/// - `hint(map)`: Indicates that the field contains a map, e.g. `HashMap` or `BTreeMap`.
 ///
 /// These hints are especially useful for generated conversion functions. With
 /// these hints in place, the types are correctly mapped using `Into::into`
@@ -646,7 +705,7 @@ mod utils;
 /// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
 /// mod versioned {
 ///     pub struct Foo {
-///         #[versioned(changed(since = "v1beta1", from_type = "Vec<usize>"), hint(vec))]
+///         #[versioned(changed(since = "v1beta1", previous_type = "Vec<usize>"), hint(vec))]
 ///         bar: Vec<usize>,
 ///         baz: bool,
 ///     }
@@ -696,7 +755,7 @@ mod utils;
 ///
 /// # fn main() {
 /// let merged_crd = Foo::merged_crd(FooVersion::V1Beta1).unwrap();
-/// println!("{yaml}", yaml = serde_yaml::to_string(&merged_crd).unwrap());
+/// println!("{yaml}", yaml = yaml_serde::to_string(&merged_crd).unwrap());
 /// # }
 /// ```
 ///
@@ -901,6 +960,49 @@ mod utils;
 ///         // attributes here.
 ///         #[versioned(nested)]
 ///         baz: Baz,
+///     }
+///
+///     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+///     struct Baz {
+///         quax: String,
+///
+///         #[versioned(added(since = "v1beta1"))]
+///         quox: bool,
+///     }
+/// }
+/// # fn main() {}
+/// ```
+///
+/// Changes can also be tracked through enums. All data of a nested variant is
+/// converted with tracking support. The path of tracked values contains the
+/// variant name, eg. `$.connector.Baz.0.quox`.
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// # use kube::CustomResource;
+/// # use schemars::JsonSchema;
+/// # use serde::{Deserialize, Serialize};
+/// #[versioned(
+///     version(name = "v1alpha1"),
+///     version(name = "v1beta1"),
+///     options(k8s(experimental_conversion_tracking))
+/// )]
+/// mod versioned {
+///     #[versioned(crd(group = "example.com", doc = "My custom resource."))]
+///     #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
+///     struct FooSpec {
+///         #[versioned(nested)]
+///         connector: Connector,
+///     }
+///
+///     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+///     enum Connector {
+///         #[versioned(nested)]
+///         Baz(Baz),
+///
+///         // Kubernetes doesn't allow unit and struct variants in the same
+///         // enum.
+///         Unit {},
 ///     }
 ///
 ///     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]

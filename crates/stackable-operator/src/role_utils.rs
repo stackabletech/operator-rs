@@ -561,7 +561,7 @@ mod tests {
         );
 
         let entire_role: Role<(), EmptyConfigOverrides, GenericRoleConfig, JavaCommonConfig> =
-            serde_yaml::from_str("
+            yaml_serde::from_str("
                 # Let's say we want to set some additional HTTP Proxy and IPv4 settings
                 # And we don't like the garbage collector for some reason...
                 jvmArgumentOverrides:
@@ -623,7 +623,7 @@ mod tests {
             JvmArgumentOverrides::new_with_only_additions(["-Xms1m".to_owned()].into());
 
         let entire_role: Role<(), EmptyConfigOverrides, GenericRoleConfig, JavaCommonConfig> =
-            serde_yaml::from_str(
+            yaml_serde::from_str(
                 "
                 jvmArgumentOverrides:
                   add:

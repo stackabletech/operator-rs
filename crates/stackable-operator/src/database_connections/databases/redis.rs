@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn test_minimal_example() {
-        let redis_connection: RedisConnection = serde_yaml::from_str(
+        let redis_connection: RedisConnection = yaml_serde::from_str(
             "
             host: my-redis
             port: 42

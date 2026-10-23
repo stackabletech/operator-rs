@@ -1,5 +1,5 @@
 use convert_case::{Case, Casing};
-use darling::{Error, FromVariant, Result};
+use darling::{Error, FromVariant, Result, util::Flag};
 use syn::{Attribute, Ident};
 
 use crate::{
@@ -40,6 +40,11 @@ pub struct VariantAttributes {
     // FromMeta.
     /// The original attributes for the field.
     pub attrs: Vec<Attribute>,
+
+    /// Indicates that the data of this variant contains nested sub structs or enums. The
+    /// indicator is needed to let the macro know to generate conversion code with support for
+    /// tracking across container boundaries.
+    pub nested: Flag,
 }
 
 impl VariantAttributes {
@@ -57,12 +62,12 @@ impl VariantAttributes {
 
         // Validate names of renames
         for change in &self.common.changes {
-            if let Some(from_name) = &change.from_name
-                && !is_case(from_name.as_str(), Case::Pascal)
+            if let Some(previous_name) = &change.previous_name
+                && !is_case(previous_name.as_str(), Case::Pascal)
             {
                 errors.push(
                     Error::custom("renamed variant must use PascalCase")
-                        .with_span(&from_name.span()),
+                        .with_span(&previous_name.span()),
                 );
             }
         }
@@ -72,6 +77,17 @@ impl VariantAttributes {
 
     pub fn validate_versions(&self, versions: &[VersionDefinition]) -> Result<()> {
         self.common.validate_versions(versions)
+    }
+
+    pub fn validate_nested_flag(&self, experimental_conversion_tracking: bool) -> Result<()> {
+        if self.nested.is_present() && !experimental_conversion_tracking {
+            return Err(
+                Error::custom("the `nested` argument can only be used if the module-level `experimental_conversion_tracking` flag is set")
+                    .with_span(&self.nested.span())
+            );
+        }
+
+        Ok(())
     }
 }
 

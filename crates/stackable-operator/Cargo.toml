@@ -1,7 +1,7 @@
 [package]
 name = "stackable-operator"
 description = "Stackable Operator Framework"
-version = "0.119.0"
+version = "0.121.0"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -50,7 +50,7 @@ regex.workspace = true
 schemars.workspace = true
 semver = { workspace = true, features = ["serde"] }
 serde_json.workspace = true
-serde_yaml.workspace = true
+yaml_serde.workspace = true
 serde.workspace = true
 sha2.workspace = true
 snafu.workspace = true

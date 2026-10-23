@@ -49,45 +49,50 @@ impl ::core::convert::From<v1beta1::Foo> for v1alpha1::Foo {
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1alpha1::FooSpec, S> for v1beta1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1alpha1::FooSpec, __SvStatus>
+for v1beta1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_foospec: v1alpha1::FooSpec,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_bah_path = ::stackable_versioned::jthong_path(parent, "bah");
         let mut spec = Self {
             bah: ::std::default::Default::default(),
             baz: __sv_foospec.baz.into(),
         };
-        if let Some(upgrades) = status.changes().upgrades.remove(&"v1beta1".to_owned()) {
-            for ::stackable_versioned::ChangedValue { json_path, value } in upgrades {
-                match json_path {
-                    json_path if json_path == __sv_bah_path => {
-                        spec.bah = serde_yaml::from_value(value).unwrap();
-                    }
-                    _ => unreachable!(),
-                }
+        if let Some(upgrades) = status.changes().upgrades.get_mut("v1beta1") {
+            if let Some(::stackable_versioned::ChangedValue { value, .. }) = upgrades
+                .extract_first_if(|u| u.json_path == __sv_bah_path)
+            {
+                spec.bah = ::serde_json::from_value(value)
+                    .expect(
+                        "internal error: {__sv_bah_path} must be serializable for spec.bah",
+                    );
+            }
+            if upgrades.is_empty() {
+                status.changes().upgrades.remove("v1beta1");
             }
         }
         spec
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, S> for v1alpha1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, __SvStatus>
+for v1alpha1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_foospec: v1beta1::FooSpec,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let __sv_bah_path = ::stackable_versioned::jthong_path(parent, "bah");
         let upgrades = status
             .changes()
@@ -97,7 +102,7 @@ where
         upgrades
             .push(::stackable_versioned::ChangedValue {
                 json_path: __sv_bah_path,
-                value: ::serde_yaml::to_value(&__sv_foospec.bah).unwrap(),
+                value: ::serde_json::to_value(&__sv_foospec.bah).unwrap(),
             });
         let mut spec = Self {
             baz: __sv_foospec.baz.into(),
@@ -152,16 +157,17 @@ impl ::core::convert::From<v1::Foo> for v1beta1::Foo {
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, S> for v1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1beta1::FooSpec, __SvStatus>
+for v1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
     fn tracking_from(
         __sv_foospec: v1beta1::FooSpec,
-        status: &mut S,
+        status: &mut __SvStatus,
         parent: &str,
     ) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let mut spec = Self {
             bar: __sv_foospec.bah.into(),
             baz: __sv_foospec.baz.into(),
@@ -170,12 +176,17 @@ where
     }
 }
 #[automatically_derived]
-impl<S> ::stackable_versioned::TrackingFrom<v1::FooSpec, S> for v1beta1::FooSpec
+impl<__SvStatus> ::stackable_versioned::TrackingFrom<v1::FooSpec, __SvStatus>
+for v1beta1::FooSpec
 where
-    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+    __SvStatus: ::stackable_versioned::TrackingStatus + ::core::default::Default,
 {
-    fn tracking_from(__sv_foospec: v1::FooSpec, status: &mut S, parent: &str) -> Self {
-        use ::stackable_versioned::TrackingInto as _;
+    fn tracking_from(
+        __sv_foospec: v1::FooSpec,
+        status: &mut __SvStatus,
+        parent: &str,
+    ) -> Self {
+        use ::stackable_versioned::{ExtractIfExt as _, TrackingInto as _};
         let mut spec = Self {
             bah: __sv_foospec.bar.into(),
             baz: __sv_foospec.baz.into(),
@@ -224,13 +235,13 @@ impl Foo {
             stored_apiversion.as_version_str(),
         )
     }
-    ///Tries to convert a list of objects of kind [`Foo`] to the desired API version
-    ///specified in the [`ConversionReview`][cr].
+    /// Tries to convert a list of objects of kind [`Foo`] to the desired API version
+    /// specified in the [`ConversionReview`][cr].
     ///
-    ///The returned [`ConversionReview`][cr] either indicates a success or a failure, which
-    ///is handed back to the Kubernetes API server.
+    /// The returned [`ConversionReview`][cr] either indicates a success or a failure, which
+    /// is handed back to the Kubernetes API server.
     ///
-    ///[cr]: ::kube::core::conversion::ConversionReview
+    /// [cr]: ::kube::core::conversion::ConversionReview
     pub fn try_convert(
         review: ::kube::core::conversion::ConversionReview,
     ) -> ::kube::core::conversion::ConversionReview {

@@ -1,3 +1,5 @@
+use std::cell::OnceCell;
+
 use darling::{Error, FromAttributes, Result, util::IdentString};
 use itertools::Itertools;
 use proc_macro2::TokenStream;
@@ -78,6 +80,7 @@ impl Container {
         };
 
         Ok(Self::Struct(Struct {
+            tracking_generics: OnceCell::new(),
             generics: item_struct.generics,
             kubernetes_data,
             fields: versioned_fields,
@@ -100,6 +103,20 @@ pub struct Struct {
 
     /// Generic types of the struct
     pub generics: Generics,
+
+    /// Generic types of the struct which additionally also include the tracking state generic type
+    /// and where clause.
+    ///
+    /// We use a [`OnceCell`] here to avoid outer mutability and instead rely on interior mutability
+    /// to lazily initialize this field. This is done to avoid the macro re-cloning and
+    /// re-construct these generics over and over again.
+    ///
+    /// NOTE: Do **NOT** make public. Access to this field and its value is handled in a controlled
+    /// fashion via [`Struct::get_tracking_generics`].
+    ///
+    /// SAFETY: Using [`OnceCell`] instead of `OnceLock` is fine here, because proc-macros run in a
+    /// single thread.
+    tracking_generics: OnceCell<Generics>,
 }
 
 #[derive(Debug)]
@@ -302,6 +319,13 @@ impl Struct {
             .map(|s| quote! { , shortname = #s })
             .collect();
 
+        let selectable_fields: TokenStream = spec_gen_ctx
+            .kubernetes_arguments
+            .selectable_fields
+            .iter()
+            .map(|s| quote! { , selectable = #s })
+            .collect();
+
         let doc = &spec_gen_ctx.kubernetes_arguments.doc;
 
         quote! {
@@ -311,7 +335,7 @@ impl Struct {
                 // These must be comma separated (except the last) as they always exist:
                 group = #group, version = #version, kind = #kind, doc = #doc
                 // These fields are optional, and therefore the token stream must prefix each with a comma:
-                #singular #plural #namespaced #crates #status #scale #shortnames
+                #singular #plural #namespaced #crates #status #scale #shortnames #selectable_fields
             )]
         }
     }
@@ -478,6 +502,8 @@ impl Struct {
     ) -> TokenStream {
         // TODO (@Techassi): A bunch this stuff is duplicated in self.generate_tracking_from_impl.
         // Ideally we remove that duplication.
+        // The enum's codegen code removes a whole bunch of the duplication. Implement something
+        // similar here.
         let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
 
         let from_struct_ident = &self.common.idents.parameter;
