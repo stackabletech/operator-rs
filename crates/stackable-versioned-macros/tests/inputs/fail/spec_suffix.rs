@@ -13,7 +13,7 @@ mod versioned {
     pub struct Foo {
         #[versioned(
             added(in = "v1beta1"),
-            changed(in = "v1", from_name = "bah", from_type = "u16")
+            changed(in = "v1", previous_name = "bah", previous_type = "u16")
         )]
         bar: usize,
         baz: bool,

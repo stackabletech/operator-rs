@@ -30,7 +30,7 @@ struct Foo {
     /// My docs
     #[versioned(
         added(since = "v1alpha1"),
-        changed(since = "v1beta1", from_name = "gau"),
+        changed(since = "v1beta1", previous_name = "gau"),
         deprecated(since = "v2", note = "not required anymore")
     )]
     deprecated_bar: usize,

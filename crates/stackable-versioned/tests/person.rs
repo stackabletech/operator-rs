@@ -72,7 +72,7 @@ pub mod versioned {
         // Afterwards we figured let's be more flexible and accept any arbitrary String.
 
         // FIXME: The roundtrips are currently broken, see the `roundtrip_test_data` below.
-        #[versioned(added(in = "v2"), changed(in = "v3", from_type = "Gender"))]
+        #[versioned(added(in = "v2"), changed(in = "v3", previous_type = "Gender"))]
         gender: String,
 
         // TODO (@Techassi): Dealing with Default here is kinda meh UX wise. What would really help

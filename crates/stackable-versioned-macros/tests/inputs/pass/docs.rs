@@ -32,16 +32,16 @@ mod versioned {
         baz: String,
 
         /// This is will keep changing over time.
-        #[versioned(changed(in = "v1beta1", from_name = "qoox"))]
-        #[versioned(changed(in = "v1", from_name = "qaax"))]
+        #[versioned(changed(in = "v1beta1", previous_name = "qoox"))]
+        #[versioned(changed(in = "v1", previous_name = "qaax"))]
         quux: String,
 
         /// The docs of this field changed in v1beta1 and v2.
         #[versioned(
-            changed(in = "v1beta1", from_docs = "These are the docs in v1alpha1."),
+            changed(in = "v1beta1", previous_docs = "These are the docs in v1alpha1."),
             changed(
                 in = "v2",
-                from_docs = r#"
+                previous_docs = r#"
                     These are the docs from v1beta1 until v1.
 
                     Multi-line docs are also supported.
@@ -55,8 +55,8 @@ mod versioned {
 
         /// The docs of this field changed in v1, while it was renamed in v1beta1.
         #[versioned(
-            changed(in = "v1beta1", from_name = "waldo"),
-            changed(in = "v1", from_docs = "These are the docs before v1.")
+            changed(in = "v1beta1", previous_name = "waldo"),
+            changed(in = "v1", previous_docs = "These are the docs before v1.")
         )]
         fred: String,
     }
@@ -65,7 +65,7 @@ mod versioned {
     #[derive(Default)]
     enum Bar {
         /// The docs of this variant changed in v1.
-        #[versioned(changed(in = "v1", from_docs = "These are the docs before v1."))]
+        #[versioned(changed(in = "v1", previous_docs = "These are the docs before v1."))]
         #[default]
         Baz,
     }

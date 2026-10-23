@@ -26,7 +26,7 @@ pub(crate) mod versioned {
     struct FooSpec {
         #[versioned(
             added(in = "v1beta1"),
-            changed(in = "v1", from_name = "bah", from_type = "u16", downgrade_with = usize_to_u16)
+            changed(in = "v1", previous_name = "bah", previous_type = "u16", downgrade_with = usize_to_u16)
         )]
         bar: usize,
         baz: bool,

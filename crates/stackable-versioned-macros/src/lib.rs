@@ -499,15 +499,15 @@ mod utils;
 /// or combine multiple changes. Available arguments are:
 ///
 /// - `in` to indicate in which version the item is changed.
-/// - `from_name` to indicate from which previous name the field is renamed.
-/// - `from_type` to indicate from which previous type the field is changed.
-/// - `from_docs` to provide the previous doc comments of the item.
+/// - `previous_name` to declare the previous name of the field.
+/// - `previous_type` to declare the previous type of the field.
+/// - `previous_docs` to declare the previous doc comments of the item.
 /// - `upgrade_with` to provide a custom upgrade function. This argument can
-///   only be used in combination with the `from_type` argument. The expected
+///   only be used in combination with the `previous_type` argument. The expected
 ///   function signature is: `fn (OLD_TYPE) -> NEW_TYPE`. This function must
 ///   not fail.
 /// - `downgrade_with` to provide a custom downgrade function. This argument can
-///   only be used in combination with the `from_type` argument. The expected
+///   only be used in combination with the `previous_type` argument. The expected
 ///   function signature is: `fn (NEW_TYPE) -> OLD_TYPE`. This function must
 ///   not fail.
 /// ```
@@ -517,8 +517,8 @@ mod utils;
 ///     pub struct Foo {
 ///         #[versioned(changed(
 ///             in = "v1beta1",
-///             from_name = "prev_bar",
-///             from_type = "u16",
+///             previous_name = "prev_bar",
+///             previous_type = "u16",
 ///             downgrade_with = usize_to_u16
 ///         ))]
 ///         bar: usize,
@@ -569,10 +569,10 @@ mod utils;
 ///
 /// #### Changed Docs
 ///
-/// The doc comments of an item can be changed using the `from_docs` argument.
+/// The doc comments of an item can be changed using the `previous_docs` argument.
 /// The doc comments attached to the item are used after the version of the
 /// last relevant change. All earlier versions use the doc comments provided via
-/// `from_docs` instead. This is especially useful to adjust the description of
+/// `previous_docs` instead. This is especially useful to adjust the description of
 /// a field in the generated CRD schema without changing it for older versions.
 ///
 /// ```
@@ -581,7 +581,7 @@ mod utils;
 /// mod versioned {
 ///     pub struct Foo {
 ///         /// The number of bars.
-///         #[versioned(changed(in = "v1beta1", from_docs = "The bar."))]
+///         #[versioned(changed(in = "v1beta1", previous_docs = "The bar."))]
 ///         bar: usize,
 ///         baz: bool,
 ///     }
@@ -592,7 +592,7 @@ mod utils;
 /// <summary>Expand Generated Code</summary>
 ///
 /// 1. In version `v1alpha1` the field uses the doc comments provided via
-///    `from_docs`.
+///    `previous_docs`.
 /// 2. In the next version, `v1beta1`, the field uses the doc comments attached
 ///    to the field.
 ///
@@ -705,7 +705,7 @@ mod utils;
 /// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
 /// mod versioned {
 ///     pub struct Foo {
-///         #[versioned(changed(in = "v1beta1", from_type = "Vec<usize>"), hint(vec))]
+///         #[versioned(changed(in = "v1beta1", previous_type = "Vec<usize>"), hint(vec))]
 ///         bar: Vec<usize>,
 ///         baz: bool,
 ///     }

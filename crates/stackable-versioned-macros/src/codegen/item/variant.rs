@@ -99,9 +99,9 @@ impl VersionedVariant {
                     #attributes
                     #ident #fields,
                 }),
-                ItemStatus::Change { to_ident, .. } => Some(quote! {
+                ItemStatus::Change { current_ident, .. } => Some(quote! {
                     #attributes
-                    #to_ident #fields,
+                    #current_ident #fields,
                 }),
                 ItemStatus::Deprecation { ident, note, .. } => {
                     // FIXME (@Techassi): Emitting the deprecated attribute

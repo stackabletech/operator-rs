@@ -69,8 +69,8 @@ pub mod versioned {
         // See https://github.com/stackabletech/issues/issues/849 for details.
         #[versioned(changed(
             in = "v1alpha2",
-            from_name = "credentials_secret",
-            from_type = "Option<String>",
+            previous_name = "credentials_secret",
+            previous_type = "Option<String>",
             upgrade_with = credentials_secret_to_basic_auth,
             downgrade_with = credentials_to_secret
         ))]

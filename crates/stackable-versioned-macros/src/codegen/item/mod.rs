@@ -16,7 +16,7 @@ pub use variant::*;
 
 /// Generates the attributes of an item (field or variant) for the provided `version`.
 ///
-/// If the docs of the item are changed in a later version (via `from_docs`), the original doc
+/// If the docs of the item are changed in a later version (via `previous_docs`), the original doc
 /// comments are replaced by the docs which are valid in `version`.
 pub fn generate_attributes(
     original_attributes: &[Attribute],
@@ -51,10 +51,10 @@ pub enum ItemStatus {
     Change {
         downgrade_with: Option<Path>,
         upgrade_with: Option<Path>,
-        from_ident: IdentString,
-        to_ident: IdentString,
-        from_type: Box<Type>,
-        to_type: Box<Type>,
+        previous_ident: IdentString,
+        current_ident: IdentString,
+        previous_type: Box<Type>,
+        current_type: Box<Type>,
     },
     Deprecation {
         previous_ident: IdentString,
@@ -74,7 +74,8 @@ impl ItemStatus {
         match &self {
             Self::Addition { ident, .. }
             | Self::Change {
-                to_ident: ident, ..
+                current_ident: ident,
+                ..
             }
             | Self::Deprecation { ident, .. }
             | Self::NoChange { ident, .. } => ident,

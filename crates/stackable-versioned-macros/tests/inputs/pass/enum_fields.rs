@@ -4,7 +4,7 @@ use stackable_versioned::versioned;
 // ---
 pub mod versioned {
     enum Foo {
-        #[versioned(changed(in = "v1alpha2", from_name = "PrevA"))]
+        #[versioned(changed(in = "v1alpha2", previous_name = "PrevA"))]
         A {
             aa: usize,
             aaa: u64,
@@ -15,7 +15,7 @@ pub mod versioned {
     }
 
     enum Bar {
-        #[versioned(changed(in = "v1alpha2", from_name = "PrevA"))]
+        #[versioned(changed(in = "v1alpha2", previous_name = "PrevA"))]
         A(A),
         B {},
     }

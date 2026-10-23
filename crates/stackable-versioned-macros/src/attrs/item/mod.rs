@@ -225,32 +225,32 @@ impl CommonItemAttributes {
         let mut errors = Error::accumulator();
 
         for change in &self.changes {
-            if change.from_name.is_none()
-                && change.from_type.is_none()
-                && change.from_docs.is_none()
+            if change.previous_name.is_none()
+                && change.previous_type.is_none()
+                && change.previous_docs.is_none()
             {
                 errors.push(Error::custom(
-                    "`from_name`, `from_type` and `from_docs` are unset. Is this `changed()` action needed?"
+                    "`previous_name`, `previous_type` and `previous_docs` are unset. Is this `changed()` action needed?"
                 ).with_span(&change.version.span()));
             }
 
-            // This ensures that `from_name` doesn't include the deprecation prefix.
-            if let Some(from_name) = change.from_name.as_ref()
-                && from_name.starts_with(item_ident.deprecation_prefix())
+            // This ensures that `previous_name` doesn't include the deprecation prefix.
+            if let Some(previous_name) = change.previous_name.as_ref()
+                && previous_name.starts_with(item_ident.deprecation_prefix())
             {
                 errors.push(
                     Error::custom("the previous name must not start with the deprecation prefix")
-                        .with_span(&from_name.span()),
+                        .with_span(&previous_name.span()),
                 );
             }
 
-            if change.from_type.is_none() {
+            if change.previous_type.is_none() {
                 // The upgrade_with argument only makes sense to use when the
                 // type changed
                 if let Some(upgrade_func) = change.upgrade_with.as_ref() {
                     errors.push(
                         Error::custom(
-                            "the `upgrade_with` argument must be used in combination with `from_type`",
+                            "the `upgrade_with` argument must be used in combination with `previous_type`",
                         )
                         .with_span(&upgrade_func.span()),
                     );
@@ -261,7 +261,7 @@ impl CommonItemAttributes {
                 if let Some(downgrade_func) = change.downgrade_with.as_ref() {
                     errors.push(
                         Error::custom(
-                            "the `downgrade_with` argument must be used in combination with `from_type`",
+                            "the `downgrade_with` argument must be used in combination with `previous_type`",
                         )
                         .with_span(&downgrade_func.span()),
                     );
@@ -307,7 +307,7 @@ impl CommonItemAttributes {
         self.changes
             .iter()
             .filter_map(|change| {
-                let docs = change.from_docs.as_deref()?;
+                let docs = change.previous_docs.as_deref()?;
                 Some((*change.version, docs.into_doc_comments()))
             })
             .collect()
@@ -341,7 +341,7 @@ impl CommonItemAttributes {
             );
 
             for change in self.changes.iter().rev() {
-                let from_ident = if let Some(from) = change.from_name.as_deref() {
+                let previous_ident = if let Some(from) = change.previous_name.as_deref() {
                     format_ident!("{from}").into()
                 } else {
                     ident.clone()
@@ -349,8 +349,8 @@ impl CommonItemAttributes {
 
                 // TODO (@Techassi): This is an awful lot of cloning, can we get
                 // rid of it?
-                let from_ty = change
-                    .from_type
+                let previous_type = change
+                    .previous_type
                     .as_ref()
                     .map_or_else(|| ty.clone(), |sv| sv.deref().clone());
 
@@ -359,15 +359,15 @@ impl CommonItemAttributes {
                     ItemStatus::Change {
                         downgrade_with: change.downgrade_with.as_deref().cloned(),
                         upgrade_with: change.upgrade_with.as_deref().cloned(),
-                        from_ident: from_ident.clone(),
-                        from_type: Box::new(from_ty.clone()),
-                        to_ident: ident,
-                        to_type: Box::new(ty),
+                        previous_ident: previous_ident.clone(),
+                        previous_type: Box::new(previous_type.clone()),
+                        current_ident: ident,
+                        current_type: Box::new(ty),
                     },
                 );
 
-                ident = from_ident;
-                ty = from_ty;
+                ident = previous_ident;
+                ty = previous_type;
             }
 
             // After the last iteration above (if any) we use the ident for the
@@ -391,7 +391,7 @@ impl CommonItemAttributes {
             let mut actions = BTreeMap::new();
 
             for change in self.changes.iter().rev() {
-                let from_ident = if let Some(from) = change.from_name.as_deref() {
+                let previous_ident = if let Some(from) = change.previous_name.as_deref() {
                     format_ident!("{from}").into()
                 } else {
                     ident.clone()
@@ -399,8 +399,8 @@ impl CommonItemAttributes {
 
                 // TODO (@Techassi): This is an awful lot of cloning, can we get
                 // rid of it?
-                let from_ty = change
-                    .from_type
+                let previous_type = change
+                    .previous_type
                     .as_ref()
                     .map_or_else(|| ty.clone(), |sv| sv.deref().clone());
 
@@ -409,15 +409,15 @@ impl CommonItemAttributes {
                     ItemStatus::Change {
                         downgrade_with: change.downgrade_with.as_deref().cloned(),
                         upgrade_with: change.upgrade_with.as_deref().cloned(),
-                        from_ident: from_ident.clone(),
-                        from_type: Box::new(from_ty.clone()),
-                        to_ident: ident,
-                        to_type: Box::new(ty),
+                        previous_ident: previous_ident.clone(),
+                        previous_type: Box::new(previous_type.clone()),
+                        current_ident: ident,
+                        current_type: Box::new(ty),
                     },
                 );
 
-                ident = from_ident;
-                ty = from_ty;
+                ident = previous_ident;
+                ty = previous_type;
             }
 
             // After the last iteration above (if any) we use the ident for the
@@ -480,18 +480,18 @@ fn default_default_fn() -> SpannedValue<Path> {
 /// For the changed() action
 ///
 /// Example usage:
-/// - `changed(in = "...", from_name = "...")`
-/// - `changed(in = "...", from_name = "...", from_type="...")`
-/// - `changed(in = "...", from_name = "...", from_type="...", upgrade_with = "...")`
-/// - `changed(in = "...", from_name = "...", from_type="...", downgrade_with = "...")`
-/// - `changed(in = "...", from_docs = "...")`
+/// - `changed(in = "...", previous_name = "...")`
+/// - `changed(in = "...", previous_name = "...", previous_type="...")`
+/// - `changed(in = "...", previous_name = "...", previous_type="...", upgrade_with = "...")`
+/// - `changed(in = "...", previous_name = "...", previous_type="...", downgrade_with = "...")`
+/// - `changed(in = "...", previous_docs = "...")`
 #[derive(Clone, Debug, FromMeta)]
 pub struct ChangedAttributes {
     #[darling(rename = "in")]
     pub version: SpannedValue<Version>,
-    pub from_name: Option<SpannedValue<String>>,
-    pub from_type: Option<SpannedValue<Type>>,
-    pub from_docs: Option<SpannedValue<String>>,
+    pub previous_name: Option<SpannedValue<String>>,
+    pub previous_type: Option<SpannedValue<Type>>,
+    pub previous_docs: Option<SpannedValue<String>>,
     pub upgrade_with: Option<SpannedValue<Path>>,
     pub downgrade_with: Option<SpannedValue<Path>>,
 }

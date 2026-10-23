@@ -43,8 +43,8 @@ use stackable_versioned::versioned;
 // --- <- See here!
 pub(crate) struct Foo {
     #[versioned(
-        changed(since = "v1beta1", from_name = "jjj", from_type = "u8"),
-        changed(since = "v1", from_type = "u16"),
+        changed(since = "v1beta1", previous_name = "jjj", previous_type = "u8"),
+        changed(since = "v1", previous_type = "u16"),
     )]
     bar: usize,
     baz: bool,
