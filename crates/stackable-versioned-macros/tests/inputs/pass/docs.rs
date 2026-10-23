@@ -24,23 +24,23 @@ mod versioned {
         foo: String,
 
         /// Keep the main field docs the same, even after the field is deprecated.
-        #[versioned(deprecated(since = "v1beta1", note = "gone"))]
+        #[versioned(deprecated(in = "v1beta1", note = "gone"))]
         deprecated_bar: String,
 
         /// This is for baz
-        #[versioned(added(since = "v1beta1"))]
+        #[versioned(added(in = "v1beta1"))]
         baz: String,
 
         /// This is will keep changing over time.
-        #[versioned(changed(since = "v1beta1", previous_name = "qoox"))]
-        #[versioned(changed(since = "v1", previous_name = "qaax"))]
+        #[versioned(changed(in = "v1beta1", previous_name = "qoox"))]
+        #[versioned(changed(in = "v1", previous_name = "qaax"))]
         quux: String,
 
         /// The docs of this field changed in v1beta1 and v2.
         #[versioned(
-            changed(since = "v1beta1", previous_docs = "These are the docs in v1alpha1."),
+            changed(in = "v1beta1", previous_docs = "These are the docs in v1alpha1."),
             changed(
-                since = "v2",
+                in = "v2",
                 previous_docs = r#"
                     These are the docs from v1beta1 until v1.
 
@@ -55,8 +55,8 @@ mod versioned {
 
         /// The docs of this field changed in v1, while it was renamed in v1beta1.
         #[versioned(
-            changed(since = "v1beta1", previous_name = "waldo"),
-            changed(since = "v1", previous_docs = "These are the docs before v1.")
+            changed(in = "v1beta1", previous_name = "waldo"),
+            changed(in = "v1", previous_docs = "These are the docs before v1.")
         )]
         fred: String,
     }
@@ -65,7 +65,7 @@ mod versioned {
     #[derive(Default)]
     enum Bar {
         /// The docs of this variant changed in v1.
-        #[versioned(changed(since = "v1", previous_docs = "These are the docs before v1."))]
+        #[versioned(changed(in = "v1", previous_docs = "These are the docs before v1."))]
         #[default]
         Baz,
     }

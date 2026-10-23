@@ -12,8 +12,8 @@ mod versioned {
     #[versioned(crd(group = "stackable.tech", doc = "Test"))]
     pub struct Foo {
         #[versioned(
-            added(since = "v1beta1"),
-            changed(since = "v1", previous_name = "bah", previous_type = "u16")
+            added(in = "v1beta1"),
+            changed(in = "v1", previous_name = "bah", previous_type = "u16")
         )]
         bar: usize,
         baz: bool,

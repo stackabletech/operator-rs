@@ -67,27 +67,27 @@ impl CommonItemAttributes {
         let mut errors = Error::accumulator();
 
         if let Some(added) = &self.added
-            && !versions.iter().any(|v| v.inner == *added.since)
+            && !versions.iter().any(|v| v.inner == *added.version)
         {
             errors.push(Error::custom(
                     "the `added` action uses a version which is not declared via `#[versioned(version)]`",
-                ).with_span(&added.since.span()));
+                ).with_span(&added.version.span()));
         }
 
         for change in &self.changes {
-            if !versions.iter().any(|v| v.inner == *change.since) {
+            if !versions.iter().any(|v| v.inner == *change.version) {
                 errors.push(Error::custom(
                     "the `changed` action uses a version which is not declared via `#[versioned(version)]`"
-                ).with_span(&change.since.span()));
+                ).with_span(&change.version.span()));
             }
         }
 
         if let Some(deprecated) = &self.deprecated
-            && !versions.iter().any(|v| v.inner == *deprecated.since)
+            && !versions.iter().any(|v| v.inner == *deprecated.version)
         {
             errors.push(Error::custom(
                     "the `deprecated` action uses a version which is not declared via `#[versioned(version)]`",
-                ).with_span(&deprecated.since.span()));
+                ).with_span(&deprecated.version.span()));
         }
 
         errors.finish()
@@ -108,16 +108,18 @@ impl CommonItemAttributes {
     ///   rules from above apply here as well.
     fn validate_action_combinations(&self, item_idents: &impl ItemIdents) -> Result<()> {
         match (&self.added, &self.changes, &self.deprecated) {
-            (Some(added), _, Some(deprecated)) if *added.since == *deprecated.since => Err(
+            (Some(added), _, Some(deprecated)) if *added.version == *deprecated.version => Err(
                 Error::custom("cannot be marked as `added` and `deprecated` in the same version")
                     .with_span(item_idents.original()),
             ),
-            (Some(added), changed, _) if changed.iter().any(|r| *r.since == *added.since) => Err(
-                Error::custom("cannot be marked as `added` and `changed` in the same version")
-                    .with_span(item_idents.original()),
-            ),
+            (Some(added), changed, _) if changed.iter().any(|r| *r.version == *added.version) => {
+                Err(
+                    Error::custom("cannot be marked as `added` and `changed` in the same version")
+                        .with_span(item_idents.original()),
+                )
+            }
             (_, changed, Some(deprecated))
-                if changed.iter().any(|r| *r.since == *deprecated.since) =>
+                if changed.iter().any(|r| *r.version == *deprecated.version) =>
             {
                 Err(Error::custom(
                     "cannot be marked as `deprecated` and `changed` in the same version",
@@ -141,8 +143,8 @@ impl CommonItemAttributes {
     /// - All `changed` actions must use a greater version than `added` but a
     ///   lesser version than `deprecated`.
     fn validate_action_order(&self, item_idents: &impl ItemIdents) -> Result<()> {
-        let added_version = self.added.as_ref().map(|a| *a.since);
-        let deprecated_version = self.deprecated.as_ref().map(|d| *d.since);
+        let added_version = self.added.as_ref().map(|a| *a.version);
+        let deprecated_version = self.deprecated.as_ref().map(|d| *d.version);
 
         // First, validate that the added version is less than the deprecated
         // version.
@@ -158,8 +160,8 @@ impl CommonItemAttributes {
         // Now, iterate over all changes and ensure that their versions are
         // between the added and deprecated version.
         if !self.changes.iter().all(|r| {
-            added_version.is_none_or(|a| a < *r.since)
-                && deprecated_version.is_none_or(|d| d > *r.since)
+            added_version.is_none_or(|a| a < *r.version)
+                && deprecated_version.is_none_or(|d| d > *r.version)
         }) {
             return Err(Error::custom(
                 "all changes must use versions higher than `added` and lower than `deprecated`",
@@ -229,7 +231,7 @@ impl CommonItemAttributes {
             {
                 errors.push(Error::custom(
                     "`previous_name`, `previous_type` and `previous_docs` are unset. Is this `changed()` action needed?"
-                ).with_span(&change.since.span()));
+                ).with_span(&change.version.span()));
             }
 
             // This ensures that `previous_name` doesn't include the deprecation prefix.
@@ -306,7 +308,7 @@ impl CommonItemAttributes {
             .iter()
             .filter_map(|change| {
                 let docs = change.previous_docs.as_deref()?;
-                Some((*change.since, docs.into_doc_comments()))
+                Some((*change.version, docs.into_doc_comments()))
             })
             .collect()
     }
@@ -330,7 +332,7 @@ impl CommonItemAttributes {
             let mut actions = BTreeMap::new();
 
             actions.insert(
-                *deprecated.since,
+                *deprecated.version,
                 ItemStatus::Deprecation {
                     previous_ident: ident.clone(),
                     ident: deprecated_ident.clone(),
@@ -353,7 +355,7 @@ impl CommonItemAttributes {
                     .map_or_else(|| ty.clone(), |sv| sv.deref().clone());
 
                 actions.insert(
-                    *change.since,
+                    *change.version,
                     ItemStatus::Change {
                         downgrade_with: change.downgrade_with.as_deref().cloned(),
                         upgrade_with: change.upgrade_with.as_deref().cloned(),
@@ -372,7 +374,7 @@ impl CommonItemAttributes {
             // added action if there is any.
             if let Some(added) = self.added {
                 actions.insert(
-                    *added.since,
+                    *added.version,
                     ItemStatus::Addition {
                         default_fn: added.default_fn.deref().clone(),
                         ident,
@@ -403,7 +405,7 @@ impl CommonItemAttributes {
                     .map_or_else(|| ty.clone(), |sv| sv.deref().clone());
 
                 actions.insert(
-                    *change.since,
+                    *change.version,
                     ItemStatus::Change {
                         downgrade_with: change.downgrade_with.as_deref().cloned(),
                         upgrade_with: change.upgrade_with.as_deref().cloned(),
@@ -422,7 +424,7 @@ impl CommonItemAttributes {
             // added action if there is any.
             if let Some(added) = self.added {
                 actions.insert(
-                    *added.since,
+                    *added.version,
                     ItemStatus::Addition {
                         default_fn: added.default_fn.deref().clone(),
                         ident,
@@ -437,7 +439,7 @@ impl CommonItemAttributes {
                 let mut actions = BTreeMap::new();
 
                 actions.insert(
-                    *added.since,
+                    *added.version,
                     ItemStatus::Addition {
                         default_fn: added.default_fn.deref().clone(),
                         ident: idents.original().clone(),
@@ -456,11 +458,12 @@ impl CommonItemAttributes {
 /// For the added() action
 ///
 /// Example usage:
-/// - `added(since = "...")`
-/// - `added(since = "...", default_fn = "custom_fn")`
+/// - `added(in = "...")`
+/// - `added(in = "...", default_fn = "custom_fn")`
 #[derive(Clone, Debug, FromMeta)]
 pub struct AddedAttributes {
-    pub since: SpannedValue<Version>,
+    #[darling(rename = "in")]
+    pub version: SpannedValue<Version>,
 
     #[darling(rename = "default", default = "default_default_fn")]
     pub default_fn: SpannedValue<Path>,
@@ -477,14 +480,15 @@ fn default_default_fn() -> SpannedValue<Path> {
 /// For the changed() action
 ///
 /// Example usage:
-/// - `changed(since = "...", previous_name = "...")`
-/// - `changed(since = "...", previous_name = "...", previous_type="...")`
-/// - `changed(since = "...", previous_name = "...", previous_type="...", upgrade_with = "...")`
-/// - `changed(since = "...", previous_name = "...", previous_type="...", downgrade_with = "...")`
-/// - `changed(since = "...", previous_docs = "...")`
+/// - `changed(in = "...", previous_name = "...")`
+/// - `changed(in = "...", previous_name = "...", previous_type="...")`
+/// - `changed(in = "...", previous_name = "...", previous_type="...", upgrade_with = "...")`
+/// - `changed(in = "...", previous_name = "...", previous_type="...", downgrade_with = "...")`
+/// - `changed(in = "...", previous_docs = "...")`
 #[derive(Clone, Debug, FromMeta)]
 pub struct ChangedAttributes {
-    pub since: SpannedValue<Version>,
+    #[darling(rename = "in")]
+    pub version: SpannedValue<Version>,
     pub previous_name: Option<SpannedValue<String>>,
     pub previous_type: Option<SpannedValue<Type>>,
     pub previous_docs: Option<SpannedValue<String>>,
@@ -495,10 +499,11 @@ pub struct ChangedAttributes {
 /// For the deprecated() action
 ///
 /// Example usage:
-/// - `deprecated(since = "...")`
-/// - `deprecated(since = "...", note = "...")`
+/// - `deprecated(in = "...")`
+/// - `deprecated(in = "...", note = "...")`
 #[derive(Clone, Debug, FromMeta)]
 pub struct DeprecatedAttributes {
-    pub since: SpannedValue<Version>,
+    #[darling(rename = "in")]
+    pub version: SpannedValue<Version>,
     pub note: Option<SpannedValue<String>>,
 }

@@ -7,7 +7,7 @@ use stackable_versioned::versioned;
 pub(crate) mod versioned {
     pub(crate) struct Foo {
         #[versioned(
-            changed(since = "v1alpha2", previous_type = "HashMap<String, u8>"),
+            changed(in = "v1alpha2", previous_type = "HashMap<String, u8>"),
             hint(map)
         )]
         bar: HashMap<String, Bar>,

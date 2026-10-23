@@ -68,7 +68,7 @@ pub mod versioned {
         // FIXME: The roundtrip looses data when private keys are used.
         // See https://github.com/stackabletech/issues/issues/849 for details.
         #[versioned(changed(
-            since = "v1alpha2",
+            in = "v1alpha2",
             previous_name = "credentials_secret",
             previous_type = "Option<String>",
             upgrade_with = credentials_secret_to_basic_auth,
