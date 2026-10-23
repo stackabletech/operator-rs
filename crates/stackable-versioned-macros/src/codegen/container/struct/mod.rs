@@ -319,6 +319,13 @@ impl Struct {
             .map(|s| quote! { , shortname = #s })
             .collect();
 
+        let selectable_fields: TokenStream = spec_gen_ctx
+            .kubernetes_arguments
+            .selectable_fields
+            .iter()
+            .map(|s| quote! { , selectable = #s })
+            .collect();
+
         let doc = &spec_gen_ctx.kubernetes_arguments.doc;
 
         quote! {
@@ -328,7 +335,7 @@ impl Struct {
                 // These must be comma separated (except the last) as they always exist:
                 group = #group, version = #version, kind = #kind, doc = #doc
                 // These fields are optional, and therefore the token stream must prefix each with a comma:
-                #singular #plural #namespaced #crates #status #scale #shortnames
+                #singular #plural #namespaced #crates #status #scale #shortnames #selectable_fields
             )]
         }
     }
