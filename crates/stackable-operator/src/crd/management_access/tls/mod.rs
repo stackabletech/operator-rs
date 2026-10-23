@@ -11,7 +11,7 @@ use crate::{
 mod v1alpha1_impl;
 
 /// Name of the volume holding the TLS client certificate.
-pub const VOLUME_NAME: &str = "tls-platform-access";
+pub const VOLUME_NAME: &str = "tls-management-access";
 
 /// Mount path for the TLS client certificate.
 pub const MOUNT_PATH: &str = concatcp!(SECRET_BASE_PATH, "/", VOLUME_NAME);
@@ -23,10 +23,10 @@ pub mod versioned {
     #[serde(rename_all = "camelCase")]
     pub enum TlsClientCredential {
         /// An AutoTLS SecretClass used to provision the certificate.
-        SecretClass(SecretClassName),
+        SecretClassName(SecretClassName),
 
         /// A static Secret holding the certificate in the keys `tls.crt` and `tls.key` (PEM), e.g. as
         /// a Secret of type `kubernetes.io/tls`.
-        Secret(SecretName),
+        SecretName(SecretName),
     }
 }

@@ -3,10 +3,10 @@
 pub mod affinity;
 pub mod cache;
 pub mod cluster_operation;
+pub mod management_access;
 pub mod networking;
 pub mod opa;
 pub mod pdb;
-pub mod platform_access;
 pub mod product_image_selection;
 pub mod random_secret_creation;
 pub mod rbac;
