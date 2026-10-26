@@ -12,6 +12,13 @@ All notable changes to this project will be documented in this file.
   - `DeletionPolicy`, whether an agent deletes a resource in the product.
   - `Ready`/`Synced` conditions of resources managed by agents (`status::condition::managed_resource`).
   - Labels and selectors for agents, with the component `<product-name>-agent`.
+  - `v2::agent_utils::AgentResourceNames`, the names of the agent resources.
+
+### Changed
+
+- BREAKING: The RBAC names of `v2::role_utils::ResourceNames` are now provided by the trait
+  `v2::rbac::RbacResourceNames`, which must be imported to call them. `v2::rbac::build_service_account`
+  and `v2::rbac::build_role_binding` accept any `RbacResourceNames` ([#1290]).
 
 [#1290]: https://github.com/stackabletech/operator-rs/pull/1290
 
