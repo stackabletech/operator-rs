@@ -9,10 +9,9 @@ All notable changes to this project will be documented in this file.
 - Add utility for product agents ([#1290]):
   - `TlsClientCredential`, enum for TLS-based management access used for adding volumes and mounts.
   - `Anonymous`, for management access to products that don't authenticate the agent.
-  - `DeletionPolicy`, whether an agent deletes a resource in the product.
-  - `Ready`/`Synced` conditions of resources managed by agents (`status::condition::managed_resource`).
   - Labels and selectors for agents, with the component `<product-name>-agent`.
   - `v2::agent_utils::AgentResourceNames`, the names of the agent resources.
+- Re-export `stackable-agent` as `agent` behind the `agent` feature ([#1290]).
 
 ### Changed
 

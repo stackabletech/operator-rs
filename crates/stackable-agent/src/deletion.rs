@@ -1,7 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-use crate::versioned::versioned;
+use stackable_versioned::versioned;
 
 #[versioned(version(name = "v1alpha1"))]
 pub mod versioned {

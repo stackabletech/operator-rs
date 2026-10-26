@@ -1,6 +1,5 @@
 pub mod daemonset;
 pub mod deployment;
-pub mod managed_resource;
 pub mod operations;
 pub mod statefulset;
 

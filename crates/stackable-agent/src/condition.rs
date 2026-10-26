@@ -3,8 +3,6 @@
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, Time};
 use strum::Display;
 
-use crate::status::condition::ClusterConditionStatus;
-
 /// Condition types of resources an agent manages inside a product.
 #[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
 pub enum ManagedConditionType {
@@ -15,6 +13,14 @@ pub enum ManagedConditionType {
     Synced,
 }
 
+/// The status of a condition.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ConditionStatus {
+    True,
+    False,
+    Unknown,
+}
+
 /// The desired state of one condition, without the bookkeeping fields.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ManagedCondition {
@@ -22,7 +28,7 @@ pub struct ManagedCondition {
 
     /// `Unknown` if the agent could not determine the state, e.g. because the product is not
     /// reachable.
-    pub status: ClusterConditionStatus,
+    pub status: ConditionStatus,
 
     /// A CamelCase reason like `Created` or `UnsupportedChange`.
     pub reason: String,
@@ -46,9 +52,9 @@ pub fn update_conditions(
     for update in updates {
         let type_ = update.type_.to_string();
         let status = match update.status {
-            ClusterConditionStatus::True => "True",
-            ClusterConditionStatus::False => "False",
-            ClusterConditionStatus::Unknown => "Unknown",
+            ConditionStatus::True => "True",
+            ConditionStatus::False => "False",
+            ConditionStatus::Unknown => "Unknown",
         }
         .to_owned();
         let existing = conditions
@@ -90,7 +96,7 @@ mod tests {
         Time(Timestamp::from_second(seconds).expect("the timestamp should be valid"))
     }
 
-    fn ready(status: ClusterConditionStatus, reason: &str) -> ManagedCondition {
+    fn ready(status: ConditionStatus, reason: &str) -> ManagedCondition {
         ManagedCondition {
             type_: ManagedConditionType::Ready,
             status,
@@ -103,7 +109,7 @@ mod tests {
     fn add_missing_condition() {
         let conditions = update_conditions(
             &[],
-            vec![ready(ClusterConditionStatus::True, "Created")],
+            vec![ready(ConditionStatus::True, "Created")],
             &time(10),
             Some(3),
         );
@@ -120,14 +126,14 @@ mod tests {
     fn keep_transition_time_if_status_is_unchanged() {
         let current = update_conditions(
             &[],
-            vec![ready(ClusterConditionStatus::True, "Created")],
+            vec![ready(ConditionStatus::True, "Created")],
             &time(10),
             Some(1),
         );
 
         let conditions = update_conditions(
             &current,
-            vec![ready(ClusterConditionStatus::True, "Updated")],
+            vec![ready(ConditionStatus::True, "Updated")],
             &time(20),
             Some(2),
         );
@@ -141,14 +147,14 @@ mod tests {
     fn update_transition_time_if_status_changes() {
         let current = update_conditions(
             &[],
-            vec![ready(ClusterConditionStatus::True, "Created")],
+            vec![ready(ConditionStatus::True, "Created")],
             &time(10),
             Some(1),
         );
 
         let conditions = update_conditions(
             &current,
-            vec![ready(ClusterConditionStatus::Unknown, "ConnectionFailed")],
+            vec![ready(ConditionStatus::Unknown, "ConnectionFailed")],
             &time(20),
             Some(1),
         );
@@ -170,7 +176,7 @@ mod tests {
 
         let conditions = update_conditions(
             std::slice::from_ref(&other),
-            vec![ready(ClusterConditionStatus::True, "Created")],
+            vec![ready(ConditionStatus::True, "Created")],
             &time(10),
             Some(1),
         );
