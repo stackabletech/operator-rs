@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Bump the RustCrypto dependencies to their new generation, notably `x509-cert` 0.3,
+  `rsa` 0.10.0-rc.19, `ecdsa` 0.17, `p256` 0.14 and `rand_core` 0.10 ([#XXXX]).
+  - `SigningKey::new_with_rng` of the `ecdsa` and `rsa` modules now takes a `rand_core` 0.10
+    `CryptoRng`.
+  - The source of `Error::AddCertificateExtension` is now `x509_cert::der::Error`.
+  - The generated certificates are unchanged (apart from the order of the extensions), as the
+    `Root` and `Leaf` profiles removed in `x509-cert` 0.3 are reimplemented in this crate.
+
+[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+
 ## [0.4.1] - 2026-07-06
 
 Note: There are only dependency bumps in this release.

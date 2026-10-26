@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Bump the RustCrypto dependencies to their new generation, which affects the re-exported
+  `certs` and `webhook` modules. See the changelogs of `stackable-certs` and `stackable-webhook`
+  for details ([#XXXX]).
+
+[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+
 ## [0.121.0] - 2026-10-14
 
 ### Changed

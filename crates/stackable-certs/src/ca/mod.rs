@@ -10,7 +10,7 @@ use stackable_shared::{secret::SecretReference, time::Duration};
 use tracing::{debug, instrument};
 use x509_cert::{
     Certificate,
-    builder::{Builder, CertificateBuilder, Profile},
+    builder::{Builder, CertificateBuilder},
     der::{DecodePem, asn1::Ia5String, pem::LineEnding, referenced::OwnedToRef},
     ext::pkix::{AuthorityKeyIdentifier, ExtendedKeyUsage, SubjectAltName, name::GeneralName},
     name::Name,
@@ -21,10 +21,12 @@ use x509_cert::{
 
 use crate::{
     CertificatePair,
+    ca::profile::Profile,
     keys::{CertificateKeypair, ecdsa, rsa},
 };
 
 mod consts;
+mod profile;
 pub use consts::*;
 
 pub const TLS_SECRET_TYPE: &str = "kubernetes.io/tls";
@@ -60,7 +62,7 @@ pub enum Error {
     CreateCertificateBuilder { source: x509_cert::builder::Error },
 
     #[snafu(display("failed to add certificate extension"))]
-    AddCertificateExtension { source: x509_cert::builder::Error },
+    AddCertificateExtension { source: x509_cert::der::Error },
 
     #[snafu(display("failed to build certificate"))]
     BuildCertificate { source: x509_cert::builder::Error },
@@ -92,10 +94,6 @@ impl PartialEq for Error {
                 Self::CreateCertificateBuilder { source: rhs_source },
             )
             | (
-                Self::AddCertificateExtension { source: lhs_source },
-                Self::AddCertificateExtension { source: rhs_source },
-            )
-            | (
                 Self::BuildCertificate { source: lhs_source },
                 Self::BuildCertificate { source: rhs_source },
             ) => match (lhs_source, rhs_source) {
@@ -114,6 +112,12 @@ impl PartialEq for Error {
                 ),
                 _ => false,
             },
+            (
+                Self::AddCertificateExtension { source: lhs_source },
+                Self::AddCertificateExtension { source: rhs_source },
+            ) => lhs_source == rhs_source,
+            // FIXME: This calls `PartialEq::eq` for `Error` again, which recurses infinitely (and
+            // overflows the stack) for every variant not matched above.
             (lhs, rhs) => lhs == rhs,
         }
     }
@@ -248,16 +252,9 @@ where
         let aki = AuthorityKeyIdentifier::try_from(spki.owned_to_ref())
             .context(ParseAuthorityKeyIdentifierSnafu)?;
 
-        let signer = signing_key_pair.signing_key();
-        let mut builder = CertificateBuilder::new(
-            Profile::Root,
-            serial_number,
-            validity,
-            subject,
-            spki,
-            signer,
-        )
-        .context(CreateCertificateBuilderSnafu)?;
+        let mut builder =
+            CertificateBuilder::new(Profile::Root { subject }, serial_number, validity, spki)
+                .context(CreateCertificateBuilderSnafu)?;
 
         // Add extension constructed above
         builder
@@ -265,7 +262,9 @@ where
             .context(AddCertificateExtensionSnafu)?;
 
         debug!("create and sign CA certificate");
-        let certificate = builder.build().context(BuildCertificateSnafu)?;
+        let certificate = builder
+            .build::<_, S::Signature>(signing_key_pair.signing_key())
+            .context(BuildCertificateSnafu)?;
 
         Ok(Self {
             certificate_pair: CertificatePair {
@@ -318,33 +317,34 @@ where
         let spki = SubjectPublicKeyInfoOwned::from_pem(spki_pem.as_bytes())
             .context(DecodeSpkiFromPemSnafu)?;
 
-        let signer = self.certificate_pair.key_pair.signing_key();
         let mut builder = CertificateBuilder::new(
             Profile::Leaf {
                 issuer: self
                     .certificate_pair
                     .certificate
-                    .tbs_certificate
-                    .issuer
+                    .tbs_certificate()
+                    .issuer()
                     .clone(),
+                subject,
                 enable_key_agreement: false,
                 enable_key_encipherment: true,
             },
             serial_number,
             validity,
-            subject,
             spki,
-            signer,
         )
         .context(CreateCertificateBuilderSnafu)?;
 
         // The leaf certificate can be used for WWW client and server
         // authentication. This is a base requirement for TLS certs.
+        //
+        // The extension is explicitly marked as critical. This was the default up to x509-cert
+        // 0.2, which marked it as critical unless anyExtendedKeyUsage is present.
         builder
-            .add_extension(&ExtendedKeyUsage(vec![
-                ID_KP_CLIENT_AUTH,
-                ID_KP_SERVER_AUTH,
-            ]))
+            .add_extension((
+                true,
+                &ExtendedKeyUsage(vec![ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH]),
+            ))
             .context(AddCertificateExtensionSnafu)?;
 
         let sans = subject_alternative_dns_names
@@ -362,7 +362,9 @@ where
             .context(AddCertificateExtensionSnafu)?;
 
         debug!("create and sign leaf certificate");
-        let certificate = builder.build().context(BuildCertificateSnafu)?;
+        let certificate = builder
+            .build::<_, S::Signature>(self.certificate_pair.key_pair.signing_key())
+            .context(BuildCertificateSnafu)?;
 
         Ok(CertificatePair {
             certificate,
@@ -540,15 +542,15 @@ mod tests {
     }
 
     fn assert_cert_attributes(cert: &Certificate) {
-        let cert = &cert.tbs_certificate;
+        let cert = cert.tbs_certificate();
         let expected_subject = Name::from_str("CN=Product Certificate for pod")
             .expect("constant subject must be valid");
 
         // Test subject
-        assert_eq!(cert.subject, expected_subject);
+        assert_eq!(cert.subject(), &expected_subject);
 
         // Test SAN extension is present
-        let extensions = cert.extensions.as_ref().expect("cert must have extensions");
+        let extensions = cert.extensions().expect("cert must have extensions");
         assert!(
             extensions
                 .iter()
@@ -556,8 +558,8 @@ mod tests {
         );
 
         // Test lifetime
-        let not_before = cert.validity.not_before.to_system_time();
-        let not_after = cert.validity.not_after.to_system_time();
+        let not_before = cert.validity().not_before.to_system_time();
+        let not_after = cert.validity().not_after.to_system_time();
         assert_eq!(
             not_after
                 .duration_since(not_before)
