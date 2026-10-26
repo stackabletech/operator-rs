@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Re-export `stackable-agent` as `agent` behind the `agent` feature.
+
 ## [0.121.0] - 2026-10-14
 
 ### Changed
