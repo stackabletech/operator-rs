@@ -327,6 +327,9 @@ where
                     .clone(),
                 subject,
                 enable_key_agreement: false,
+                // FIXME(@Techassi): We should disable this EKU as it is considered unsafe.
+                // It was used in the past for static RSA key exchanges where the public key of the
+                // server's certificate was used to encrypt the shared secret.
                 enable_key_encipherment: true,
             },
             serial_number,
