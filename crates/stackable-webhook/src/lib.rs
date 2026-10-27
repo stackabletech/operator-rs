@@ -207,11 +207,11 @@ impl WebhookServer {
                 // and as such, these are pretty much made up and potentially not ideal.
                 #[rustfmt::skip]
                 tracing::info!(
-                    x509.not_before = certificate.tbs_certificate.validity.not_before.to_string(),
-                    x509.not_after = certificate.tbs_certificate.validity.not_after.to_string(),
-                    x509.serial_number = certificate.tbs_certificate.serial_number.to_string(),
-                    x509.subject = certificate.tbs_certificate.subject.to_string(),
-                    x509.issuer = certificate.tbs_certificate.issuer.to_string(),
+                    x509.not_before = certificate.tbs_certificate().validity().not_before.to_string(),
+                    x509.not_after = certificate.tbs_certificate().validity().not_after.to_string(),
+                    x509.serial_number = certificate.tbs_certificate().serial_number().to_string(),
+                    x509.subject = certificate.tbs_certificate().subject().to_string(),
+                    x509.issuer = certificate.tbs_certificate().issuer().to_string(),
                     "rotate certificate for registered webhooks"
                 );
 
