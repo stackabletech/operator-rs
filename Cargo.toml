@@ -12,6 +12,7 @@ repository = "https://github.com/stackabletech/operator-rs"
 arc-swap = "1.9.3"
 async-trait = "0.1.92"
 axum = { version = "0.8.9", features = ["http2"] }
+base16ct = "1.0"
 base64 = "0.23"
 built = "0.8.1"
 clap = { version = "4.6.7", features = ["derive", "cargo", "env"] }

@@ -1,5 +1,4 @@
-use std::fmt::Write;
-
+use base16ct::HexDisplay;
 use sha2::{Digest, Sha256};
 
 /// Ensures that the given input does not exceed the given maximum length.
@@ -33,10 +32,8 @@ pub fn ensure_max_string_length(
         return truncate_at_char_boundary(original, max_length_bytes);
     }
 
-    let mut hash = String::with_capacity(64);
-    for byte in Sha256::digest(original.as_bytes()) {
-        write!(hash, "{byte:02x}").expect("writing to a String never fails");
-    }
+    let hash_bytes = HexDisplay(&Sha256::digest(original.as_bytes()));
+    let mut hash = format!("{hash_bytes:x}");
     hash.truncate(hash_length);
 
     // The result is `<name>-<hash>`, so the name must not occupy the bytes which are reserved

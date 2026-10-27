@@ -3904,6 +3904,7 @@ dependencies = [
 name = "stackable-operator"
 version = "0.121.0"
 dependencies = [
+ "base16ct",
  "base64 0.23.1",
  "clap",
  "const_format",
