@@ -53,12 +53,22 @@ pub fn recommended_labels_for_agent_resources(
     ])
 }
 
-/// Creates the agent selector.
+/// Creates the selector for the agent of the given cluster.
 ///
 /// The returned labels are a subset of the recommended labels for agent resources.
 pub fn agent_selector(cluster_name: &ClusterName, product_name: &ProductName) -> Labels {
     Labels::from_iter([
         label_app_kubernetes_io_instance(cluster_name),
+        label_app_kubernetes_io_name(product_name),
+        label_app_kubernetes_io_component_agent(product_name),
+    ])
+}
+
+/// Creates the selector for the agents of all clusters of the given product, e.g. to watch them.
+///
+/// The returned labels are a subset of the recommended labels for agent resources.
+pub fn all_agents_selector(product_name: &ProductName) -> Labels {
+    Labels::from_iter([
         label_app_kubernetes_io_name(product_name),
         label_app_kubernetes_io_component_agent(product_name),
     ])
@@ -303,6 +313,22 @@ mod tests {
                 .iter()
                 .all(|selector| agent_labels.contains(selector))
         );
+    }
+
+    #[test]
+    fn all_agents_selector_is_subset_of_agent_selector() {
+        let product_name = ProductName::from_str_unsafe("my-product");
+
+        let agent_selector =
+            agent_selector(&ClusterName::from_str_unsafe("cluster-name"), &product_name);
+        let all_agents_selector = all_agents_selector(&product_name);
+
+        assert!(
+            all_agents_selector
+                .iter()
+                .all(|selector| agent_selector.contains(selector))
+        );
+        assert!(!all_agents_selector.contains_key("app.kubernetes.io/instance"));
     }
 
     #[test]
