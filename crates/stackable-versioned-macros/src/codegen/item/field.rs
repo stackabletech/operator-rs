@@ -126,10 +126,12 @@ impl VersionedField {
                         pub #ident: #ty,
                     }),
                     ItemStatus::Change {
-                        to_ident, to_type, ..
+                        current_ident,
+                        current_type,
+                        ..
                     } => Some(quote! {
                         #attributes
-                        pub #to_ident: #to_type,
+                        pub #current_ident: #current_type,
                     }),
                     ItemStatus::Deprecation {
                         ident: field_ident,
@@ -239,21 +241,21 @@ impl VersionedField {
                         ItemStatus::Change {
                             downgrade_with,
                             upgrade_with,
-                            from_ident,
-                            to_ident,
+                            previous_ident,
+                            current_ident,
                             ..
                         },
                     ) => match direction {
                         Direction::Upgrade => Some(self.generate_from_impl_field(
-                            to_ident,
+                            current_ident,
                             from_struct_ident,
-                            from_ident,
+                            previous_ident,
                             upgrade_with.as_ref(),
                         )),
                         Direction::Downgrade => Some(self.generate_from_impl_field(
-                            from_ident,
+                            previous_ident,
                             from_struct_ident,
-                            to_ident,
+                            current_ident,
                             downgrade_with.as_ref(),
                         )),
                     },

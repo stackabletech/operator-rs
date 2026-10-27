@@ -8,8 +8,8 @@ mod versioned {
             // This tests two additional things:
             // - that both unquoted and quoted usage works
             // - that the renamed name does get picked up correctly by the conversion function
-            changed(since = "v1", from_type = "u16", from_name = "bar", downgrade_with = u32_to_u16),
-            changed(since = "v2", from_type = "u32", downgrade_with = "u64_to_u32")
+            changed(in = "v1", previous_type = "u16", previous_name = "bar", downgrade_with = u32_to_u16),
+            changed(in = "v2", previous_type = "u32", downgrade_with = "u64_to_u32")
         )]
         baz: u64,
     }

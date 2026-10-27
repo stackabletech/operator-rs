@@ -13,6 +13,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- BREAKING: Rename the `since` argument of all three actions (added, changed, and deprecated) to `in` ([#1311]).
+- BREAKING: Rename all `from_` arguments to `previous_` ([#1313]).
 - BREAKING: `stackable_versioned::ChangedValue`'s `value` field type is now `serde_json::Value` instead
   of `yaml_serde::Value` ([#1307]).
 
@@ -29,7 +31,9 @@ All notable changes to this project will be documented in this file.
 [#1306]: https://github.com/stackabletech/operator-rs/pull/1306
 [#1307]: https://github.com/stackabletech/operator-rs/pull/1307
 [#1309]: https://github.com/stackabletech/operator-rs/pull/1309
+[#1311]: https://github.com/stackabletech/operator-rs/pull/1311
 [#1312]: https://github.com/stackabletech/operator-rs/pull/1312
+[#1313]: https://github.com/stackabletech/operator-rs/pull/1313
 [#1314]: https://github.com/stackabletech/operator-rs/pull/1314
 
 ## [0.13.0] - 2026-10-14
