@@ -64,8 +64,6 @@ prettyplease = "0.3.0"
 proc-macro2 = "1.0.107"
 quote = "1.0.47"
 rand = "0.10.3"
-# Part of the RustCrypto group, see the const-oid comment above. This is the rand_core that rsa and
-# ecdsa take their RNG from.
 rand_core = "0.10.1"
 regex = "1.13.1"
 # Part of the RustCrypto ecosystem, see the const-oid comment above. Pinned exactly, as release
