@@ -339,7 +339,7 @@ where
         // authentication. This is a base requirement for TLS certs.
         //
         // The extension is explicitly marked as critical. This was the default up to x509-cert
-        // 0.2, which marked it as critical unless anyExtendedKeyUsage is present.
+        // 0.2, which marked it as critical unless anyExtendedKeyUsage was present.
         builder
             .add_extension((
                 true,

@@ -13,7 +13,7 @@ use crate::keys::CertificateKeypair;
 #[cfg(not(test))]
 const KEY_SIZE: usize = 4096;
 
-// rsa refuses to generate keys smaller than 1024 bits.
+// The rsa crate refuses to generate keys smaller than 1024 bits since version 0.10.0.
 #[cfg(test)]
 const KEY_SIZE: usize = 1024;
 
