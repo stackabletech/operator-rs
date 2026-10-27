@@ -64,6 +64,8 @@ prettyplease = "0.3.0"
 proc-macro2 = "1.0.107"
 quote = "1.0.47"
 rand = "0.10.3"
+# This crate is independent of the `rand` version above, which is only used to generate random
+# Secrets in stackable-operator.
 rand_core = "0.10.1"
 regex = "1.13.1"
 # Part of the RustCrypto ecosystem, see the const-oid comment above. Pinned exactly, as release
