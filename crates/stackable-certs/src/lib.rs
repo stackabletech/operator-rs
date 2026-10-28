@@ -82,6 +82,8 @@ impl<E: snafu::Error + std::cmp::PartialEq> PartialEq for CertificatePairError<E
             | (Self::ReadFile { source: lhs_source }, Self::ReadFile { source: rhs_source }) => {
                 lhs_source.kind() == rhs_source.kind()
             }
+            // FIXME: This calls `PartialEq::eq` for `CertificatePairError` again, which recurses
+            // infinitely (and overflows the stack) for every variant not matched above.
             (lhs, rhs) => lhs == rhs,
         }
     }

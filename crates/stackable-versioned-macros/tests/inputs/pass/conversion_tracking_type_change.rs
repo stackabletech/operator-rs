@@ -16,22 +16,22 @@ pub(crate) mod versioned {
     pub(crate) struct FooSpec {
         // Two consecutive type changes, the second one combined with a rename. Both are tracked.
         #[versioned(
-            changed(since = "v1beta1", from_type = "u16", downgrade_with = u32_to_u16),
+            changed(in = "v1beta1", previous_type = "u16", downgrade_with = u32_to_u16),
             changed(
-                since = "v1",
-                from_name = "bah",
-                from_type = "u32",
+                in = "v1",
+                previous_name = "bah",
+                previous_type = "u32",
                 downgrade_with = u64_to_u32
             )
         )]
         bar: u64,
 
         // A rename without a type change is lossless and as such is not tracked.
-        #[versioned(changed(since = "v1", from_name = "qux"))]
+        #[versioned(changed(in = "v1", previous_name = "qux"))]
         baz: bool,
 
         // An added field in the same version as a type change.
-        #[versioned(added(since = "v1"))]
+        #[versioned(added(in = "v1"))]
         quux: String,
     }
 }

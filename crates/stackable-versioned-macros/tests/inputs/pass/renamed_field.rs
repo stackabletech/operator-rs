@@ -8,7 +8,7 @@ use stackable_versioned::versioned;
 // ---
 mod versioned {
     struct Foo {
-        #[versioned(changed(since = "v1beta1", from_name = "bat"))]
+        #[versioned(changed(in = "v1beta1", previous_name = "bat"))]
         bar: usize,
         baz: bool,
     }

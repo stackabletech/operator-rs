@@ -174,7 +174,7 @@ impl CertificateResolver {
         .await
         .context(TokioSpawnBlockingSnafu)??;
 
-        let not_after = cert.tbs_certificate.validity.not_after.to_system_time();
+        let not_after = cert.tbs_certificate().validity().not_after.to_system_time();
 
         certificate_tx
             .send(cert)

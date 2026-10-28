@@ -33,9 +33,9 @@ pub mod versioned {
     #[serde(rename_all = "camelCase")]
     pub struct IcebergConnector {
         #[versioned(changed(
-            since = "v1alpha2",
-            from_name = "metastore",
-            from_type = "Option<String>"
+            in = "v1alpha2",
+            previous_name = "metastore",
+            previous_type = "Option<String>"
         ))]
         catalog: IcebergCatalog,
     }

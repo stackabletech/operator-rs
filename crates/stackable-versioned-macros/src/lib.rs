@@ -356,7 +356,7 @@ mod utils;
 ///     ))]
 /// #   #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
 ///     pub struct FooSpec {
-///         #[versioned(deprecated(since = "v1beta1"))]
+///         #[versioned(deprecated(in = "v1beta1"))]
 ///         deprecated_bar: usize,
 ///         baz: bool,
 ///     }
@@ -393,7 +393,7 @@ mod utils;
 /// This action indicates that an item is added in a particular version.
 /// Available arguments are:
 ///
-/// - `since` to indicate since which version the item is present.
+/// - `in` to indicate in which version the item was added.
 /// - `default` to customize the default function used to populate the item
 ///   in auto-generated conversion implementations.
 ///
@@ -402,7 +402,7 @@ mod utils;
 /// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
 /// mod versioned {
 ///     pub struct Foo {
-///         #[versioned(added(since = "v1beta1"))]
+///         #[versioned(added(in = "v1beta1"))]
 ///         bar: usize,
 ///         baz: bool,
 ///     }
@@ -457,7 +457,7 @@ mod utils;
 /// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
 /// mod versioned {
 ///     pub struct Foo {
-///         #[versioned(added(since = "v1beta1", default = "default_bar"))]
+///         #[versioned(added(in = "v1beta1", default = "default_bar"))]
 ///         bar: usize,
 ///         baz: bool,
 ///     }
@@ -498,16 +498,16 @@ mod utils;
 /// You can choose to change the name, change the type, change the doc comment
 /// or combine multiple changes. Available arguments are:
 ///
-/// - `since` to indicate since which version the item is changed.
-/// - `from_name` to indicate from which previous name the field is renamed.
-/// - `from_type` to indicate from which previous type the field is changed.
-/// - `from_docs` to provide the previous doc comments of the item.
+/// - `in` to indicate in which version the item is changed.
+/// - `previous_name` to declare the previous name of the field.
+/// - `previous_type` to declare the previous type of the field.
+/// - `previous_docs` to declare the previous doc comments of the item.
 /// - `upgrade_with` to provide a custom upgrade function. This argument can
-///   only be used in combination with the `from_type` argument. The expected
+///   only be used in combination with the `previous_type` argument. The expected
 ///   function signature is: `fn (OLD_TYPE) -> NEW_TYPE`. This function must
 ///   not fail.
 /// - `downgrade_with` to provide a custom downgrade function. This argument can
-///   only be used in combination with the `from_type` argument. The expected
+///   only be used in combination with the `previous_type` argument. The expected
 ///   function signature is: `fn (NEW_TYPE) -> OLD_TYPE`. This function must
 ///   not fail.
 /// ```
@@ -516,9 +516,9 @@ mod utils;
 /// mod versioned {
 ///     pub struct Foo {
 ///         #[versioned(changed(
-///             since = "v1beta1",
-///             from_name = "prev_bar",
-///             from_type = "u16",
+///             in = "v1beta1",
+///             previous_name = "prev_bar",
+///             previous_type = "u16",
 ///             downgrade_with = usize_to_u16
 ///         ))]
 ///         bar: usize,
@@ -569,10 +569,10 @@ mod utils;
 ///
 /// #### Changed Docs
 ///
-/// The doc comments of an item can be changed using the `from_docs` argument.
+/// The doc comments of an item can be changed using the `previous_docs` argument.
 /// The doc comments attached to the item are used after the version of the
 /// last relevant change. All earlier versions use the doc comments provided via
-/// `from_docs` instead. This is especially useful to adjust the description of
+/// `previous_docs` instead. This is especially useful to adjust the description of
 /// a field in the generated CRD schema without changing it for older versions.
 ///
 /// ```
@@ -581,7 +581,7 @@ mod utils;
 /// mod versioned {
 ///     pub struct Foo {
 ///         /// The number of bars.
-///         #[versioned(changed(since = "v1beta1", from_docs = "The bar."))]
+///         #[versioned(changed(in = "v1beta1", previous_docs = "The bar."))]
 ///         bar: usize,
 ///         baz: bool,
 ///     }
@@ -592,7 +592,7 @@ mod utils;
 /// <summary>Expand Generated Code</summary>
 ///
 /// 1. In version `v1alpha1` the field uses the doc comments provided via
-///    `from_docs`.
+///    `previous_docs`.
 /// 2. In the next version, `v1beta1`, the field uses the doc comments attached
 ///    to the field.
 ///
@@ -621,10 +621,10 @@ mod utils;
 ///
 /// ### Deprecated Action
 ///
-/// This action indicates that an item is deprecated in a particular version.
+/// This action indicates that an item was deprecated in a particular version.
 /// Deprecated items are not removed. Available arguments are:
 ///
-/// - `since` to indicate since which version the item is deprecated.
+/// - `in` to indicate in which version the item was deprecated.
 /// - `note` to specify an optional deprecation note.
 ///
 /// ```
@@ -632,7 +632,7 @@ mod utils;
 /// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
 /// mod versioned {
 ///     pub struct Foo {
-///         #[versioned(deprecated(since = "v1beta1"))]
+///         #[versioned(deprecated(in = "v1beta1"))]
 ///         deprecated_bar: usize,
 ///         baz: bool,
 ///     }
@@ -705,7 +705,7 @@ mod utils;
 /// #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
 /// mod versioned {
 ///     pub struct Foo {
-///         #[versioned(changed(since = "v1beta1", from_type = "Vec<usize>"), hint(vec))]
+///         #[versioned(changed(in = "v1beta1", previous_type = "Vec<usize>"), hint(vec))]
 ///         bar: Vec<usize>,
 ///         baz: bool,
 ///     }
@@ -747,7 +747,7 @@ mod utils;
 ///     #[versioned(crd(group = "example.com", doc = "My custom resource."))]
 ///     #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
 ///     pub struct FooSpec {
-///         #[versioned(added(since = "v1beta1"))]
+///         #[versioned(added(in = "v1beta1"))]
 ///         bar: usize,
 ///         baz: bool,
 ///     }
@@ -818,10 +818,10 @@ mod utils;
 ///     #[versioned(crd(group = "example.com", doc = "My custom resource."))]
 ///     #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
 ///     pub struct FooSpec {
-///         #[versioned(added(since = "v1beta1"))]
+///         #[versioned(added(in = "v1beta1"))]
 ///         bar: usize,
 ///
-///         #[versioned(added(since = "v1"))]
+///         #[versioned(added(in = "v1"))]
 ///         baz: bool,
 ///
 ///         quox: String,
@@ -934,7 +934,7 @@ mod utils;
 ///
 /// #### Tracking Type Changes
 ///
-/// Fields which changed their type via `changed(from_type = "...")` are tracked
+/// Fields which changed their type via `changed(previous_type = "...")` are tracked
 /// as well, because converting to the older type might lose data. Renaming a
 /// field without changing its type is lossless and is not tracked. In addition
 /// to the original value, the value the field was downgraded to is tracked:
@@ -989,7 +989,7 @@ mod utils;
 ///     struct Baz {
 ///         quax: String,
 ///
-///         #[versioned(added(since = "v1beta1"))]
+///         #[versioned(added(in = "v1beta1"))]
 ///         quox: bool,
 ///     }
 /// }
@@ -1032,7 +1032,7 @@ mod utils;
 ///     struct Baz {
 ///         quax: String,
 ///
-///         #[versioned(added(since = "v1beta1"))]
+///         #[versioned(added(in = "v1beta1"))]
 ///         quox: bool,
 ///     }
 /// }

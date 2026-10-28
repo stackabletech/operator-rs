@@ -126,10 +126,12 @@ impl VersionedField {
                         pub #ident: #ty,
                     }),
                     ItemStatus::Change {
-                        to_ident, to_type, ..
+                        current_ident,
+                        current_type,
+                        ..
                     } => Some(quote! {
                         #attributes
-                        pub #to_ident: #to_type,
+                        pub #current_ident: #current_type,
                     }),
                     ItemStatus::Deprecation {
                         ident: field_ident,
@@ -239,21 +241,21 @@ impl VersionedField {
                         ItemStatus::Change {
                             downgrade_with,
                             upgrade_with,
-                            from_ident,
-                            to_ident,
+                            previous_ident,
+                            current_ident,
                             ..
                         },
                     ) => match direction {
                         Direction::Upgrade => Some(self.generate_from_impl_field(
-                            to_ident,
+                            current_ident,
                             from_struct_ident,
-                            from_ident,
+                            previous_ident,
                             upgrade_with.as_ref(),
                         )),
                         Direction::Downgrade => Some(self.generate_from_impl_field(
-                            from_ident,
+                            previous_ident,
                             from_struct_ident,
-                            to_ident,
+                            current_ident,
                             downgrade_with.as_ref(),
                         )),
                     },
@@ -356,16 +358,16 @@ impl VersionedField {
 
         match next_change {
             ItemStatus::Change {
-                from_ident,
-                to_ident,
+                previous_ident,
+                current_ident,
                 ..
             } if next_change.is_type_change() => {
                 let serde_json_path = &*mod_gen_ctx.crates.serde_json;
-                let value_ident = to_ident.tracked_value_ident();
+                let value_ident = current_ident.tracked_value_ident();
 
                 let field_ident = match direction {
-                    Direction::Upgrade => from_ident,
-                    Direction::Downgrade => to_ident,
+                    Direction::Upgrade => previous_ident,
+                    Direction::Downgrade => current_ident,
                 };
 
                 Some(quote! {
@@ -397,19 +399,19 @@ impl VersionedField {
 
                 match next_change {
                     ItemStatus::Change {
-                        from_ident,
-                        to_ident,
+                        previous_ident,
+                        current_ident,
                         ..
                     } if next_change.is_type_change() => {
-                        let json_path_ident = to_ident.json_path_ident();
-                        let value_ident = to_ident.tracked_value_ident();
+                        let json_path_ident = current_ident.json_path_ident();
+                        let value_ident = current_ident.tracked_value_ident();
 
                         Some(quote! {
                             upgrades.push(#versioned_path::ChangedValue {
                                 json_path: #json_path_ident,
                                 value: #value_ident,
                                 downgraded_value: ::core::option::Option::Some(
-                                    #serde_json_path::to_value(&spec.#from_ident).unwrap()
+                                    #serde_json_path::to_value(&spec.#previous_ident).unwrap()
                                 ),
                             });
                         })
@@ -459,17 +461,17 @@ impl VersionedField {
                     //
                     // A downgraded value of null is serialized as `downgradedValue: null`, which is
                     // deserialized as None. As such, a missing downgraded value is treated as null.
-                    ItemStatus::Change { to_ident, .. } if next_change.is_type_change() => {
-                        let json_path_ident = to_ident.json_path_ident();
-                        let value_ident = to_ident.tracked_value_ident();
+                    ItemStatus::Change { current_ident, .. } if next_change.is_type_change() => {
+                        let json_path_ident = current_ident.json_path_ident();
+                        let value_ident = current_ident.tracked_value_ident();
                         let expect_message = format!(
-                            "internal error: {{{json_path_ident}}} must be serializable for spec.{to_ident}"
+                            "internal error: {{{json_path_ident}}} must be serializable for spec.{current_ident}"
                         );
 
                         Some(quote! {
                             if let Some(#versioned_path::ChangedValue { value, downgraded_value, .. }) = upgrades.extract_first_if(|u| u.json_path == #json_path_ident) {
                                 if downgraded_value.unwrap_or_default() == #value_ident {
-                                    spec.#to_ident = #serde_json_path::from_value(value).expect(#expect_message);
+                                    spec.#current_ident = #serde_json_path::from_value(value).expect(#expect_message);
                                 }
                             }
                         })
@@ -511,7 +513,7 @@ impl VersionedField {
 
                 let ident = match next_change {
                     ItemStatus::Addition { ident, .. } => ident,
-                    ItemStatus::Change { to_ident, .. } if next_change.is_type_change() => to_ident,
+                    ItemStatus::Change { current_ident, .. } if next_change.is_type_change() => current_ident,
                     _ => return None,
                 };
 

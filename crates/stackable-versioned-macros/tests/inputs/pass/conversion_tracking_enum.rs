@@ -27,7 +27,9 @@ pub(crate) mod versioned {
 
         // Nested variants with named fields are supported as well.
         #[versioned(nested)]
-        Hive { connector: IcebergConnector },
+        Hive {
+            connector: IcebergConnector,
+        },
 
         // Nested tuple variants with multiple fields use the index as an additional path segment.
         #[versioned(nested)]
@@ -45,7 +47,7 @@ pub(crate) mod versioned {
     pub(crate) struct IcebergConnector {
         metastore: Option<String>,
 
-        #[versioned(added(since = "v1alpha2"))]
+        #[versioned(added(in = "v1alpha2"))]
         rest_catalog_uri: Option<String>,
     }
 }

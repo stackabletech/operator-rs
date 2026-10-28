@@ -18,7 +18,7 @@ pub(crate) mod versioned {
     ))]
     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
     pub(crate) struct FooSpec {
-        #[versioned(added(since = "v1beta1"), changed(since = "v1", from_name = "bah"))]
+        #[versioned(added(in = "v1beta1"), changed(in = "v1", previous_name = "bah"))]
         bar: usize,
 
         #[versioned(nested)]
@@ -38,13 +38,13 @@ pub(crate) mod versioned {
         // FIXME (@Techassi): This currently leads to errors, because the generic type S is emitted
         // for v1alpha1 as well. There it is unused. We need to somehow figure out if a generic type
         // is used and if so, emit it. Otherwise, don't emit it.
-        // #[versioned(added(since = "v1beta1"))]
+        // #[versioned(added(in = "v1beta1"))]
         inner_2: S,
 
         // Concrete type on purpose, see the FIXME above. Added in v1 (not v1beta1) so it doesn't
         // share the v1beta1 upgrade bucket with FooSpec::bar.
         // FIXME: This is a known BUG and will be fixed in the future.
-        #[versioned(added(since = "v1"))]
+        #[versioned(added(in = "v1"))]
         inner_3: String,
     }
 }

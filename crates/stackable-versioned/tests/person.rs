@@ -62,21 +62,21 @@ pub mod versioned {
         username: String,
 
         // In v1alpha2 first and last name have been added
-        #[versioned(added(since = "v1alpha2"))]
+        #[versioned(added(in = "v1alpha2"))]
         first_name: String,
 
-        #[versioned(added(since = "v1alpha2"))]
+        #[versioned(added(in = "v1alpha2"))]
         last_name: String,
 
         // We started out with a enum. As we *need* to provide a default, we have a Unknown variant.
         // Afterwards we figured let's be more flexible and accept any arbitrary String.
-        #[versioned(added(since = "v2"), changed(since = "v3", from_type = "Gender"))]
+        #[versioned(added(in = "v2"), changed(in = "v3", previous_type = "Gender"))]
         gender: String,
 
         // TODO (@Techassi): Dealing with Default here is kinda meh UX wise. What would really help
         // is enabling per-container versioning and maybe the ability to place impl blocks in here
         // for automatic implementations for all versions of a container.
-        #[versioned(added(since = "v1alpha2", default = default_relationship), nested)]
+        #[versioned(added(in = "v1alpha2", default = default_relationship), nested)]
         relationship: Relationship,
 
         #[versioned(nested)]
@@ -102,7 +102,7 @@ pub mod versioned {
 
         // This field is added in the same version in which `gender` changed its type. This ensures
         // that multiple (nested) containers can track values for the same version.
-        #[versioned(added(since = "v3"))]
+        #[versioned(added(in = "v3"))]
         since: String,
     }
 
@@ -110,7 +110,7 @@ pub mod versioned {
     pub struct Socials {
         email: String,
 
-        #[versioned(added(since = "v1beta1"))]
+        #[versioned(added(in = "v1beta1"))]
         mastodon: String,
     }
 }
