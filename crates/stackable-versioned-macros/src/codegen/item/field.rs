@@ -461,6 +461,17 @@ impl VersionedField {
                     //
                     // A downgraded value of null is serialized as `downgradedValue: null`, which is
                     // deserialized as None. As such, a missing downgraded value is treated as null.
+                    //
+                    // There is one notable edge case:
+                    // Let's start with an enum with variants "a", "b" and "unknown" in v1, and
+                    // change that to a string for maximum flexibility in v2. Now let's say we have
+                    // a v2 object with the content "foo". It get's downgraded to v1 as "unknown".
+                    // Now something wants to change the value in v1 to "unknown" (effectively
+                    // change it from "foo" to "unknown"). When upgrading back to v2, this mechanism
+                    // only sees the old value it converted to: "unknown". It therefore restores
+                    // "foo" into v2. This example sounds a bit constructed and very unlikely. The
+                    // solution in this case would be for the editor to change it to "unknown" in
+                    // v2, that change takes effect.
                     ItemStatus::Change { current_ident, .. } if next_change.is_type_change() => {
                         let json_path_ident = current_ident.json_path_ident();
                         let value_ident = current_ident.tracked_value_ident();
