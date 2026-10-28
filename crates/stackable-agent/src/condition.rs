@@ -30,7 +30,7 @@ pub struct ManagedCondition {
     /// reachable.
     pub status: ConditionStatus,
 
-    /// A CamelCase reason like `Created` or `UnsupportedChange`.
+    /// A CamelCase reason like `Available` or `UnsupportedChange`.
     pub reason: String,
 
     pub message: String,
