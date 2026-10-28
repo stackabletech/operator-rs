@@ -57,6 +57,7 @@ impl TlsClientCredential {
                     )
                     .with_pod_scope()
                     .with_format(SecretFormat::TlsPem)
+                    .with_auto_tls_cert_domain_components_in_subject_dn(true)
                     .build()
                     .expect("the annotations are built from a valid SecretClass name and constant values"),
                 )
@@ -89,6 +90,7 @@ mod tests {
         assert_eq!(
             volumes[0]["ephemeral"]["volumeClaimTemplate"]["metadata"]["annotations"],
             json!({
+                "secrets.stackable.tech/backend.autotls.cert.domain-components-in-subject-dn": "true",
                 "secrets.stackable.tech/class": "tls",
                 "secrets.stackable.tech/format": "tls-pem",
                 "secrets.stackable.tech/provision-parts": "public-private",
