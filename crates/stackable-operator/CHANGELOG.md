@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Add `crd::containerdebug.rs` module with versioned `ContainerDebugConfig` CRD ([#1308])
 
 [#1308]: https://github.com/stackabletech/operator-rs/pull/1308
+
 ### Changed
 
 - BREAKING: Bump the RustCrypto dependencies to their new generation, which affects the re-exported
