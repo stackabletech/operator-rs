@@ -26,7 +26,7 @@ pub mod versioned {
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub enum TlsClientCredential {
-        /// An AutoTLS SecretClass used to provision the certificate.
+        /// A SecretClass providing the certificate.
         SecretClassName(SecretClassName),
 
         /// A static Secret holding the certificate in the keys `tls.crt` and `tls.key` (PEM), e.g. as
