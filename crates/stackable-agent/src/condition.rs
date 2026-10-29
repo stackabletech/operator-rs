@@ -14,7 +14,7 @@ pub enum ManagedConditionType {
 }
 
 /// The status of a condition.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
 pub enum ConditionStatus {
     True,
     False,
@@ -51,12 +51,7 @@ pub fn update_conditions(
 
     for update in updates {
         let type_ = update.type_.to_string();
-        let status = match update.status {
-            ConditionStatus::True => "True",
-            ConditionStatus::False => "False",
-            ConditionStatus::Unknown => "Unknown",
-        }
-        .to_owned();
+        let status = update.status.to_string();
         let existing = conditions
             .iter()
             .position(|condition| condition.type_ == type_);
