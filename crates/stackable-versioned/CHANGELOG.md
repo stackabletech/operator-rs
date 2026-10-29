@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Add public `ExtractIfExt` trait ([#1306]).
 - Re-add support for generics in tracking impls ([#1304]).
 - Add support to provide `#[versioned(crd(selectable = "..."))]` arguments to configure selectable fields ([#1312]).
+- Add support to provide `#[versioned(crd(printcolumn(...)))]` arguments to configure additional printer columns ([#XXXX]).
 
 ### Changed
 
