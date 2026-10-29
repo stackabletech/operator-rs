@@ -17,18 +17,10 @@ use crate::{
 /// The interval used if the user does not configure one.
 pub const DEFAULT_INTERVAL: Duration = Duration::from_minutes_unchecked(30);
 
-/// The shortest interval that is accepted.
-///
-/// `containerdebug` schedules the next run by adding the interval to the start of the previous
-/// one, so an interval of zero would collect (including DNS lookups) in a tight loop.
-pub const MINIMUM_INTERVAL: Duration = Duration::from_minutes_unchecked(1);
-
 #[derive(Debug, Eq, PartialEq, Snafu)]
 pub enum Error {
-    #[snafu(display(
-        "the containerdebug interval {interval} is shorter than the minimum of {MINIMUM_INTERVAL}"
-    ))]
-    IntervalTooShort { interval: Duration },
+    #[snafu(display("the containerdebug interval must not be zero"))]
+    IntervalZero,
 }
 
 #[versioned(version(name = "v1alpha1"))]
@@ -60,7 +52,7 @@ pub mod versioned {
         /// Whether `containerdebug` runs in the background of the product container. Defaults to `true`.
         pub enabled: bool,
 
-        /// Time between two runs of `containerdebug`, e.g. `30m`, `1h` or `2d`. Must be at least `1m`.
+        /// Time between two runs of `containerdebug`, e.g. `30m`, `1h` or `2d`. Must not be zero.
         /// Defaults to `30m`.
         pub interval: Duration,
     }
@@ -76,12 +68,9 @@ impl v1alpha1::ContainerDebugConfig {
             return Ok(ValidatedContainerDebugConfig::Disabled);
         }
 
-        ensure!(
-            self.interval >= MINIMUM_INTERVAL,
-            IntervalTooShortSnafu {
-                interval: self.interval
-            }
-        );
+        // `containerdebug` schedules the next run by adding the interval to the start of the
+        // previous one, so an interval of zero would collect (including DNS lookups) in a tight loop.
+        ensure!(!self.interval.is_zero(), IntervalZeroSnafu);
 
         Ok(ValidatedContainerDebugConfig::Enabled {
             interval: self.interval,
@@ -92,7 +81,7 @@ impl v1alpha1::ContainerDebugConfig {
 /// A validated [`v1alpha1::ContainerDebugConfig`].
 ///
 /// Unlike the user-facing configuration, this cannot carry an interval while `containerdebug` is
-/// disabled, nor an interval below [`MINIMUM_INTERVAL`].
+/// disabled, nor an interval of zero.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ValidatedContainerDebugConfig {
     Disabled,
@@ -160,9 +149,9 @@ mod tests {
     }
 
     #[rstest]
-    #[case("59s", Err(Error::IntervalTooShort { interval: Duration::from_secs(59) }))]
-    #[case("1m", Ok(ValidatedContainerDebugConfig::Enabled { interval: MINIMUM_INTERVAL }))]
-    fn validate_enforces_minimum_interval(
+    #[case("0s", Err(Error::IntervalZero))]
+    #[case("1s", Ok(ValidatedContainerDebugConfig::Enabled { interval: Duration::from_secs(1) }))]
+    fn validate_rejects_zero_interval(
         #[case] interval: &str,
         #[case] expected: Result<ValidatedContainerDebugConfig, Error>,
     ) {
