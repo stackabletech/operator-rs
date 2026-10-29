@@ -1,55 +1,80 @@
+use snafu::Snafu;
+
+#[derive(Debug, Snafu)]
+pub enum UrlError {
+    InvalidSegment { segment: String },
+
+    CannotBeABase,
+}
+
 pub trait UrlExt: Sized {
-    /// Joins many path segments to the [`Url`][url::Url]. Note: Passing
-    /// segments without a trailing slash while not being the final segment
-    /// will **allocate** on the heap to append the missing trailing slash.
-    /// See <https://docs.rs/url/latest/url/struct.Url.html#method.join> for
-    /// more information about why the trailing slash is important.
+    /// Joins one or more segments to the end of the existing URL path segments.
     ///
-    /// ### Example
+    /// Compared to [`url::Url::join`], it protects users against (accidental) misuse (especially
+    /// when dealing with untrusted input) in two ways:
     ///
-    /// ```
-    /// use stackable_operator::utils::UrlExt;
+    /// 1. The function validates that each segment is not an invalid segment. This for example
+    ///    prevents path traversals.
+    /// 2. The upstream function can replace the entire base URL in these two situations:
+    ///    - A [scheme relative special URL][1] as input replaces everything in the base URL after
+    ///      the scheme.
+    ///    - An absolute URL (with a scheme) as input replaces the whole base URL (even the
+    ///      scheme).
     ///
-    /// let url = url::Url::parse("http://example.com").unwrap();
-    /// let url = url.join_many(vec!["realms/", "master/", "myuser"]).unwrap();
+    ///    _From <https://docs.rs/url/2.5.8/url/struct.Url.html#method.join> (Accessed 2026-10-19,
+    ///    version 2.5.8)_
     ///
-    /// assert_eq!(url.as_str(), "http://example.com/realms/master/myuser");
-    /// ```
-    fn join_many<'a>(
-        self,
-        inputs: impl IntoIterator<Item = &'a str>,
-    ) -> Result<Self, url::ParseError>;
+    ///    This for example allows users to construct malicious URLs. This function constructs the
+    ///    final URL in a way in which the segments are only appended to any existing path segments.
+    ///
+    /// [1]: https://url.spec.whatwg.org/#scheme-relative-special-url-string
+    fn join_safe<T>(&mut self, segments: &[T]) -> Result<(), UrlError>
+    where
+        T: AsRef<str>;
 }
 
 impl UrlExt for url::Url {
-    fn join_many<'a>(
-        self,
-        inputs: impl IntoIterator<Item = &'a str>,
-    ) -> Result<Self, url::ParseError> {
-        let mut iter = inputs.into_iter().peekable();
-        let mut url = self;
+    fn join_safe<T>(&mut self, segments: &[T]) -> Result<(), UrlError>
+    where
+        T: AsRef<str>,
+    {
+        let invalid_segment = segments.iter().find(|segment| {
+            let segment = segment.as_ref();
+            matches!(segment, "" | "." | "..") || segment.contains(['\t', '\n', '\r'])
+        });
 
-        while let Some(input) = iter.next() {
-            url = if !input.ends_with('/') && iter.peek().is_some() {
-                url.join(&format!("{input}/"))?
-            } else {
-                url.join(input)?
-            };
+        if let Some(segment) = invalid_segment {
+            return InvalidSegmentSnafu {
+                segment: segment.as_ref(),
+            }
+            .fail();
         }
 
-        Ok(url)
+        self.path_segments_mut()
+            .map_err(|()| CannotBeABaseSnafu.build())?
+            .pop_if_empty()
+            .extend(segments);
+
+        Ok(())
     }
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
+    use rstest::rstest;
+
     use super::*;
 
-    #[test]
-    fn url_join_many() {
-        let url = url::Url::parse("http://example.com").unwrap();
-        let url = url.join_many(vec!["realms/", "master/", "myuser"]).unwrap();
+    #[rstest]
+    #[case::path_slash("http://example.com/a/", "http://example.com/a/foo/bar/baz")]
+    #[case::path("http://example.com/a", "http://example.com/a/foo/bar/baz")]
+    #[case::root_slash("http://example.com/", "http://example.com/foo/bar/baz")]
+    #[case::root("http://example.com", "http://example.com/foo/bar/baz")]
+    fn join_safe_keeps_base_path(#[case] base: &str, #[case] expected: &str) {
+        let mut url = url::Url::parse(base).expect("base URL must parse");
+        url.join_safe(&["foo", "bar", "baz"])
+            .expect("must join, all segments are valid");
 
-        assert_eq!(url.as_str(), "http://example.com/realms/master/myuser");
+        assert_eq!(url.as_str(), expected);
     }
 }
