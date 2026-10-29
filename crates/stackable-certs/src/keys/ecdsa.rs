@@ -1,8 +1,9 @@
 //! Abstraction layer around the [`ecdsa`] crate. This module provides types
 //! which abstract away the generation of ECDSA keys used for signing of CAs
 //! and other certificates.
-use p256::{NistP256, pkcs8::DecodePrivateKey};
-use rand_core::{CryptoRngCore, OsRng};
+use p256::{NistP256, elliptic_curve::Generate, pkcs8::DecodePrivateKey};
+use rand::rngs::SysRng;
+use rand_core::{CryptoRng, UnwrapErr};
 use snafu::{ResultExt, Snafu};
 use tracing::instrument;
 
@@ -25,16 +26,16 @@ pub struct SigningKey(p256::ecdsa::SigningKey);
 impl SigningKey {
     #[instrument(name = "create_ecdsa_signing_key")]
     pub fn new() -> Result<Self> {
-        let mut csprng = OsRng;
+        let mut csprng = UnwrapErr(SysRng);
         Self::new_with_rng(&mut csprng)
     }
 
     #[instrument(name = "create_ecdsa_signing_key_custom_rng", skip_all)]
     pub fn new_with_rng<R>(csprng: &mut R) -> Result<Self>
     where
-        R: CryptoRngCore + Sized,
+        R: CryptoRng + ?Sized,
     {
-        let signing_key = p256::ecdsa::SigningKey::random(csprng);
+        let signing_key = p256::ecdsa::SigningKey::generate_from_rng(csprng);
         Ok(Self(signing_key))
     }
 }

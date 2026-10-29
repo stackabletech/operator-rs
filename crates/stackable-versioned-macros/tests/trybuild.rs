@@ -34,6 +34,7 @@ mod inputs {
         // mod hint_map;
         // mod module;
         // mod module_preserve;
+        // mod printcolumn;
         // mod renamed_field;
         // mod renamed_kind;
         // mod scale;

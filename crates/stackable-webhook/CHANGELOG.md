@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Bump `x509-cert` to 0.3, which is exposed in the public API via the `Certificate`
+  type ([#1315]).
+
+[#1315]: https://github.com/stackabletech/operator-rs/pull/1315
+
 ## [0.10.0] - 2026-09-23
 
 ### Added
