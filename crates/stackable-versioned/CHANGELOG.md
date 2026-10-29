@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Add public `ExtractIfExt` trait ([#1306]).
 - Re-add support for generics in tracking impls ([#1304]).
 - Add support to provide `#[versioned(crd(selectable = "..."))]` arguments to configure selectable fields ([#1312]).
+- Add support to provide `#[versioned(crd(printcolumn(...)))]` arguments to configure additional printer columns ([#1318]).
 
 ### Changed
 
@@ -35,6 +36,7 @@ All notable changes to this project will be documented in this file.
 [#1312]: https://github.com/stackabletech/operator-rs/pull/1312
 [#1313]: https://github.com/stackabletech/operator-rs/pull/1313
 [#1314]: https://github.com/stackabletech/operator-rs/pull/1314
+[#1318]: https://github.com/stackabletech/operator-rs/pull/1318
 
 ## [0.13.0] - 2026-10-14
 

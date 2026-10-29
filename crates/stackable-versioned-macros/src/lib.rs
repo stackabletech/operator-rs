@@ -347,6 +347,15 @@ mod utils;
 ///         // tracking is enabled, this struct will be automatically merged into
 ///         // the generated tracking status struct.
 ///         status = "FooStatus",
+///         // Add an additional printer column, which is displayed by `kubectl
+///         // get` and also nicely shows up in tools like k9s. This can be
+///         // specified multiple times and supports the same syntax as
+///         // `#[kube(printcolumn(...))]`. The column is used for all versions,
+///         // so the JSON path must be valid in every version. Keep in mind
+///         // that changing (renaming) or deprecating a field also changes its
+///         // name. Kubernetes doesn't validate the path, the column just shows
+///         // `<none>` in versions where the field doesn't exist.
+///         printcolumn(name = "Baz", json_path = ".spec.baz", type_ = "boolean"),
 ///         // Set a shortname. This can be specified multiple times.
 ///         shortname = "...",
 ///         // Set the JSON path of a field which can be used as a field
