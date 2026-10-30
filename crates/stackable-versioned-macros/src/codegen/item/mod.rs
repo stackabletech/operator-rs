@@ -82,4 +82,11 @@ impl ItemStatus {
             Self::NotPresent => unreachable!("ItemStatus::NotPresent does not have an ident"),
         }
     }
+
+    /// Returns `true` if this status is a change which modified the type of the item.
+    ///
+    /// Changes which only rename the item are lossless and as such don't need to be tracked.
+    pub fn is_type_change(&self) -> bool {
+        matches!(self, Self::Change { previous_type, current_type, .. } if previous_type != current_type)
+    }
 }

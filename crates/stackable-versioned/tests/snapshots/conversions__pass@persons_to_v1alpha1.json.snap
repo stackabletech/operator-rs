@@ -155,10 +155,6 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
                 {
                   "jsonPath": "$.gender",
                   "value": "Male"
-                },
-                {
-                  "jsonPath": "$.relationship.Married.0.since",
-                  "value": "1970-01-01"
                 }
               ]
             }
@@ -208,10 +204,17 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
                 {
                   "jsonPath": "$.gender",
                   "value": "Male"
-                },
+                }
+              ],
+              "v3": [
                 {
                   "jsonPath": "$.relationship.Married.0.since",
                   "value": "1970-01-01"
+                },
+                {
+                  "downgradedValue": "Male",
+                  "jsonPath": "$.gender",
+                  "value": "Male"
                 }
               ]
             }
