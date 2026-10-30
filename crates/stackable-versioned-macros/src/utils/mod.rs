@@ -78,12 +78,21 @@ pub trait ItemIdents {
 
 pub trait ItemIdentExt {
     fn json_path_ident(&self) -> IdentString;
+    fn tracked_value_ident(&self) -> IdentString;
 }
 
 impl ItemIdentExt for IdentString {
     fn json_path_ident(&self) -> IdentString {
         format_ident!(
             "__sv_{lowercase_ident}_path",
+            lowercase_ident = self.as_str().to_lowercase()
+        )
+        .into()
+    }
+
+    fn tracked_value_ident(&self) -> IdentString {
+        format_ident!(
+            "__sv_{lowercase_ident}_value",
             lowercase_ident = self.as_str().to_lowercase()
         )
         .into()
