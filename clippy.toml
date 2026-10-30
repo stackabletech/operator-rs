@@ -1,8 +1,5 @@
 allow-unwrap-in-tests = true
 allow-panic-in-tests = true
 disallowed-methods = [
-  { path = "url::Url::join", reason = """
-  Url::join is unsafe in contexts in which users have control over the to-be-joined input, because
-  the function will replace the original base URL in certain situations. Bad actors can craft
-  malicious inputs to point at an attacker controlled URL""", replacement = "join_safe" },
+  { path = "url::Url::join", reason = "the function resolves its input as a URL, allowing bad actors to craft malicious inputs which replace the URL entirely or traverse the path; use UrlExt::join_safe instead" },
 ]
