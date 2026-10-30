@@ -112,6 +112,7 @@ where
             .push(::stackable_versioned::ChangedValue {
                 json_path: __sv_baz_baz_path,
                 value: ::serde_json::to_value(&__sv_bar.baz_baz).unwrap(),
+                downgraded_value: ::core::option::Option::None,
             });
         let mut spec = Self {
             bar_bar: __sv_bar.bar_bar.into(),
