@@ -9,6 +9,8 @@ pub enum UrlError {
     CannotBeABase,
 }
 
+/// An extension trait for [`url::Url`], most notably providing a safe alternative for
+/// [`url::Url::join`]: [`UrlExt::join_safe`].
 pub trait UrlExt: Sized {
     /// Joins one or more segments to the end of the existing URL path segments.
     ///
