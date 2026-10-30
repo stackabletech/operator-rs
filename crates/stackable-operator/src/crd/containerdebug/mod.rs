@@ -28,7 +28,7 @@ pub mod versioned {
     /// Configures the `containerdebug` tool, which periodically logs information about the container
     /// environment (such as network interfaces, DNS lookups and disk usage) in the background of the
     /// product container.
-    #[derive(Clone, Eq, Fragment, JsonSchema, PartialEq)]
+    #[derive(Clone, Debug, Eq, Fragment, JsonSchema, PartialEq)]
     #[fragment(path_overrides(fragment = "crate::config::fragment"))]
     #[fragment_attrs(
         derive(
