@@ -68,15 +68,66 @@ mod tests {
     use super::*;
 
     #[rstest]
-    #[case::path_slash("http://example.com/a/", "http://example.com/a/foo/bar/baz")]
-    #[case::path("http://example.com/a", "http://example.com/a/foo/bar/baz")]
-    #[case::root_slash("http://example.com/", "http://example.com/foo/bar/baz")]
-    #[case::root("http://example.com", "http://example.com/foo/bar/baz")]
+    #[case::path_slash("https://example.org/a/", "https://example.org/a/foo/bar/baz")]
+    #[case::path("https://example.org/a", "https://example.org/a/foo/bar/baz")]
+    #[case::root_slash("https://example.org/", "https://example.org/foo/bar/baz")]
+    #[case::root("https://example.org", "https://example.org/foo/bar/baz")]
     fn join_safe_keeps_base_path(#[case] base: &str, #[case] expected: &str) {
         let mut url = url::Url::parse(base).expect("base URL must parse");
         url.join_safe(&["foo", "bar", "baz"])
             .expect("must join, all segments are valid");
 
         assert_eq!(url.as_str(), expected);
+    }
+
+    #[rstest]
+    #[case::absolute_url("https://evil.example.com/", "https:%2F%2Fevil.example.com%2F")]
+    #[case::scheme_relative("//evil.example.com", "%2F%2Fevil.example.com")]
+    #[case::traversal("../../realms/master", "..%2F..%2Frealms%2Fmaster")]
+    #[case::percent_encoded_dots("%2e%2e", "%252e%252e")]
+    #[case::backslash("..\\admin", "..%5Cadmin")]
+    #[case::query("alice?exact=false", "alice%3Fexact=false")]
+    #[case::fragment("alice#", "alice%23")]
+    #[case::guest_principal_name(
+        "alice_example.com#EXT#@example.org",
+        "alice_example.com%23EXT%23@example.org"
+    )]
+    fn join_safe_appends_malicious_segment(#[case] segment: &str, #[case] expected: &str) {
+        let mut url = url::Url::parse("http://example.org").expect("base URL must parse");
+        url.join_safe(&[segment])
+            .expect("must join, all segments are valid");
+
+        assert_eq!(url.as_str(), format!("http://example.org/{expected}"));
+    }
+
+    #[rstest]
+    #[case::empty("")]
+    #[case::current(".")]
+    #[case::parent("..")]
+    #[case::tab("ad\tmin")]
+    #[case::line_feed("ad\nmin")]
+    #[case::carriage_return("ad\rmin")]
+    fn join_safe_rejects_invalid_segment(#[case] segment: &str) {
+        let mut url = url::Url::parse("http://example.org").expect("base URL must parse");
+        let error = url
+            .join_safe(&[segment])
+            .expect_err("must be error because invalid segments are not appended");
+
+        assert_eq!(
+            error,
+            UrlError::InvalidSegment {
+                segment: segment.to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn join_safe_rejects_invalid_base() {
+        let mut url = url::Url::parse("mailto:user@example.org").expect("base URL must parse");
+        let error = url
+            .join_safe(&["foo", "bar", "baz"])
+            .expect_err("must be error because the base URL cannot be a base (opaque path state)");
+
+        assert_eq!(error, UrlError::CannotBeABase);
     }
 }
