@@ -55,21 +55,21 @@ pub mod versioned {
     }
 }
 
-impl v1alpha1::ContainerDebugConfig {
+impl v1alpha1::ContainerdebugConfig {
     /// Validates the merged configuration.
     ///
     /// The interval is only validated if `containerdebug` is enabled, so that a role group can
     /// disable it without failing on an interval inherited from its role.
-    pub fn validate(&self) -> Result<ValidatedContainerDebugConfig, Error> {
+    pub fn validate(&self) -> Result<ValidatedContainerdebugConfig, Error> {
         if !self.enabled {
-            return Ok(ValidatedContainerDebugConfig::Disabled);
+            return Ok(ValidatedContainerdebugConfig::Disabled);
         }
 
         // `containerdebug` schedules the next run by adding the interval to the start of the
         // previous one, so an interval of zero would collect (including DNS lookups) in a tight loop.
         ensure!(!self.interval.is_zero(), IntervalZeroSnafu);
 
-        Ok(ValidatedContainerDebugConfig::Enabled {
+        Ok(ValidatedContainerdebugConfig::Enabled {
             interval: self.interval,
         })
     }
@@ -85,7 +85,7 @@ pub enum ValidatedContainerdebugConfig {
     Enabled { interval: Duration },
 }
 
-impl ValidatedContainerDebugConfig {
+impl ValidatedContainerdebugConfig {
     /// Returns the shell command which starts `containerdebug` in the background, or [`None`] if
     /// it is disabled.
     ///
@@ -103,8 +103,8 @@ impl ValidatedContainerDebugConfig {
 
 /// Returns the default `containerdebug` configuration, which operators merge underneath the
 /// role and role group configuration.
-pub fn default_containerdebug_config() -> v1alpha1::ContainerDebugConfigFragment {
-    v1alpha1::ContainerDebugConfigFragment {
+pub fn default_containerdebug_config() -> v1alpha1::ContainerdebugConfigFragment {
+    v1alpha1::ContainerdebugConfigFragment {
         enabled: Some(true),
         interval: Some(DEFAULT_INTERVAL),
     }
@@ -121,8 +121,8 @@ mod tests {
 
     const LOG_DIR: &str = "/stackable/log";
 
-    fn config(enabled: bool, interval: &str) -> v1alpha1::ContainerDebugConfig {
-        v1alpha1::ContainerDebugConfig {
+    fn config(enabled: bool, interval: &str) -> v1alpha1::ContainerdebugConfig {
+        v1alpha1::ContainerdebugConfig {
             enabled,
             interval: Duration::from_str(interval).expect("valid duration"),
         }
@@ -130,7 +130,7 @@ mod tests {
 
     #[test]
     fn defaults_render_command() {
-        let config: v1alpha1::ContainerDebugConfig =
+        let config: v1alpha1::ContainerdebugConfig =
             fragment::validate(default_containerdebug_config()).expect("defaults are complete");
 
         assert_eq!(
@@ -147,10 +147,10 @@ mod tests {
 
     #[rstest]
     #[case("0s", Err(Error::IntervalZero))]
-    #[case("1s", Ok(ValidatedContainerDebugConfig::Enabled { interval: Duration::from_secs(1) }))]
+    #[case("1s", Ok(ValidatedContainerdebugConfig::Enabled { interval: Duration::from_secs(1) }))]
     fn validate_rejects_zero_interval(
         #[case] interval: &str,
-        #[case] expected: Result<ValidatedContainerDebugConfig, Error>,
+        #[case] expected: Result<ValidatedContainerdebugConfig, Error>,
     ) {
         assert_eq!(config(true, interval).validate(), expected);
     }
