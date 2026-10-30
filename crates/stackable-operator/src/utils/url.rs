@@ -1,6 +1,6 @@
 use snafu::Snafu;
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum UrlError {
     #[snafu(display("failed to use {segment:?} as url path segment"))]
     InvalidSegment { segment: String },
@@ -53,6 +53,14 @@ impl UrlExt for url::Url {
         }
 
         self.path_segments_mut()
+            // A URL cannot be a base when:
+            //
+            // - its scheme is not one of the "special" schemes (http, https, ws, wss, ftp, file), and
+            // - it has no authority (no // after the scheme)
+            //
+            // Examples: mailto:user@example.com, javascript:alert(1)
+            //
+            // See https://url.spec.whatwg.org/#cannot-be-a-base-url-path-state
             .map_err(|()| CannotBeABaseSnafu.build())?
             .pop_if_empty()
             .extend(segments);
