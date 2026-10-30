@@ -16,7 +16,8 @@ pub enum UrlError {
 /// An extension trait for [`url::Url`], most notably providing a safe alternative for
 /// [`url::Url::join`]: [`UrlExt::join_safe`].
 pub trait UrlExt: Sized {
-    /// Joins one or more segments to the end of the existing URL path segments.
+    /// Joins one or more segments to the end of the existing URL path segments and returns a new
+    /// [`url::Url`].
     ///
     /// Compared to [`url::Url::join`], it protects users against (accidental) misuse (especially
     /// when dealing with untrusted input) in two ways:
@@ -36,13 +37,13 @@ pub trait UrlExt: Sized {
     ///    final URL in a way in which the segments are only appended to any existing path segments.
     ///
     /// [1]: https://url.spec.whatwg.org/#scheme-relative-special-url-string
-    fn join_safe<T>(&mut self, segments: &[T]) -> Result<(), UrlError>
+    fn join_safe<T>(&self, segments: &[T]) -> Result<Self, UrlError>
     where
         T: AsRef<str>;
 }
 
 impl UrlExt for url::Url {
-    fn join_safe<T>(&mut self, segments: &[T]) -> Result<(), UrlError>
+    fn join_safe<T>(&self, segments: &[T]) -> Result<Self, UrlError>
     where
         T: AsRef<str>,
     {
@@ -66,7 +67,8 @@ impl UrlExt for url::Url {
             .fail();
         }
 
-        self.path_segments_mut()
+        let mut url = self.clone();
+        url.path_segments_mut()
             // A URL cannot be a base when:
             //
             // - its scheme is not one of the "special" schemes (http, https, ws, wss, ftp, file), and
@@ -79,7 +81,7 @@ impl UrlExt for url::Url {
             .pop_if_empty()
             .extend(segments);
 
-        Ok(())
+        Ok(url)
     }
 }
 
@@ -95,8 +97,9 @@ mod tests {
     #[case::root_slash("https://example.org/", "https://example.org/foo/bar/baz")]
     #[case::root("https://example.org", "https://example.org/foo/bar/baz")]
     fn join_safe_keeps_base_path(#[case] base: &str, #[case] expected: &str) {
-        let mut url = url::Url::parse(base).expect("base URL must parse");
-        url.join_safe(&["foo", "bar", "baz"])
+        let url = url::Url::parse(base).expect("base URL must parse");
+        let url = url
+            .join_safe(&["foo", "bar", "baz"])
             .expect("must join, all segments are valid");
 
         assert_eq!(url.as_str(), expected);
@@ -115,8 +118,9 @@ mod tests {
         "alice_example.com%23EXT%23@example.org"
     )]
     fn join_safe_appends_malicious_segment(#[case] segment: &str, #[case] expected: &str) {
-        let mut url = url::Url::parse("http://example.org").expect("base URL must parse");
-        url.join_safe(&[segment])
+        let url = url::Url::parse("http://example.org").expect("base URL must parse");
+        let url = url
+            .join_safe(&[segment])
             .expect("must join, all segments are valid");
 
         assert_eq!(url.as_str(), format!("http://example.org/{expected}"));
@@ -131,7 +135,7 @@ mod tests {
     #[case::line_feed(&["ad\nmin"])]
     #[case::carriage_return(&["ad\rmin"])]
     fn join_safe_rejects_invalid_segment(#[case] segments: &[&str]) {
-        let mut url = url::Url::parse("http://example.org").expect("base URL must parse");
+        let url = url::Url::parse("http://example.org").expect("base URL must parse");
         let error = url
             .join_safe(segments)
             .expect_err("must be error because invalid segments are not appended");
@@ -148,7 +152,7 @@ mod tests {
 
     #[test]
     fn join_safe_rejects_invalid_base() {
-        let mut url = url::Url::parse("mailto:user@example.org").expect("base URL must parse");
+        let url = url::Url::parse("mailto:user@example.org").expect("base URL must parse");
         let error = url
             .join_safe(&["foo", "bar", "baz"])
             .expect_err("must be error because the base URL cannot be a base (opaque path state)");
