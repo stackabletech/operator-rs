@@ -44,11 +44,8 @@ pub mod versioned {
         ),
         merge(path_overrides(merge = "crate::config::merge")),
         serde(rename_all = "camelCase"),
-        schemars(
-            description = "Configures the `containerdebug` tool, which periodically logs information about the container environment. Learn more in the [container environment documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/observability/containerdebug)."
-        )
     )]
-    pub struct ContainerDebugConfig {
+    pub struct ContainerdebugConfig {
         /// Whether `containerdebug` runs in the background of the product container. Defaults to `true`.
         pub enabled: bool,
 
@@ -83,7 +80,7 @@ impl v1alpha1::ContainerDebugConfig {
 /// Unlike the user-facing configuration, this cannot carry an interval while `containerdebug` is
 /// disabled, nor an interval of zero.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ValidatedContainerDebugConfig {
+pub enum ValidatedContainerdebugConfig {
     Disabled,
     Enabled { interval: Duration },
 }
