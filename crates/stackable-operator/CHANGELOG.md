@@ -4,13 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `UrlExt::join_safe` function to safely append path segments to a base URL ([#1319]).
+
 ### Changed
 
 - BREAKING: Bump the RustCrypto dependencies to their new generation, which affects the re-exported
   `certs` and `webhook` modules. See the changelogs of `stackable-certs` and `stackable-webhook`
   for details ([#1315]).
 
+### Removed
+
+- BREAKING: Remove the unsafe and no longer needed `UrlExt::join_many` function. Use
+  `UrlExt::join_safe` instead ([#1319]).
+
 [#1315]: https://github.com/stackabletech/operator-rs/pull/1315
+[#1319]: https://github.com/stackabletech/operator-rs/pull/1319
 
 ## [0.121.0] - 2026-10-14
 
