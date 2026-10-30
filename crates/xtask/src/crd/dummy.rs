@@ -132,7 +132,7 @@ pub mod versioned {
         pub logging: stackable_operator::product_logging::spec::Logging<Container>,
 
         #[fragment_attrs(serde(default))]
-        pub containerdebug: stackable_operator::crd::containerdebug::v1alpha1::ContainerDebugConfig,
+        pub containerdebug: stackable_operator::crd::containerdebug::v1alpha1::ContainerdebugConfig,
     }
 
     #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]
