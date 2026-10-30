@@ -416,6 +416,54 @@ spec:
               kerberosRealmName:
                 description: A validated kerberos realm name type, for use in CRDs.
                 type: string
+              managementAccess:
+                nullable: true
+                properties:
+                  authentication:
+                    properties:
+                      userProvided:
+                        oneOf:
+                        - required:
+                          - anonymous
+                        - required:
+                          - tls
+                        properties:
+                          anonymous:
+                            description: 'No credential: the product does not require authentication.'
+                            type: object
+                          tls:
+                            description: 'Source of a TLS client certificate: a secret-operator SecretClass or a static Secret.'
+                            oneOf:
+                            - required:
+                              - secretClassName
+                            - required:
+                              - secretName
+                            properties:
+                              secretClassName:
+                                description: A SecretClass providing the certificate.
+                                maxLength: 253
+                                minLength: 1
+                                pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                type: string
+                              secretName:
+                                description: |-
+                                  A static Secret holding the certificate in the keys `tls.crt` and `tls.key` (PEM), e.g. as
+                                  a Secret of type `kubernetes.io/tls`.
+                                maxLength: 253
+                                minLength: 1
+                                pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                type: string
+                            type: object
+                        type: object
+                    required:
+                    - userProvided
+                    type: object
+                  enabled:
+                    type: boolean
+                required:
+                - authentication
+                - enabled
+                type: object
               nodes:
                 description: |-
                   This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a key-value-map containing

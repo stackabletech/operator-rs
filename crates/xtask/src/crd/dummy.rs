@@ -115,6 +115,7 @@ pub mod versioned {
         client_authentication_details: authentication::core::v1alpha1::ClientAuthenticationDetails<
             oidc::v1alpha1::ClientAuthenticationMethodOption,
         >,
+        management_access: Option<DummyManagementAccess>,
     }
 
     #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]
@@ -185,6 +186,29 @@ pub mod versioned {
     #[serde(rename_all = "camelCase")]
     pub struct DummyClusterStatus {
         pub conditions: Vec<ClusterCondition>,
+    }
+
+    #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[schemars(crate = "stackable_operator::schemars")]
+    pub struct DummyManagementAccess {
+        enabled: bool,
+        authentication: DummyManagementAccessAuthentication,
+    }
+
+    #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[schemars(crate = "stackable_operator::schemars")]
+    pub struct DummyManagementAccessAuthentication {
+        user_provided: DummyUserProvidedAuthentication,
+    }
+
+    #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Eq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[schemars(crate = "stackable_operator::schemars")]
+    pub enum DummyUserProvidedAuthentication {
+        Anonymous(stackable_operator::crd::management_access::v1alpha1::Anonymous),
+        Tls(stackable_operator::crd::management_access::v1alpha1::TlsClientCredential),
     }
 }
 

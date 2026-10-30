@@ -4,12 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add utility for product agents ([#1290]):
+  - `TlsClientCredential`, enum for TLS-based management access used for adding volumes and mounts.
+  - `Anonymous`, for management access to products that don't authenticate the agent.
+  - Labels and selectors for agents, with the component `<product-name>-agent`.
+  - `v2::agent_utils::AgentResourceNames`, the names of the agent resources.
+- Re-export `stackable-agent` as `agent` behind the `agent` feature ([#1290]).
+
 ### Changed
 
 - BREAKING: Bump the RustCrypto dependencies to their new generation, which affects the re-exported
   `certs` and `webhook` modules. See the changelogs of `stackable-certs` and `stackable-webhook`
   for details ([#1315]).
+- BREAKING: The RBAC names of `v2::role_utils::ResourceNames` are now provided by the trait
+  `v2::rbac::RbacResourceNames`, which must be imported to call them. `v2::rbac::build_service_account`
+  and `v2::rbac::build_role_binding` accept any `RbacResourceNames` ([#1290]).
 
+[#1290]: https://github.com/stackabletech/operator-rs/pull/1290
 [#1315]: https://github.com/stackabletech/operator-rs/pull/1315
 
 ## [0.121.0] - 2026-10-14

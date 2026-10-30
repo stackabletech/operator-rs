@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     builder::pod::container::EnvVarSet,
     jvm_argument_overrides::JvmArgumentOverrides,
+    rbac::RbacResourceNames,
     types::{
         kubernetes::{ClusterRoleName, RoleBindingName, ServiceAccountName},
         operator::{ClusterName, ProductName},
@@ -331,8 +332,8 @@ pub struct ResourceNames {
     pub product_name: ProductName,
 }
 
-impl ResourceNames {
-    pub fn service_account_name(&self) -> ServiceAccountName {
+impl RbacResourceNames for ResourceNames {
+    fn service_account_name(&self) -> ServiceAccountName {
         const SUFFIX: &str = "-serviceaccount";
 
         // compile-time checks
@@ -346,7 +347,7 @@ impl ResourceNames {
             .expect("should be a valid ServiceAccount name")
     }
 
-    pub fn role_binding_name(&self) -> RoleBindingName {
+    fn role_binding_name(&self) -> RoleBindingName {
         const SUFFIX: &str = "-rolebinding";
 
         // compile-time checks
@@ -360,7 +361,7 @@ impl ResourceNames {
             .expect("should be a valid RoleBinding name")
     }
 
-    pub fn cluster_role_name(&self) -> ClusterRoleName {
+    fn cluster_role_name(&self) -> ClusterRoleName {
         const SUFFIX: &str = "-clusterrole";
 
         // compile-time checks
