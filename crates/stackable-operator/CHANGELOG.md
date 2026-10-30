@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add `crd::containerdebug.rs` module with versioned `ContainerDebugConfig` CRD ([#1308])
+- Add `crd::containerdebug.rs` module with the `ContainerdebugConfig` CRD struct as well as helper functions on `ValidatedContainerdebugConfig` ([#1308])
 
 [#1308]: https://github.com/stackabletech/operator-rs/pull/1308
 
