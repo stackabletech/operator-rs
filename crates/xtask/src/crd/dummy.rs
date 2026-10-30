@@ -8,6 +8,7 @@ use stackable_operator::{
     crd::{
         authentication::{self, oidc},
         git_sync::v1alpha2::GitSync,
+        role,
     },
     database_connections::{
         databases::{
@@ -21,7 +22,6 @@ use stackable_operator::{
     },
     deep_merger::ObjectOverrides,
     kube::CustomResource,
-    role_utils::Role,
     schemars::JsonSchema,
     status::condition::ClusterCondition,
     v2::config_overrides::JsonConfigOverrides,
@@ -89,7 +89,7 @@ pub mod versioned {
     #[schemars(crate = "stackable_operator::schemars")]
     #[serde(rename_all = "camelCase")]
     pub struct DummyClusterSpec {
-        nodes: Option<Role<ProductConfigFragment, DummyConfigOverrides>>,
+        nodes: Option<role::v1alpha2::Role<ProductConfigFragment, DummyConfigOverrides>>,
 
         // Not versioned yet
         stackable_affinity: stackable_operator::commons::affinity::StackableAffinity,
