@@ -524,7 +524,9 @@ impl VersionedField {
 
                 let ident = match next_change {
                     ItemStatus::Addition { ident, .. } => ident,
-                    ItemStatus::Change { current_ident, .. } if next_change.is_type_change() => current_ident,
+                    ItemStatus::Change { current_ident, .. } if next_change.is_type_change() => {
+                        current_ident
+                    }
                     _ => return None,
                 };
 
