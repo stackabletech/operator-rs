@@ -1,5 +1,5 @@
 use darling::{Error, FromAttributes, FromMeta, Result, util::Flag};
-use syn::Path;
+use syn::{Meta, Path};
 
 #[derive(Debug, FromAttributes)]
 #[darling(attributes(versioned), and_then = ContainerAttributes::validate)]
@@ -51,6 +51,9 @@ pub struct ContainerSkipArguments {
 /// - `crates`: Override specific crates.
 /// - `status`: Set the specified struct as the status subresource.
 /// - `scale`: Configure the scale subresource for horizontal pod autoscaling integration.
+/// - `printcolumn`: Add an additional printer column, which is displayed by `kubectl get` and
+///   also nicely shows up in tools like k9s. This can be specified multiple times. The argument is
+///   passed through as-is, so it supports the same syntax as `#[kube(printcolumn(...))]`.
 /// - `shortname`: Set a shortname for the CR object. This can be specified multiple
 ///   times.
 /// - `selectable`: Set the JSON path of a field which can be used as a field selector.
@@ -71,7 +74,10 @@ pub struct StructCrdArguments {
     // derive
     // schema
     pub scale: Option<Scale>,
-    // printcolumn
+    // Kept as raw meta and passed through verbatim, so that kube-derive does the parsing and
+    // validation and we don't need to keep a copy of its printcolumn struct in sync.
+    #[darling(multiple, rename = "printcolumn")]
+    pub printcolumns: Vec<Meta>,
     #[darling(multiple, rename = "shortname")]
     pub shortnames: Vec<String>,
     // category
