@@ -2,8 +2,12 @@ use snafu::Snafu;
 
 #[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum UrlError {
-    #[snafu(display("failed to use {segment:?} as url path segment"))]
-    InvalidSegment { segment: String },
+    #[snafu(display(
+        "failed to use {segments} as url path segment{plural}",
+        segments = segments.join(", "),
+        plural = if segments.is_empty() { "" } else { "s" }
+    ))]
+    InvalidSegments { segments: Vec<String> },
 
     #[snafu(display("failed to append path segments to url as it cannot be a base"))]
     CannotBeABase,
@@ -42,14 +46,22 @@ impl UrlExt for url::Url {
     where
         T: AsRef<str>,
     {
-        let invalid_segment = segments.iter().find(|segment| {
-            let segment = segment.as_ref();
-            matches!(segment, "" | "." | "..") || segment.contains(['\t', '\n', '\r'])
-        });
+        let mut invalid_segments = segments
+            .iter()
+            .filter(|segment| {
+                let segment = segment.as_ref();
+                matches!(segment, "" | "." | "..") || segment.contains(['\t', '\n', '\r'])
+            })
+            // Make the iterator peekable so that we don't need to collect it here (which allocates).
+            // This enables us to only allocate in the error-case only - when there is at least one
+            // invalid path segment.
+            .peekable();
 
-        if let Some(segment) = invalid_segment {
-            return InvalidSegmentSnafu {
-                segment: segment.as_ref(),
+        if invalid_segments.peek().is_some() {
+            return InvalidSegmentsSnafu {
+                segments: invalid_segments
+                    .map(|s| s.as_ref().to_owned())
+                    .collect::<Vec<_>>(),
             }
             .fail();
         }
@@ -111,22 +123,25 @@ mod tests {
     }
 
     #[rstest]
-    #[case::empty("")]
-    #[case::current(".")]
-    #[case::parent("..")]
-    #[case::tab("ad\tmin")]
-    #[case::line_feed("ad\nmin")]
-    #[case::carriage_return("ad\rmin")]
-    fn join_safe_rejects_invalid_segment(#[case] segment: &str) {
+    #[case::multiple(&["", ".", ".."])]
+    #[case::empty(&[""])]
+    #[case::current(&["."])]
+    #[case::parent(&[".."])]
+    #[case::tab(&["ad\tmin"])]
+    #[case::line_feed(&["ad\nmin"])]
+    #[case::carriage_return(&["ad\rmin"])]
+    fn join_safe_rejects_invalid_segment(#[case] segments: &[&str]) {
         let mut url = url::Url::parse("http://example.org").expect("base URL must parse");
         let error = url
-            .join_safe(&[segment])
+            .join_safe(segments)
             .expect_err("must be error because invalid segments are not appended");
 
         assert_eq!(
             error,
-            UrlError::InvalidSegment {
-                segment: segment.to_owned()
+            UrlError::InvalidSegments {
+                // NOTE (@Techassi): We use to_string instead of to_owned (which we normally prefer)
+                // because we have a double reference (&&str) here.
+                segments: segments.iter().map(ToString::to_string).collect()
             }
         );
     }
