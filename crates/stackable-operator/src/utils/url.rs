@@ -137,9 +137,7 @@ mod tests {
         assert_eq!(
             error,
             UrlError::InvalidSegments {
-                // NOTE (@Techassi): We use to_string instead of to_owned (which we normally prefer)
-                // because we have a double reference (&&str) here.
-                segments: segments.iter().map(ToString::to_string).collect()
+                segments: segments.iter().map(|s| (*s).to_owned()).collect()
             }
         );
     }
