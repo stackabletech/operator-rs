@@ -5,7 +5,7 @@ pub enum UrlError {
     #[snafu(display(
         "failed to use {segments} as url path segment{plural}",
         segments = segments.join(", "),
-        plural = if segments.is_empty() { "" } else { "s" }
+        plural = if segments.len() == 1 { "" } else { "s" }
     ))]
     InvalidSegments { segments: Vec<String> },
 
