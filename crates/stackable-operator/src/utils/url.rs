@@ -2,8 +2,10 @@ use snafu::Snafu;
 
 #[derive(Debug, Snafu)]
 pub enum UrlError {
+    #[snafu(display("failed to use {segment:?} as url path segment"))]
     InvalidSegment { segment: String },
 
+    #[snafu(display("failed to append path segments to url as it cannot be a base"))]
     CannotBeABase,
 }
 
