@@ -43,7 +43,7 @@ pub mod versioned {
             Serialize
         ),
         merge(path_overrides(merge = "crate::config::merge")),
-        serde(rename_all = "camelCase"),
+        serde(rename_all = "camelCase")
     )]
     pub struct ContainerdebugConfig {
         /// Whether `containerdebug` runs in the background of the product container. Defaults to `true`.
