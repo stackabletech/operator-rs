@@ -11,6 +11,9 @@ All notable changes to this project will be documented in this file.
 - Re-add support for generics in tracking impls ([#1304]).
 - Add support to provide `#[versioned(crd(selectable = "..."))]` arguments to configure selectable fields ([#1312]).
 - Add support to provide `#[versioned(crd(printcolumn(...)))]` arguments to configure additional printer columns ([#1318]).
+- Track fields which changed their type when `experimental_conversion_tracking` is enabled. The
+  tracked value is only applied on upgrade if the field was not changed in the older version
+  ([#1296]).
 
 ### Changed
 
@@ -28,6 +31,7 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: Remove unused `yaml_serde` crate override ([#1309]).
 
+[#1296]: https://github.com/stackabletech/operator-rs/pull/1296
 [#1304]: https://github.com/stackabletech/operator-rs/pull/1304
 [#1306]: https://github.com/stackabletech/operator-rs/pull/1306
 [#1307]: https://github.com/stackabletech/operator-rs/pull/1307

@@ -73,8 +73,7 @@
                     "gender": "Male",
                     "relationship": {
                         "married": {
-                            "with": "Jane Doe",
-                            "since": "1970-01-01"
+                            "with": "Jane Doe"
                         }
                     },
                     "socials": {
