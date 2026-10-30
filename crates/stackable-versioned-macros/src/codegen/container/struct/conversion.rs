@@ -176,8 +176,11 @@ impl Struct {
         // Ideally we would integrate with the serde(rename) functionality to produce these field
         // names.
         let inserts = self.generate_tracking_inserts(direction, next_version, mod_gen_ctx);
+        let post_inserts =
+            self.generate_tracking_post_inserts(direction, next_version, mod_gen_ctx);
         let removals = self.generate_tracking_removals(direction, next_version, mod_gen_ctx);
         let json_paths = self.generate_json_paths(next_version, mod_gen_ctx);
+        let tracked_values = self.generate_tracked_values(direction, next_version, mod_gen_ctx);
 
         // TODO (@Techassi): We know the status, so we can hard-code it, but hard to track across structs
 
@@ -196,9 +199,17 @@ impl Struct {
                     // the upgrade or downgrade section. Only then we can convert the spec.
                     #inserts
 
+                    // Fields which changed their type are consumed by the conversion, so their
+                    // values need to be serialized before converting the spec.
+                    #tracked_values
+
                     let mut spec = Self {
                         #fields
                     };
+
+                    // Fields which changed their type can only be inserted into the status after
+                    // the spec is converted, because the downgraded value is tracked as well.
+                    #post_inserts
 
                     // After the spec is converted, depending on the direction, we need to apply
                     // changed values from either the upgrade or downgrade section. Afterwards
@@ -241,6 +252,12 @@ impl Struct {
                     })
                     .collect();
 
+                // This is the case if only fields which changed their type need to be tracked.
+                // These are inserted after the conversion, see generate_tracking_post_inserts.
+                if inserts.is_empty() {
+                    return None;
+                }
+
                 Some(quote! {
                     let upgrades = status
                         .changes()
@@ -249,6 +266,42 @@ impl Struct {
                         .or_default();
 
                     #inserts
+                })
+            }
+        }
+    }
+
+    fn generate_tracking_post_inserts(
+        &self,
+        direction: Direction,
+        next_version: &VersionDefinition,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+    ) -> Option<TokenStream> {
+        match direction {
+            Direction::Upgrade => None,
+            Direction::Downgrade => {
+                let next_version_string = next_version.inner.to_string();
+
+                let post_inserts: TokenStream = self
+                    .fields
+                    .iter()
+                    .filter_map(|f| {
+                        f.generate_for_status_post_insertion(direction, next_version, mod_gen_ctx)
+                    })
+                    .collect();
+
+                if post_inserts.is_empty() {
+                    return None;
+                }
+
+                Some(quote! {
+                    let upgrades = status
+                        .changes()
+                        .upgrades
+                        .entry(#next_version_string.to_owned())
+                        .or_default();
+
+                    #post_inserts
                 })
             }
         }
@@ -274,6 +327,10 @@ impl Struct {
             Direction::Upgrade => {
                 let next_version_string = next_version.inner.to_string();
 
+                // Multiple (nested) containers can track values for the same version. As such, only
+                // the values matching the JSON paths of this container are applied. All other values
+                // are kept, so that they can be applied by the other containers. The entry for the
+                // version is only removed once all values have been applied.
                 Some(quote! {
                     if let Some(upgrades) = status.changes().upgrades.get_mut(#next_version_string) {
                         #removals
@@ -300,17 +357,37 @@ impl Struct {
             .collect()
     }
 
+    fn generate_tracked_values(
+        &self,
+        direction: Direction,
+        next_version: &VersionDefinition,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+    ) -> TokenStream {
+        let from_struct_ident = &self.common.idents.parameter;
+
+        self.fields
+            .iter()
+            .filter_map(|f| {
+                f.generate_for_tracked_value(
+                    direction,
+                    next_version,
+                    from_struct_ident,
+                    mod_gen_ctx,
+                )
+            })
+            .collect()
+    }
+
     pub(super) fn needs_tracking(&self, version: &VersionDefinition) -> bool {
         self.fields.iter().any(|f| {
             f.changes.as_ref().is_some_and(|c| {
                 c.value_is(&version.inner, |s| {
-                    // For now, only added fields need to be tracked. In the future, removals and
-                    // type changes also need to be tracked
+                    // For now, only added fields and fields which changed their type need to be
+                    // tracked. In the future, removals also need to be tracked.
                     match s {
                         ItemStatus::Addition { .. } => true,
-                        // TODO (@Techassi): Support tracking for changed fields
-                        ItemStatus::Change { .. }
-                        | ItemStatus::Deprecation { .. }
+                        ItemStatus::Change { .. } => s.is_type_change(),
+                        ItemStatus::Deprecation { .. }
                         | ItemStatus::NoChange { .. }
                         | ItemStatus::NotPresent => false,
                     }
