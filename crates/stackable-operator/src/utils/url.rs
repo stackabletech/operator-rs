@@ -1,4 +1,4 @@
-use snafu::Snafu;
+use snafu::{Snafu, ensure};
 
 #[derive(Debug, PartialEq, Eq, Snafu)]
 pub enum UrlError {
@@ -47,25 +47,19 @@ impl UrlExt for url::Url {
     where
         T: AsRef<str>,
     {
-        let mut invalid_segments = segments
+        let invalid_segments = segments
             .iter()
-            .filter(|segment| {
-                let segment = segment.as_ref();
-                matches!(segment, "" | "." | "..") || segment.contains(['\t', '\n', '\r'])
-            })
-            // Make the iterator peekable so that we don't need to collect it here (which allocates).
-            // This enables us to only allocate in the error-case only - when there is at least one
-            // invalid path segment.
-            .peekable();
+            .map(AsRef::as_ref)
+            .filter(|s| matches!(*s, "" | "." | "..") || s.contains(['\t', '\n', '\r']))
+            .map(ToOwned::to_owned)
+            .collect::<Vec<_>>();
 
-        if invalid_segments.peek().is_some() {
-            return InvalidSegmentsSnafu {
+        ensure!(
+            invalid_segments.is_empty(),
+            InvalidSegmentsSnafu {
                 segments: invalid_segments
-                    .map(|s| s.as_ref().to_owned())
-                    .collect::<Vec<_>>(),
             }
-            .fail();
-        }
+        );
 
         let mut url = self.clone();
         url.path_segments_mut()
