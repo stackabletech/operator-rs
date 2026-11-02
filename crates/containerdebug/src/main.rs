@@ -41,7 +41,7 @@ async fn main() {
 
     let _trace_guard = Tracing::pre_configured(APP_NAME, opts.telemetry_arguments)
         .init()
-        .unwrap();
+        .expect("failed to configure tracing");
 
     let init_span = tracing::error_span!("containerdebug init").entered();
 
@@ -55,7 +55,8 @@ async fn main() {
         name = built_info::PKG_NAME
     );
 
-    let mut collect_ctx = SystemInformation::init();
+    let mut collect_ctx =
+        SystemInformation::init().expect("failed to initialize system information collection");
 
     let mut next_run = Instant::now();
 

@@ -6,9 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add `UrlExt::join_safe` function to safely append path segments to a base URL ([#1319]).
 - Add `crd::containerdebug.rs` module with the `ContainerdebugConfig` CRD struct as well as helper functions on `ValidatedContainerdebugConfig` ([#1308])
-
-[#1308]: https://github.com/stackabletech/operator-rs/pull/1308
 
 ### Changed
 
@@ -17,7 +16,14 @@ All notable changes to this project will be documented in this file.
   for details ([#1315]).
 - BREAKING: Bump `kube` to `5.0.0` and `k8s-openapi` to `0.29.0` ([#1321]).
 
+### Removed
+
+- BREAKING: Remove the unsafe and no longer needed `UrlExt::join_many` function. Use
+  `UrlExt::join_safe` instead ([#1319]).
+
+[#1308]: https://github.com/stackabletech/operator-rs/pull/1308
 [#1315]: https://github.com/stackabletech/operator-rs/pull/1315
+[#1319]: https://github.com/stackabletech/operator-rs/pull/1319
 [#1321]: https://github.com/stackabletech/operator-rs/pull/1321
 
 ## [0.121.0] - 2026-10-14

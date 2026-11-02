@@ -1,4 +1,12 @@
 use serde::Serialize;
+use snafu::{ResultExt, Snafu};
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("failed to list disks"))]
+    ListDisks { source: sysinfo::Error },
+}
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Serialize)]
 pub struct Disk {
@@ -12,12 +20,12 @@ pub struct Disk {
 
 impl Disk {
     #[tracing::instrument(name = "Disk::collect_all")]
-    pub fn collect_all() -> Vec<Self> {
-        let disks = sysinfo::Disks::new_with_refreshed_list();
-        if disks.list().is_empty() {
+    pub fn collect_all() -> Result<Vec<Self>> {
+        let disks = sysinfo::Disks::new_with_refreshed_list().context(ListDisksSnafu)?;
+        if disks.is_empty() {
             tracing::info!("no disks found");
         }
-        disks.list().iter().map(Self::from).collect()
+        Ok(disks.iter().map(Self::from).collect())
     }
 }
 

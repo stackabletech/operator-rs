@@ -2,12 +2,12 @@ use serde::Serialize;
 use snafu::{OptionExt, ResultExt, Snafu};
 use sysinfo::{Gid, Pid, ProcessRefreshKind, Uid, UpdateKind};
 
-use crate::error::SysinfoError;
+use crate::error::ok_or_warn;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("failed to get pid of the current process"))]
-    GetCurrentPid { source: SysinfoError },
+    GetCurrentPid { source: sysinfo::Error },
     #[snafu(display("current pid {pid} could not be resolved to a process"))]
     ResolveCurrentProcess { pid: Pid },
 }
@@ -23,9 +23,7 @@ pub struct User {
 impl User {
     #[tracing::instrument(name = "User::init", skip(sys))]
     pub fn init(sys: &mut sysinfo::System) -> Result<()> {
-        let pid = sysinfo::get_current_pid()
-            .map_err(|msg| SysinfoError { msg })
-            .context(GetCurrentPidSnafu)?;
+        let pid = sysinfo::get_current_pid().context(GetCurrentPidSnafu)?;
         // The process user is static, and there is a memory leak to updating it for every run, so cache it once and keep that.
         sys.refresh_processes_specifics(
             sysinfo::ProcessesToUpdate::Some(&[pid]),
@@ -37,16 +35,15 @@ impl User {
 
     #[tracing::instrument(name = "User::collect_current", skip(sys))]
     pub fn collect_current(sys: &sysinfo::System) -> Result<Self> {
-        let pid = sysinfo::get_current_pid()
-            .map_err(|msg| SysinfoError { msg })
-            .context(GetCurrentPidSnafu)?;
+        let pid = sysinfo::get_current_pid().context(GetCurrentPidSnafu)?;
         let current_process = sys
             .process(pid)
             .context(ResolveCurrentProcessSnafu { pid })?;
         let uid = current_process.user_id();
-        let os_users = sysinfo::Users::new_with_refreshed_list();
+        let os_users = ok_or_warn("users", sysinfo::Users::new_with_refreshed_list());
         let user = Self {
-            name: uid.and_then(|uid| Some(os_users.get_user_by_id(uid)?.name().to_string())),
+            name: uid
+                .and_then(|uid| Some(os_users.as_ref()?.get_user_by_id(uid)?.name().to_string())),
             uid: uid.cloned(),
             gid: current_process.group_id(),
         };

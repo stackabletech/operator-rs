@@ -94,7 +94,7 @@ snafu = "0.9.2"
 stackable-operator-derive = { path = "stackable-operator-derive" }
 strum = { version = "0.28.0", features = ["derive"] }
 syn = "3.0.9"
-sysinfo = "0.39.6"
+sysinfo = "0.40.1"
 tempfile = "3.27.0"
 time = { version = "0.3.55" }
 tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread", "fs"] }
@@ -141,6 +141,7 @@ derive_partial_eq_without_eq = "deny"
 unnecessary_struct_initialization = "deny"
 
 # Additional restriction lints we enforce
+disallowed_methods = "deny"
 unwrap_in_result = "deny"
 unwrap_used = "deny"
 panic = "deny"
