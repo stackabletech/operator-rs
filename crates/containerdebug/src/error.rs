@@ -1,11 +1,21 @@
 use serde::Serialize;
-use snafu::Snafu;
 
-/// Wrapped version of the errors returned by [`sysinfo`], since they are bare [`str`]s.
-#[derive(Debug, Snafu)]
-#[snafu(display("{msg}"))]
-pub struct SysinfoError {
-    pub msg: &'static str,
+/// Converts a fallible lookup into an [`Option`], logging the error if there was one.
+///
+/// Used for individual values that are nice to have, so that failing to retrieve one of them
+/// doesn't fail the whole component.
+pub fn ok_or_warn<T, E: std::error::Error + 'static>(
+    what: &str,
+    result: Result<T, E>,
+) -> Option<T> {
+    result
+        .inspect_err(|err| {
+            tracing::warn!(
+                error = err as &dyn std::error::Error,
+                "failed to retrieve {what}, ignoring...",
+            );
+        })
+        .ok()
 }
 
 /// Wraps errors returned by a component to present them consistently for serialization.
