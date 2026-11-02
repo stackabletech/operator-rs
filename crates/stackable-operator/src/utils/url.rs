@@ -16,27 +16,15 @@ pub enum UrlError {
 /// An extension trait for [`url::Url`], most notably providing a safe alternative for
 /// [`url::Url::join`]: [`UrlExt::join_safe`].
 pub trait UrlExt: Sized {
-    /// Joins one or more segments to the end of the existing URL path segments and returns a new
-    /// [`url::Url`].
+    /// Returns a clone of this URL with each of `segments` appended as exactly one URL path segment
+    /// to the existing path segments.
     ///
     /// Compared to [`url::Url::join`], it protects users against (accidental) misuse (especially
     /// when dealing with untrusted input) in two ways:
     ///
-    /// 1. The function validates that each segment is not an invalid segment. This for example
-    ///    prevents path traversals.
-    /// 2. The upstream function can replace the entire base URL in these two situations:
-    ///    - A [scheme relative special URL][1] as input replaces everything in the base URL after
-    ///      the scheme.
-    ///    - An absolute URL (with a scheme) as input replaces the whole base URL (even the
-    ///      scheme).
-    ///
-    ///    _From <https://docs.rs/url/2.5.8/url/struct.Url.html#method.join> (Accessed 2026-10-19,
-    ///    version 2.5.8)_
-    ///
-    ///    This for example allows users to construct malicious URLs. This function constructs the
-    ///    final URL in a way in which the segments are only appended to any existing path segments.
-    ///
-    /// [1]: https://url.spec.whatwg.org/#scheme-relative-special-url-string
+    /// 1. It rejects invalid segments: Empty segments, `.`, `..`, and segments containing any of
+    ///    `\t`, `\n`, `\r`.
+    /// 2. It only appends segments, the base URL is never replaced.
     fn join_safe<T>(&self, segments: &[T]) -> Result<Self, UrlError>
     where
         T: AsRef<str>;
