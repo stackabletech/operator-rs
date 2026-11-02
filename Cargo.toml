@@ -137,6 +137,7 @@ derive_partial_eq_without_eq = "deny"
 unnecessary_struct_initialization = "deny"
 
 # Additional restriction lints we enforce
+disallowed_methods = "deny"
 unwrap_in_result = "deny"
 unwrap_used = "deny"
 panic = "deny"

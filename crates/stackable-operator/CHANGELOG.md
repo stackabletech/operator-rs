@@ -6,9 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add `UrlExt::join_safe` function to safely append path segments to a base URL ([#1319]).
 - Add `crd::containerdebug.rs` module with the `ContainerdebugConfig` CRD struct as well as helper functions on `ValidatedContainerdebugConfig` ([#1308])
-
-[#1308]: https://github.com/stackabletech/operator-rs/pull/1308
 
 ### Changed
 
@@ -16,7 +15,14 @@ All notable changes to this project will be documented in this file.
   `certs` and `webhook` modules. See the changelogs of `stackable-certs` and `stackable-webhook`
   for details ([#1315]).
 
+### Removed
+
+- BREAKING: Remove the unsafe and no longer needed `UrlExt::join_many` function. Use
+  `UrlExt::join_safe` instead ([#1319]).
+
+[#1308]: https://github.com/stackabletech/operator-rs/pull/1308
 [#1315]: https://github.com/stackabletech/operator-rs/pull/1315
+[#1319]: https://github.com/stackabletech/operator-rs/pull/1319
 
 ## [0.121.0] - 2026-10-14
 
