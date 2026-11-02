@@ -120,6 +120,12 @@ zeroize = "1.9.1"
 # Enable all pedantic lints (with lower priority so individual lints can override)
 pedantic = { level = "deny", priority = -1 }
 
+# NOTE (@Techassi): Since Rust 1.99.0 this lint is triggered by fields which use `#[darling(multiple)]`.
+# This seems to be a false-positive as far as I can see. Allowing this lint at the container or
+# field level did not work. That's why it is now allowed globally.
+# TODO (@Techassi): Remove this once _whatever needs fixing is fixed_.
+redundant_field_names = "allow"
+
 # Pedantic lints we don't enforce (yet)
 doc_markdown = "allow"
 missing_errors_doc = "allow"
