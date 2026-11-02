@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Bump the RustCrypto dependencies to their new generation, which affects the re-exported
   `certs` and `webhook` modules. See the changelogs of `stackable-certs` and `stackable-webhook`
   for details ([#1315]).
+- BREAKING: Bump `kube` to `5.0.0` and `k8s-openapi` to `0.29.0` ([#1321]).
 
 ### Removed
 
@@ -23,6 +24,7 @@ All notable changes to this project will be documented in this file.
 [#1308]: https://github.com/stackabletech/operator-rs/pull/1308
 [#1315]: https://github.com/stackabletech/operator-rs/pull/1315
 [#1319]: https://github.com/stackabletech/operator-rs/pull/1319
+[#1321]: https://github.com/stackabletech/operator-rs/pull/1321
 
 ## [0.121.0] - 2026-10-14
 
