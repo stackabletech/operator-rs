@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add `UrlExt::join_safe` function to safely append path segments to a base URL ([#1319]).
+- Add `crd::containerdebug.rs` module with the `ContainerdebugConfig` CRD struct as well as helper functions on `ValidatedContainerdebugConfig` ([#1308])
 - Add utility for management access and product agents ([#1290]):
   - `crd::management_access::v1alpha1::TlsClientCredential`, the source of a TLS client
     certificate (a SecretClass or a static Secret), with `add_volumes_and_mounts` to mount it into
@@ -21,12 +23,21 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Bump the RustCrypto dependencies to their new generation, which affects the re-exported
   `certs` and `webhook` modules. See the changelogs of `stackable-certs` and `stackable-webhook`
   for details ([#1315]).
+- BREAKING: Bump `kube` to `5.0.0` and `k8s-openapi` to `0.29.0` ([#1321]).
 - BREAKING: The RBAC names of `v2::role_utils::ResourceNames` are now provided by the trait
   `v2::rbac::RbacResourceNames`, which must be imported to call them. `v2::rbac::build_service_account`
   and `v2::rbac::build_role_binding` accept any `RbacResourceNames` ([#1290]).
 
+### Removed
+
+- BREAKING: Remove the unsafe and no longer needed `UrlExt::join_many` function. Use
+  `UrlExt::join_safe` instead ([#1319]).
+
 [#1290]: https://github.com/stackabletech/operator-rs/pull/1290
+[#1308]: https://github.com/stackabletech/operator-rs/pull/1308
 [#1315]: https://github.com/stackabletech/operator-rs/pull/1315
+[#1319]: https://github.com/stackabletech/operator-rs/pull/1319
+[#1321]: https://github.com/stackabletech/operator-rs/pull/1321
 
 ## [0.121.0] - 2026-10-14
 

@@ -118,7 +118,7 @@ pub mod versioned {
         management_access: Option<DummyManagementAccess>,
     }
 
-    #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]
+    #[derive(Debug, PartialEq, Fragment, JsonSchema)]
     #[fragment_attrs(
         derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema),
         schemars(crate = "stackable_operator::schemars"),
@@ -131,6 +131,9 @@ pub mod versioned {
 
         #[fragment_attrs(serde(default))]
         pub logging: stackable_operator::product_logging::spec::Logging<Container>,
+
+        #[fragment_attrs(serde(default))]
+        pub containerdebug: stackable_operator::crd::containerdebug::v1alpha1::ContainerdebugConfig,
     }
 
     #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]

@@ -1,2 +1,5 @@
 allow-unwrap-in-tests = true
 allow-panic-in-tests = true
+disallowed-methods = [
+  { path = "url::Url::join", reason = "the function resolves its input as a URL, allowing bad actors to craft malicious inputs which replace the URL entirely or traverse the path; use UrlExt::join_safe instead" },
+]
