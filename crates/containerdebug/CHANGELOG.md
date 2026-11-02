@@ -6,9 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Bump `sysinfo` to 0.40, which implied an error-handling rework ([#XXXX]).
+- Bump `sysinfo` to 0.40, which implied an error-handling rework ([#1320]).
 
-[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+[#1320]: https://github.com/stackabletech/operator-rs/pull/1320
 
 ## [0.4.1] - 2026-07-06
 
