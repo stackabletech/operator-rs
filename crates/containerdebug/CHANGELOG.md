@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-02
+
 ### Changed
 
 - Bump `sysinfo` to 0.40, which implied an error-handling rework ([#1320]).
