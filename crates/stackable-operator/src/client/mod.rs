@@ -857,7 +857,8 @@ mod tests {
             .list_with_label_selector::<Pod>(&client.default_namespace, &label_selector)
             .await
             .expect("Expected LabelSelector to return a result with zero pods.");
-        assert!(no_pods.is_empty());
+
+        assert_eq!(no_pods, []);
 
         let pod_to_wait_for: Pod = Pod {
             metadata: ObjectMeta {

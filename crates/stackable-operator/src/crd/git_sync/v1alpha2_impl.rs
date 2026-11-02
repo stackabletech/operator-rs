@@ -530,11 +530,15 @@ mod tests {
         .unwrap();
 
         assert!(!git_sync_resources.is_git_sync_enabled());
-        assert!(git_sync_resources.git_sync_containers.is_empty());
-        assert!(git_sync_resources.git_sync_init_containers.is_empty());
-        assert!(git_sync_resources.git_content_volumes.is_empty());
-        assert!(git_sync_resources.git_content_volume_mounts.is_empty());
-        assert!(git_sync_resources.git_content_folders.is_empty());
+        assert_eq!(git_sync_resources.git_sync_containers, []);
+        assert_eq!(git_sync_resources.git_sync_init_containers, []);
+        assert_eq!(git_sync_resources.git_content_volumes, []);
+        assert_eq!(git_sync_resources.git_content_volume_mounts, []);
+        // NOTE (@Techassi): For whatever reason we need a type annotation here...
+        assert_eq!(
+            git_sync_resources.git_content_folders,
+            [] as [std::path::PathBuf; 0]
+        );
     }
 
     #[test]
