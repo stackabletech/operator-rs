@@ -435,6 +435,26 @@ spec:
                   config:
                     default: {}
                     properties:
+                      containerdebug:
+                        default:
+                          enabled: null
+                          interval: null
+                        description: |-
+                          Configures the `containerdebug` tool, which periodically logs information about the container
+                          environment (such as network interfaces, DNS lookups and disk usage) in the background of the
+                          product container.
+                        properties:
+                          enabled:
+                            description: Whether `containerdebug` runs in the background of the product container. Defaults to `true`.
+                            nullable: true
+                            type: boolean
+                          interval:
+                            description: |-
+                              Time between two runs of `containerdebug`, e.g. `30m`, `1h` or `2d`. Must not be zero.
+                              Defaults to `30m`.
+                            nullable: true
+                            type: string
+                        type: object
                       logging:
                         default:
                           containers: {}
@@ -1114,6 +1134,26 @@ spec:
                         config:
                           default: {}
                           properties:
+                            containerdebug:
+                              default:
+                                enabled: null
+                                interval: null
+                              description: |-
+                                Configures the `containerdebug` tool, which periodically logs information about the container
+                                environment (such as network interfaces, DNS lookups and disk usage) in the background of the
+                                product container.
+                              properties:
+                                enabled:
+                                  description: Whether `containerdebug` runs in the background of the product container. Defaults to `true`.
+                                  nullable: true
+                                  type: boolean
+                                interval:
+                                  description: |-
+                                    Time between two runs of `containerdebug`, e.g. `30m`, `1h` or `2d`. Must not be zero.
+                                    Defaults to `30m`.
+                                  nullable: true
+                                  type: string
+                              type: object
                             logging:
                               default:
                                 containers: {}
