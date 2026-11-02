@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Bump `sysinfo` to 0.40, which implied an error-handling rework ([#XXXX]).
+
+[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+
 ## [0.4.1] - 2026-07-06
 
 Note: There are only dependency bumps in this release.

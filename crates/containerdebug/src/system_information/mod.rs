@@ -1,4 +1,5 @@
 use serde::Serialize;
+use snafu::{ResultExt, Snafu};
 
 use crate::error::ComponentResult;
 
@@ -14,7 +15,7 @@ pub struct SystemInformation {
     pub resources: Option<resources::Resources>,
     pub os: Option<os::OperatingSystem>,
     pub current_user: Option<ComponentResult<user::User>>,
-    pub disks: Option<Vec<disk::Disk>>,
+    pub disks: Option<ComponentResult<Vec<disk::Disk>>>,
     pub network: Option<ComponentResult<network::SystemNetworkInfo>>,
     // TODO:
     //  Current time
@@ -33,6 +34,12 @@ pub struct SystemInformation {
     // - Users/Groups
 }
 
+#[derive(Debug, Snafu)]
+pub enum InitError {
+    #[snafu(display("failed to create sysinfo system"))]
+    CreateSystem { source: sysinfo::Error },
+}
+
 /// Common data that is cached between [`SystemInformation::collect`] calls.
 pub struct CollectContext {
     system: sysinfo::System,
@@ -41,11 +48,11 @@ pub struct CollectContext {
 impl SystemInformation {
     /// Collects static information that doesn't need to be refreshed.
     #[tracing::instrument(name = "SystemInformation::init")]
-    pub fn init() -> CollectContext {
+    pub fn init() -> Result<CollectContext, InitError> {
         tracing::debug!("initializing");
         let mut ctx = CollectContext {
             // Each module is responsible for updating the information that it cares about.
-            system: sysinfo::System::new(),
+            system: sysinfo::System::new().context(CreateSystemSnafu)?,
         };
         if let Err(err) = user::User::init(&mut ctx.system) {
             tracing::error!(
@@ -54,7 +61,7 @@ impl SystemInformation {
             );
         }
         tracing::debug!("init finished");
-        ctx
+        Ok(ctx)
     }
 
     /// Collects and reports
@@ -69,7 +76,10 @@ impl SystemInformation {
                 "User::collect_current",
                 user::User::collect_current(&ctx.system),
             )),
-            disks: Some(disk::Disk::collect_all()),
+            disks: Some(ComponentResult::report_from_result(
+                "Disk::collect_all",
+                disk::Disk::collect_all(),
+            )),
             network: Some(ComponentResult::report_from_result(
                 "SystemNetworkInfo::collect",
                 network::SystemNetworkInfo::collect().await,

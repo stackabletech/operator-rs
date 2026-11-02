@@ -1,6 +1,8 @@
 use serde::Serialize;
 use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
 
+use crate::error::ok_or_warn;
+
 #[derive(Debug, Serialize)]
 pub struct Resources {
     pub cpu_count: usize,
@@ -31,19 +33,19 @@ impl Resources {
 
         sys.refresh_specifics(
             RefreshKind::nothing()
-                .with_cpu(CpuRefreshKind::nothing().with_cpu_usage())
+                .with_cpu(CpuRefreshKind::nothing().with_usage())
                 .with_memory(MemoryRefreshKind::everything()),
         );
 
         let cpu_count = sys.cpus().len();
-        let physical_core_count = System::physical_core_count();
+        let physical_core_count = ok_or_warn("physical core count", System::physical_core_count());
         tracing::info!(
             cpus.physical = cpu_count,
             cpus.cores.physical = physical_core_count,
             "cpus"
         );
 
-        let open_files_limit = System::open_files_limit();
+        let open_files_limit = ok_or_warn("open files limit", System::open_files_limit());
         let open_files_count = std::fs::read_dir("/proc/self/fd")
             .map(|entries| entries.count())
             .ok();
