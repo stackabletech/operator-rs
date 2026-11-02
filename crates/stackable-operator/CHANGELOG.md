@@ -6,10 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add utility for product agents ([#1290]):
-  - `TlsClientCredential`, enum for TLS-based management access used for adding volumes and mounts.
-  - `Anonymous`, for management access to products that don't authenticate the agent.
-  - Labels and selectors for agents, with the component `<product-name>-agent`.
+- Add utility for management access and product agents ([#1290]):
+  - `crd::management_access::v1alpha1::TlsClientCredential`, the source of a TLS client
+    certificate (a SecretClass or a static Secret), with `add_volumes_and_mounts` to mount it into
+    the agent Pod at `crd::management_access::tls::MOUNT_PATH`.
+  - `crd::management_access::v1alpha1::Anonymous`, for products that don't authenticate the agent.
+  - `v2::kvp::label::recommended_labels_for_agent_resources`, `agent_selector` and
+    `all_agents_selector`, with the component label `<product-name>-agent`.
   - `v2::agent_utils::AgentResourceNames`, the names of the agent resources.
 - Re-export `stackable-agent` as `agent` behind the `agent` feature ([#1290]).
 
