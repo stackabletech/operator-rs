@@ -64,9 +64,7 @@ pub mod versioned {
 
     /// A mode for deciding the preferred [`v1alpha1::AddressType`].
     ///
-    /// These can vary depending on the rest of the [`ListenerClass`][lc].
-    ///
-    /// [lc]: crate::crd::listener::class::v1alpha1::ListenerClass
+    /// These can vary depending on the rest of the [`ListenerClass`].
     #[derive(Serialize, Deserialize, Clone, Copy, Debug, JsonSchema, PartialEq, Eq)]
     pub enum PreferredAddressType {
         /// Like [`AddressType::Hostname`], but prefers [`AddressType::Ip`] for [`ServiceType::NodePort`], since their hostnames are less likely to be resolvable.
