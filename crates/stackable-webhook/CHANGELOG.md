@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-03
+
 ### Changed
 
 - BREAKING: Bump `x509-cert` to 0.3, which is exposed in the public API via the `Certificate`

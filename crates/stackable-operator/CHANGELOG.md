@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.122.0] - 2026-11-03
+
 ### Added
 
 - Add `UrlExt::join_safe` function to safely append path segments to a base URL ([#1319]).
