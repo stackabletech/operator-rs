@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
 
 - Add `UrlExt::join_safe` function to safely append path segments to a base URL ([#1319]).
 - Add `crd::containerdebug.rs` module with the `ContainerdebugConfig` CRD struct as well as helper functions on `ValidatedContainerdebugConfig` ([#1308])
+- Add utility for management access and product agents ([#1290]):
+  - `crd::management_access::v1alpha1::TlsClientCredential`, the source of a TLS client
+    certificate (a SecretClass or a static Secret), with `add_volumes_and_mounts` to mount it into
+    the agent Pod at `crd::management_access::tls::MOUNT_PATH`.
+  - `crd::management_access::v1alpha1::Anonymous`, for products that don't authenticate the agent.
+  - `v2::kvp::label::recommended_labels_for_agent_resources`, `agent_selector` and
+    `all_agents_selector`, with the component label `<product-name>-agent`.
+  - `v2::agent_utils::AgentResourceNames`, the names of the agent resources.
+- Re-export `stackable-agent` as `agent` behind the `agent` feature ([#1290]).
 
 ### Changed
 
@@ -15,12 +24,16 @@ All notable changes to this project will be documented in this file.
   `certs` and `webhook` modules. See the changelogs of `stackable-certs` and `stackable-webhook`
   for details ([#1315]).
 - BREAKING: Bump `kube` to `5.0.0` and `k8s-openapi` to `0.29.0` ([#1321]).
+- BREAKING: The RBAC names of `v2::role_utils::ResourceNames` are now provided by the trait
+  `v2::rbac::RbacResourceNames`, which must be imported to call them. `v2::rbac::build_service_account`
+  and `v2::rbac::build_role_binding` accept any `RbacResourceNames` ([#1290]).
 
 ### Removed
 
 - BREAKING: Remove the unsafe and no longer needed `UrlExt::join_many` function. Use
   `UrlExt::join_safe` instead ([#1319]).
 
+[#1290]: https://github.com/stackabletech/operator-rs/pull/1290
 [#1308]: https://github.com/stackabletech/operator-rs/pull/1308
 [#1315]: https://github.com/stackabletech/operator-rs/pull/1315
 [#1319]: https://github.com/stackabletech/operator-rs/pull/1319

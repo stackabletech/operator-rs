@@ -1,5 +1,6 @@
 use crate::v2::types::kubernetes::Uid;
 
+pub mod agent_utils;
 pub mod builder;
 pub mod cluster_resources;
 pub mod config_file_writer;
