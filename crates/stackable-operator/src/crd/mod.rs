@@ -8,6 +8,7 @@ pub mod authentication;
 pub mod containerdebug;
 pub mod git_sync;
 pub mod listener;
+pub mod management_access;
 pub mod openlineage;
 pub mod s3;
 pub mod scaler;

@@ -10,18 +10,32 @@ use crate::{
     },
     kube::{Resource, ResourceExt},
     kvp::Labels,
-    v2::{HasName, HasUid, builder::meta::ownerreference_from_resource, role_utils::ResourceNames},
+    v2::{
+        HasName, HasUid,
+        builder::meta::ownerreference_from_resource,
+        types::kubernetes::{ClusterRoleName, RoleBindingName, ServiceAccountName},
+    },
 };
 
-/// Builds the [`ServiceAccount`] for the product workloads, named
-/// `<cluster_name>-serviceaccount` after the given [`ResourceNames`].
+/// Names of the RBAC resources built by [`build_service_account`] and [`build_role_binding`].
+///
+/// Implemented by [`crate::v2::role_utils::ResourceNames`] for the product workloads and by
+/// [`crate::v2::agent_utils::AgentResourceNames`] for a product agent.
+pub trait RbacResourceNames {
+    fn service_account_name(&self) -> ServiceAccountName;
+    fn role_binding_name(&self) -> RoleBindingName;
+    fn cluster_role_name(&self) -> ClusterRoleName;
+}
+
+/// Builds the [`ServiceAccount`] named after the given [`RbacResourceNames`].
 ///
 /// Together with [`build_role_binding`] this is the infallible variant of
-/// [`crate::commons::rbac::build_rbac_resources`]; the output is identical as long as
+/// [`crate::commons::rbac::build_rbac_resources`]; for
+/// [`crate::v2::role_utils::ResourceNames`], the output is identical as long as
 /// `resource_names.cluster_name` matches the metadata name of `owner`.
 pub fn build_service_account(
     owner: &(impl Resource<DynamicType = ()> + HasName + HasUid),
-    resource_names: &ResourceNames,
+    resource_names: &impl RbacResourceNames,
     labels: Labels,
 ) -> ServiceAccount {
     ServiceAccount {
@@ -34,17 +48,17 @@ pub fn build_service_account(
     }
 }
 
-/// Builds the [`RoleBinding`] for the product workloads, named `<cluster_name>-rolebinding`
-/// after the given [`ResourceNames`]. It binds the [`ServiceAccount`] from
-/// [`build_service_account`] to the operator-deployed ClusterRole
-/// `<product_name>-clusterrole`, which must already exist.
+/// Builds the [`RoleBinding`] named after the given [`RbacResourceNames`]. It binds the
+/// [`ServiceAccount`] from [`build_service_account`] to the operator-deployed ClusterRole, which
+/// must already exist.
 ///
 /// Together with [`build_service_account`] this is the infallible variant of
-/// [`crate::commons::rbac::build_rbac_resources`]; the output is identical as long as
+/// [`crate::commons::rbac::build_rbac_resources`]; for
+/// [`crate::v2::role_utils::ResourceNames`], the output is identical as long as
 /// `resource_names.cluster_name` matches the metadata name of `owner`.
 pub fn build_role_binding(
     owner: &(impl Resource<DynamicType = ()> + HasName + HasUid),
-    resource_names: &ResourceNames,
+    resource_names: &impl RbacResourceNames,
     labels: Labels,
 ) -> RoleBinding {
     RoleBinding {

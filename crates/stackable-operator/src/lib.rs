@@ -42,6 +42,8 @@ pub use schemars;
 // Internal re-exports
 // TODO (@Techassi): Ideally we would want webhook and certs exported here as
 // well, but that would require some restructuring of crates.
+#[cfg(feature = "agent")]
+pub use stackable_agent as agent;
 #[cfg(feature = "certs")]
 pub use stackable_certs as certs;
 pub use stackable_shared as shared;

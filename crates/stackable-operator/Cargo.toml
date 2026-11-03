@@ -9,8 +9,9 @@ repository.workspace = true
 
 [features]
 default = ["crds"]
-full = ["client-feature-gates", "crds", "certs", "test-support", "time", "webhook", "kube-ws", "kube-cel", "kube-http-proxy", "kube-socks5"]
+full = ["agent", "client-feature-gates", "crds", "certs", "test-support", "time", "webhook", "kube-ws", "kube-cel", "kube-http-proxy", "kube-socks5"]
 
+agent = ["dep:stackable-agent"]
 client-feature-gates = ["dep:winnow"]
 crds = ["dep:stackable-versioned"]
 certs = ["dep:stackable-certs"]
@@ -23,6 +24,7 @@ kube-http-proxy = ["kube/http-proxy"]
 kube-socks5 = ["kube/socks5"]
 
 [dependencies]
+stackable-agent = { path = "../stackable-agent", optional = true }
 stackable-certs = { path = "../stackable-certs", optional = true }
 stackable-operator-derive = { path = "../stackable-operator-derive" }
 stackable-shared = { path = "../stackable-shared", features = ["jiff"] }
