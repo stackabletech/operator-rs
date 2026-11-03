@@ -1,7 +1,7 @@
 [package]
 name = "stackable-agent"
 description = "Building blocks for agents managing resources inside products of the Stackable Data Platform"
-version = "0.0.1"
+version = "0.1.0"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
