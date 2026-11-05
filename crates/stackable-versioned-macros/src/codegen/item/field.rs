@@ -156,7 +156,7 @@ impl VersionedField {
                             pub #field_ident: #field_type,
                         })
                     }
-                    ItemStatus::NotPresent => None,
+                    ItemStatus::Removal { .. } | ItemStatus::NotPresent => None,
                     ItemStatus::NoChange {
                         previously_deprecated,
                         ident,
@@ -225,8 +225,11 @@ impl VersionedField {
                 match (change, next_change) {
                     // If both this status and the next one is NotPresent, which means a field was
                     // introduced after a bunch of versions, we don't need to generate any code for
-                    // the From impl.
-                    (ItemStatus::NotPresent, ItemStatus::NotPresent) => None,
+                    // the From impl. The same applies to all versions after a field was removed.
+                    (
+                        ItemStatus::NotPresent | ItemStatus::Removal { .. },
+                        ItemStatus::NotPresent,
+                    ) => None,
                     (
                         _,
                         ItemStatus::Addition {
@@ -235,6 +238,19 @@ impl VersionedField {
                     ) => match direction {
                         Direction::Upgrade => Some(quote! { #ident: #default_fn(), }),
                         Direction::Downgrade => None,
+                    },
+                    // The field doesn't exist in the next version anymore. As such, it is dropped
+                    // during upgrades and needs to be initialized during downgrades.
+                    // TODO: Track the value of removed fields when experimental_conversion_tracking
+                    // is enabled. Currently, the value is lost during the upgrade.
+                    (
+                        _,
+                        ItemStatus::Removal {
+                            ident, default_fn, ..
+                        },
+                    ) => match direction {
+                        Direction::Upgrade => None,
+                        Direction::Downgrade => Some(quote! { #ident: #default_fn(), }),
                     },
                     (
                         _,
@@ -307,8 +323,9 @@ impl VersionedField {
         let changes = self.changes.as_ref()?;
 
         match direction {
-            // This arm is only relevant for removed fields which are currently
-            // not supported.
+            // This arm is only relevant for removed fields, which are currently
+            // not tracked.
+            // TODO: Track the value of removed fields.
             Direction::Upgrade => None,
 
             // When we generate code for a downgrade, any changes which need to

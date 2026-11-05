@@ -389,6 +389,7 @@ impl Struct {
                         ItemStatus::Change { .. } => s.is_type_change(),
                         ItemStatus::Deprecation { .. }
                         | ItemStatus::NoChange { .. }
+                        | ItemStatus::Removal { .. }
                         | ItemStatus::NotPresent => false,
                     }
                 })

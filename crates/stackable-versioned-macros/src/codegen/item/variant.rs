@@ -139,7 +139,8 @@ impl VersionedVariant {
                         #ident #fields,
                     })
                 }
-                ItemStatus::NotPresent => None,
+                // Removing variants is rejected during validation.
+                ItemStatus::Removal { .. } | ItemStatus::NotPresent => None,
             },
             None => {
                 // If there is no chain of variant actions, the variant is not

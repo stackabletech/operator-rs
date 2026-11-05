@@ -1,0 +1,29 @@
+error: cannot be marked as `removed` in the first version
+  --> tests/inputs/fail/removed.rs:10:34
+   |
+10 |         #[versioned(removed(in = "v1alpha1"))]
+   |                                  ^^^^^^^^^^
+
+error: the `removed` action uses a version which is not declared via `#[versioned(version)]`
+  --> tests/inputs/fail/removed.rs:15:34
+   |
+15 |         #[versioned(removed(in = "v2"))]
+   |                                  ^^^^
+
+error: cannot be marked as `removed` and any other action in the same version
+  --> tests/inputs/fail/removed.rs:21:9
+   |
+21 |         deprecated_foo: usize,
+   |         ^^^^^^^^^^^^^^
+
+error: `removed` must use a version higher than all other actions
+  --> tests/inputs/fail/removed.rs:26:9
+   |
+26 |         foo: usize,
+   |         ^^^
+
+error: the `removed` action is currently not supported on enum variants
+  --> tests/inputs/fail/removed.rs:30:34
+   |
+30 |         #[versioned(removed(in = "v1"))]
+   |                                  ^^^^
