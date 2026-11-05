@@ -29,6 +29,8 @@ pub use variant::*;
 ///   [`Vec`].
 /// - An item can only be deprecated once. A field or variant not marked as
 ///   'deprecated' will be included up until the latest version.
+/// - An item can only be removed once. It is not included in the version it is
+///   removed in and all later versions. Removal must be the last action.
 #[derive(Debug, FromMeta)]
 pub struct CommonItemAttributes {
     /// This parses the `added` attribute on items (fields or variants). It can
@@ -43,6 +45,10 @@ pub struct CommonItemAttributes {
     /// This parses the `deprecated` attribute on items (fields or variants). It
     /// can only be present at most once.
     pub deprecated: Option<DeprecatedAttributes>,
+
+    /// This parses the `removed` attribute on items (fields or variants). It
+    /// can only be present at most once.
+    pub removed: Option<RemovedAttributes>,
 }
 
 // This impl block ONLY contains validation. The main entrypoint is the associated 'validate'
@@ -90,6 +96,25 @@ impl CommonItemAttributes {
                 ).with_span(&deprecated.version.span()));
         }
 
+        if let Some(removed) = &self.removed {
+            if !versions.iter().any(|v| v.inner == *removed.version) {
+                errors.push(Error::custom(
+                    "the `removed` action uses a version which is not declared via `#[versioned(version)]`",
+                ).with_span(&removed.version.span()));
+            }
+
+            // An item removed in the first version would never exist.
+            if versions
+                .first()
+                .is_some_and(|v| v.inner == *removed.version)
+            {
+                errors.push(
+                    Error::custom("cannot be marked as `removed` in the first version")
+                        .with_span(&removed.version.span()),
+                );
+            }
+        }
+
         errors.finish()
     }
 
@@ -106,7 +131,29 @@ impl CommonItemAttributes {
     ///   at least one version before being changed.
     /// - `changed` and `deprecated` using the same version: Again, the same
     ///   rules from above apply here as well.
+    /// - `removed` and any other action using the same version: Again, the
+    ///   same rules from above apply here as well.
     fn validate_action_combinations(&self, item_idents: &impl ItemIdents) -> Result<()> {
+        if let Some(removed) = &self.removed {
+            let removed_version = *removed.version;
+
+            if self
+                .added
+                .as_ref()
+                .is_some_and(|a| *a.version == removed_version)
+                || self.changes.iter().any(|c| *c.version == removed_version)
+                || self
+                    .deprecated
+                    .as_ref()
+                    .is_some_and(|d| *d.version == removed_version)
+            {
+                return Err(Error::custom(
+                    "cannot be marked as `removed` and any other action in the same version",
+                )
+                .with_span(item_idents.original()));
+            }
+        }
+
         match (&self.added, &self.changes, &self.deprecated) {
             (Some(added), _, Some(deprecated)) if *added.version == *deprecated.version => Err(
                 Error::custom("cannot be marked as `added` and `deprecated` in the same version")
@@ -142,6 +189,7 @@ impl CommonItemAttributes {
     ///   version of the added action.
     /// - All `changed` actions must use a greater version than `added` but a
     ///   lesser version than `deprecated`.
+    /// - `removed` must use a greater version than all other actions.
     fn validate_action_order(&self, item_idents: &impl ItemIdents) -> Result<()> {
         let added_version = self.added.as_ref().map(|a| *a.version);
         let deprecated_version = self.deprecated.as_ref().map(|d| *d.version);
@@ -167,6 +215,21 @@ impl CommonItemAttributes {
                 "all changes must use versions higher than `added` and lower than `deprecated`",
             )
             .with_span(item_idents.original()));
+        }
+
+        // Lastly, ensure that the item is removed after all other actions.
+        if let Some(removed) = &self.removed {
+            let removed_version = *removed.version;
+
+            if added_version.is_some_and(|a| a > removed_version)
+                || deprecated_version.is_some_and(|d| d > removed_version)
+                || self.changes.iter().any(|c| *c.version > removed_version)
+            {
+                return Err(Error::custom(
+                    "`removed` must use a version higher than all other actions",
+                )
+                .with_span(item_idents.original()));
+            }
         }
 
         Ok(())
@@ -317,8 +380,32 @@ impl CommonItemAttributes {
             .collect()
     }
 
-    #[expect(clippy::too_many_lines)]
     pub fn into_changeset(
+        mut self,
+        idents: &impl ItemIdents,
+        ty: Type,
+    ) -> Option<BTreeMap<Version, ItemStatus>> {
+        let removed = self.removed.take();
+        let mut actions = self.into_changeset_without_removal(idents, ty);
+
+        // The removal is always the last action (which is ensured during validation). The item uses
+        // the original ident in the last version it is present in, regardless if it was deprecated
+        // or not.
+        if let Some(removed) = removed {
+            actions.get_or_insert_default().insert(
+                *removed.version,
+                ItemStatus::Removal {
+                    default_fn: removed.default_fn.deref().clone(),
+                    ident: idents.original().clone(),
+                },
+            );
+        }
+
+        actions
+    }
+
+    #[expect(clippy::too_many_lines)]
+    fn into_changeset_without_removal(
         self,
         idents: &impl ItemIdents,
         ty: Type,
@@ -512,4 +599,18 @@ pub struct DeprecatedAttributes {
     pub version: SpannedValue<Version>,
     pub note: Option<SpannedValue<String>>,
     pub previous_docs: Option<SpannedValue<String>>,
+}
+
+/// For the removed() action
+///
+/// Example usage:
+/// - `removed(in = "...")`
+/// - `removed(in = "...", default = "custom_fn")`
+#[derive(Clone, Debug, FromMeta)]
+pub struct RemovedAttributes {
+    #[darling(rename = "in")]
+    pub version: SpannedValue<Version>,
+
+    #[darling(rename = "default", default = "default_default_fn")]
+    pub default_fn: SpannedValue<Path>,
 }
