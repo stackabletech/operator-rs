@@ -18,6 +18,8 @@ All notable changes to this project will be documented in this file.
 - The CRD schema of tracked values (`value` and `downgradedValue`) now accepts any JSON value instead
   of only objects. Previously, patching the status failed for tracked non-object values, like
   strings ([#1326]).
+- The generated tracking status now respects the `schemars` and `serde` crate overrides. Previously,
+  it failed to compile if these crates were not direct dependencies ([#1326]).
 
 [#1324]: https://github.com/stackabletech/operator-rs/pull/1324
 [#1325]: https://github.com/stackabletech/operator-rs/pull/1325

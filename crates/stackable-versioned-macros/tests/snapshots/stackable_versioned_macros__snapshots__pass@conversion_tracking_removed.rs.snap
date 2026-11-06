@@ -614,7 +614,8 @@ fn FooSpec_roundtrip_up_down() {
     ::serde::Serialize,
     ::schemars::JsonSchema
 )]
-#[serde(rename_all = "camelCase")]
+#[schemars(crate = "::schemars")]
+#[serde(crate = "::serde", rename_all = "camelCase")]
 pub struct FooStatusWithChangedValues {
     #[serde(
         default,
