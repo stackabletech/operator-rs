@@ -15,6 +15,8 @@ All notable changes to this project will be documented in this file.
 - The `changedValues` field of the generated tracking status is no longer required and isn't
   serialized when empty. Previously, patching the status of objects created directly in the storage
   version failed, as they never pass through the conversion webhook ([#1325]).
+  We also reduced "clutter" in the CR's status by only serializing tracking information into the status
+  in case something was actually tracked.
 
 [#1324]: https://github.com/stackabletech/operator-rs/pull/1324
 [#1325]: https://github.com/stackabletech/operator-rs/pull/1325
