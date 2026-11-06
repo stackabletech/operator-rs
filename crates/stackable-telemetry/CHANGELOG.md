@@ -15,8 +15,32 @@ All notable changes to this project will be documented in this file.
   - Add `OtlpMetricSettings`.
 - Set `service.instance.id` on the OTLP resource to a random UUID per process, so replicas of the
   same service export separate metric series. `OTEL_RESOURCE_ATTRIBUTES` overrides it ([#1332]).
+- Record the `http.server.request.duration` histogram defined by the HTTP metric semantic
+  conventions in `AxumTraceLayer`. It has no client addresses, headers or raw paths ([#1333]).
+  - Add `TraceLayer::with_meter` to record through a given meter. Without it, the histogram comes
+    from the global meter provider when the layer is applied, so build the router after
+    `Tracing::init`.
+  - Add `TraceLayer::with_url_scheme` to set the `url.scheme` recorded for every request. It
+    defaults to `http`. The scheme in the request URI is never used, because the client controls
+    it.
+- Add the `instrumentation::axum::attributes` module, which converts requests and responses into
+  HTTP semantic convention attribute values for both spans and the metric ([#1333]).
+
+### Changed
+
+- BREAKING: Take the method, scheme, route and protocol version of `AxumTraceLayer` spans from
+  `attributes::ServerRequestAttributes`, which `SpanExt::from_request` now takes as a parameter.
+  `RequestExt::span_name` writes a method the conventions do not list as known as `HTTP`. This
+  changes span output ([#1333]):
+  - A method the HTTP semantic conventions do not list as known is recorded as `_OTHER`, with the
+    original in `http.request.method_original`, and the span name starts with `HTTP` instead of
+    the method.
+  - `url.scheme` is the scheme set with `TraceLayer::with_url_scheme` instead of the scheme in the
+    request URI, which is empty for the usual origin-form request.
+  - `network.protocol.version` is recorded.
 
 [#1332]: https://github.com/stackabletech/operator-rs/pull/1332
+[#1333]: https://github.com/stackabletech/operator-rs/pull/1333
 
 ## [0.6.6] - 2026-11-03
 
