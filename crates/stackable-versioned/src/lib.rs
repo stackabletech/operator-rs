@@ -106,7 +106,7 @@ pub struct ChangedValues {
 }
 
 impl ChangedValues {
-    /// Returns `true` if neither downgrades nor upgrades are tracked.
+    /// Returns `true` if neither downgrades nor upgrades contain tracked, changed values.
     pub fn is_empty(&self) -> bool {
         self.downgrades.is_empty() && self.upgrades.is_empty()
     }
