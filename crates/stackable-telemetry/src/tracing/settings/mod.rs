@@ -13,6 +13,9 @@ pub use file_log::*;
 pub mod otlp_log;
 pub use otlp_log::*;
 
+pub mod otlp_metric;
+pub use otlp_metric::*;
+
 pub mod otlp_trace;
 pub use otlp_trace::*;
 

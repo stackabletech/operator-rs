@@ -13,11 +13,11 @@ clap = ["dep:clap"]
 axum.workspace = true
 clap = { workspace = true, optional = true }
 futures-util.workspace = true
-opentelemetry = { workspace = true, features = ["logs"] }
+opentelemetry = { workspace = true, features = ["logs", "metrics"] }
 opentelemetry-appender-tracing.workspace = true
-opentelemetry-otlp = { workspace = true, features = ["grpc-tonic", "gzip-tonic", "logs"] }
+opentelemetry-otlp = { workspace = true, features = ["grpc-tonic", "gzip-tonic", "logs", "metrics"] }
 opentelemetry-semantic-conventions.workspace = true
-opentelemetry_sdk = { workspace = true, features = ["logs", "rt-tokio"] }
+opentelemetry_sdk = { workspace = true, features = ["logs", "metrics", "rt-tokio"] }
 pin-project.workspace = true
 snafu.workspace = true
 strum.workspace = true
@@ -29,6 +29,7 @@ tracing-opentelemetry.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [dev-dependencies]
+opentelemetry_sdk = { workspace = true, features = ["metrics", "testing"] }
 tokio.workspace = true
 tracing-opentelemetry.workspace = true
 rstest.workspace = true

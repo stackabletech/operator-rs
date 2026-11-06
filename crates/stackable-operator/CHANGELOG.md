@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- BREAKING: Add the `--otel-metric-exporter-enabled` CLI argument (env: `OTEL_METRIC_EXPORTER_ENABLED`)
+  to `ProductOperatorRun`. The new field on `ProductOperatorRun::telemetry` (`TelemetryOptions`)
+  breaks struct literals of it. See the
+  [stackable-telemetry changelog](../stackable-telemetry/CHANGELOG.md#unreleased) ([#1332]).
+
+[#1332]: https://github.com/stackabletech/operator-rs/pull/1332
+
 ## [0.122.0] - 2026-11-03
 
 ### Added
