@@ -45,7 +45,6 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "status": {
           "alive": true,
           "changedValues": {
-            "downgrades": {},
             "upgrades": {
               "v1alpha2": [
                 {
@@ -82,7 +81,6 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "status": {
           "alive": true,
           "changedValues": {
-            "downgrades": {},
             "upgrades": {
               "v1alpha2": [
                 {
@@ -125,7 +123,6 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "status": {
           "alive": true,
           "changedValues": {
-            "downgrades": {},
             "upgrades": {
               "v1alpha2": [
                 {
@@ -174,7 +171,6 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "status": {
           "alive": true,
           "changedValues": {
-            "downgrades": {},
             "upgrades": {
               "v1alpha2": [
                 {

@@ -9,10 +9,6 @@ mod person;
 fn person_v3_v1alpha1_v3() {
     glob!("./inputs/roundtrip", "*.json", |path| {
         // Convert from v3 to v1alpha1
-        // NOTE (@Techassi): It should be noted that the input conversion review
-        // contains a status with empty changedValues to be able to assert_eq
-        // the objects at the end. As mentioned in the actual macro code, we
-        // should avoid "polluting" the status if it is empty.
         let (request_v1alpha1, response_v1alpha1) = person::convert_via_file(path);
         let response = response_v1alpha1
             .response
