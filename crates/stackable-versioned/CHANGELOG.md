@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
   serialized when empty. Previously, patching the status of objects created directly in the storage
   version failed, as they never pass through the conversion webhook ([#1325]).
 - The CRD schema of tracked values (`value` and `downgradedValue`) now accepts any JSON value instead
-  of only objects. Previously, patching the status failed for tracked non-object values, like
+  of only objects. Previously, patching the status failed for tracked non-object values, such as
   strings ([#1326]).
 - The generated tracking status now respects the `schemars` and `serde` crate overrides. Previously,
   it failed to compile if these crates were not direct dependencies ([#1326]).
