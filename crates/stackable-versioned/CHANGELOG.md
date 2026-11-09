@@ -15,6 +15,8 @@ All notable changes to this project will be documented in this file.
 - The `changedValues` field of the generated tracking status is no longer required and isn't
   serialized when empty. Previously, patching the status of objects created directly in the storage
   version failed, as they never pass through the conversion webhook ([#1325]).
+  We also reduced "clutter" in the CR's status by only serializing tracking information into the status
+  in case something was actually tracked.
 - The CRD schema of tracked values (`value` and `downgradedValue`) now accepts any JSON value instead
   of only objects. Previously, patching the status failed for tracked non-object values, such as
   strings ([#1326]).
