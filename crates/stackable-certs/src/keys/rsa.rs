@@ -77,8 +77,7 @@ impl CertificateKeypair for SigningKey {
 
     #[instrument(name = "create_rsa_signing_key_from_pkcs8_pem")]
     fn from_pkcs8_pem(input: &str) -> Result<Self, Self::Error> {
-        let private_key =
-            PrivateKey::from_pkcs8_pem(input).context(DeserializeSigningKeySnafu)?;
+        let private_key = PrivateKey::from_pkcs8_pem(input).context(DeserializeSigningKeySnafu)?;
         let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 
         Ok(Self(signing_key))
