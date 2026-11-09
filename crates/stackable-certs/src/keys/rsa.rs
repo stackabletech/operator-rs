@@ -3,7 +3,7 @@
 //! and other certificates.
 use rand::rngs::SysRng;
 use rand_core::{CryptoRng, UnwrapErr};
-use rsa::{RsaPrivateKey, pkcs8::DecodePrivateKey};
+use rsa::{PrivateKey, pkcs8::DecodePrivateKey};
 use signature::Keypair;
 use snafu::{ResultExt, Snafu};
 use tracing::instrument;
@@ -54,7 +54,7 @@ impl SigningKey {
     where
         R: CryptoRng + ?Sized,
     {
-        let private_key = RsaPrivateKey::new(csprng, KEY_SIZE).context(CreateKeySnafu)?;
+        let private_key = PrivateKey::new(csprng, KEY_SIZE).context(CreateKeySnafu)?;
         let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 
         Ok(Self(signing_key))
@@ -78,7 +78,7 @@ impl CertificateKeypair for SigningKey {
     #[instrument(name = "create_rsa_signing_key_from_pkcs8_pem")]
     fn from_pkcs8_pem(input: &str) -> Result<Self, Self::Error> {
         let private_key =
-            RsaPrivateKey::from_pkcs8_pem(input).context(DeserializeSigningKeySnafu)?;
+            PrivateKey::from_pkcs8_pem(input).context(DeserializeSigningKeySnafu)?;
         let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 
         Ok(Self(signing_key))

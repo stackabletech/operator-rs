@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Bump `rsa` to 0.10.0, which fixes the Marvin attack (RUSTSEC-2023-0071) ([#XXXX]).
+
+[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+
 ## [0.5.0] - 2026-11-03
 
 ### Changed

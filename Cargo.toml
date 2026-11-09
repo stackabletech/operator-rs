@@ -9,7 +9,7 @@ edition = "2024"
 repository = "https://github.com/stackabletech/operator-rs"
 
 [workspace.dependencies]
-arc-swap = "1.9.3"
+arc-swap = "1.9.4"
 async-trait = "0.1.92"
 axum = { version = "0.8.9", features = ["http2"] }
 base16ct = "1.0"
@@ -30,7 +30,7 @@ delegate = "0.13.5"
 dockerfile-parser = "0.9.0"
 # Part of the RustCrypto ecosystem, see the const-oid comment above.
 ecdsa = { version = "0.17.0", features = ["digest", "pem"] }
-educe = { version = "0.8.1", default-features = false, features = ["Clone", "Debug", "Default", "PartialEq", "Eq"] }
+educe = { version = "0.8.2", default-features = false, features = ["Clone", "Debug", "Default", "PartialEq", "Eq"] }
 either = "1.19.0"
 futures = "0.3.34"
 futures-util = "0.3.34"
@@ -39,7 +39,7 @@ http = "1.5.0"
 humantime = "2.4.0"
 indexmap = "2.14.2"
 indoc = "2.0.8"
-jiff = "0.2.38"
+jiff = "0.2.41"
 insta = { version = "1.49.0", features = ["glob"] }
 hyper = { version = "1.12.0", features = ["full"] }
 hyper-util = "0.1.21"
@@ -72,12 +72,8 @@ rand = "0.10.3"
 # Secrets in stackable-operator.
 rand_core = "0.10.1"
 regex = "1.13.1"
-# Part of the RustCrypto ecosystem, see the const-oid comment above. Pinned exactly, as release
-# candidates can contain breaking changes. Switch back to a regular version requirement once rsa
-# 0.10.0 is released: https://github.com/RustCrypto/RSA
-# We are ok with using a RC version, as it enables us to move the entire ecosystem forward and e.g.
-# fixes RUSTSEC-2026-0387
-rsa = { version = "=0.10.0-rc.19", features = ["sha2"] }
+# Part of the RustCrypto ecosystem, see the const-oid comment above
+rsa = { version = "0.10.0", features = ["pkcs1v15"] }
 rstest = "0.28.0"
 rstest_reuse = "0.7.1"
 schemars = { version = "1.2.3", features = ["url2"] }
@@ -93,7 +89,7 @@ similar-asserts = "2.0.0"
 snafu = "0.9.2"
 stackable-operator-derive = { path = "stackable-operator-derive" }
 strum = { version = "0.28.0", features = ["derive"] }
-syn = "3.0.9"
+syn = "3.0.10"
 sysinfo = "0.40.1"
 tempfile = "3.27.0"
 time = { version = "0.3.55" }
@@ -109,8 +105,8 @@ tracing-opentelemetry = "0.34.0"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
 trybuild = "1.0.122"
 url = { version = "2.5.8", features = ["serde"] }
-uuid = "1.29.0"
-winnow = "1.0.4"
+uuid = "1.29.2"
+winnow = "1.0.5"
 # Part of the RustCrypto ecosystem, see the const-oid comment above.
 x509-cert = { version = "0.3.0", features = ["builder"] }
 xml = "1.4.0"
