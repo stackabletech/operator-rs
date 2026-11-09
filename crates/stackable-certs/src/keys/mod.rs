@@ -22,13 +22,6 @@
 //! use stackable_certs::keys::rsa::SigningKey;
 //! let key = SigningKey::new().unwrap();
 //! ```
-//!
-//! It should be noted, that the crate is currently vulnerable to the recently
-//! discovered Marvin attack. The `openssl` crate is also impacted by this. See:
-//!
-//! - <https://people.redhat.com/~hkario/marvin/>
-//! - <https://rustsec.org/advisories/RUSTSEC-2023-0071.html>
-//! - <https://github.com/RustCrypto/RSA/issues/19>
 use std::fmt::Debug;
 
 use p256::pkcs8::EncodePrivateKey;
