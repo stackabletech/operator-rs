@@ -573,6 +573,11 @@ impl Struct {
             versioned_path = path_to_string(versioned_path)
         );
 
+        // The derive macros default to the `schemars` and `serde` crates, which are not necessarily
+        // direct dependencies of the user, so we have to tell them about crate overrides.
+        let schemars_path_string = path_to_string(schemars_path);
+        let serde_path_string = path_to_string(serde_path);
+
         // TODO (@Techassi): Validate that users don't specify the status we generate
         let status = spec_gen_ctx
             .kubernetes_arguments
@@ -595,7 +600,8 @@ impl Struct {
                 #serde_path::Serialize,
                 #schemars_path::JsonSchema
             )]
-            #[serde(rename_all = "camelCase")]
+            #[schemars(crate = #schemars_path_string)]
+            #[serde(crate = #serde_path_string, rename_all = "camelCase")]
             pub struct #status_ident {
                 // Objects created directly in the storage version never pass through the conversion
                 // webhook, so their status doesn't contain any changed values. The field must therefore
