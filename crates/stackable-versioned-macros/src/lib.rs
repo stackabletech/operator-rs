@@ -377,9 +377,9 @@ mod utils;
 ///
 /// ## Field Actions
 ///
-/// This crate currently supports three different item actions. Items can
-/// be added, changed, and deprecated. The macro ensures that these actions
-/// adhere to the following set of rules:
+/// This crate currently supports four different item actions. Items can
+/// be added, changed, deprecated, and removed. The macro ensures that these
+/// actions adhere to the following set of rules:
 ///
 /// 1. Items cannot be added and deprecated in the same version.
 /// 2. Items cannot be added and changed in the same version.
@@ -389,13 +389,17 @@ mod utils;
 ///    version _c_ must ensure _a < b<sub>1</sub>, ..., b<sub>n</sub> < c_.
 /// 5. All item actions must use previously declared versions. Using versions
 ///    not present at the container level will result in an error.
+/// 6. Items cannot be removed in the same version as any other action.
+/// 7. Items removed in version _d_ must ensure that _d_ is greater than the
+///    versions of all other actions. Items cannot be removed in the first
+///    version.
 ///
 /// For items marked as deprecated, one additional rule applies:
 ///
 /// - Fields must start with the `deprecated_` and variants with the
-///   `Deprecated` prefix. This is enforced because Kubernetes doesn't allow
-///   removing fields in CRDs entirely. Instead, they should be marked as
-///   deprecated. By convention this is done with the `deprecated` prefix.
+///   `Deprecated` prefix. Deprecated items continue to exist in all later
+///   versions. By convention this is indicated with the `deprecated` prefix.
+///   To drop a field from later versions, use the `removed` action.
 ///
 /// ### Added Action
 ///
@@ -579,7 +583,8 @@ mod utils;
 /// ### Deprecated Action
 ///
 /// This action indicates that an item is deprecated in a particular version.
-/// Deprecated items are not removed. Available arguments are:
+/// Deprecated items are not removed, see the [removed action](#removed-action)
+/// for that. Available arguments are:
 ///
 /// - `in` to indicate in which version the item is deprecated.
 /// - `note` to specify an optional deprecation note.
@@ -633,6 +638,107 @@ mod utils;
 ///         #[deprecated]                       // 2
 ///         pub deprecated_bar: usize,
 ///         pub baz: bool,
+///     }
+/// }
+/// ```
+/// </details>
+///
+/// ### Removed Action
+///
+/// This action indicates that an item is removed in a particular version. The
+/// item is not part of the container in that version and all later versions.
+/// The item can, but doesn't need to be deprecated in an earlier version.
+/// Removing enum variants is currently not supported. Available arguments are:
+///
+/// - `in` to indicate in which version the item is removed.
+/// - `default` to customize the function used to initialize the item when
+///   downgrading to the last version the item is present in. Uses
+///   [`Default::default`] if not provided.
+///
+/// <div class="warning">
+///
+/// The value of a removed item is lost when upgrading to the version it is
+/// removed in. Removed items are currently not tracked by the
+/// [conversion tracking](#conversion-tracking) mechanism.
+///
+/// </div>
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// #[versioned(
+///     version(name = "v1alpha1"),
+///     version(name = "v1beta1"),
+///     version(name = "v1")
+/// )]
+/// mod versioned {
+///     pub struct Foo {
+///         #[versioned(
+///             deprecated(in = "v1beta1"),
+///             removed(in = "v1", default = "default_bar")
+///         )]
+///         deprecated_bar: usize,
+///         baz: bool,
+///     }
+/// }
+///
+/// fn default_bar() -> usize {
+///     42
+/// }
+/// ```
+///
+/// <details>
+/// <summary>Expand Generated Code</summary>
+///
+/// 1. In version `v1alpha1` the field `bar` is neither deprecated nor removed.
+/// 2. In version `v1beta1` the field is deprecated and includes the
+///    `deprecated_` prefix.
+/// 3. In version `v1` the field is removed. Its value is dropped during the
+///    upgrade.
+/// 4. When downgrading from `v1`, the field is initialized using the provided
+///    `default_bar()` function.
+///
+/// ```ignore
+/// pub mod v1alpha1 {
+///     use super::*;
+///     pub struct Foo {
+///         pub bar: usize,                    // 1
+///         pub baz: bool,
+///     }
+/// }
+///
+/// // Snip
+///
+/// pub mod v1beta1 {
+///     use super::*;
+///     pub struct Foo {
+///         #[deprecated]                      // 2
+///         pub deprecated_bar: usize,
+///         pub baz: bool,
+///     }
+/// }
+///
+/// pub mod v1 {
+///     use super::*;
+///     pub struct Foo {
+///         pub baz: bool,                     // 3
+///     }
+/// }
+///
+/// impl From<v1beta1::Foo> for v1::Foo {
+///     fn from(foo: v1beta1::Foo) -> Self {
+///         Self {
+///             baz: foo.baz,                  // 3
+///         }
+///     }
+/// }
+///
+/// #[allow(deprecated)]
+/// impl From<v1::Foo> for v1beta1::Foo {
+///     fn from(foo: v1::Foo) -> Self {
+///         Self {
+///             deprecated_bar: default_bar(), // 4
+///             baz: foo.baz,
+///         }
 ///     }
 /// }
 /// ```

@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add support for the `removed` field action, which removes a field in a particular version.
+  Removed fields are not tracked when `experimental_conversion_tracking` is enabled yet.
+  It doesn't support enum variants either for now ([#1324]).
+
+[#1324]: https://github.com/stackabletech/operator-rs/pull/1324
+
 ## [0.14.0] - 2026-11-03
 
 ### Added
