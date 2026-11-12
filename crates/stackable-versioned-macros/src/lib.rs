@@ -645,20 +645,20 @@ mod utils;
 ///
 /// ### Removed Action
 ///
-/// This action indicates that a field is removed in a particular version. The
-/// field is not part of the container in that version and all later versions.
-/// The field can, but doesn't need to be deprecated in an earlier version.
+/// This action indicates that an item is removed in a particular version. The
+/// item is not part of the container in that version and all later versions.
+/// The item can, but doesn't need to be deprecated in an earlier version.
 /// Removing enum variants is currently not supported. Available arguments are:
 ///
-/// - `in` to indicate in which version the field is removed.
-/// - `default` to customize the function used to initialize the field when
-///   downgrading to the last version the field is present in. Uses
+/// - `in` to indicate in which version the item is removed.
+/// - `default` to customize the function used to initialize the item when
+///   downgrading to the last version the item is present in. Uses
 ///   [`Default::default`] if not provided.
 ///
 /// <div class="warning">
 ///
-/// The value of a removed field is lost when upgrading to the version it is
-/// removed in. Removed fields are currently not tracked by the
+/// The value of a removed item is lost when upgrading to the version it is
+/// removed in. Removed items are currently not tracked by the
 /// [conversion tracking](#conversion-tracking) mechanism.
 ///
 /// </div>
