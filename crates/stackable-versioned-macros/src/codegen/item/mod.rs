@@ -83,8 +83,8 @@ impl ItemStatus {
                 ..
             }
             | Self::Deprecation { ident, .. }
-            | Self::NoChange { ident, .. } => ident,
-            Self::Removal { .. } => unreachable!("ItemStatus::Removal does not have an ident"),
+            | Self::NoChange { ident, .. }
+            | Self::Removal { ident, .. } => ident,
             Self::NotPresent => unreachable!("ItemStatus::NotPresent does not have an ident"),
         }
     }
