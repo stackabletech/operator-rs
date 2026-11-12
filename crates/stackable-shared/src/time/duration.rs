@@ -421,12 +421,60 @@ impl DurationUnit {
     }
 }
 
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DurationWithNever {
+    Never,
+    Duration(Duration),
+}
+
+impl FromStr for DurationWithNever {
+    type Err = DurationParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            Self::NEVER_KEYWORD => Ok(Self::Never),
+            s => Ok(Self::Duration(Duration::from_str(s)?)),
+        }
+    }
+}
+
+impl Display for DurationWithNever {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            Self::Never => f.write_str(Self::NEVER_KEYWORD),
+            Self::Duration(duration) => duration.fmt(f),
+        }
+    }
+}
+
+impl JsonSchema for DurationWithNever {
+    fn schema_name() -> Cow<'static, str> {
+        "DurationWithNever".into()
+    }
+
+    fn json_schema(generator: &mut schemars::generate::SchemaGenerator) -> schemars::Schema {
+        String::json_schema(generator)
+    }
+}
+
+impl DurationWithNever {
+    /// The "never" keyword.
+    pub(crate) const NEVER_KEYWORD: &str = "never";
+}
+
 #[cfg(test)]
-mod test {
+mod tests {
+    use std::assert_matches;
+
     use rstest::rstest;
     use serde::{Deserialize, Serialize};
 
     use super::*;
+
+    #[derive(Deserialize, Serialize)]
+    struct StructWithNever {
+        dur: DurationWithNever,
+    }
 
     #[test]
     fn const_from() {
@@ -508,33 +556,30 @@ mod test {
         }
     }
 
-    #[test]
-    fn deserialize() {
-        #[derive(Deserialize)]
-        struct S {
-            dur: Duration,
-        }
+    #[rstest]
+    #[case("dur: 15d2m2s", Some(1_296_122))]
+    #[case("dur: never", None)]
+    fn deserialize(#[case] input: &str, #[case] expected_secs: Option<u64>) {
+        let st: StructWithNever =
+            yaml_serde::from_str(input).expect("valid duration must deserialize");
 
-        let s: S = yaml_serde::from_str("dur: 15d2m2s").expect("valid duration must deserialize");
-        assert_eq!(s.dur.as_secs(), 1_296_122);
+        match expected_secs {
+            Some(s) => assert_matches!(st.dur, DurationWithNever::Duration(d) if d.as_secs() == s),
+            None => assert_eq!(st.dur, DurationWithNever::Never),
+        }
     }
 
-    #[test]
-    fn serialize() {
-        #[derive(Serialize)]
-        struct S {
-            dur: Duration,
-        }
-
-        let s = S {
-            dur: "15d2m2s"
-                .parse()
-                .expect("static string must be valid duration"),
+    #[rstest]
+    #[case("15d2m2s", "dur: 15d2m2s\n")]
+    #[case("never", "dur: never\n")]
+    fn serialize(#[case] input: &str, #[case] expected: &str) {
+        let st = StructWithNever {
+            dur: input.parse().expect("static string must be valid duration"),
         };
 
         assert_eq!(
-            yaml_serde::to_string(&s).expect("valid duration must serialize"),
-            "dur: 15d2m2s\n"
+            yaml_serde::to_string(&st).expect("valid duration must serialize"),
+            expected
         );
     }
 
