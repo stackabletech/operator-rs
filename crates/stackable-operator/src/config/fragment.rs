@@ -24,10 +24,11 @@ use crate::role_utils::{Role, RoleGroup};
 pub trait IntoValidated {
     /// `Validated` counterpart of the struct to validate.
     type Validated;
-    /// `Error` thrown when failed to validate a struct.
+    /// Error thrown when failed to validate a `Config`.
     type Error;
 
-    /// Consumes the merged config, as nothing needs it once it is validated.
+    /// Consumes and validates self and returns [`Self::Validated`] or [`Self::Error`] if
+    /// validation failed.
     fn validate(self) -> Result<Self::Validated, Self::Error>;
 }
 
