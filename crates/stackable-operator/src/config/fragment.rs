@@ -25,10 +25,10 @@ pub trait IntoValidated {
     /// `ValidatedConfig` of the `Config` to validate.
     type Validated;
     /// Error thrown when failed to validate a `Config`.
-    type ConfigError;
+    type Error;
 
     /// Consumes the merged config, as nothing needs it once it is validated.
-    fn validate(self) -> Result<Self::Validated, Self::ConfigError>;
+    fn validate(self) -> Result<Self::Validated, Self::Error>;
 }
 
 /// Contains context used for generating validation errors
