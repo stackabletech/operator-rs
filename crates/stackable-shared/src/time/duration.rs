@@ -1,6 +1,7 @@
 //! This module contains a common [`Duration`] struct which is able to parse
-//! human-readable duration formats, like `5s`, `24h`, `2y2h20m42s` or`15d2m2s`. It
-//! additionally implements many required traits, like [`JsonSchema`],
+//! human-readable duration formats, like `5s`, `24h`, `2y2h20m42s` or`15d2m2s`.
+//!
+//! It additionally implements many required traits, like [`JsonSchema`],
 //! [`Deserialize`][serde::Deserialize], and [`Serialize`][serde::Serialize].
 //!
 //! Furthermore, it implements [`Deref`], which enables us to use all associated
@@ -60,8 +61,10 @@ pub enum DurationParseError {
 }
 
 /// A common [`Duration`] struct which is able to parse human-readable duration
-/// formats, like `5s`, `24h`, `2y2h20m42s` or`15d2m2s`. It additionally
-/// implements many required traits (for CRD deserialization and serialization).
+/// formats, like `5s`, `24h`, `2y2h20m42s` or`15d2m2s`.
+///
+/// It additionally implements many required traits (for CRD deserialization and
+/// serialization).
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Duration(std::time::Duration);
 
@@ -421,6 +424,10 @@ impl DurationUnit {
     }
 }
 
+/// A [`Duration`] expanded with the "never" keyword.
+///
+/// This is useful for settings which allow setting a duration or "never" to disable that setting
+/// entirely.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DurationWithNever {
     Never,
