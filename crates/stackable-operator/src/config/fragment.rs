@@ -19,16 +19,16 @@ use super::merge::Merge;
 #[cfg(doc)]
 use crate::role_utils::{Role, RoleGroup};
 
-/// Turns a role group's merged config into the validated config the build step works with.
+/// Turns a invalidated struct into the validated counterpart the build step works with.
 #[allow(dead_code)]
 pub trait IntoValidated {
-    /// `ValidatedConfig` of the `Config` to validate.
+    /// `Validated` counterpart of the struct to validate.
     type Validated;
-    /// Error thrown when failed to validate a `Config`.
-    type ConfigError;
+    /// `Error` thrown when failed to validate a struct.
+    type Error;
 
     /// Consumes the merged config, as nothing needs it once it is validated.
-    fn validate(self) -> Result<Self::Validated, Self::ConfigError>;
+    fn validate(self) -> Result<Self::Validated, Self::Error>;
 }
 
 /// Contains context used for generating validation errors
