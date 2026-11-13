@@ -19,19 +19,6 @@ use super::merge::Merge;
 #[cfg(doc)]
 use crate::role_utils::{Role, RoleGroup};
 
-/// Turns a invalidated struct into the validated counterpart the build step works with.
-#[allow(dead_code)]
-pub trait IntoValidated {
-    /// `Validated` counterpart of the struct to validate.
-    type Validated;
-    /// Error thrown when failed to validate a `Config`.
-    type Error;
-
-    /// Consumes and validates self and returns [`Self::Validated`] or [`Self::Error`] if
-    /// validation failed.
-    fn validate(self) -> Result<Self::Validated, Self::Error>;
-}
-
 /// Contains context used for generating validation errors
 ///
 /// Constructed internally in [`validate`]
