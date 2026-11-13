@@ -568,6 +568,11 @@ impl Struct {
 
         let automatically_derived = mod_gen_ctx.automatically_derived_attr();
 
+        let changed_values_is_empty = format!(
+            "{versioned_path}::ChangedValues::is_empty",
+            versioned_path = path_to_string(versioned_path)
+        );
+
         // TODO (@Techassi): Validate that users don't specify the status we generate
         let status = spec_gen_ctx
             .kubernetes_arguments
@@ -592,6 +597,10 @@ impl Struct {
             )]
             #[serde(rename_all = "camelCase")]
             pub struct #status_ident {
+                // Objects created directly in the storage version never pass through the conversion
+                // webhook, so their status doesn't contain any changed values. The field must therefore
+                // not be required, otherwise operators fail to patch the status of such objects.
+                #[serde(default, skip_serializing_if = #changed_values_is_empty)]
                 pub changed_values: #versioned_path::ChangedValues,
 
                 #status
