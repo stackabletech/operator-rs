@@ -20,7 +20,8 @@ use super::merge::Merge;
 use crate::role_utils::{Role, RoleGroup};
 
 /// Turns a role group's merged config into the validated config the build step works with.
-trait IntoValidated {
+#[allow(dead_code)]
+pub trait IntoValidated {
     /// `ValidatedConfig` of the `Config` to validate.
     type Validated;
     /// Error thrown when failed to validate a `Config`.
