@@ -15,6 +15,17 @@ use const_format::concatcp;
 use regex::Regex;
 use snafu::Snafu;
 
+pub trait Validate<T>
+where
+    Self: TryInto<T>,
+{
+    fn validate(self) -> Result<T, Self::Error> {
+        self.try_into()
+    }
+}
+
+impl<T, U> Validate<T> for U where U: TryInto<T> {}
+
 /// Minimal length required by RFC 1123 is 63. Up to 255 allowed, unsupported by k8s.
 pub const RFC_1123_LABEL_MAX_LENGTH: usize = 63;
 // This is a modified RFC 1123 format according to the Kubernetes specification, see https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names
