@@ -13,6 +13,8 @@ All notable changes to this project will be documented in this file.
   - Add `TracingBuilder::with_otlp_metric_exporter`, which installs the meter provider as the
     global one, so instruments created through `opentelemetry::global::meter` are exported.
   - Add `OtlpMetricSettings`.
+- Set `service.instance.id` on the OTLP resource to a random UUID per process, so replicas of the
+  same service export separate metric series. `OTEL_RESOURCE_ATTRIBUTES` overrides it ([#1332]).
 
 [#1332]: https://github.com/stackabletech/operator-rs/pull/1332
 

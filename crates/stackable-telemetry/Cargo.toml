@@ -27,6 +27,7 @@ tracing.workspace = true
 tracing-appender.workspace = true
 tracing-opentelemetry.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
+uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]
 opentelemetry_sdk = { workspace = true, features = ["metrics", "testing"] }

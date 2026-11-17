@@ -8,7 +8,7 @@
 
 use std::{io::IsTerminal, ops::Not, path::PathBuf};
 
-use opentelemetry::trace::TracerProvider;
+use opentelemetry::{KeyValue, trace::TracerProvider};
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_otlp::{ExporterBuildError, LogExporter, MetricExporter, SpanExporter};
 use opentelemetry_sdk::{
@@ -16,6 +16,10 @@ use opentelemetry_sdk::{
     logs::SdkLoggerProvider,
     metrics::{SdkMeterProvider, exporter::PushMetricExporter},
     propagation::TraceContextPropagator,
+    resource::{
+        EnvResourceDetector, ResourceDetector, SdkProvidedResourceDetector,
+        TelemetryResourceDetector,
+    },
     trace::SdkTracerProvider,
 };
 use snafu::{ResultExt as _, Snafu};
@@ -278,6 +282,9 @@ pub enum Error {
 /// - `OTEL_EXPORTER_OTLP_ENDPOINT` (defaults to `http://localhost:4317`, with the `grpc-tonic` feature (default)).
 /// - `OTEL_EXPORTER_OTLP_TIMEOUT`
 /// - `OTEL_EXPORTER_OTLP_HEADERS`
+/// - `OTEL_RESOURCE_ATTRIBUTES`: additional resource attributes. `service.instance.id` defaults to
+///   a random UUID per process, so replicas of the same service export separate metric series.
+///   Setting it here overrides that default.
 ///
 /// _See the defaults in the [opentelemetry-otlp][2] crate._
 ///
@@ -444,10 +451,13 @@ impl Tracing {
     /// will shutdown the subscribers when dropped.
     ///
     /// The OTLP exporters use gRPC through tonic, so with any of them enabled this must be called
-    /// within a Tokio runtime. Dropping the guard shuts the meter provider down, which on the main
-    /// thread of a current-thread runtime blocks for up to five seconds and loses the final metric
-    /// export: drop the guard on a multi-threaded runtime (as `#[tokio::main]` sets up by default)
-    /// or in `spawn_blocking`.
+    /// within a Tokio runtime. Dropping the guard shuts the enabled OTLP providers down. On the main
+    /// thread of a current-thread runtime, each of them blocks for up to five seconds and loses its
+    /// final export, so drop the guard on a multi-threaded runtime (as `#[tokio::main]` sets up by
+    /// default) or in `spawn_blocking`.
+    ///
+    /// Instruments created through [`opentelemetry::global::meter`] before `init` installed the
+    /// meter provider stay no-ops, so create them afterwards.
     ///
     /// <div class="warning">
     /// Name the guard variable appropriately, do not just use <code>let _ =</code>, as that will drop
@@ -466,9 +476,14 @@ impl Tracing {
     #[allow(clippy::too_many_lines)]
     pub fn init(mut self) -> Result<Self> {
         let mut layers: Vec<Box<dyn Layer<Registry> + Sync + Send>> = Vec::new();
-        let resource = Resource::builder()
-            .with_service_name(self.service_name)
-            .build();
+        let resource = otlp_resource(
+            self.service_name,
+            &[
+                Box::new(SdkProvidedResourceDetector),
+                Box::new(TelemetryResourceDetector),
+                Box::new(EnvResourceDetector::new()),
+            ],
+        );
 
         if let ConsoleLogSettings::Enabled {
             common_settings,
@@ -661,6 +676,21 @@ impl Drop for Tracing {
     }
 }
 
+/// Builds the resource shared by all OTLP providers.
+///
+/// `service.instance.id` is a random UUID unless one of the `detectors` sets it, so a value from
+/// `OTEL_RESOURCE_ATTRIBUTES` wins. `service_name` wins over every detector.
+fn otlp_resource(service_name: &'static str, detectors: &[Box<dyn ResourceDetector>]) -> Resource {
+    Resource::builder_empty()
+        .with_attribute(KeyValue::new(
+            opentelemetry_semantic_conventions::resource::SERVICE_INSTANCE_ID,
+            uuid::Uuid::new_v4().to_string(),
+        ))
+        .with_detectors(detectors)
+        .with_service_name(service_name)
+        .build()
+}
+
 /// Builds a meter provider that exports through `exporter` every `OTEL_METRIC_EXPORT_INTERVAL`.
 fn meter_provider(exporter: impl PushMetricExporter, resource: Resource) -> SdkMeterProvider {
     SdkMeterProvider::builder()
@@ -798,7 +828,8 @@ impl TracingBuilder<builder_state::Config> {
     }
 
     /// Enable the OTLP metric exporter and install its meter provider as the global one, so that
-    /// instruments created through [`opentelemetry::global::meter`] are exported.
+    /// instruments created through [`opentelemetry::global::meter`] are exported. Instruments
+    /// created before [`Tracing::init`] stay no-ops.
     ///
     /// You can configure the OTLP metric exports through the variables defined
     /// in the opentelemetry crates. See [`Tracing`].
@@ -948,7 +979,7 @@ mod test {
 
     use opentelemetry::{Key, metrics::MeterProvider as _};
     use opentelemetry_sdk::metrics::{InMemoryMetricExporter, data::ScopeMetrics};
-    use opentelemetry_semantic_conventions::resource::SERVICE_NAME;
+    use opentelemetry_semantic_conventions::resource::{SERVICE_INSTANCE_ID, SERVICE_NAME};
     use rstest::rstest;
     use settings::Settings;
     use tracing::level_filters::LevelFilter;
@@ -1161,6 +1192,47 @@ mod test {
             .build();
 
         assert!(tracing.otlp_metric_settings.is_enabled());
+    }
+
+    struct FixedDetector(Resource);
+
+    impl ResourceDetector for FixedDetector {
+        fn detect(&self) -> Resource {
+            self.0.clone()
+        }
+    }
+
+    fn instance_id(resource: &Resource) -> Option<String> {
+        resource
+            .get(&Key::from_static_str(SERVICE_INSTANCE_ID))
+            .map(|value| value.to_string())
+    }
+
+    #[test]
+    fn otlp_resource_sets_random_service_instance_id() {
+        let first = otlp_resource("test", &[]);
+        let second = otlp_resource("test", &[]);
+
+        let first_id = instance_id(&first).expect("service.instance.id is set");
+        uuid::Uuid::parse_str(&first_id).expect("service.instance.id is a UUID");
+        assert_ne!(Some(first_id), instance_id(&second));
+    }
+
+    #[test]
+    fn otlp_resource_prefers_detected_service_instance_id() {
+        let detected = Resource::builder_empty()
+            .with_attribute(KeyValue::new(SERVICE_INSTANCE_ID, "from-env"))
+            .with_service_name("from-env")
+            .build();
+        let resource = otlp_resource("test", &[Box::new(FixedDetector(detected))]);
+
+        assert_eq!(instance_id(&resource), Some("from-env".to_owned()));
+        assert_eq!(
+            resource
+                .get(&Key::from_static_str(SERVICE_NAME))
+                .map(|value| value.to_string()),
+            Some("test".to_owned())
+        );
     }
 
     #[test]
