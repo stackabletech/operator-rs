@@ -33,7 +33,7 @@ use opentelemetry::{
 };
 use opentelemetry_semantic_conventions as semconv;
 use opentelemetry_semantic_conventions::trace::HTTP_REQUEST_HEADER;
-use pin_project::pin_project;
+use pin_project::{pin_project, pinned_drop};
 use snafu::{ResultExt, Snafu};
 use tower::{Layer, Service};
 use tracing::{Span, field::Empty};
@@ -78,7 +78,8 @@ const REQUEST_DURATION_BOUNDARIES: [f64; 14] = [
 ///
 /// The duration ends when the inner service has produced the response head, not when the body
 /// has been sent. A request whose future is dropped before that, for example because the client
-/// disconnected, is not recorded.
+/// or the Kubernetes API server timed out, is recorded with `error.type` `cancelled` and no status
+/// code, so slow requests that never finish still appear in the histogram.
 ///
 /// ### Example with Axum
 ///
@@ -223,13 +224,14 @@ where
 }
 
 /// This future contains the inner service future and the current [`Span`].
-#[pin_project]
+#[pin_project(PinnedDrop)]
 pub struct ResponseFuture<F> {
     #[pin]
     pub(crate) future: F,
     pub(crate) span: Span,
     pub(crate) request_duration: Histogram<f64>,
-    // Taken when the response is ready, so the duration is recorded exactly once.
+    // Taken when the duration is recorded, either when the response is ready or when the future is
+    // dropped before that, so it is recorded exactly once.
     pub(crate) request_attributes: Option<attributes::ServerRequestAttributes>,
     pub(crate) started: Instant,
 }
@@ -264,6 +266,19 @@ where
         }
 
         Poll::Ready(result)
+    }
+}
+
+#[pinned_drop]
+impl<F> PinnedDrop for ResponseFuture<F> {
+    fn drop(self: std::pin::Pin<&mut Self>) {
+        let this = self.project();
+        if let Some(request_attributes) = this.request_attributes.take() {
+            let key_values =
+                request_attributes.into_key_values(attributes::RequestOutcome::Cancelled);
+            this.request_duration
+                .record(this.started.elapsed().as_secs_f64(), &key_values);
+        }
     }
 }
 
@@ -848,6 +863,42 @@ mod test {
         assert_eq!(
             value(attributes, semconv::attribute::URL_SCHEME).as_deref(),
             Some("http")
+        );
+    }
+
+    #[tokio::test]
+    async fn records_a_request_dropped_before_its_response_as_cancelled() {
+        let (provider, exporter) = meter_provider();
+        let trace_layer = TraceLayer::new().with_meter(provider.meter("test"));
+        let router = Router::new()
+            .route("/hang", get(std::future::pending::<&'static str>))
+            .layer(trace_layer);
+        let request = Request::builder()
+            .uri("/hang")
+            .body(Body::empty())
+            .expect("valid request");
+
+        let timed_out = tokio::time::timeout(
+            std::time::Duration::from_millis(10),
+            router.oneshot(request),
+        )
+        .await;
+        assert!(timed_out.is_err(), "the handler never completes");
+
+        let points = recorded_attributes(&provider, &exporter);
+        assert_eq!(points.len(), 1, "{points:?}");
+        let attributes = &points[0];
+        assert_eq!(
+            value(attributes, semconv::attribute::ERROR_TYPE).as_deref(),
+            Some(attributes::CANCELLED_ERROR_TYPE)
+        );
+        assert_eq!(
+            value(attributes, semconv::attribute::HTTP_RESPONSE_STATUS_CODE),
+            None
+        );
+        assert_eq!(
+            value(attributes, semconv::attribute::HTTP_ROUTE).as_deref(),
+            Some("/hang")
         );
     }
 

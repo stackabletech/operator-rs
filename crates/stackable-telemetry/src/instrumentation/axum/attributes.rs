@@ -22,6 +22,9 @@ pub const OTHER_METHOD: &str = "_OTHER";
 /// The method part of a span name for a request whose method is [`OTHER_METHOD`].
 const OTHER_METHOD_SPAN_NAME: &str = "HTTP";
 
+/// The `error.type` recorded for a request whose future was dropped before it produced a response.
+pub const CANCELLED_ERROR_TYPE: &str = "cancelled";
+
 /// Returns the `http.request.method` value: the method name for the methods the conventions list
 /// as known, [`OTHER_METHOD`] for any other, so that a client cannot create unbounded attribute
 /// values.
@@ -94,6 +97,10 @@ pub enum RequestOutcome {
     /// [`std::any::type_name`] does not guarantee a stable output, so a compiler update can change
     /// these values.
     Failed(&'static str),
+
+    /// The future was dropped before it produced a response, for example because the client gave
+    /// up. Recorded with [`CANCELLED_ERROR_TYPE`] and no status code.
+    Cancelled,
 }
 
 /// The attributes of a request that both the per-request span of [`TraceLayer`](super::TraceLayer)
@@ -158,6 +165,9 @@ impl ServerRequestAttributes {
             }
             RequestOutcome::Failed(error_type) => {
                 attributes.push(KeyValue::new(ERROR_TYPE, error_type));
+            }
+            RequestOutcome::Cancelled => {
+                attributes.push(KeyValue::new(ERROR_TYPE, CANCELLED_ERROR_TYPE));
             }
         }
         attributes

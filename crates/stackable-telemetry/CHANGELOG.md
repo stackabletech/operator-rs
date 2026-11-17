@@ -23,6 +23,8 @@ All notable changes to this project will be documented in this file.
   - Add `TraceLayer::with_url_scheme` to set the `url.scheme` recorded for every request. It
     defaults to `http`. The scheme in the request URI is never used, because the client controls
     it.
+  - Record a request whose future is dropped before it produced a response, for example on a
+    client timeout, with `error.type` `cancelled` and no status code ([#1333]).
 - Add the `instrumentation::axum::attributes` module, which converts requests and responses into
   HTTP semantic convention attribute values for both spans and the metric ([#1333]).
 
