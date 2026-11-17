@@ -1,6 +1,7 @@
 use std::{sync::Arc, time::SystemTime};
 
 use arc_swap::ArcSwap;
+use jiff::Timestamp;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_certs::{CertificatePairError, ca::CertificateAuthority, keys::ecdsa};
 use tokio::sync::mpsc;
@@ -112,8 +113,10 @@ impl CertificateResolver {
 
         tracing::debug!(
             x509.subject_alternative_names = ?self.subject_alternative_dns_names,
-            x509.not_after = %humantime::format_rfc3339(not_after),
-            deadline = %humantime::format_rfc3339(deadline),
+            x509.not_after = %Timestamp::try_from(not_after)
+                .map_or_else(|err| err.to_string(), |ts| ts.to_string()),
+            deadline = %Timestamp::try_from(deadline)
+                .map_or_else(|err| err.to_string(), |ts| ts.to_string()),
             "checking if certificate needs rotation"
         );
 
