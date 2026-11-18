@@ -38,6 +38,21 @@ ignore = [
     #
     # This can only be removed again if we decide to use a different crate.
     "RUSTSEC-2024-0436",
+
+    # https://rustsec.org/advisories/RUSTSEC-2026-0543
+    # The "chrono" crate is unmaintained and no release fixes it. It only comes in indirectly,
+    # through "kube-cel" (a dependency of "kube-core") and "built" (a build dependency of
+    # "containerdebug"), so it can only go once both switch to "jiff" or "time".
+    #
+    # The operators accept it as well:
+    # https://github.com/stackabletech/operator-templating/pull/664
+    "RUSTSEC-2026-0543",
+
+    # https://rustsec.org/advisories/RUSTSEC-2026-0542
+    # "humantime" wraps "chrono" and is unmaintained for the same reason. Only "stackable-webhook"
+    # uses it, and https://github.com/stackabletech/operator-rs/pull/1335 removes it, after which
+    # this entry can go.
+    "RUSTSEC-2026-0542",
 ]
 
 [bans]
