@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- `product_logging::framework::capture_shell_output` no longer loses the output of short-lived
+  containers such as init containers. When stdout or stderr go to the console and to a file, the
+  generated command now sets an EXIT trap that waits up to five seconds for its `tee` processes.
+  Callers must not set their own EXIT trap ([#1336]).
+
+[#1336]: https://github.com/stackabletech/operator-rs/pull/1336
+
 ## [0.122.0] - 2026-11-03
 
 ### Added

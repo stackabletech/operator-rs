@@ -120,8 +120,40 @@ pub fn calculate_log_volume_size_limit(max_log_files_size: &[MemoryQuantity]) ->
     log_volume_size_limit.into()
 }
 
+/// Waits for the `tee` processes in `stackable_tee_pids`, at most for five seconds.
+///
+/// Redirecting to /dev/null closes the shell's ends of the pipes, so tee reads EOF once no child
+/// process has them open any more. A background process that outlives the script keeps them open
+/// forever, so the watchdog kills tee after a bounded time instead of letting the container hang.
+/// `set +e` keeps a failing `wait` or `kill` from replacing the exit code of the script under
+/// `set -e`.
+const WAIT_FOR_TEE_FUNCTION: &str = "\
+stackable_wait_for_tee() {
+    exec > /dev/null 2>&1
+    set +e
+    { sleep 5; kill ${stackable_tee_pids[*]}; } &
+    wait ${stackable_tee_pids[*]}
+    kill $!
+}";
+
 /// Create a Bash command which filters stdout and stderr according to the given log configuration
 /// and additionally stores the output in log files
+///
+/// The command must run in the same shell as the commands whose output it captures, so join it
+/// with them using `" && "` or a newline.
+///
+/// When stdout or stderr go to the console and to a file at the same time, they are piped through
+/// `tee` processes running in the background. When Bash is PID 1 of the container and exits, the
+/// kernel kills these processes, possibly before they wrote the last output. To prevent this, the
+/// command sets an EXIT trap which waits for the `tee` processes, at most for five seconds, so a
+/// background process which still has stdout or stderr open delays the exit by that long. This
+/// has the following consequences for the caller:
+///
+/// - The caller must not set its own EXIT trap, because it would replace this one.
+/// - The shell variable `stackable_tee_pids` and the function `stackable_wait_for_tee` are
+///   reserved.
+/// - A caller that ends with `exec` replaces Bash, so the trap does not run. That is fine for a
+///   long-running process, but a short-lived one can lose the end of its output.
 ///
 /// # Example
 ///
@@ -189,37 +221,60 @@ pub fn capture_shell_output(
 
     let log_file_dir = format!("{log_dir}/{container}");
 
-    let stdout_redirect = match (
+    let mut commands = Vec::new();
+    let mut uses_tee = false;
+
+    if file_log_level <= LogLevel::ERROR {
+        commands.push(format!("mkdir --parents {log_file_dir}"));
+    }
+
+    match (
         console_log_level <= LogLevel::INFO,
         file_log_level <= LogLevel::INFO,
     ) {
-        (true, true) => format!(" > >(tee {log_file_dir}/container.stdout.log)"),
-        (true, false) => String::new(),
-        (false, true) => format!(" > {log_file_dir}/container.stdout.log"),
-        (false, false) => " > /dev/null".into(),
-    };
+        (true, true) => {
+            commands.push(format!("exec > >(tee {log_file_dir}/container.stdout.log)"));
+            commands.push("stackable_tee_pids+=($!)".into());
+            uses_tee = true;
+        }
+        (true, false) => {}
+        (false, true) => commands.push(format!("exec > {log_file_dir}/container.stdout.log")),
+        (false, false) => commands.push("exec > /dev/null".into()),
+    }
 
-    let stderr_redirect = match (
+    match (
         console_log_level <= LogLevel::ERROR,
         file_log_level <= LogLevel::ERROR,
     ) {
-        (true, true) => format!(" 2> >(tee {log_file_dir}/container.stderr.log >&2)"),
-        (true, false) => String::new(),
-        (false, true) => format!(" 2> {log_file_dir}/container.stderr.log"),
-        (false, false) => " 2> /dev/null".into(),
-    };
-
-    let mut args = Vec::new();
-    if file_log_level <= LogLevel::ERROR {
-        args.push(format!("mkdir --parents {log_file_dir}"));
+        (true, true) => {
+            commands.push(format!(
+                "exec 2> >(tee {log_file_dir}/container.stderr.log >&2)"
+            ));
+            commands.push("stackable_tee_pids+=($!)".into());
+            uses_tee = true;
+        }
+        (true, false) => {}
+        (false, true) => commands.push(format!("exec 2> {log_file_dir}/container.stderr.log")),
+        (false, false) => commands.push("exec 2> /dev/null".into()),
     }
-    if stdout_redirect.is_empty() && stderr_redirect.is_empty() {
-        args.push(":".into());
+
+    if uses_tee {
+        commands.push("trap stackable_wait_for_tee EXIT".into());
+    }
+
+    if commands.is_empty() {
+        commands.push(":".into());
+    }
+
+    // Bash continues a command list after a trailing `&&`, so the commands can go on separate
+    // lines without changing what they do.
+    let commands = commands.join(" &&\n    ");
+
+    if uses_tee {
+        format!("{WAIT_FOR_TEE_FUNCTION}\n{commands}")
     } else {
-        args.push(format!("exec{stdout_redirect}{stderr_redirect}"));
+        commands
     }
-
-    args.join(" && ")
 }
 
 /// Create the content of a log4j properties file according to the given log configuration
@@ -1510,6 +1565,7 @@ pub fn remove_vector_shutdown_file_command(stackable_log_dir: &str) -> String {
 mod tests {
     use std::collections::BTreeMap;
 
+    use indoc::indoc;
     use rstest::rstest;
 
     use super::*;
@@ -1534,6 +1590,157 @@ mod tests {
             Quantity(expected_log_volume_size_limit.to_string()),
             calculated_log_volume_size_limit
         );
+    }
+
+    fn shell_log_config(
+        console_level: LogLevel,
+        file_level: LogLevel,
+    ) -> AutomaticContainerLogConfig {
+        AutomaticContainerLogConfig {
+            loggers: BTreeMap::from([(
+                AutomaticContainerLogConfig::ROOT_LOGGER.to_string(),
+                LoggerConfig {
+                    level: LogLevel::TRACE,
+                },
+            )]),
+            console: Some(AppenderConfig {
+                level: Some(console_level),
+            }),
+            file: Some(AppenderConfig {
+                level: Some(file_level),
+            }),
+        }
+    }
+
+    #[rstest]
+    #[case::console_and_file(
+        LogLevel::INFO,
+        LogLevel::INFO,
+        indoc! {"
+            stackable_wait_for_tee() {
+                exec > /dev/null 2>&1
+                set +e
+                { sleep 5; kill ${stackable_tee_pids[*]}; } &
+                wait ${stackable_tee_pids[*]}
+                kill $!
+            }
+            mkdir --parents /log/test &&
+                exec > >(tee /log/test/container.stdout.log) &&
+                stackable_tee_pids+=($!) &&
+                exec 2> >(tee /log/test/container.stderr.log >&2) &&
+                stackable_tee_pids+=($!) &&
+                trap stackable_wait_for_tee EXIT"}
+    )]
+    #[case::console_and_file_only_for_errors(
+        LogLevel::INFO,
+        LogLevel::ERROR,
+        indoc! {"
+            stackable_wait_for_tee() {
+                exec > /dev/null 2>&1
+                set +e
+                { sleep 5; kill ${stackable_tee_pids[*]}; } &
+                wait ${stackable_tee_pids[*]}
+                kill $!
+            }
+            mkdir --parents /log/test &&
+                exec 2> >(tee /log/test/container.stderr.log >&2) &&
+                stackable_tee_pids+=($!) &&
+                trap stackable_wait_for_tee EXIT"}
+    )]
+    #[case::file_only(
+        LogLevel::NONE,
+        LogLevel::INFO,
+        indoc! {"
+            mkdir --parents /log/test &&
+                exec > /log/test/container.stdout.log &&
+                exec 2> /log/test/container.stderr.log"}
+    )]
+    #[case::console_only(LogLevel::INFO, LogLevel::NONE, ":")]
+    #[case::neither(
+        LogLevel::NONE,
+        LogLevel::NONE,
+        "exec > /dev/null &&\n    exec 2> /dev/null"
+    )]
+    fn capture_shell_output_command(
+        #[case] console_level: LogLevel,
+        #[case] file_level: LogLevel,
+        #[case] expected_command: &str,
+    ) {
+        let command =
+            capture_shell_output("/log", "test", &shell_log_config(console_level, file_level));
+
+        assert_eq!(expected_command, command);
+    }
+
+    struct CapturedRun {
+        status: std::process::ExitStatus,
+        duration: std::time::Duration,
+        stdout_log: String,
+        stderr_log: String,
+    }
+
+    /// Runs `script` behind the output capturing in a new Bash process and returns the log files
+    /// as they are at the moment Bash has exited.
+    fn run_captured(script: &str) -> CapturedRun {
+        let log_dir = tempfile::tempdir().expect("a temporary directory can be created");
+        let log_dir_path = log_dir
+            .path()
+            .to_str()
+            .expect("the temporary directory path is valid UTF-8");
+        let capture = capture_shell_output(
+            log_dir_path,
+            "test",
+            &shell_log_config(LogLevel::INFO, LogLevel::INFO),
+        );
+
+        let start = std::time::Instant::now();
+        // The console output is discarded, so that a background process of the script cannot
+        // keep this process waiting for EOF.
+        let status = std::process::Command::new("bash")
+            .args(["-c", &format!("{capture}\n{script}")])
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("bash can be started");
+        let duration = start.elapsed();
+
+        let read_log = |name: &str| {
+            std::fs::read_to_string(log_dir.path().join("test").join(name)).unwrap_or_default()
+        };
+
+        CapturedRun {
+            status,
+            duration,
+            stdout_log: read_log("container.stdout.log"),
+            stderr_log: read_log("container.stderr.log"),
+        }
+    }
+
+    /// A script this short ends before tee has started, so the log files are only complete if Bash
+    /// waits for tee.
+    #[rstest]
+    #[case::success("true", Some(0))]
+    #[case::explicit_exit("exit 3", Some(3))]
+    #[case::errexit("set -e\nfalse\necho unreachable", Some(1))]
+    fn captured_output_is_complete_and_keeps_exit_code(
+        #[case] script: &str,
+        #[case] expected_code: Option<i32>,
+    ) {
+        let run = run_captured(&format!("echo output\necho error >&2\n{script}"));
+
+        assert_eq!(expected_code, run.status.code());
+        assert_eq!("output\n", run.stdout_log);
+        assert_eq!("error\n", run.stderr_log);
+    }
+
+    #[test]
+    fn captured_output_does_not_wait_forever_for_background_processes() {
+        let run = run_captured("sleep 20 &\necho output");
+
+        assert!(run.status.success());
+        assert!(run.duration < std::time::Duration::from_secs(15));
+        assert_eq!("output\n", run.stdout_log);
     }
 
     #[test]
