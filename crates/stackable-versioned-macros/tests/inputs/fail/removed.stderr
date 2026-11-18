@@ -17,10 +17,10 @@ error: cannot be marked as `removed` and any other action in the same version
    |         ^^^^^^^^^^^^^^
 
 error: `removed` must use a version higher than all other actions
-  --> tests/inputs/fail/removed.rs:26:9
+  --> tests/inputs/fail/removed.rs:25:77
    |
-26 |         foo: usize,
-   |         ^^^
+25 |         #[versioned(changed(in = "v1", previous_name = "bar"), removed(in = "v1beta1"))]
+   |                                                                             ^^^^^^^^^
 
 error: the `removed` action is currently not supported on enum variants
   --> tests/inputs/fail/removed.rs:30:34
