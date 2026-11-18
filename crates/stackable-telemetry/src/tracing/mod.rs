@@ -1,5 +1,5 @@
 //! This module contains functionality to initialize tracing Subscribers for
-//! console output, file output, and OpenTelemetry OTLP export for traces and logs.
+//! console output, file output, and OpenTelemetry OTLP export for traces, logs and metrics.
 //!
 //! It is intended to be used by the Stackable Data Platform operators and
 //! webhooks, but it should be generic enough to be used in any application.
@@ -8,11 +8,18 @@
 
 use std::{io::IsTerminal, ops::Not, path::PathBuf};
 
-use opentelemetry::trace::TracerProvider;
+use opentelemetry::{KeyValue, trace::TracerProvider};
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
-use opentelemetry_otlp::{ExporterBuildError, LogExporter, SpanExporter};
+use opentelemetry_otlp::{ExporterBuildError, LogExporter, MetricExporter, SpanExporter};
 use opentelemetry_sdk::{
-    Resource, logs::SdkLoggerProvider, propagation::TraceContextPropagator,
+    Resource,
+    logs::SdkLoggerProvider,
+    metrics::{SdkMeterProvider, exporter::PushMetricExporter},
+    propagation::TraceContextPropagator,
+    resource::{
+        EnvResourceDetector, ResourceDetector, SdkProvidedResourceDetector,
+        TelemetryResourceDetector,
+    },
     trace::SdkTracerProvider,
 };
 use snafu::{ResultExt as _, Snafu};
@@ -21,8 +28,8 @@ use tracing_appender::rolling::{InitError, RollingFileAppender, Rotation};
 use tracing_subscriber::{EnvFilter, Layer, Registry, filter::Directive, layer::SubscriberExt};
 
 use crate::tracing::settings::{
-    ConsoleLogSettings, FileLogSettings, Format, OtlpLogSettings, OtlpTraceSettings, Settings,
-    SettingsToggle,
+    ConsoleLogSettings, FileLogSettings, Format, OtlpLogSettings, OtlpMetricSettings,
+    OtlpTraceSettings, Settings, SettingsToggle,
 };
 
 pub mod settings;
@@ -42,6 +49,13 @@ pub enum Error {
     /// Indicates that [`Tracing`] failed to install the OpenTelemetry log exporter.
     #[snafu(display("unable to install opentelemetry log exporter"))]
     InstallOtelLogExporter {
+        #[allow(missing_docs)]
+        source: ExporterBuildError,
+    },
+
+    /// Indicates that [`Tracing`] failed to install the OpenTelemetry metric exporter.
+    #[snafu(display("unable to install opentelemetry metric exporter"))]
+    InstallOtelMetricExporter {
         #[allow(missing_docs)]
         source: ExporterBuildError,
     },
@@ -115,6 +129,7 @@ pub enum Error {
 ///         file_log_max_files: Some(6),
 ///         otel_trace_exporter_enabled: true,
 ///         otel_log_exporter_enabled: true,
+///         otel_metric_exporter_enabled: true,
 ///     };
 ///
 ///     let _tracing_guard = Tracing::pre_configured("test", options).init()?;
@@ -134,8 +149,9 @@ pub enum Error {
 ///
 /// When choosing the builder, there are two different styles to configure individual subscribers:
 /// Using the sophisticated [`SettingsBuilder`](settings::SettingsBuilder) or the simplified tuple style for basic
-/// configuration. Currently, three different subscribers are supported: console output, OTLP log
-/// export, and OTLP trace export.
+/// configuration. Four subscribers are supported: console output, file output, OTLP log export, and
+/// OTLP trace export. OTLP metric export is configured alongside them with
+/// [`TracingBuilder::with_otlp_metric_exporter`].
 ///
 /// ### Basic Configuration
 ///
@@ -253,14 +269,22 @@ pub enum Error {
 /// - `OTEL_TRACE_EXPORTER_ENABLED` (`--otel-trace-exporter-enabled`): Enable exporting OTEL traces.
 /// - `OTEL_TRACE_EXPORTER_LEVEL`: Set the log level for OTEL traces.
 ///
+/// ### OTEL metrics
+///
+/// - `OTEL_METRIC_EXPORTER_ENABLED` (`--otel-metric-exporter-enabled`): Enable exporting OTEL
+///   metrics. Instruments are created through [`opentelemetry::global::meter`], which this sets up.
+///
 /// # Additional Configuration
 ///
-/// You can configure the OTLP trace and log exports through the variables defined in the opentelemetry crates:
+/// You can configure the OTLP trace, log and metric exports through the variables defined in the opentelemetry crates:
 ///
 /// - `OTEL_EXPORTER_OTLP_COMPRESSION` (defaults to none, but can be set to `gzip`).
 /// - `OTEL_EXPORTER_OTLP_ENDPOINT` (defaults to `http://localhost:4317`, with the `grpc-tonic` feature (default)).
 /// - `OTEL_EXPORTER_OTLP_TIMEOUT`
 /// - `OTEL_EXPORTER_OTLP_HEADERS`
+/// - `OTEL_RESOURCE_ATTRIBUTES`: additional resource attributes. `service.instance.id` defaults to
+///   a random UUID per process, so replicas of the same service export separate metric series.
+///   Setting it here overrides that default.
 ///
 /// _See the defaults in the [opentelemetry-otlp][2] crate._
 ///
@@ -308,6 +332,22 @@ pub enum Error {
 ///
 /// _See defaults in the opentelemetry_sdk crate under [log::log_processor][5]._
 ///
+/// ## Metric exporter overrides
+///
+/// OTLP exporter settings:
+///
+/// - `OTEL_EXPORTER_OTLP_METRICS_COMPRESSION`
+/// - `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`
+/// - `OTEL_EXPORTER_OTLP_METRICS_TIMEOUT`: also bounds each periodic export, because the periodic
+///   reader enforces no timeout of its own.
+/// - `OTEL_EXPORTER_OTLP_METRICS_HEADERS`
+/// - `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE` (`cumulative`, `delta` or `lowmemory`,
+///   defaults to `cumulative`).
+///
+/// Periodic reader settings:
+///
+/// - `OTEL_METRIC_EXPORT_INTERVAL` (milliseconds, defaults to 60000).
+///
 /// [1]: tracing::Subscriber
 /// [2]: https://docs.rs/opentelemetry-otlp/latest/src/opentelemetry_otlp/exporter/mod.rs.html
 /// [3]: https://docs.rs/opentelemetry_sdk/latest/src/opentelemetry_sdk/trace/config.rs.html
@@ -319,9 +359,11 @@ pub struct Tracing {
     file_log_settings: FileLogSettings,
     otlp_log_settings: OtlpLogSettings,
     otlp_trace_settings: OtlpTraceSettings,
+    otlp_metric_settings: OtlpMetricSettings,
 
     logger_provider: Option<SdkLoggerProvider>,
     tracer_provider: Option<SdkTracerProvider>,
+    meter_provider: Option<SdkMeterProvider>,
 }
 
 impl Tracing {
@@ -367,6 +409,7 @@ impl Tracing {
             file_log_max_files,
             otel_trace_exporter_enabled,
             otel_log_exporter_enabled,
+            otel_metric_exporter_enabled,
         } = options;
 
         let file_log_rotation_period = file_log_rotation_period.unwrap_or_default();
@@ -400,11 +443,21 @@ impl Tracing {
                 LevelFilter::INFO,
                 otel_trace_exporter_enabled,
             ))
+            .with_otlp_metric_exporter(otel_metric_exporter_enabled)
             .build()
     }
 
     /// Initialize the configured tracing subscribers, returning a guard that
     /// will shutdown the subscribers when dropped.
+    ///
+    /// The OTLP exporters use gRPC through tonic, so with any of them enabled this must be called
+    /// within a Tokio runtime. Dropping the guard shuts the enabled OTLP providers down. On the main
+    /// thread of a current-thread runtime, each of them blocks for up to five seconds and loses its
+    /// final export, so drop the guard on a multi-threaded runtime (as `#[tokio::main]` sets up by
+    /// default) or in `spawn_blocking`.
+    ///
+    /// Instruments created through [`opentelemetry::global::meter`] before `init` installed the
+    /// meter provider stay no-ops, so create them afterwards.
     ///
     /// <div class="warning">
     /// Name the guard variable appropriately, do not just use <code>let _ =</code>, as that will drop
@@ -423,6 +476,14 @@ impl Tracing {
     #[allow(clippy::too_many_lines)]
     pub fn init(mut self) -> Result<Self> {
         let mut layers: Vec<Box<dyn Layer<Registry> + Sync + Send>> = Vec::new();
+        let resource = otlp_resource(
+            self.service_name,
+            &[
+                Box::new(SdkProvidedResourceDetector),
+                Box::new(TelemetryResourceDetector),
+                Box::new(EnvResourceDetector::new()),
+            ],
+        );
 
         if let ConsoleLogSettings::Enabled {
             common_settings,
@@ -509,11 +570,7 @@ impl Tracing {
 
             let logger_provider = SdkLoggerProvider::builder()
                 .with_batch_exporter(log_exporter)
-                .with_resource(
-                    Resource::builder()
-                        .with_service_name(self.service_name)
-                        .build(),
-                )
+                .with_resource(resource.clone())
                 .build();
 
             // Convert `tracing::Event` to OpenTelemetry logs
@@ -541,11 +598,7 @@ impl Tracing {
 
             let tracer_provider = SdkTracerProvider::builder()
                 .with_batch_exporter(trace_exporter)
-                .with_resource(
-                    Resource::builder()
-                        .with_service_name(self.service_name)
-                        .build(),
-                )
+                .with_resource(resource.clone())
                 .build();
 
             let tracer = tracer_provider.tracer(self.service_name);
@@ -569,6 +622,17 @@ impl Tracing {
             );
         }
 
+        if self.otlp_metric_settings.is_enabled() {
+            let metric_exporter = MetricExporter::builder()
+                .with_tonic()
+                .build()
+                .context(InstallOtelMetricExporterSnafu)?;
+            let meter_provider = meter_provider(metric_exporter, resource);
+
+            opentelemetry::global::set_meter_provider(meter_provider.clone());
+            self.meter_provider = Some(meter_provider);
+        }
+
         if !layers.is_empty() {
             // Add the layers to the tracing_subscriber Registry (console,
             // tracing (OTLP), logging (OTLP))
@@ -586,8 +650,17 @@ impl Drop for Tracing {
         tracing::debug!(
             opentelemetry.tracing.enabled = self.otlp_trace_settings.is_enabled(),
             opentelemetry.logger.enabled = self.otlp_log_settings.is_enabled(),
+            opentelemetry.meter.enabled = self.otlp_metric_settings.is_enabled(),
             "shutting down opentelemetry OTLP providers"
         );
+
+        // The logger provider shuts down last, so that errors from the other providers are
+        // still exported as OTLP logs.
+        if let Some(meter_provider) = &self.meter_provider
+            && let Err(error) = meter_provider.shutdown()
+        {
+            tracing::error!(%error, "unable to shutdown MeterProvider");
+        }
 
         if let Some(tracer_provider) = &self.tracer_provider
             && let Err(error) = tracer_provider.shutdown()
@@ -601,6 +674,29 @@ impl Drop for Tracing {
             tracing::error!(%error, "unable to shutdown LoggerProvider");
         }
     }
+}
+
+/// Builds the resource shared by all OTLP providers.
+///
+/// `service.instance.id` is a random UUID unless one of the `detectors` sets it, so a value from
+/// `OTEL_RESOURCE_ATTRIBUTES` wins. `service_name` wins over every detector.
+fn otlp_resource(service_name: &'static str, detectors: &[Box<dyn ResourceDetector>]) -> Resource {
+    Resource::builder_empty()
+        .with_attribute(KeyValue::new(
+            opentelemetry_semantic_conventions::resource::SERVICE_INSTANCE_ID,
+            uuid::Uuid::new_v4().to_string(),
+        ))
+        .with_detectors(detectors)
+        .with_service_name(service_name)
+        .build()
+}
+
+/// Builds a meter provider that exports through `exporter` every `OTEL_METRIC_EXPORT_INTERVAL`.
+fn meter_provider(exporter: impl PushMetricExporter, resource: Resource) -> SdkMeterProvider {
+    SdkMeterProvider::builder()
+        .with_periodic_exporter(exporter)
+        .with_resource(resource)
+        .build()
 }
 
 /// This trait is only used for the typestate builder and cannot be implemented
@@ -665,6 +761,7 @@ pub struct TracingBuilder<S: BuilderState> {
     file_log_settings: FileLogSettings,
     otlp_log_settings: OtlpLogSettings,
     otlp_trace_settings: OtlpTraceSettings,
+    otlp_metric_settings: OtlpMetricSettings,
 
     /// Allow the generic to be used (needed for impls).
     _marker: std::marker::PhantomData<S>,
@@ -688,12 +785,8 @@ impl TracingBuilder<builder_state::Config> {
     /// variable.
     pub fn with_console_output(self, console_log_settings: impl Into<ConsoleLogSettings>) -> Self {
         Self {
-            service_name: self.service_name,
             console_log_settings: console_log_settings.into(),
-            otlp_log_settings: self.otlp_log_settings,
-            otlp_trace_settings: self.otlp_trace_settings,
-            file_log_settings: self.file_log_settings,
-            _marker: self._marker,
+            ..self
         }
     }
 
@@ -702,12 +795,8 @@ impl TracingBuilder<builder_state::Config> {
     /// variable.
     pub fn with_file_output(self, file_log_settings: impl Into<FileLogSettings>) -> Self {
         Self {
-            service_name: self.service_name,
-            console_log_settings: self.console_log_settings,
             file_log_settings: file_log_settings.into(),
-            otlp_log_settings: self.otlp_log_settings,
-            otlp_trace_settings: self.otlp_trace_settings,
-            _marker: self._marker,
+            ..self
         }
     }
 
@@ -718,12 +807,8 @@ impl TracingBuilder<builder_state::Config> {
     /// in the opentelemetry crates. See [`Tracing`].
     pub fn with_otlp_log_exporter(self, otlp_log_settings: impl Into<OtlpLogSettings>) -> Self {
         Self {
-            service_name: self.service_name,
-            console_log_settings: self.console_log_settings,
             otlp_log_settings: otlp_log_settings.into(),
-            otlp_trace_settings: self.otlp_trace_settings,
-            file_log_settings: self.file_log_settings,
-            _marker: self._marker,
+            ..self
         }
     }
 
@@ -737,12 +822,24 @@ impl TracingBuilder<builder_state::Config> {
         otlp_trace_settings: impl Into<OtlpTraceSettings>,
     ) -> Self {
         Self {
-            service_name: self.service_name,
-            console_log_settings: self.console_log_settings,
-            otlp_log_settings: self.otlp_log_settings,
             otlp_trace_settings: otlp_trace_settings.into(),
-            file_log_settings: self.file_log_settings,
-            _marker: self._marker,
+            ..self
+        }
+    }
+
+    /// Enable the OTLP metric exporter and install its meter provider as the global one, so that
+    /// instruments created through [`opentelemetry::global::meter`] are exported. Instruments
+    /// created before [`Tracing::init`] stay no-ops.
+    ///
+    /// You can configure the OTLP metric exports through the variables defined
+    /// in the opentelemetry crates. See [`Tracing`].
+    pub fn with_otlp_metric_exporter(
+        self,
+        otlp_metric_settings: impl Into<OtlpMetricSettings>,
+    ) -> Self {
+        Self {
+            otlp_metric_settings: otlp_metric_settings.into(),
+            ..self
         }
     }
 
@@ -758,9 +855,11 @@ impl TracingBuilder<builder_state::Config> {
             console_log_settings: self.console_log_settings,
             otlp_log_settings: self.otlp_log_settings,
             otlp_trace_settings: self.otlp_trace_settings,
+            otlp_metric_settings: self.otlp_metric_settings,
             file_log_settings: self.file_log_settings,
             logger_provider: None,
             tracer_provider: None,
+            meter_provider: None,
         }
     }
 }
@@ -801,6 +900,8 @@ struct Cli {
     command(next_help_heading = "Telemetry Options")
 )]
 #[derive(Debug, Default)]
+// Each bool is an independent on/off CLI flag, not a state that an enum would model better.
+#[expect(clippy::struct_excessive_bools)]
 pub struct TelemetryOptions {
     /// Disable console logs.
     #[cfg_attr(feature = "clap", arg(long, env, group = "console_log"))]
@@ -841,6 +942,10 @@ pub struct TelemetryOptions {
     /// Enable exporting OpenTelemetry logs via OTLP.
     #[cfg_attr(feature = "clap", arg(long, env))]
     pub otel_log_exporter_enabled: bool,
+
+    /// Enable exporting OpenTelemetry metrics via OTLP.
+    #[cfg_attr(feature = "clap", arg(long, env))]
+    pub otel_metric_exporter_enabled: bool,
 }
 
 /// Supported periods when the log file is rolled over.
@@ -872,6 +977,9 @@ impl From<RotationPeriod> for Rotation {
 mod test {
     use std::path::PathBuf;
 
+    use opentelemetry::{Key, metrics::MeterProvider as _};
+    use opentelemetry_sdk::metrics::{InMemoryMetricExporter, data::ScopeMetrics};
+    use opentelemetry_semantic_conventions::resource::{SERVICE_INSTANCE_ID, SERVICE_NAME};
     use rstest::rstest;
     use settings::Settings;
     use tracing::level_filters::LevelFilter;
@@ -1073,6 +1181,90 @@ mod test {
         assert!(tracing_guard.file_log_settings.is_enabled());
         assert!(tracing_guard.otlp_trace_settings.is_enabled());
         assert!(tracing_guard.otlp_log_settings.is_disabled());
+        assert!(tracing_guard.otlp_metric_settings.is_disabled());
+    }
+
+    #[test]
+    fn builder_with_otlp_metric_exporter() {
+        let tracing = Tracing::builder()
+            .service_name("test")
+            .with_otlp_metric_exporter(true)
+            .build();
+
+        assert!(tracing.otlp_metric_settings.is_enabled());
+    }
+
+    struct FixedDetector(Resource);
+
+    impl ResourceDetector for FixedDetector {
+        fn detect(&self) -> Resource {
+            self.0.clone()
+        }
+    }
+
+    fn instance_id(resource: &Resource) -> Option<String> {
+        resource
+            .get(&Key::from_static_str(SERVICE_INSTANCE_ID))
+            .map(|value| value.to_string())
+    }
+
+    #[test]
+    fn otlp_resource_sets_random_service_instance_id() {
+        let first = otlp_resource("test", &[]);
+        let second = otlp_resource("test", &[]);
+
+        let first_id = instance_id(&first).expect("service.instance.id is set");
+        uuid::Uuid::parse_str(&first_id).expect("service.instance.id is a UUID");
+        assert_ne!(Some(first_id), instance_id(&second));
+    }
+
+    #[test]
+    fn otlp_resource_prefers_detected_service_instance_id() {
+        let detected = Resource::builder_empty()
+            .with_attribute(KeyValue::new(SERVICE_INSTANCE_ID, "from-env"))
+            .with_service_name("from-env")
+            .build();
+        let resource = otlp_resource("test", &[Box::new(FixedDetector(detected))]);
+
+        assert_eq!(instance_id(&resource), Some("from-env".to_owned()));
+        assert_eq!(
+            resource
+                .get(&Key::from_static_str(SERVICE_NAME))
+                .map(|value| value.to_string()),
+            Some("test".to_owned())
+        );
+    }
+
+    #[test]
+    fn meter_provider_exports_with_service_name() {
+        let exporter = InMemoryMetricExporter::default();
+        let resource = Resource::builder().with_service_name("test").build();
+        let provider = meter_provider(exporter.clone(), resource);
+
+        provider
+            .meter("test")
+            .u64_counter("requests")
+            .build()
+            .add(1, &[]);
+        provider.force_flush().expect("in-memory export succeeds");
+
+        let finished_metrics = exporter
+            .get_finished_metrics()
+            .expect("in-memory exporter is readable");
+        let resource_metrics = finished_metrics.first().expect("one export happened");
+        assert_eq!(
+            resource_metrics
+                .resource()
+                .get(&Key::from_static_str(SERVICE_NAME))
+                .map(|value| value.to_string()),
+            Some("test".to_owned())
+        );
+        let metric_names: Vec<_> = resource_metrics
+            .scope_metrics()
+            .flat_map(ScopeMetrics::metrics)
+            .map(|metric| metric.name().to_owned())
+            .collect();
+        assert_eq!(metric_names, ["requests"]);
     }
 
     #[test]
@@ -1087,9 +1279,12 @@ mod test {
                 file_log_max_files: None,
                 otel_trace_exporter_enabled: true,
                 otel_log_exporter_enabled: false,
+                otel_metric_exporter_enabled: true,
             },
         );
 
         assert!(tracing.otlp_trace_settings.is_enabled());
+        assert!(tracing.otlp_log_settings.is_disabled());
+        assert!(tracing.otlp_metric_settings.is_enabled());
     }
 }

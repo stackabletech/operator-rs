@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- BREAKING: Add support for exporting OpenTelemetry metrics via OTLP ([#1332]).
+  - Add the `--otel-metric-exporter-enabled` CLI argument (env: `OTEL_METRIC_EXPORTER_ENABLED`).
+    The new public field `TelemetryOptions::otel_metric_exporter_enabled` breaks struct literals of
+    `TelemetryOptions`.
+  - Add `TracingBuilder::with_otlp_metric_exporter`, which installs the meter provider as the
+    global one, so instruments created through `opentelemetry::global::meter` are exported.
+  - Add `OtlpMetricSettings`.
+- Set `service.instance.id` on the OTLP resource to a random UUID per process, so replicas of the
+  same service export separate metric series. `OTEL_RESOURCE_ATTRIBUTES` overrides it ([#1332]).
+
+[#1332]: https://github.com/stackabletech/operator-rs/pull/1332
+
 ## [0.6.6] - 2026-11-03
 
 Note: There are only dependency bumps in this release.
