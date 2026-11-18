@@ -66,6 +66,11 @@ pub enum ItemStatus {
         ident: IdentString,
         ty: Box<Type>,
     },
+    Removal {
+        /// The ident of the item in the last version it is present in.
+        ident: IdentString,
+        default_fn: Path,
+    },
     NotPresent,
 }
 
@@ -78,7 +83,8 @@ impl ItemStatus {
                 ..
             }
             | Self::Deprecation { ident, .. }
-            | Self::NoChange { ident, .. } => ident,
+            | Self::NoChange { ident, .. }
+            | Self::Removal { ident, .. } => ident,
             Self::NotPresent => unreachable!("ItemStatus::NotPresent does not have an ident"),
         }
     }

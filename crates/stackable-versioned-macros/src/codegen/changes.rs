@@ -132,6 +132,16 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
                             ty: Box::new(ty.clone()),
                         },
                     ),
+                    // If the removal is the only action, the item is present with its original
+                    // ident and type in all versions before.
+                    ItemStatus::Removal { ident, .. } => self.insert(
+                        version.inner,
+                        ItemStatus::NoChange {
+                            previously_deprecated: false,
+                            ident: ident.clone(),
+                            ty: Box::new(ty.clone()),
+                        },
+                    ),
                     ItemStatus::NoChange {
                         previously_deprecated,
                         ident,
@@ -163,7 +173,11 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
                             ty,
                             ..
                         } => (ident, ty, *previously_deprecated),
-                        ItemStatus::NotPresent => unreachable!(),
+                        // The item is not present in any version after it has been removed.
+                        ItemStatus::Removal { .. } | ItemStatus::NotPresent => {
+                            self.insert(version.inner, ItemStatus::NotPresent);
+                            continue;
+                        }
                     };
 
                     self.insert(
@@ -189,7 +203,9 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
                             ty,
                             ..
                         } => (ident, ty, *previously_deprecated),
-                        ItemStatus::NotPresent => {
+                        // NOTE: The removal is always the last action, so it can't have an upper
+                        // neighbor. It is still handled here for completeness.
+                        ItemStatus::Removal { .. } | ItemStatus::NotPresent => {
                             self.insert(version.inner, ItemStatus::NotPresent);
                             continue;
                         }

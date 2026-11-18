@@ -67,6 +67,29 @@ ignore = [
     # - https://crates.io/crates/manyhow
     # - https://github.com/SergioBenitez/proc-macro2-diagnostics
     "RUSTSEC-2026-0173",
+
+    # https://rustsec.org/advisories/RUSTSEC-2026-0543
+    # The chrono crate is unmaintained; all versions are affected.
+    #
+    # chrono v0.4.45
+    #   └── built v0.8.1
+    #
+    # We already use jiff in a couple of places, but chrono comes in through an indirect dependency.
+    # Ideally upstream should switch to jiff (or time, which is also a valid alternative).
+    "RUSTSEC-2026-0543",
+
+    # https://rustsec.org/advisories/RUSTSEC-2026-0542
+    # Because chrono is now unmaintained and humantime wraps chrono, it is also unmaintained; all
+    # versions are affected.
+    #
+    # humantime v2.4.0
+    #     └── stackable-webhook v0.11.0
+    #         └── stackable-operator v0.122.0
+    #
+    # humantime is only used in a single place to format timestamps according to RFC 3339. We
+    # already switched to jiff in https://github.com/stackabletech/operator-rs/pull/1335,
+    # but this change needs to be rolled out across all operators.
+    "RUSTSEC-2026-0542",
 ]
 
 [bans]
