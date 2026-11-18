@@ -26,11 +26,7 @@
           }
         },
         "status": {
-          "alive": true,
-          "changedValues": {
-            "downgrades": {},
-            "upgrades": {}
-          }
+          "alive": true
         }
       }
     ]

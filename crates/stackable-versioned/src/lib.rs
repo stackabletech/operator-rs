@@ -90,19 +90,26 @@ pub trait TrackingStatus {
 
 // NOTE (@Techassi): This struct represents a rough first draft of how tracking values across
 // CRD versions can be achieved. It might change down the line.
-// FIXME (@Techassi): Ideally we don't serialize empty maps. Further, we shouldn't serialize the
-// changedValues field in the status, if there it is empty. This currently "pollutes" the status
-// with empty JSON objects.
+//
 /// Contains changed values during upgrades and downgrades of CRDs.
 #[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct ChangedValues {
     /// List of values needed when downgrading to a particular version.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub downgrades: BTreeMap<String, Vec<ChangedValue>>,
 
     /// List of values needed when upgrading to a particular version.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub upgrades: BTreeMap<String, Vec<ChangedValue>>,
     // TODO (@Techassi): Add a version indicator here if we ever decide to change the tracking
     // mechanism.
+}
+
+impl ChangedValues {
+    /// Returns `true` if neither downgrades nor upgrades contain tracked, changed values.
+    pub fn is_empty(&self) -> bool {
+        self.downgrades.is_empty() && self.upgrades.is_empty()
+    }
 }
 
 /// Contains a changed value for a single field of the CRD.
