@@ -3955,7 +3955,6 @@ dependencies = [
  "futures-util",
  "hyper",
  "hyper-util",
- "jiff",
  "k8s-openapi",
  "kube",
  "opentelemetry",

@@ -17,7 +17,6 @@ axum.workspace = true
 futures-util.workspace = true
 hyper-util.workspace = true
 hyper.workspace = true
-jiff.workspace = true
 k8s-openapi.workspace = true
 kube.workspace = true
 opentelemetry.workspace = true

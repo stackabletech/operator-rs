@@ -222,7 +222,7 @@ impl TlsServer {
                 // Check wall-clock time to decide if the certificate needs rotation.
                 // This is cancellation-safe: if cancelled, the tick is NOT consumed.
                 _ = rotation_check_interval.tick() => {
-                    if cert_resolver.needs_rotation(*CERTIFICATE_EXPIRY_BUFFER) {
+                    if cert_resolver.needs_rotation() {
                         tracing::info!("certificate approaching expiry, rotating");
                         cert_resolver
                             .rotate_certificate()
