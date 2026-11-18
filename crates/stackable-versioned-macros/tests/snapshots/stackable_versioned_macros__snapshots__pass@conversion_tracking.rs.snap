@@ -518,6 +518,10 @@ fn FooSpec_roundtrip_up_down() {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct FooStatusWithChangedValues {
+    #[serde(
+        default,
+        skip_serializing_if = "::stackable_versioned::ChangedValues::is_empty"
+    )]
     pub changed_values: ::stackable_versioned::ChangedValues,
     #[serde(flatten)]
     pub status: FooStatus,
