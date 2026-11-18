@@ -60,6 +60,15 @@ impl VariantAttributes {
 
         errors.handle(self.common.validate(&variant_idents, &self.attrs));
 
+        // Removing a variant would require a variant to map to during upgrades, which is currently
+        // not supported.
+        if let Some(removed) = &self.common.removed {
+            errors.push(
+                Error::custom("the `removed` action is currently not supported on enum variants")
+                    .with_span(&removed.version.span()),
+            );
+        }
+
         // Validate names of renames
         for change in &self.common.changes {
             if let Some(previous_name) = &change.previous_name

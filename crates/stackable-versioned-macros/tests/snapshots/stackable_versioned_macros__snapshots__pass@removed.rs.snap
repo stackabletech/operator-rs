@@ -1,0 +1,131 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+expression: formatted
+input_file: crates/stackable-versioned-macros/tests/inputs/pass/removed.rs
+---
+#[automatically_derived]
+mod v1alpha1 {
+    use super::*;
+    pub struct Foo {
+        pub username: String,
+        /// Removed without being deprecated first.
+        pub nickname: String,
+        pub age: u32,
+        pub colour: u8,
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl ::core::convert::From<v1alpha1::Foo> for v1alpha2::Foo {
+    fn from(__sv_foo: v1alpha1::Foo) -> Self {
+        Self {
+            username: __sv_foo.username.into(),
+            deprecated_age: __sv_foo.age.into(),
+            color: __sv_foo.colour.into(),
+            email: ::std::default::Default::default(),
+        }
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl ::core::convert::From<v1alpha2::Foo> for v1alpha1::Foo {
+    fn from(__sv_foo: v1alpha2::Foo) -> Self {
+        Self {
+            username: __sv_foo.username.into(),
+            nickname: ::std::default::Default::default(),
+            age: __sv_foo.deprecated_age.into(),
+            colour: u16_to_u8(__sv_foo.color),
+        }
+    }
+}
+#[automatically_derived]
+mod v1alpha2 {
+    use super::*;
+    pub struct Foo {
+        pub username: String,
+        #[deprecated]
+        pub deprecated_age: u32,
+        pub color: u16,
+        pub email: String,
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl ::core::convert::From<v1alpha2::Foo> for v1beta1::Foo {
+    fn from(__sv_foo: v1alpha2::Foo) -> Self {
+        Self {
+            username: __sv_foo.username.into(),
+            color: __sv_foo.color.into(),
+            email: __sv_foo.email.into(),
+        }
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl ::core::convert::From<v1beta1::Foo> for v1alpha2::Foo {
+    fn from(__sv_foo: v1beta1::Foo) -> Self {
+        Self {
+            username: __sv_foo.username.into(),
+            deprecated_age: default_age(),
+            color: __sv_foo.color.into(),
+            email: __sv_foo.email.into(),
+        }
+    }
+}
+#[automatically_derived]
+mod v1beta1 {
+    use super::*;
+    pub struct Foo {
+        pub username: String,
+        pub color: u16,
+        pub email: String,
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1beta1::Foo> for v1::Foo {
+    fn from(__sv_foo: v1beta1::Foo) -> Self {
+        Self {
+            username: __sv_foo.username.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1::Foo> for v1beta1::Foo {
+    fn from(__sv_foo: v1::Foo) -> Self {
+        Self {
+            username: __sv_foo.username.into(),
+            color: ::std::default::Default::default(),
+            email: ::std::default::Default::default(),
+        }
+    }
+}
+#[automatically_derived]
+mod v1 {
+    use super::*;
+    pub struct Foo {
+        pub username: String,
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1::Foo> for v2::Foo {
+    fn from(__sv_foo: v1::Foo) -> Self {
+        Self {
+            username: __sv_foo.username.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v2::Foo> for v1::Foo {
+    fn from(__sv_foo: v2::Foo) -> Self {
+        Self {
+            username: __sv_foo.username.into(),
+        }
+    }
+}
+#[automatically_derived]
+mod v2 {
+    use super::*;
+    pub struct Foo {
+        pub username: String,
+    }
+}
