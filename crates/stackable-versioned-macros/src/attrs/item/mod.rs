@@ -219,16 +219,16 @@ impl CommonItemAttributes {
 
         // Lastly, ensure that the item is removed after all other actions.
         if let Some(removed) = &self.removed {
-            let removed_version = *removed.version;
+            let removed_version = removed.version;
 
-            if added_version.is_some_and(|a| a > removed_version)
-                || deprecated_version.is_some_and(|d| d > removed_version)
-                || self.changes.iter().any(|c| *c.version > removed_version)
+            if added_version.is_some_and(|a| a > *removed_version)
+                || deprecated_version.is_some_and(|d| d > *removed_version)
+                || self.changes.iter().any(|c| *c.version > *removed_version)
             {
                 return Err(Error::custom(
                     "`removed` must use a version higher than all other actions",
                 )
-                .with_span(item_idents.original()));
+                .with_span(&removed_version.span()));
             }
         }
 
