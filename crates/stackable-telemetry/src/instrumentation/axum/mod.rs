@@ -1,7 +1,11 @@
 //! This module contains types which can be used as [`axum`] layers to produce
 //! [OpenTelemetry][1] compatible [HTTP spans][2].
 //!
-//! These spans include a wide variety of fields / attributes defined by the
+//! The same layer records the `http.server.request.duration` metric defined by
+//! the [HTTP metric conventions][3]. Spans and metric take the method, scheme,
+//! route and protocol version from the same [`attributes::ServerRequestAttributes`].
+//!
+//! The spans include a wide variety of fields / attributes defined by the
 //! semantic conventions specification. A few examples are:
 //!
 //! - `http.request.method`
@@ -10,7 +14,8 @@
 //!
 //! [1]: https://opentelemetry.io/
 //! [2]: https://opentelemetry.io/docs/specs/semconv/http/http-spans/
-use std::{future::Future, net::SocketAddr, num::ParseIntError, task::Poll};
+//! [3]: https://opentelemetry.io/docs/specs/semconv/http/http-metrics/
+use std::{future::Future, net::SocketAddr, num::ParseIntError, task::Poll, time::Instant};
 
 use axum::{
     extract::{ConnectInfo, MatchedPath, Request},
@@ -22,17 +27,19 @@ use axum::{
 };
 use futures_util::ready;
 use opentelemetry::{
-    Context,
+    Context, InstrumentationScope,
+    metrics::{Histogram, Meter},
     trace::{SpanKind, TraceContextExt},
 };
 use opentelemetry_semantic_conventions as semconv;
 use opentelemetry_semantic_conventions::trace::HTTP_REQUEST_HEADER;
-use pin_project::pin_project;
+use pin_project::{pin_project, pinned_drop};
 use snafu::{ResultExt, Snafu};
 use tower::{Layer, Service};
 use tracing::{Span, field::Empty};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
+pub mod attributes;
 mod extractor;
 mod injector;
 
@@ -51,7 +58,28 @@ const OTEL_KIND: &str = "otel.kind";
 const OTEL_TRACE_ID_FROM: &str = "opentelemetry.trace_id.from";
 const OTEL_TRACE_ID_TO: &str = "opentelemetry.trace_id.to";
 
+const METER_NAME: &str = "stackable-telemetry";
+const DEFAULT_URL_SCHEME: &str = "http";
+
+/// The bucket boundaries the HTTP metric conventions advise for `http.server.request.duration`.
+const REQUEST_DURATION_BOUNDARIES: [f64; 14] = [
+    0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0,
+];
+
 /// A Tower [`Layer`][1] which decorates [`TraceService`].
+///
+/// Besides the span, every request is recorded in the `http.server.request.duration` histogram,
+/// at the cost of one histogram measurement and a few attribute allocations per request.
+///
+/// Unless [`TraceLayer::with_meter`] provides a meter, the layer takes its histogram from the
+/// global meter provider when it is applied, which for axum is when the `Router` is built. Build
+/// the router after [`Tracing::init`](crate::Tracing::init): before that, the global provider is
+/// a no-op, and a histogram taken from it records nothing for the lifetime of the router.
+///
+/// The duration ends when the inner service has produced the response head, not when the body
+/// has been sent. A request whose future is dropped before that, for example because the client
+/// or the Kubernetes API server timed out, is recorded with `error.type` `cancelled` and no status
+/// code, so slow requests that never finish still appear in the histogram.
 ///
 /// ### Example with Axum
 ///
@@ -70,18 +98,40 @@ const OTEL_TRACE_ID_TO: &str = "opentelemetry.trace_id.to";
 /// This layer is implemented based on [this][1] official Tower guide.
 ///
 /// [1]: https://github.com/tower-rs/tower/blob/master/guides/building-a-middleware-from-scratch.md
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct TraceLayer {
     opt_in: bool,
+    url_scheme: &'static str,
+    meter: Option<Meter>,
+}
+
+impl Default for TraceLayer {
+    fn default() -> Self {
+        Self {
+            opt_in: false,
+            url_scheme: DEFAULT_URL_SCHEME,
+            meter: None,
+        }
+    }
 }
 
 impl<S> Layer<S> for TraceLayer {
     type Service = TraceService<S>;
 
     fn layer(&self, inner: S) -> Self::Service {
+        let meter = self.meter.clone().unwrap_or_else(|| {
+            opentelemetry::global::meter_with_scope(
+                InstrumentationScope::builder(METER_NAME)
+                    .with_version(env!("CARGO_PKG_VERSION"))
+                    .build(),
+            )
+        });
+
         TraceService {
             inner,
             opt_in: self.opt_in,
+            url_scheme: self.url_scheme,
+            request_duration: request_duration_histogram(&meter),
         }
     }
 }
@@ -90,6 +140,20 @@ impl TraceLayer {
     /// Creates a new default trace layer.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Records the request duration through `meter` instead of the global meter provider.
+    pub fn with_meter(mut self, meter: Meter) -> Self {
+        self.meter = Some(meter);
+        self
+    }
+
+    /// Sets the `url.scheme` that spans and metric record. Defaults to `http`. A server terminating
+    /// TLS sets `https`. The scheme in the request URI is never used, because the client controls
+    /// it.
+    pub fn with_url_scheme(mut self, url_scheme: &'static str) -> Self {
+        self.url_scheme = url_scheme;
+        self
     }
 
     /// Enables various fields marked as opt-in by the specification.
@@ -102,11 +166,23 @@ impl TraceLayer {
     }
 }
 
-/// A Tower [`Service`] which injects Span Context into HTTP Response Headers.
+fn request_duration_histogram(meter: &Meter) -> Histogram<f64> {
+    meter
+        .f64_histogram(opentelemetry_semantic_conventions::metric::HTTP_SERVER_REQUEST_DURATION)
+        .with_unit("s")
+        .with_description("Duration of HTTP server requests.")
+        .with_boundaries(REQUEST_DURATION_BOUNDARIES.to_vec())
+        .build()
+}
+
+/// A Tower [`Service`] which injects Span Context into HTTP Response Headers and records the
+/// request duration.
 #[derive(Debug, Clone)]
 pub struct TraceService<S> {
     inner: S,
     opt_in: bool,
+    url_scheme: &'static str,
+    request_duration: Histogram<f64>,
 }
 
 impl<S> Service<Request> for TraceService<S>
@@ -127,23 +203,37 @@ where
     }
 
     fn call(&mut self, req: Request) -> Self::Future {
-        let span = Span::from_request(&req, self.opt_in);
+        let started = Instant::now();
+        let request_attributes =
+            attributes::ServerRequestAttributes::from_request(&req, self.url_scheme);
+        let span = Span::from_request(&req, &request_attributes, self.opt_in);
 
         let future = {
             let _guard = span.enter();
             self.inner.call(req)
         };
 
-        ResponseFuture { future, span }
+        ResponseFuture {
+            future,
+            span,
+            request_duration: self.request_duration.clone(),
+            request_attributes: Some(request_attributes),
+            started,
+        }
     }
 }
 
 /// This future contains the inner service future and the current [`Span`].
-#[pin_project]
+#[pin_project(PinnedDrop)]
 pub struct ResponseFuture<F> {
     #[pin]
     pub(crate) future: F,
     pub(crate) span: Span,
+    pub(crate) request_duration: Histogram<f64>,
+    // Taken when the duration is recorded, either when the response is ready or when the future is
+    // dropped before that, so it is recorded exactly once.
+    pub(crate) request_attributes: Option<attributes::ServerRequestAttributes>,
+    pub(crate) started: Instant,
 }
 
 impl<F, E> Future for ResponseFuture<F>
@@ -163,7 +253,32 @@ where
         let mut result = ready!(this.future.poll(cx));
         this.span.finalize(&mut result);
 
+        if let Some(request_attributes) = this.request_attributes.take() {
+            let outcome = match &result {
+                // Every response is `Ok`, including 4xx and 5xx. `into_key_values` derives
+                // `error.type` from a 5xx status.
+                Ok(response) => attributes::RequestOutcome::Response(response.status()),
+                Err(_) => attributes::RequestOutcome::Failed(std::any::type_name::<E>()),
+            };
+            let key_values = request_attributes.into_key_values(outcome);
+            this.request_duration
+                .record(this.started.elapsed().as_secs_f64(), &key_values);
+        }
+
         Poll::Ready(result)
+    }
+}
+
+#[pinned_drop]
+impl<F> PinnedDrop for ResponseFuture<F> {
+    fn drop(self: std::pin::Pin<&mut Self>) {
+        let this = self.project();
+        if let Some(request_attributes) = this.request_attributes.take() {
+            let key_values =
+                request_attributes.into_key_values(attributes::RequestOutcome::Cancelled);
+            this.request_duration
+                .record(this.started.elapsed().as_secs_f64(), &key_values);
+        }
     }
 }
 
@@ -228,12 +343,14 @@ pub trait RequestExt {
     /// Returns the span name.
     ///
     /// The format is either `{method} {http.route}` or `{method}` if
-    /// `http.route` is not available. Examples are:
+    /// `http.route` is not available, where a method the conventions do not
+    /// list as known is written as `HTTP`. Examples are:
     ///
     /// - `GET /object/:object_id/tags`
     /// - `PUT /upload/:file_id`
     /// - `POST /convert`
     /// - `OPTIONS`
+    /// - `HTTP`
     fn span_name(&self) -> String;
 
     /// Returns the user agent, if available.
@@ -281,12 +398,10 @@ impl RequestExt for Request {
     }
 
     fn span_name(&self) -> String {
-        let http_method = self.method().as_str();
-
-        match self.matched_path() {
-            Some(matched_path) => format!("{http_method} {}", matched_path.as_str()),
-            None => http_method.to_string(),
-        }
+        attributes::span_name(
+            attributes::http_request_method(self.method()),
+            attributes::http_route(self),
+        )
     }
 
     fn user_agent(&self) -> Option<&str> {
@@ -332,12 +447,19 @@ pub trait SpanExt {
     /// - `http.response.status_code`
     /// - `network.protocol.version`
     ///
+    /// The method, scheme, route and protocol version come from `attributes`,
+    /// so that the span has the same values as the request duration metric.
+    ///
     /// Setting the `opt_in` parameter to `true` enables various fields marked
     /// as opt-in by the specification. This will require more computing power
     /// and will increase the latency.
     ///
     /// [1]: https://opentelemetry.io/docs/specs/semconv/http/http-spans/
-    fn from_request(req: &Request, opt_in: bool) -> Self;
+    fn from_request(
+        req: &Request,
+        attributes: &attributes::ServerRequestAttributes,
+        opt_in: bool,
+    ) -> Self;
 
     /// Adds HTTP request headers to the span as a `http.request.header.<key>`
     /// field.
@@ -372,9 +494,13 @@ pub trait SpanExt {
 }
 
 impl SpanExt for Span {
-    fn from_request(req: &Request, opt_in: bool) -> Self {
-        let http_method = req.method().as_str();
-        let span_name = req.span_name();
+    fn from_request(
+        req: &Request,
+        attributes: &attributes::ServerRequestAttributes,
+        opt_in: bool,
+    ) -> Self {
+        let http_method = attributes.method;
+        let span_name = attributes::span_name(http_method, attributes.route.as_deref());
         let url = req.uri();
 
         tracing::trace!(
@@ -415,18 +541,26 @@ impl SpanExt for Span {
             // See https://github.com/tokio-rs/tracing-opentelemetry/pull/209
             { semconv::attribute::OTEL_STATUS_DESCRIPTION } = Empty,
             { semconv::trace::HTTP_REQUEST_METHOD } = http_method,
+            { semconv::trace::HTTP_REQUEST_METHOD_ORIGINAL } = Empty,
             { semconv::trace::HTTP_RESPONSE_STATUS_CODE } = Empty,
-            { semconv::trace::HTTP_ROUTE } = Empty,
+            { semconv::trace::HTTP_ROUTE } = attributes.route.as_deref(),
             { semconv::trace::URL_PATH } = url.path(),
             { semconv::trace::URL_QUERY } = url.query(),
-            { semconv::trace::URL_SCHEME } = url.scheme_str().unwrap_or_default(),
+            { semconv::trace::URL_SCHEME } = attributes.scheme,
+            { semconv::trace::NETWORK_PROTOCOL_VERSION } = attributes.protocol_version,
             { semconv::trace::USER_AGENT_ORIGINAL } = Empty,
             { semconv::trace::SERVER_ADDRESS } = Empty,
             { semconv::trace::SERVER_PORT } = Empty,
             { semconv::trace::CLIENT_ADDRESS } = Empty,
             { semconv::trace::CLIENT_PORT } = Empty,
-            // TODO (@Techassi): Add network.protocol.version
         );
+
+        if http_method == attributes::OTHER_METHOD {
+            span.record(
+                semconv::trace::HTTP_REQUEST_METHOD_ORIGINAL,
+                req.method().as_str(),
+            );
+        }
 
         // Set the parent span based on the extracted context
         //
@@ -512,10 +646,6 @@ impl SpanExt for Span {
         // impossible to record request headers at runtime.
         // See: https://github.com/tokio-rs/tracing/issues/1343
 
-        if let Some(http_route) = req.matched_path() {
-            span.record(semconv::trace::HTTP_ROUTE, http_route.as_str());
-        }
-
         span
     }
 
@@ -577,9 +707,292 @@ impl SpanExt for Span {
 
 #[cfg(test)]
 mod test {
-    use axum::{Router, routing::get};
+    use axum::{Router, body::Body, http::StatusCode, routing::get};
+    use opentelemetry::{KeyValue, metrics::MeterProvider};
+    use opentelemetry_sdk::metrics::{
+        InMemoryMetricExporter, PeriodicReader, SdkMeterProvider,
+        data::{AggregatedMetrics, MetricData, ScopeMetrics},
+    };
+    use rstest::rstest;
+    use tower::ServiceExt;
 
     use super::*;
+
+    fn meter_provider() -> (SdkMeterProvider, InMemoryMetricExporter) {
+        let exporter = InMemoryMetricExporter::default();
+        let provider = SdkMeterProvider::builder()
+            .with_reader(PeriodicReader::builder(exporter.clone()).build())
+            .build();
+        (provider, exporter)
+    }
+
+    /// Returns the attribute sets of all `http.server.request.duration` data points.
+    fn recorded_attributes(
+        provider: &SdkMeterProvider,
+        exporter: &InMemoryMetricExporter,
+    ) -> Vec<Vec<KeyValue>> {
+        provider.force_flush().expect("in-memory flush succeeds");
+        let collections = exporter
+            .get_finished_metrics()
+            .expect("in-memory exporter is readable");
+        let resource = collections.last().expect("one collection happened");
+        resource
+            .scope_metrics()
+            .flat_map(ScopeMetrics::metrics)
+            .filter(|metric| {
+                metric.name()
+                    == opentelemetry_semantic_conventions::metric::HTTP_SERVER_REQUEST_DURATION
+            })
+            .flat_map(|metric| match metric.data() {
+                AggregatedMetrics::F64(MetricData::Histogram(histogram)) => histogram
+                    .data_points()
+                    .map(|point| point.attributes().cloned().collect())
+                    .collect::<Vec<_>>(),
+                other => panic!("unexpected metric data: {other:?}"),
+            })
+            .collect()
+    }
+
+    fn value(attributes: &[KeyValue], key: &str) -> Option<String> {
+        attributes
+            .iter()
+            .find(|kv| kv.key.as_str() == key)
+            .map(|kv| kv.value.to_string())
+    }
+
+    /// How the layer is attached to the router.
+    #[derive(Clone, Copy, Debug)]
+    enum Attach {
+        RouteLayer,
+        RouterLayer,
+    }
+
+    fn router(trace_layer: TraceLayer, attach: Attach) -> Router {
+        let router = Router::new()
+            .route("/objects/{id}", get(|| async { "object" }))
+            .route(
+                "/fail",
+                get(|| async { (StatusCode::INTERNAL_SERVER_ERROR, "failed") }),
+            );
+        match attach {
+            Attach::RouteLayer => router.route_layer(trace_layer),
+            Attach::RouterLayer => router.layer(trace_layer),
+        }
+    }
+
+    #[rstest]
+    #[case::route_layer(
+        Attach::RouteLayer,
+        "GET",
+        "/objects/42",
+        Some("/objects/{id}"),
+        "GET",
+        "200",
+        None
+    )]
+    #[case::router_layer(
+        Attach::RouterLayer,
+        "GET",
+        "/objects/42",
+        Some("/objects/{id}"),
+        "GET",
+        "200",
+        None
+    )]
+    #[case::fallback_has_no_route(Attach::RouterLayer, "GET", "/missing", None, "GET", "404", None)]
+    #[case::server_error(
+        Attach::RouterLayer,
+        "GET",
+        "/fail",
+        Some("/fail"),
+        "GET",
+        "500",
+        Some("500")
+    )]
+    #[case::unknown_method(
+        Attach::RouterLayer,
+        "BREW",
+        "/objects/42",
+        Some("/objects/{id}"),
+        "_OTHER",
+        "405",
+        None
+    )]
+    #[tokio::test]
+    async fn records_request_duration(
+        #[case] attach: Attach,
+        #[case] method: &str,
+        #[case] uri: &str,
+        #[case] expected_route: Option<&str>,
+        #[case] expected_method: &str,
+        #[case] expected_status: &str,
+        #[case] expected_error_type: Option<&str>,
+    ) {
+        let (provider, exporter) = meter_provider();
+        let trace_layer = TraceLayer::new().with_meter(provider.meter("test"));
+        let request = Request::builder()
+            .method(method)
+            .uri(uri)
+            .body(Body::empty())
+            .expect("valid request");
+
+        router(trace_layer, attach)
+            .oneshot(request)
+            .await
+            .expect("router is infallible");
+
+        let points = recorded_attributes(&provider, &exporter);
+        assert_eq!(points.len(), 1, "{points:?}");
+        let attributes = &points[0];
+        assert_eq!(
+            value(attributes, semconv::attribute::HTTP_ROUTE).as_deref(),
+            expected_route
+        );
+        assert_eq!(
+            value(attributes, semconv::attribute::HTTP_REQUEST_METHOD).as_deref(),
+            Some(expected_method)
+        );
+        assert_eq!(
+            value(attributes, semconv::attribute::HTTP_RESPONSE_STATUS_CODE).as_deref(),
+            Some(expected_status)
+        );
+        assert_eq!(
+            value(attributes, semconv::attribute::ERROR_TYPE).as_deref(),
+            expected_error_type
+        );
+        assert_eq!(
+            value(attributes, semconv::attribute::URL_SCHEME).as_deref(),
+            Some("http")
+        );
+    }
+
+    #[tokio::test]
+    async fn records_a_request_dropped_before_its_response_as_cancelled() {
+        let (provider, exporter) = meter_provider();
+        let trace_layer = TraceLayer::new().with_meter(provider.meter("test"));
+        let router = Router::new()
+            .route("/hang", get(std::future::pending::<&'static str>))
+            .layer(trace_layer);
+        let request = Request::builder()
+            .uri("/hang")
+            .body(Body::empty())
+            .expect("valid request");
+
+        let timed_out = tokio::time::timeout(
+            std::time::Duration::from_millis(10),
+            router.oneshot(request),
+        )
+        .await;
+        assert!(timed_out.is_err(), "the handler never completes");
+
+        let points = recorded_attributes(&provider, &exporter);
+        assert_eq!(points.len(), 1, "{points:?}");
+        let attributes = &points[0];
+        assert_eq!(
+            value(attributes, semconv::attribute::ERROR_TYPE).as_deref(),
+            Some(attributes::CANCELLED_ERROR_TYPE)
+        );
+        assert_eq!(
+            value(attributes, semconv::attribute::HTTP_RESPONSE_STATUS_CODE),
+            None
+        );
+        assert_eq!(
+            value(attributes, semconv::attribute::HTTP_ROUTE).as_deref(),
+            Some("/hang")
+        );
+    }
+
+    #[tokio::test]
+    async fn records_no_client_address_path_or_query() {
+        let (provider, exporter) = meter_provider();
+        let trace_layer = TraceLayer::new()
+            .with_meter(provider.meter("test"))
+            .with_url_scheme("https");
+
+        let client_address: SocketAddr = "192.0.2.7:51234".parse().expect("valid address");
+        let mut request = Request::builder()
+            .uri("/objects/42?token=secret")
+            .header(HOST, "example.com")
+            .body(Body::empty())
+            .expect("valid request");
+        request.extensions_mut().insert(ConnectInfo(client_address));
+        router(trace_layer, Attach::RouteLayer)
+            .oneshot(request)
+            .await
+            .expect("router is infallible");
+
+        let points = recorded_attributes(&provider, &exporter);
+        assert_eq!(points.len(), 1, "{points:?}");
+        let attributes = &points[0];
+        assert_eq!(
+            value(attributes, semconv::attribute::URL_SCHEME).as_deref(),
+            Some("https")
+        );
+        assert_eq!(value(attributes, semconv::attribute::CLIENT_ADDRESS), None);
+        assert!(
+            attributes.iter().all(|kv| {
+                let value = kv.value.to_string();
+                !value.contains("192.0.2.7") && !value.contains("secret") && !value.contains("42")
+            }),
+            "{attributes:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn records_the_configured_scheme_for_an_absolute_form_uri() {
+        let (provider, exporter) = meter_provider();
+        let trace_layer = TraceLayer::new()
+            .with_meter(provider.meter("test"))
+            .with_url_scheme("https");
+        let request = Request::builder()
+            .uri("foo://example.com/objects/42")
+            .body(Body::empty())
+            .expect("valid request");
+
+        router(trace_layer, Attach::RouterLayer)
+            .oneshot(request)
+            .await
+            .expect("router is infallible");
+
+        let points = recorded_attributes(&provider, &exporter);
+        assert_eq!(points.len(), 1, "{points:?}");
+        assert_eq!(
+            value(&points[0], semconv::attribute::URL_SCHEME).as_deref(),
+            Some("https")
+        );
+    }
+
+    #[tokio::test]
+    async fn records_the_error_type_of_a_failed_service() {
+        let (provider, exporter) = meter_provider();
+        let service =
+            TraceLayer::new()
+                .with_meter(provider.meter("test"))
+                .layer(tower::service_fn(|_request: Request| async {
+                    Err::<Response, _>(std::io::Error::other("connection reset"))
+                }));
+        let request = Request::builder()
+            .uri("/objects/42")
+            .body(Body::empty())
+            .expect("valid request");
+
+        service
+            .oneshot(request)
+            .await
+            .expect_err("the inner service fails");
+
+        let points = recorded_attributes(&provider, &exporter);
+        assert_eq!(points.len(), 1, "{points:?}");
+        let attributes = &points[0];
+        assert_eq!(
+            value(attributes, semconv::attribute::ERROR_TYPE).as_deref(),
+            Some(std::any::type_name::<std::io::Error>())
+        );
+        assert_eq!(
+            value(attributes, semconv::attribute::HTTP_RESPONSE_STATUS_CODE),
+            None
+        );
+    }
 
     #[tokio::test]
     async fn test() {

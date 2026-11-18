@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Record the `http.server.request.duration` metric for webhook requests, see the
+  [stackable-telemetry changelog](../stackable-telemetry/CHANGELOG.md#unreleased) ([#1333]).
+
+### Changed
+
+- Webhook request spans record `url.scheme` as `https` instead of an empty string, and a method
+  the HTTP semantic conventions do not list as known as `_OTHER`, with the span name starting with
+  `HTTP`. See the [stackable-telemetry changelog](../stackable-telemetry/CHANGELOG.md#unreleased) ([#1333]).
+
+[#1333]: https://github.com/stackabletech/operator-rs/pull/1333
+
 ## [0.11.0] - 2026-11-03
 
 ### Changed

@@ -127,7 +127,7 @@ impl WebhookServer {
         // TODO (@Techassi): Make opt-in configurable from the outside
         // Create an OpenTelemetry tracing layer
         tracing::trace!("create tracing service (layer)");
-        let trace_layer = AxumTraceLayer::new().with_opt_in();
+        let trace_layer = AxumTraceLayer::new().with_opt_in().with_url_scheme("https");
 
         // Use a service builder to provide multiple layers at once. Recommended
         // by the Axum project.
