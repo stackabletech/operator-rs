@@ -24,6 +24,7 @@ mod inputs {
         // mod conversion_tracking_enum;
         // mod conversion_tracking_generics;
         // mod conversion_tracking;
+        // mod conversion_tracking_removed;
         // mod crate_overrides;
         // mod crate_overrides_only_kube;
         // mod crd_doc;
@@ -35,6 +36,7 @@ mod inputs {
         // mod module;
         // mod module_preserve;
         // mod printcolumn;
+        // mod removed;
         // mod renamed_field;
         // mod renamed_kind;
         // mod scale;
@@ -47,6 +49,7 @@ mod inputs {
         // mod applied_to_struct;
         // mod changed;
         // mod deprecate;
+        // mod removed;
         // mod spec_suffix;
         // mod unknown_version;
         // mod submodule_invalid_name;

@@ -34,11 +34,7 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "username": "jdoe"
         },
         "status": {
-          "alive": true,
-          "changedValues": {
-            "downgrades": {},
-            "upgrades": {}
-          }
+          "alive": true
         }
       },
       {
@@ -62,11 +58,7 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "username": "jdoe"
         },
         "status": {
-          "alive": true,
-          "changedValues": {
-            "downgrades": {},
-            "upgrades": {}
-          }
+          "alive": true
         }
       },
       {
@@ -90,11 +82,7 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "username": "jdoe"
         },
         "status": {
-          "alive": true,
-          "changedValues": {
-            "downgrades": {},
-            "upgrades": {}
-          }
+          "alive": true
         }
       },
       {
@@ -118,11 +106,7 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "username": "jdoe"
         },
         "status": {
-          "alive": true,
-          "changedValues": {
-            "downgrades": {},
-            "upgrades": {}
-          }
+          "alive": true
         }
       },
       {
