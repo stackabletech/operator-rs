@@ -15,7 +15,7 @@ axum = { version = "0.8.9", features = ["http2"] }
 base16ct = "1.0"
 base64 = "0.23"
 built = "0.8.1"
-clap = { version = "4.6.7", features = ["derive", "cargo", "env"] }
+clap = { version = "4.6.8", features = ["derive", "cargo", "env"] }
 const_format = "0.2.37"
 # The RustCrypto crates const-oid, ecdsa, p256, rand_core, rsa, sha2, signature and x509-cert have
 # to be bumped together. `stackable-certs` builds certificates for both ECDSA and RSA keypairs, so
@@ -39,7 +39,7 @@ http = "1.5.0"
 humantime = "2.4.0"
 indexmap = "2.14.2"
 indoc = "2.0.8"
-jiff = "1.0.0"
+jiff = "1.0.1"
 insta = { version = "1.49.0", features = ["glob"] }
 hyper = { version = "1.12.0", features = ["full"] }
 hyper-util = "0.1.21"
@@ -71,7 +71,7 @@ rand = "0.10.4"
 # This crate is independent of the `rand` version above, which is only used to generate random
 # Secrets in stackable-operator.
 rand_core = "0.10.1"
-regex = "1.13.1"
+regex = "1.13.2"
 # Part of the RustCrypto ecosystem, see the const-oid comment above
 rsa = { version = "0.10.0", features = ["pkcs1v15"] }
 rstest = "0.28.0"
@@ -90,7 +90,7 @@ snafu = "0.9.2"
 stackable-operator-derive = { path = "stackable-operator-derive" }
 strum = { version = "0.28.0", features = ["derive"] }
 syn = "3.0.10"
-sysinfo = "0.40.3"
+sysinfo = "0.40.4"
 tempfile = "3.27.0"
 time = { version = "0.3.55" }
 tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread", "fs"] }
@@ -105,12 +105,12 @@ tracing-opentelemetry = "0.34.0"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
 trybuild = "1.0.125"
 url = { version = "2.5.8", features = ["serde"] }
-uuid = "1.29.2"
+uuid = "1.29.3"
 winnow = "1.0.5"
 # Part of the RustCrypto ecosystem, see the const-oid comment above.
 x509-cert = { version = "0.3.0", features = ["builder"] }
 xml = "1.4.0"
-zeroize = "1.9.1"
+zeroize = "1.9.2"
 
 [workspace.lints.clippy]
 # Enable all pedantic lints (with lower priority so individual lints can override)
