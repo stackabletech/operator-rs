@@ -75,7 +75,8 @@ impl KeyValueOverridesProvider for DummyConfigOverrides {
         k8s_openapi = "stackable_operator::k8s_openapi",
         schemars = "stackable_operator::schemars",
         versioned = "stackable_operator::versioned"
-    )
+    ),
+    options(k8s(experimental_conversion_tracking))
 )]
 pub mod versioned {
     #[versioned(crd(

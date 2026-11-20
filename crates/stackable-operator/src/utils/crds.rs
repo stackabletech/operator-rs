@@ -15,6 +15,16 @@ pub fn raw_optional_object_schema(_: &mut schemars::generate::SchemaGenerator) -
     })
 }
 
+/// Accepts any JSON value (object, array, string, number, bool or null).
+///
+/// Kubernetes allows omitting the `type` for nodes with `x-kubernetes-preserve-unknown-fields`.
+pub fn raw_any_nullable_value_schema(_: &mut schemars::generate::SchemaGenerator) -> Schema {
+    json_schema!({
+        "nullable": true,
+        "x-kubernetes-preserve-unknown-fields": true,
+    })
+}
+
 pub fn raw_object_list_schema(_: &mut schemars::generate::SchemaGenerator) -> Schema {
     json_schema!({
         "type": "array",
