@@ -17,18 +17,18 @@ use opentelemetry_semantic_conventions::attribute::{
 };
 
 /// The value recorded for an HTTP method the conventions do not list as known.
-pub const OTHER_METHOD: &str = "_OTHER";
+pub(crate) const OTHER_METHOD: &str = "_OTHER";
 
 /// The method part of a span name for a request whose method is [`OTHER_METHOD`].
 const OTHER_METHOD_SPAN_NAME: &str = "HTTP";
 
 /// The `error.type` recorded for a request whose future was dropped before it produced a response.
-pub const CANCELLED_ERROR_TYPE: &str = "cancelled";
+pub(crate) const CANCELLED_ERROR_TYPE: &str = "cancelled";
 
 /// Returns the `http.request.method` value: the method name for the methods the conventions list
 /// as known, [`OTHER_METHOD`] for any other, so that a client cannot create unbounded attribute
 /// values.
-pub fn http_request_method(method: &Method) -> &'static str {
+pub(crate) fn http_request_method(method: &Method) -> &'static str {
     match *method {
         Method::CONNECT => "CONNECT",
         Method::DELETE => "DELETE",
@@ -46,7 +46,7 @@ pub fn http_request_method(method: &Method) -> &'static str {
 
 /// Returns the `network.protocol.version` value, or [`None`] for a version the conventions name
 /// no value for.
-pub fn network_protocol_version(version: Version) -> Option<&'static str> {
+pub(crate) fn network_protocol_version(version: Version) -> Option<&'static str> {
     match version {
         Version::HTTP_09 => Some("0.9"),
         Version::HTTP_10 => Some("1.0"),
@@ -62,7 +62,7 @@ pub fn network_protocol_version(version: Version) -> Option<&'static str> {
 /// Axum inserts [`MatchedPath`] while routing, so it is only present for a layer added through
 /// `Router::layer` or `Router::route_layer`, and only for requests a route matched. A layer that
 /// wraps the whole `Router` as a service, and the router's fallback, see no route.
-pub fn http_route(request: &Request) -> Option<&str> {
+pub(crate) fn http_route(request: &Request) -> Option<&str> {
     request
         .extensions()
         .get::<MatchedPath>()
@@ -72,7 +72,7 @@ pub fn http_route(request: &Request) -> Option<&str> {
 /// Returns the span name the conventions define for a server request: `{method} {http.route}`, or
 /// `{method}` without a route, where `method` is the value of [`http_request_method`] and
 /// [`OTHER_METHOD`] is written as `HTTP`.
-pub fn span_name(method: &str, route: Option<&str>) -> String {
+pub(crate) fn span_name(method: &str, route: Option<&str>) -> String {
     let method = if method == OTHER_METHOD {
         OTHER_METHOD_SPAN_NAME
     } else {
@@ -87,7 +87,7 @@ pub fn span_name(method: &str, route: Option<&str>) -> String {
 
 /// How a request ended, which decides the status and `error.type` attributes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RequestOutcome {
+pub(crate) enum RequestOutcome {
     /// The server produced a response with this status.
     Response(StatusCode),
 
@@ -106,23 +106,23 @@ pub enum RequestOutcome {
 /// The attributes of a request that both the per-request span of [`TraceLayer`](super::TraceLayer)
 /// and its `http.server.request.duration` metric have.
 ///
-/// Each field is the value of the HTTP semantic convention attribute its doc names.
-///
 /// It contains only attributes the conventions list for the metric, which excludes client
-/// addresses, headers and the raw URL.
+/// addresses, headers and the raw URL. [`ServerRequestAttributes::from_request`] is the only way to
+/// create one, so the method is a known method or `_OTHER`, the protocol version is one the
+/// conventions name, and the route is the template axum matched.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ServerRequestAttributes {
     /// `http.request.method`, see [`http_request_method`].
-    pub method: &'static str,
+    method: &'static str,
 
     /// `url.scheme`.
-    pub scheme: &'static str,
+    scheme: &'static str,
 
     /// `http.route`, see [`http_route`].
-    pub route: Option<String>,
+    route: Option<String>,
 
     /// `network.protocol.version`, see [`network_protocol_version`].
-    pub protocol_version: Option<&'static str>,
+    protocol_version: Option<&'static str>,
 }
 
 impl ServerRequestAttributes {
@@ -140,8 +140,28 @@ impl ServerRequestAttributes {
         }
     }
 
+    /// `http.request.method`, see [`http_request_method`].
+    pub(crate) fn method(&self) -> &'static str {
+        self.method
+    }
+
+    /// `url.scheme`.
+    pub(crate) fn scheme(&self) -> &'static str {
+        self.scheme
+    }
+
+    /// `http.route`, see [`http_route`].
+    pub(crate) fn route(&self) -> Option<&str> {
+        self.route.as_deref()
+    }
+
+    /// `network.protocol.version`, see [`network_protocol_version`].
+    pub(crate) fn protocol_version(&self) -> Option<&'static str> {
+        self.protocol_version
+    }
+
     /// Returns the metric attributes, completed with the status or error of `outcome`.
-    pub fn into_key_values(self, outcome: RequestOutcome) -> Vec<KeyValue> {
+    pub(crate) fn into_key_values(self, outcome: RequestOutcome) -> Vec<KeyValue> {
         let mut attributes = vec![
             KeyValue::new(HTTP_REQUEST_METHOD, self.method),
             KeyValue::new(URL_SCHEME, self.scheme),

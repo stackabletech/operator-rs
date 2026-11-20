@@ -25,13 +25,14 @@ All notable changes to this project will be documented in this file.
     it.
   - Record a request whose future is dropped before it produced a response, for example on a
     client timeout, with `error.type` `cancelled` and no status code ([#1333]).
-- Add the `instrumentation::axum::attributes` module, which converts requests and responses into
-  HTTP semantic convention attribute values for both spans and the metric ([#1333]).
+- Add `instrumentation::axum::ServerRequestAttributes`, the HTTP semantic convention attributes
+  of a request that both spans and the metric use. Its fields are private, and
+  `ServerRequestAttributes::from_request` is the only way to create one ([#1333]).
 
 ### Changed
 
 - BREAKING: Take the method, scheme, route and protocol version of `AxumTraceLayer` spans from
-  `attributes::ServerRequestAttributes`, which `SpanExt::from_request` now takes as a parameter.
+  `ServerRequestAttributes`, which `SpanExt::from_request` now takes as a parameter.
   `RequestExt::span_name` writes a method the conventions do not list as known as `HTTP`. This
   changes span output ([#1333]):
   - A method the HTTP semantic conventions do not list as known is recorded as `_OTHER`, with the

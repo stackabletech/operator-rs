@@ -3,7 +3,7 @@
 //!
 //! The same layer records the `http.server.request.duration` metric defined by
 //! the [HTTP metric conventions][3]. Spans and metric take the method, scheme,
-//! route and protocol version from the same [`attributes::ServerRequestAttributes`].
+//! route and protocol version from the same [`ServerRequestAttributes`].
 //!
 //! The spans include a wide variety of fields / attributes defined by the
 //! semantic conventions specification. A few examples are:
@@ -39,10 +39,11 @@ use tower::{Layer, Service};
 use tracing::{Span, field::Empty};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
-pub mod attributes;
+mod attributes;
 mod extractor;
 mod injector;
 
+pub use attributes::ServerRequestAttributes;
 pub use extractor::*;
 pub use injector::*;
 
@@ -499,8 +500,8 @@ impl SpanExt for Span {
         attributes: &attributes::ServerRequestAttributes,
         opt_in: bool,
     ) -> Self {
-        let http_method = attributes.method;
-        let span_name = attributes::span_name(http_method, attributes.route.as_deref());
+        let http_method = attributes.method();
+        let span_name = attributes::span_name(http_method, attributes.route());
         let url = req.uri();
 
         tracing::trace!(
@@ -543,11 +544,11 @@ impl SpanExt for Span {
             { semconv::trace::HTTP_REQUEST_METHOD } = http_method,
             { semconv::trace::HTTP_REQUEST_METHOD_ORIGINAL } = Empty,
             { semconv::trace::HTTP_RESPONSE_STATUS_CODE } = Empty,
-            { semconv::trace::HTTP_ROUTE } = attributes.route.as_deref(),
+            { semconv::trace::HTTP_ROUTE } = attributes.route(),
             { semconv::trace::URL_PATH } = url.path(),
             { semconv::trace::URL_QUERY } = url.query(),
-            { semconv::trace::URL_SCHEME } = attributes.scheme,
-            { semconv::trace::NETWORK_PROTOCOL_VERSION } = attributes.protocol_version,
+            { semconv::trace::URL_SCHEME } = attributes.scheme(),
+            { semconv::trace::NETWORK_PROTOCOL_VERSION } = attributes.protocol_version(),
             { semconv::trace::USER_AGENT_ORIGINAL } = Empty,
             { semconv::trace::SERVER_ADDRESS } = Empty,
             { semconv::trace::SERVER_PORT } = Empty,
