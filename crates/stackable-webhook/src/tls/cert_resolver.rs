@@ -7,9 +7,9 @@ use tokio::sync::mpsc;
 use tokio_rustls::rustls::{
     crypto::CryptoProvider, server::ResolvesServerCert, sign::CertifiedKey,
 };
-use x509_cert::Certificate;
+use x509_cert::{Certificate, der::DateTime, time::Time};
 
-use super::{WEBHOOK_CA_LIFETIME, WEBHOOK_CERTIFICATE_LIFETIME};
+use super::{CERTIFICATE_EXPIRY_BUFFER, WEBHOOK_CA_LIFETIME, WEBHOOK_CERTIFICATE_LIFETIME};
 
 type Result<T, E = CertificateResolverError> = std::result::Result<T, E>;
 
@@ -45,6 +45,19 @@ pub enum CertificateResolverError {
 
     #[snafu(display("no default rustls CryptoProvider installed"))]
     NoDefaultCryptoProviderInstalled,
+
+    #[snafu(display("failed to compute certificate rotation deadline"))]
+    ComputeRotationDeadline { source: x509_cert::der::Error },
+}
+
+/// The wall-clock expiry times of a certificate.
+#[derive(Debug)]
+struct CertificateExpiry {
+    /// The `notAfter` time of the certificate.
+    not_after: Time,
+
+    /// When to rotate the certificate: `notAfter` minus [`CERTIFICATE_EXPIRY_BUFFER`].
+    rotation_deadline: Time,
 }
 
 /// This struct serves as [`ResolvesServerCert`] to always hand out the current certificate for TLS
@@ -58,9 +71,9 @@ pub struct CertificateResolver {
     /// (and performant) bridge between async write and sync read.
     current_certified_key: ArcSwap<CertifiedKey>,
 
-    /// The wall-clock expiry time (`not_after`) of the current certificate.
+    /// The wall-clock expiry times of the current certificate.
     /// Used to detect clock drift between monotonic and wall-clock time.
-    current_not_after: ArcSwap<SystemTime>,
+    current_expiry: ArcSwap<CertificateExpiry>,
 
     subject_alternative_dns_names: Arc<Vec<String>>,
 
@@ -73,7 +86,7 @@ impl CertificateResolver {
         certificate_tx: mpsc::Sender<Certificate>,
     ) -> Result<Self> {
         let subject_alternative_dns_names = Arc::new(subject_alternative_dns_names);
-        let (certified_key, not_after) = Self::generate_new_certificate_inner(
+        let (certified_key, expiry) = Self::generate_new_certificate_inner(
             subject_alternative_dns_names.clone(),
             &certificate_tx,
         )
@@ -82,51 +95,48 @@ impl CertificateResolver {
         Ok(Self {
             subject_alternative_dns_names,
             current_certified_key: ArcSwap::new(certified_key),
-            current_not_after: ArcSwap::new(Arc::new(not_after)),
+            current_expiry: ArcSwap::new(Arc::new(expiry)),
             certificate_tx,
         })
     }
 
     pub async fn rotate_certificate(&self) -> Result<()> {
-        let (certified_key, not_after) = self.generate_new_certificate().await?;
+        let (certified_key, expiry) = self.generate_new_certificate().await?;
 
         // TODO: Sign the new cert somehow with the old cert. See https://github.com/stackabletech/decisions/issues/56
         self.current_certified_key.store(certified_key);
-        self.current_not_after.store(Arc::new(not_after));
+        self.current_expiry.store(Arc::new(expiry));
 
         Ok(())
     }
 
     /// Returns `true` if the current certificate is expired or will expire
-    /// within the given `buffer` duration according to wall-clock time.
+    /// within [`CERTIFICATE_EXPIRY_BUFFER`] according to wall-clock time.
     ///
     /// This catches cases where the monotonic timer (used by `tokio::time`)
     /// has drifted from wall-clock time, e.g. due to system hibernation.
-    pub fn needs_rotation(&self, buffer: std::time::Duration) -> bool {
-        let not_after = **self.current_not_after.load();
-        // If subtraction underflows (buffer > time since epoch), fall back to
-        // UNIX_EPOCH so that the comparison always triggers rotation.
-        let deadline = not_after
-            .checked_sub(buffer)
-            .unwrap_or(SystemTime::UNIX_EPOCH);
+    pub fn needs_rotation(&self) -> bool {
+        let expiry = self.current_expiry.load();
 
         tracing::debug!(
             x509.subject_alternative_names = ?self.subject_alternative_dns_names,
-            x509.not_after = %humantime::format_rfc3339(not_after),
-            deadline = %humantime::format_rfc3339(deadline),
+            // Will print in RFC 3339 format
+            x509.not_after = %expiry.not_after,
+            deadline = %expiry.rotation_deadline,
+            expiry_buffer = %CERTIFICATE_EXPIRY_BUFFER,
             "checking if certificate needs rotation"
         );
 
-        SystemTime::now() >= deadline
+        SystemTime::now() >= expiry.rotation_deadline.to_system_time()
     }
 
-    async fn generate_new_certificate(&self) -> Result<(Arc<CertifiedKey>, SystemTime)> {
+    async fn generate_new_certificate(&self) -> Result<(Arc<CertifiedKey>, CertificateExpiry)> {
         let subject_alternative_dns_names = self.subject_alternative_dns_names.clone();
         Self::generate_new_certificate_inner(subject_alternative_dns_names, &self.certificate_tx)
             .await
     }
 
-    /// Creates a new certificate and returns the certified key as well as `notAfter` timestamp.
+    /// Creates a new certificate and returns the certified key as well as its expiry times.
     ///
     /// The certificate is send to the passed `cert_tx`.
     ///
@@ -136,7 +146,7 @@ impl CertificateResolver {
     async fn generate_new_certificate_inner(
         subject_alternative_dns_names: Arc<Vec<String>>,
         certificate_tx: &mpsc::Sender<Certificate>,
-    ) -> Result<(Arc<CertifiedKey>, SystemTime)> {
+    ) -> Result<(Arc<CertifiedKey>, CertificateExpiry)> {
         // The certificate generations can take a while, so we use `spawn_blocking`
         let (cert, certified_key) = tokio::task::spawn_blocking(move || {
             let tls_provider =
@@ -174,15 +184,30 @@ impl CertificateResolver {
         .await
         .context(TokioSpawnBlockingSnafu)??;
 
-        let not_after = cert.tbs_certificate().validity().not_after.to_system_time();
+        let not_after = cert.tbs_certificate().validity().not_after;
+        let expiry = CertificateExpiry {
+            not_after,
+            rotation_deadline: rotation_deadline(not_after, *CERTIFICATE_EXPIRY_BUFFER)?,
+        };
 
         certificate_tx
             .send(cert)
             .await
             .map_err(|_err| CertificateResolverError::SendCertificateToChannel)?;
 
-        Ok((certified_key, not_after))
+        Ok((certified_key, expiry))
     }
+}
+
+/// Returns the time at which a certificate expiring at `not_after` should be rotated.
+fn rotation_deadline(not_after: Time, expiry_buffer: std::time::Duration) -> Result<Time> {
+    // If subtraction underflows (buffer > time since epoch), fall back to
+    // UNIX_EPOCH so that the comparison always triggers rotation.
+    let deadline = not_after.to_unix_duration().saturating_sub(expiry_buffer);
+
+    DateTime::from_unix_duration(deadline)
+        .map(Time::from)
+        .context(ComputeRotationDeadlineSnafu)
 }
 
 impl ResolvesServerCert for CertificateResolver {
@@ -191,5 +216,65 @@ impl ResolvesServerCert for CertificateResolver {
         _client_hello: tokio_rustls::rustls::server::ClientHello<'_>,
     ) -> Option<Arc<tokio_rustls::rustls::sign::CertifiedKey>> {
         Some(self.current_certified_key.load().clone())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use x509_cert::der::asn1::{GeneralizedTime, UtcTime};
+
+    use super::*;
+
+    /// `x509.not_after` used to be logged using `humantime::format_rfc3339`. The expected values
+    /// are what humantime produced, so that the log format stays the same.
+    #[test]
+    fn not_after_display_matches_rfc3339() {
+        let utc_time = |year, month, day, hour, minutes, seconds| {
+            let date_time = DateTime::new(year, month, day, hour, minutes, seconds)
+                .expect("date time must be valid");
+            Time::from(UtcTime::from_date_time(date_time).expect("UTC time must be valid"))
+        };
+
+        assert_eq!(
+            utc_time(2026, 11, 18, 9, 5, 3).to_string(),
+            "2026-11-18T09:05:03Z"
+        );
+        assert_eq!(
+            utc_time(2028, 2, 29, 23, 59, 59).to_string(),
+            "2028-02-29T23:59:59Z"
+        );
+
+        // Certificates valid past 2049 use GeneralizedTime
+        let generalized_time = Time::from(GeneralizedTime::from_date_time(
+            DateTime::new(2050, 1, 1, 0, 0, 0).expect("date time must be valid"),
+        ));
+        assert_eq!(generalized_time.to_string(), "2050-01-01T00:00:00Z");
+    }
+
+    #[test]
+    fn rotation_deadline_subtracts_expiry_buffer() {
+        let not_after =
+            Time::from(DateTime::new(2026, 11, 18, 9, 5, 3).expect("date time must be valid"));
+        let deadline = rotation_deadline(not_after, Duration::from_hours(4))
+            .expect("rotation deadline must be valid");
+
+        assert_eq!(deadline.to_string(), "2026-11-18T05:05:03Z");
+    }
+
+    #[test]
+    fn rotation_deadline_falls_back_to_unix_epoch() {
+        let not_after =
+            Time::from(DateTime::new(1970, 1, 1, 1, 0, 0).expect("date time must be valid"));
+        let deadline = rotation_deadline(not_after, Duration::from_hours(4))
+            .expect("rotation deadline must be valid");
+
+        assert_eq!(deadline.to_string(), "1970-01-01T00:00:00Z");
+    }
+
+    #[test]
+    fn expiry_buffer_display() {
+        assert_eq!(CERTIFICATE_EXPIRY_BUFFER.to_string(), "4h");
     }
 }
