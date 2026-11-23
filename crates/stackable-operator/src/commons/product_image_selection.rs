@@ -819,7 +819,7 @@ mod tests {
     )]
     fn resolve_fail_non_ascii(#[case] input: String) {
         let product_image: ProductImage = yaml_serde::from_str(&input).expect("Illegal test input");
-        let operator_version = "23.7.42".parse().expect("Illegal test input");
+        let operator_version = "23.7.42".parse().expect("invalid operator version");
 
         let result = product_image.resolve("superset", STACKABLE_DOCKER_REPO, &operator_version);
 
