@@ -328,6 +328,13 @@ impl ProductImage {
     }
 
     fn prepare_app_version_label_value(app_version: &str) -> Result<LabelValue, Error> {
+        // Non-ASCII values are never valid label values. Reject them before truncating, because
+        // `String::truncate` panics when it would split a multi-byte character.
+        if !app_version.is_ascii() {
+            return Err(LabelValueError::ValueNotAscii)
+                .context(ParseAppVersionLabelSnafu { app_version });
+        }
+
         let mut formatted_app_version = app_version.to_string();
         // Labels cannot have more than `LABEL_VALUE_MAX_LEN` characters.
         formatted_app_version.truncate(LABEL_VALUE_MAX_LEN);
@@ -790,5 +797,38 @@ mod tests {
         let err = yaml_serde::from_str::<ProductImage>(&input).expect_err("Must be error");
 
         assert_eq!(err.to_string(), expected);
+    }
+
+    #[rstest]
+    // 40 two-byte characters, so byte 63 falls inside a character.
+    #[case::auto_long(
+        r"
+        productVersion: éééééééééééééééééééééééééééééééééééééééé
+        "
+    )]
+    #[case::custom_long_tag(
+        r"
+        custom: my.corp/myteam/stackable/superset:éééééééééééééééééééééééééééééééééééééééé
+        productVersion: 1.4.1
+        "
+    )]
+    #[case::auto_short(
+        r"
+        productVersion: 1.4.é
+        "
+    )]
+    fn resolve_fail_non_ascii(#[case] input: String) {
+        let product_image: ProductImage = yaml_serde::from_str(&input).expect("Illegal test input");
+        let operator_version = "23.7.42".parse().expect("Illegal test input");
+
+        let result = product_image.resolve("superset", STACKABLE_DOCKER_REPO, &operator_version);
+
+        assert!(matches!(
+            result,
+            Err(Error::ParseAppVersionLabel {
+                source: LabelValueError::ValueNotAscii,
+                ..
+            })
+        ));
     }
 }
