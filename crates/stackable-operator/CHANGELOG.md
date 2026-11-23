@@ -8,7 +8,14 @@ All notable changes to this project will be documented in this file.
 
 - Add `utils::crds::raw_any_nullable_value_schema`, which accepts any JSON value (not only objects) ([#1326]).
 
+### Removed
+
+- BREAKING: Remove the migration of immutable random Secrets from `create_random_secret_if_not_exists`.
+  It was only needed when upgrading from SDP 26.3.0 or older. The `DeleteRandomSecret` error variant
+  is removed as well ([#XXXX]).
+
 [#1326]: https://github.com/stackabletech/operator-rs/pull/1326
+[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
 
 ## [0.122.0] - 2026-11-03
 
