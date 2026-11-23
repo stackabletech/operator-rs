@@ -11,10 +11,10 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - `ProductImage::resolve` no longer panics on long product versions or image tags containing
-  non-ASCII characters and returns an error instead ([#XXXX]).
+  non-ASCII characters and returns an error instead ([#1339]).
 
 [#1326]: https://github.com/stackabletech/operator-rs/pull/1326
-[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+[#1339]: https://github.com/stackabletech/operator-rs/pull/XXXX
 
 ## [0.122.0] - 2026-11-03
 
