@@ -27,7 +27,7 @@ pub enum Error {
 ///
 /// As this function generates random Secret contents, if the Secret already exists, it will *not*
 /// be patched, as otherwise we would generate new Secret contents on every reconcile. Which would
-/// in turn cause Pods restarts, which would cause reconciles ;)
+/// in turn cause Pods to restart, which would cause reconciles ;)
 pub async fn create_random_secret_if_not_exists<R>(
     secret_name: &str,
     secret_key: &str,
