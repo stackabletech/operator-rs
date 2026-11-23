@@ -12,10 +12,10 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: Remove the migration of immutable random Secrets from `create_random_secret_if_not_exists`.
   It was only needed when upgrading from SDP 26.3.0 or older. The `DeleteRandomSecret` error variant
-  is removed as well ([#XXXX]).
+  is removed as well ([#1338]).
 
 [#1326]: https://github.com/stackabletech/operator-rs/pull/1326
-[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+[#1338]: https://github.com/stackabletech/operator-rs/pull/1338
 
 ## [0.122.0] - 2026-11-03
 
