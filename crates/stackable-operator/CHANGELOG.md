@@ -14,7 +14,16 @@ All notable changes to this project will be documented in this file.
   non-ASCII characters and returns an error instead ([#1339]).
 
 [#1326]: https://github.com/stackabletech/operator-rs/pull/1326
-[#1339]: https://github.com/stackabletech/operator-rs/pull/XXXX
+[#1339]: https://github.com/stackabletech/operator-rs/pull/1339
+
+### Removed
+
+- BREAKING: Remove the migration of immutable random Secrets from `create_random_secret_if_not_exists`.
+  It was only needed when upgrading from SDP <= 26.3 to 26.7 The `DeleteRandomSecret` error variant
+  is removed as well ([#1338]).
+
+[#1326]: https://github.com/stackabletech/operator-rs/pull/1326
+[#1338]: https://github.com/stackabletech/operator-rs/pull/1338
 
 ## [0.122.0] - 2026-11-03
 
