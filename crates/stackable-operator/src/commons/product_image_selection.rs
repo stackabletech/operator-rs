@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use stackable_shared::semver::{VersionExt, ZERO_ZERO_ZERO_DEV};
 
-use crate::kvp::{LABEL_VALUE_MAX_LEN, LabelValue, LabelValueError};
+use crate::{
+    kvp::{LABEL_VALUE_MAX_LEN, LabelValue, LabelValueError},
+    utils::length_enforcement::truncate_at_char_boundary,
+};
 
 pub const STACKABLE_DOCKER_REPO: &str = "oci.stackable.tech/sdp";
 
@@ -328,16 +331,9 @@ impl ProductImage {
     }
 
     fn prepare_app_version_label_value(app_version: &str) -> Result<LabelValue, Error> {
-        // Non-ASCII values are never valid label values. Reject them before truncating, because
-        // `String::truncate` panics when it would split a multi-byte character.
-        if !app_version.is_ascii() {
-            return Err(LabelValueError::ValueNotAscii)
-                .context(ParseAppVersionLabelSnafu { app_version });
-        }
-
-        let mut formatted_app_version = app_version.to_string();
         // Labels cannot have more than `LABEL_VALUE_MAX_LEN` characters.
-        formatted_app_version.truncate(LABEL_VALUE_MAX_LEN);
+        let formatted_app_version =
+            truncate_at_char_boundary(app_version.to_owned(), LABEL_VALUE_MAX_LEN);
         // The hash has the format `sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb`
         // As the colon (`:`) is not a valid label value character, we replace it with a valid "-" character.
         let formatted_app_version = formatted_app_version.replace(':', "-");

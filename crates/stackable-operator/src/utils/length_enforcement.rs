@@ -60,7 +60,7 @@ pub fn ensure_max_string_length(
 ///
 /// The input is only truncated at a character boundary, so a multi-byte character is never split
 /// up but dropped entirely.
-fn truncate_at_char_boundary(mut input: String, max_length_bytes: usize) -> String {
+pub(crate) fn truncate_at_char_boundary(mut input: String, max_length_bytes: usize) -> String {
     input.truncate(input.floor_char_boundary(max_length_bytes));
     input
 }
