@@ -12,6 +12,7 @@ use stackable_shared::time::Duration;
 use crate::{
     config::{fragment::Fragment, merge::Merge},
     versioned::versioned,
+    validation::Validate,
 };
 
 /// The interval used if the user does not configure one.
@@ -55,22 +56,20 @@ pub mod versioned {
     }
 }
 
-impl v1alpha1::ContainerdebugConfig {
-    /// Validates the merged configuration.
-    ///
-    /// The interval is only validated if `containerdebug` is enabled, so that a role group can
-    /// disable it without failing on an interval inherited from its role.
-    pub fn validate(&self) -> Result<ValidatedContainerdebugConfig, Error> {
-        if !self.enabled {
+impl TryFrom<v1alpha1::ContainerdebugConfig> for ValidatedContainerdebugConfig{
+    type Error = Error;
+
+    fn try_from(value: v1alpha1::ContainerdebugConfig) -> Result<Self, Self::Error> {
+        if !value.enabled {
             return Ok(ValidatedContainerdebugConfig::Disabled);
         }
 
         // `containerdebug` schedules the next run by adding the interval to the start of the
         // previous one, so an interval of zero would collect (including DNS lookups) in a tight loop.
-        ensure!(!self.interval.is_zero(), IntervalZeroSnafu);
+        ensure!(!value.interval.is_zero(), IntervalZeroSnafu);
 
         Ok(ValidatedContainerdebugConfig::Enabled {
-            interval: self.interval,
+            interval: value.interval,
         })
     }
 }
@@ -118,6 +117,7 @@ mod tests {
 
     use super::*;
     use crate::config::fragment;
+    use crate::validation::Validate;
 
     const LOG_DIR: &str = "/stackable/log";
 
@@ -134,8 +134,7 @@ mod tests {
             fragment::validate(default_containerdebug_config()).expect("defaults are complete");
 
         assert_eq!(
-            config
-                .validate()
+                <v1alpha1::ContainerdebugConfig as Validate<ValidatedContainerdebugConfig>>::validate(config)
                 .expect("defaults are valid")
                 .background_command(LOG_DIR),
             Some(
@@ -159,7 +158,7 @@ mod tests {
     /// its role.
     #[test]
     fn disabled_ignores_interval_and_renders_nothing() {
-        let validated = config(false, "0s")
+        let validated: ValidatedContainerdebugConfig = config(false, "0s")
             .validate()
             .expect("the interval is not validated while disabled");
 
