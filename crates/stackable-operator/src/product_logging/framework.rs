@@ -233,8 +233,9 @@ pub fn capture_shell_output(
         file_log_level <= LogLevel::INFO,
     ) {
         (true, true) => {
-            commands.push(format!("exec > >(tee {log_file_dir}/container.stdout.log)"));
-            commands.push("stackable_tee_pids+=($!)".into());
+            let log_file = format!("{log_file_dir}/container.stdout.log");
+            commands.push(format!("exec > >(tee {log_file})"));
+            commands.push(format!("stackable_tee_pids[{log_file}]=$!"));
             uses_tee = true;
         }
         (true, false) => {}
@@ -247,10 +248,13 @@ pub fn capture_shell_output(
         file_log_level <= LogLevel::ERROR,
     ) {
         (true, true) => {
-            commands.push(format!(
-                "exec 2> >(tee {log_file_dir}/container.stderr.log >&2)"
-            ));
-            commands.push("stackable_tee_pids+=($!)".into());
+            let log_file = format!("{log_file_dir}/container.stderr.log");
+            commands.push(format!("exec 2> >(tee {log_file} >&2)"));
+            // Vector identifies log files by their first line, so two files starting with the
+            // same line are shipped as one. Under `bash -x`, this assignment is the first line
+            // traced into the stderr log, and the log file path in the key keeps it unique per
+            // container.
+            commands.push(format!("stackable_tee_pids[{log_file}]=$!"));
             uses_tee = true;
         }
         (true, false) => {}
@@ -271,7 +275,9 @@ pub fn capture_shell_output(
     let commands = commands.join(" &&\n    ");
 
     if uses_tee {
-        format!("{WAIT_FOR_TEE_FUNCTION}\n{commands}")
+        // `-g`, because a caller can run this command inside a function, and the EXIT trap needs
+        // the array after that function has returned.
+        format!("{WAIT_FOR_TEE_FUNCTION}\ndeclare -gA stackable_tee_pids\n{commands}")
     } else {
         commands
     }
@@ -1624,11 +1630,12 @@ mod tests {
                 wait ${stackable_tee_pids[*]}
                 kill $!
             }
+            declare -gA stackable_tee_pids
             mkdir --parents /log/test &&
                 exec > >(tee /log/test/container.stdout.log) &&
-                stackable_tee_pids+=($!) &&
+                stackable_tee_pids[/log/test/container.stdout.log]=$! &&
                 exec 2> >(tee /log/test/container.stderr.log >&2) &&
-                stackable_tee_pids+=($!) &&
+                stackable_tee_pids[/log/test/container.stderr.log]=$! &&
                 trap stackable_wait_for_tee EXIT"}
     )]
     #[case::console_and_file_only_for_errors(
@@ -1642,9 +1649,10 @@ mod tests {
                 wait ${stackable_tee_pids[*]}
                 kill $!
             }
+            declare -gA stackable_tee_pids
             mkdir --parents /log/test &&
                 exec 2> >(tee /log/test/container.stderr.log >&2) &&
-                stackable_tee_pids+=($!) &&
+                stackable_tee_pids[/log/test/container.stderr.log]=$! &&
                 trap stackable_wait_for_tee EXIT"}
     )]
     #[case::file_only(
@@ -1679,9 +1687,12 @@ mod tests {
         stderr_log: String,
     }
 
-    /// Runs `script` behind the output capturing in a new Bash process and returns the log files
-    /// as they are at the moment Bash has exited.
-    fn run_captured(script: &str) -> CapturedRun {
+    /// Runs the script that `build_script` builds around the output capturing command in a new
+    /// Bash process and returns the log files as they are at the moment Bash has exited.
+    fn run_captured(
+        bash_options: &[&str],
+        build_script: impl FnOnce(&str) -> String,
+    ) -> CapturedRun {
         let log_dir = tempfile::tempdir().expect("a temporary directory can be created");
         let log_dir_path = log_dir
             .path()
@@ -1697,7 +1708,8 @@ mod tests {
         // The console output is discarded, so that a background process of the script cannot
         // keep this process waiting for EOF.
         let status = std::process::Command::new("bash")
-            .args(["-c", &format!("{capture}\n{script}")])
+            .args(bash_options)
+            .args(["-c", &build_script(&capture)])
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
@@ -1727,7 +1739,9 @@ mod tests {
         #[case] script: &str,
         #[case] expected_code: Option<i32>,
     ) {
-        let run = run_captured(&format!("echo output\necho error >&2\n{script}"));
+        let run = run_captured(&[], |capture| {
+            format!("{capture}\necho output\necho error >&2\n{script}")
+        });
 
         assert_eq!(expected_code, run.status.code());
         assert_eq!("output\n", run.stdout_log);
@@ -1736,11 +1750,33 @@ mod tests {
 
     #[test]
     fn captured_output_does_not_wait_forever_for_background_processes() {
-        let run = run_captured("sleep 20 &\necho output");
+        let run = run_captured(&[], |capture| format!("{capture}\nsleep 20 &\necho output"));
 
         assert!(run.status.success());
         assert!(run.duration < std::time::Duration::from_secs(15));
         assert_eq!("output\n", run.stdout_log);
+    }
+
+    #[test]
+    fn captured_output_inside_a_function_does_not_wait_for_the_timeout() {
+        let run = run_captured(&["-u"], |capture| {
+            format!("start_capture() {{\n{capture}\n}}\nstart_capture\necho output")
+        });
+
+        assert!(run.status.success());
+        assert!(run.duration < std::time::Duration::from_secs(4));
+        assert_eq!("output\n", run.stdout_log);
+    }
+
+    #[test]
+    fn traced_stderr_log_starts_with_a_line_unique_to_the_container() {
+        let run = run_captured(&["-x"], |capture| format!("{capture}\necho output"));
+
+        let first_line = run.stderr_log.lines().next().unwrap_or_default();
+        assert!(
+            first_line.contains("/test/container.stderr.log"),
+            "first line of the stderr log: {first_line:?}"
+        );
     }
 
     #[test]
