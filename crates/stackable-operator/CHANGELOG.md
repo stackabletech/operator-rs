@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - Add `utils::crds::raw_any_nullable_value_schema`, which accepts any JSON value (not only objects) ([#1326]).
 
+### Changed
+
+- Bump `kube` to `5.2.0`, which fixes RUSTSEC-2026-0600 ([#1340]).
+
 ### Fixed
 
 - `ProductImage::resolve` no longer panics on long product versions or image tags containing
@@ -22,6 +26,7 @@ All notable changes to this project will be documented in this file.
 [#1326]: https://github.com/stackabletech/operator-rs/pull/1326
 [#1338]: https://github.com/stackabletech/operator-rs/pull/1338
 [#1339]: https://github.com/stackabletech/operator-rs/pull/1339
+[#1340]: https://github.com/stackabletech/operator-rs/pull/1340
 
 ## [0.122.0] - 2026-11-03
 
