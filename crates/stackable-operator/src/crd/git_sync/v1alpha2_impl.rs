@@ -618,7 +618,20 @@ mod tests {
         assert_eq!(
             r#"args:
 - |-
-  mkdir --parents /stackable/log/git-sync-0 && exec > >(tee /stackable/log/git-sync-0/container.stdout.log) 2> >(tee /stackable/log/git-sync-0/container.stderr.log >&2)
+  stackable_wait_for_tee() {
+      exec > /dev/null 2>&1
+      set +e
+      { sleep 5; kill ${stackable_tee_pids[*]}; } &
+      wait ${stackable_tee_pids[*]}
+      kill $!
+  }
+  declare -gA stackable_tee_pids
+  mkdir --parents /stackable/log/git-sync-0 &&
+      exec > >(tee /stackable/log/git-sync-0/container.stdout.log) &&
+      stackable_tee_pids[/stackable/log/git-sync-0/container.stdout.log]=$! &&
+      exec 2> >(tee /stackable/log/git-sync-0/container.stderr.log >&2) &&
+      stackable_tee_pids[/stackable/log/git-sync-0/container.stderr.log]=$! &&
+      trap stackable_wait_for_tee EXIT
 
   prepare_signal_handlers()
   {
@@ -687,7 +700,20 @@ volumeMounts:
         assert_eq!(
             r#"args:
 - |-
-  mkdir --parents /stackable/log/git-sync-1 && exec > >(tee /stackable/log/git-sync-1/container.stdout.log) 2> >(tee /stackable/log/git-sync-1/container.stderr.log >&2)
+  stackable_wait_for_tee() {
+      exec > /dev/null 2>&1
+      set +e
+      { sleep 5; kill ${stackable_tee_pids[*]}; } &
+      wait ${stackable_tee_pids[*]}
+      kill $!
+  }
+  declare -gA stackable_tee_pids
+  mkdir --parents /stackable/log/git-sync-1 &&
+      exec > >(tee /stackable/log/git-sync-1/container.stdout.log) &&
+      stackable_tee_pids[/stackable/log/git-sync-1/container.stdout.log]=$! &&
+      exec 2> >(tee /stackable/log/git-sync-1/container.stderr.log >&2) &&
+      stackable_tee_pids[/stackable/log/git-sync-1/container.stderr.log]=$! &&
+      trap stackable_wait_for_tee EXIT
 
   prepare_signal_handlers()
   {
@@ -761,7 +787,20 @@ volumeMounts:
         assert_eq!(
             r#"args:
 - |-
-  mkdir --parents /stackable/log/git-sync-2 && exec > >(tee /stackable/log/git-sync-2/container.stdout.log) 2> >(tee /stackable/log/git-sync-2/container.stderr.log >&2)
+  stackable_wait_for_tee() {
+      exec > /dev/null 2>&1
+      set +e
+      { sleep 5; kill ${stackable_tee_pids[*]}; } &
+      wait ${stackable_tee_pids[*]}
+      kill $!
+  }
+  declare -gA stackable_tee_pids
+  mkdir --parents /stackable/log/git-sync-2 &&
+      exec > >(tee /stackable/log/git-sync-2/container.stdout.log) &&
+      stackable_tee_pids[/stackable/log/git-sync-2/container.stdout.log]=$! &&
+      exec 2> >(tee /stackable/log/git-sync-2/container.stderr.log >&2) &&
+      stackable_tee_pids[/stackable/log/git-sync-2/container.stderr.log]=$! &&
+      trap stackable_wait_for_tee EXIT
 
   prepare_signal_handlers()
   {
@@ -832,7 +871,20 @@ volumeMounts:
         assert_eq!(
             r"args:
 - |-
-  mkdir --parents /stackable/log/git-sync-0-init && exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2)
+  stackable_wait_for_tee() {
+      exec > /dev/null 2>&1
+      set +e
+      { sleep 5; kill ${stackable_tee_pids[*]}; } &
+      wait ${stackable_tee_pids[*]}
+      kill $!
+  }
+  declare -gA stackable_tee_pids
+  mkdir --parents /stackable/log/git-sync-0-init &&
+      exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) &&
+      stackable_tee_pids[/stackable/log/git-sync-0-init/container.stdout.log]=$! &&
+      exec 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2) &&
+      stackable_tee_pids[/stackable/log/git-sync-0-init/container.stderr.log]=$! &&
+      trap stackable_wait_for_tee EXIT
   /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git' --link=current --one-time=true --period=20s --ref=main --repo=https://github.com/stackabletech/repo1 --root=/tmp/git
 command:
 - /bin/bash
@@ -869,7 +921,20 @@ volumeMounts:
         assert_eq!(
             r"args:
 - |-
-  mkdir --parents /stackable/log/git-sync-1-init && exec > >(tee /stackable/log/git-sync-1-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-1-init/container.stderr.log >&2)
+  stackable_wait_for_tee() {
+      exec > /dev/null 2>&1
+      set +e
+      { sleep 5; kill ${stackable_tee_pids[*]}; } &
+      wait ${stackable_tee_pids[*]}
+      kill $!
+  }
+  declare -gA stackable_tee_pids
+  mkdir --parents /stackable/log/git-sync-1-init &&
+      exec > >(tee /stackable/log/git-sync-1-init/container.stdout.log) &&
+      stackable_tee_pids[/stackable/log/git-sync-1-init/container.stdout.log]=$! &&
+      exec 2> >(tee /stackable/log/git-sync-1-init/container.stderr.log >&2) &&
+      stackable_tee_pids[/stackable/log/git-sync-1-init/container.stderr.log]=$! &&
+      trap stackable_wait_for_tee EXIT
   /stackable/git-sync --depth=3 --git-config='safe.directory:/tmp/git,http.sslCAInfo:/tmp/ca-cert/ca.crt' --link=current --one-time=true --period=60s --ref=trunk --repo=https://github.com/stackabletech/repo2 --rev=HEAD --root=/tmp/git
 command:
 - /bin/bash
@@ -911,7 +976,20 @@ volumeMounts:
         assert_eq!(
             r"args:
 - |-
-  mkdir --parents /stackable/log/git-sync-2-init && exec > >(tee /stackable/log/git-sync-2-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-2-init/container.stderr.log >&2)
+  stackable_wait_for_tee() {
+      exec > /dev/null 2>&1
+      set +e
+      { sleep 5; kill ${stackable_tee_pids[*]}; } &
+      wait ${stackable_tee_pids[*]}
+      kill $!
+  }
+  declare -gA stackable_tee_pids
+  mkdir --parents /stackable/log/git-sync-2-init &&
+      exec > >(tee /stackable/log/git-sync-2-init/container.stdout.log) &&
+      stackable_tee_pids[/stackable/log/git-sync-2-init/container.stdout.log]=$! &&
+      exec 2> >(tee /stackable/log/git-sync-2-init/container.stderr.log >&2) &&
+      stackable_tee_pids[/stackable/log/git-sync-2-init/container.stderr.log]=$! &&
+      trap stackable_wait_for_tee EXIT
   /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git,key:value,safe.directory:/safe-dir' --link=current --one-time=true --period=20s --ref=feat/git-sync --repo=https://github.com/stackabletech/repo3 --root=/tmp/git
 command:
 - /bin/bash
@@ -1073,7 +1151,20 @@ name: content-from-git-2
         assert_eq!(
             r#"args:
 - |-
-  mkdir --parents /stackable/log/git-sync-0 && exec > >(tee /stackable/log/git-sync-0/container.stdout.log) 2> >(tee /stackable/log/git-sync-0/container.stderr.log >&2)
+  stackable_wait_for_tee() {
+      exec > /dev/null 2>&1
+      set +e
+      { sleep 5; kill ${stackable_tee_pids[*]}; } &
+      wait ${stackable_tee_pids[*]}
+      kill $!
+  }
+  declare -gA stackable_tee_pids
+  mkdir --parents /stackable/log/git-sync-0 &&
+      exec > >(tee /stackable/log/git-sync-0/container.stdout.log) &&
+      stackable_tee_pids[/stackable/log/git-sync-0/container.stdout.log]=$! &&
+      exec 2> >(tee /stackable/log/git-sync-0/container.stderr.log >&2) &&
+      stackable_tee_pids[/stackable/log/git-sync-0/container.stderr.log]=$! &&
+      trap stackable_wait_for_tee EXIT
 
   prepare_signal_handlers()
   {
@@ -1148,7 +1239,20 @@ volumeMounts:
         assert_eq!(
             r"args:
 - |-
-  mkdir --parents /stackable/log/git-sync-0-init && exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2)
+  stackable_wait_for_tee() {
+      exec > /dev/null 2>&1
+      set +e
+      { sleep 5; kill ${stackable_tee_pids[*]}; } &
+      wait ${stackable_tee_pids[*]}
+      kill $!
+  }
+  declare -gA stackable_tee_pids
+  mkdir --parents /stackable/log/git-sync-0-init &&
+      exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) &&
+      stackable_tee_pids[/stackable/log/git-sync-0-init/container.stdout.log]=$! &&
+      exec 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2) &&
+      stackable_tee_pids[/stackable/log/git-sync-0-init/container.stderr.log]=$! &&
+      trap stackable_wait_for_tee EXIT
   /stackable/git-sync --depth=3 --git-config='safe.directory:/tmp/git,http.sslCAInfo:/tmp/ca-cert/ca.crt' --link=current --one-time=true --period=60s --ref=trunk --repo=ssh://git@github.com/stackabletech/repo.git --rev=HEAD --root=/tmp/git
 command:
 - /bin/bash
@@ -1283,7 +1387,20 @@ secret:
         assert_eq!(
             r#"args:
 - |-
-  mkdir --parents /stackable/log/git-sync-0 && exec > >(tee /stackable/log/git-sync-0/container.stdout.log) 2> >(tee /stackable/log/git-sync-0/container.stderr.log >&2)
+  stackable_wait_for_tee() {
+      exec > /dev/null 2>&1
+      set +e
+      { sleep 5; kill ${stackable_tee_pids[*]}; } &
+      wait ${stackable_tee_pids[*]}
+      kill $!
+  }
+  declare -gA stackable_tee_pids
+  mkdir --parents /stackable/log/git-sync-0 &&
+      exec > >(tee /stackable/log/git-sync-0/container.stdout.log) &&
+      stackable_tee_pids[/stackable/log/git-sync-0/container.stdout.log]=$! &&
+      exec 2> >(tee /stackable/log/git-sync-0/container.stderr.log >&2) &&
+      stackable_tee_pids[/stackable/log/git-sync-0/container.stderr.log]=$! &&
+      trap stackable_wait_for_tee EXIT
 
   prepare_signal_handlers()
   {
@@ -1354,7 +1471,20 @@ volumeMounts:
         assert_eq!(
             r"args:
 - |-
-  mkdir --parents /stackable/log/git-sync-0-init && exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2)
+  stackable_wait_for_tee() {
+      exec > /dev/null 2>&1
+      set +e
+      { sleep 5; kill ${stackable_tee_pids[*]}; } &
+      wait ${stackable_tee_pids[*]}
+      kill $!
+  }
+  declare -gA stackable_tee_pids
+  mkdir --parents /stackable/log/git-sync-0-init &&
+      exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) &&
+      stackable_tee_pids[/stackable/log/git-sync-0-init/container.stdout.log]=$! &&
+      exec 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2) &&
+      stackable_tee_pids[/stackable/log/git-sync-0-init/container.stderr.log]=$! &&
+      trap stackable_wait_for_tee EXIT
   /stackable/git-sync --depth=3 --git-config='http.sslCAInfo:/stackable/gitca-0/ca.crt,safe.directory:/tmp/git' --link=current --one-time=true --period=60s --ref=trunk --repo=ssh://git@github.com/stackabletech/repo.git --rev=HEAD --root=/tmp/git
 command:
 - /bin/bash

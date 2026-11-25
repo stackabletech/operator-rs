@@ -3893,6 +3893,7 @@ dependencies = [
  "stackable-versioned",
  "stackable-webhook",
  "strum",
+ "tempfile",
  "tokio",
  "tracing",
  "tracing-appender",
