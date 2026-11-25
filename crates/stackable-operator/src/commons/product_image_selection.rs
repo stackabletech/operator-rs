@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use stackable_shared::semver::{VersionExt, ZERO_ZERO_ZERO_DEV};
 
-use crate::kvp::{LABEL_VALUE_MAX_LEN, LabelValue, LabelValueError};
+use crate::{
+    kvp::{LABEL_VALUE_MAX_LEN, LabelValue, LabelValueError},
+    utils::length_enforcement::truncate_at_char_boundary,
+};
 
 pub const STACKABLE_DOCKER_REPO: &str = "oci.stackable.tech/sdp";
 
@@ -328,9 +331,9 @@ impl ProductImage {
     }
 
     fn prepare_app_version_label_value(app_version: &str) -> Result<LabelValue, Error> {
-        let mut formatted_app_version = app_version.to_string();
         // Labels cannot have more than `LABEL_VALUE_MAX_LEN` characters.
-        formatted_app_version.truncate(LABEL_VALUE_MAX_LEN);
+        let formatted_app_version =
+            truncate_at_char_boundary(app_version.to_owned(), LABEL_VALUE_MAX_LEN);
         // The hash has the format `sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb`
         // As the colon (`:`) is not a valid label value character, we replace it with a valid "-" character.
         let formatted_app_version = formatted_app_version.replace(':', "-");
@@ -790,5 +793,27 @@ mod tests {
         let err = yaml_serde::from_str::<ProductImage>(&input).expect_err("Must be error");
 
         assert_eq!(err.to_string(), expected);
+    }
+
+    #[rstest]
+    // 40 two-byte characters, so byte 63 falls inside a character.
+    #[case::auto_long(
+        r"
+        productVersion: éééééééééééééééééééééééééééééééééééééééé
+        "
+    )]
+    #[case::custom_long_tag(
+        r"
+        custom: my.corp/myteam/stackable/superset:éééééééééééééééééééééééééééééééééééééééé
+        productVersion: 1.4.1
+        "
+    )]
+    fn resolve_does_not_panic_on_multi_byte_chars(#[case] input: String) {
+        let product_image: ProductImage = yaml_serde::from_str(&input).expect("Illegal test input");
+        let operator_version = "23.7.42".parse().expect("invalid operator version");
+
+        let result = product_image.resolve("superset", STACKABLE_DOCKER_REPO, &operator_version);
+
+        assert!(matches!(result, Err(Error::ParseAppVersionLabel { .. })));
     }
 }

@@ -4,14 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `utils::crds::raw_any_nullable_value_schema`, which accepts any JSON value (not only objects) ([#1326]).
+
 ### Fixed
 
+- `ProductImage::resolve` no longer panics on long product versions or image tags containing
+  non-ASCII characters and returns an error instead ([#1339]).
 - `product_logging::framework::capture_shell_output` no longer loses the output of short-lived
   containers such as init containers. When stdout or stderr go to the console and to a file, the
   generated command now sets an EXIT trap that waits up to five seconds for its `tee` processes.
   Callers must not set their own EXIT trap ([#1336]).
 
+### Removed
+
+- BREAKING: Remove the migration of immutable random Secrets from `create_random_secret_if_not_exists`.
+  It was only needed when upgrading from SDP <= 26.3 to 26.7. The `DeleteRandomSecret` error variant
+  is removed as well ([#1338]).
+
+[#1326]: https://github.com/stackabletech/operator-rs/pull/1326
 [#1336]: https://github.com/stackabletech/operator-rs/pull/1336
+[#1338]: https://github.com/stackabletech/operator-rs/pull/1338
+[#1339]: https://github.com/stackabletech/operator-rs/pull/1339
 
 ## [0.122.0] - 2026-11-03
 

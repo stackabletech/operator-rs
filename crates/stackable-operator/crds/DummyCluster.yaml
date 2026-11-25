@@ -2685,6 +2685,68 @@ spec:
           status:
             nullable: true
             properties:
+              changedValues:
+                description: Contains changed values during upgrades and downgrades of CRDs.
+                properties:
+                  downgrades:
+                    additionalProperties:
+                      items:
+                        description: Contains a changed value for a single field of the CRD.
+                        properties:
+                          downgradedValue:
+                            description: |-
+                              The value the field was converted to during the downgrade. Only set for fields which
+                              changed their type.
+
+                              When upgrading again, the tracked `value` is only applied if the field still contains this
+                              value. Otherwise, the field was changed by a user in the older version and that change is
+                              kept instead.
+                            nullable: true
+                            x-kubernetes-preserve-unknown-fields: true
+                          jsonPath:
+                            description: The name of the field of the custom resource this value is for.
+                            type: string
+                          value:
+                            description: The value to be used when upgrading or downgrading the custom resource.
+                            nullable: true
+                            x-kubernetes-preserve-unknown-fields: true
+                        required:
+                        - jsonPath
+                        - value
+                        type: object
+                      type: array
+                    description: List of values needed when downgrading to a particular version.
+                    type: object
+                  upgrades:
+                    additionalProperties:
+                      items:
+                        description: Contains a changed value for a single field of the CRD.
+                        properties:
+                          downgradedValue:
+                            description: |-
+                              The value the field was converted to during the downgrade. Only set for fields which
+                              changed their type.
+
+                              When upgrading again, the tracked `value` is only applied if the field still contains this
+                              value. Otherwise, the field was changed by a user in the older version and that change is
+                              kept instead.
+                            nullable: true
+                            x-kubernetes-preserve-unknown-fields: true
+                          jsonPath:
+                            description: The name of the field of the custom resource this value is for.
+                            type: string
+                          value:
+                            description: The value to be used when upgrading or downgrading the custom resource.
+                            nullable: true
+                            x-kubernetes-preserve-unknown-fields: true
+                        required:
+                        - jsonPath
+                        - value
+                        type: object
+                      type: array
+                    description: List of values needed when upgrading to a particular version.
+                    type: object
+                type: object
               conditions:
                 items:
                   properties:

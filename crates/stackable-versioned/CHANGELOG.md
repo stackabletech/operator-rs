@@ -17,9 +17,15 @@ All notable changes to this project will be documented in this file.
   version failed, as they never pass through the conversion webhook ([#1325]).
   We also reduced "clutter" in the CR's status by only serializing tracking information into the status
   in case something was actually tracked.
+- The CRD schema of tracked values (`value` and `downgradedValue`) now accepts any JSON value instead
+  of only objects. Previously, patching the status failed for tracked non-object values, such as
+  strings ([#1326]).
+- The generated tracking status now respects the `schemars` and `serde` crate overrides. Previously,
+  it failed to compile if these crates were not direct dependencies ([#1326]).
 
 [#1324]: https://github.com/stackabletech/operator-rs/pull/1324
 [#1325]: https://github.com/stackabletech/operator-rs/pull/1325
+[#1326]: https://github.com/stackabletech/operator-rs/pull/1326
 
 ## [0.14.0] - 2026-11-03
 
