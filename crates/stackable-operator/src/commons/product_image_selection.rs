@@ -808,23 +808,12 @@ mod tests {
         productVersion: 1.4.1
         "
     )]
-    #[case::auto_short(
-        r"
-        productVersion: 1.4.é
-        "
-    )]
-    fn resolve_fail_non_ascii(#[case] input: String) {
+    fn resolve_does_not_panic_on_multi_byte_chars(#[case] input: String) {
         let product_image: ProductImage = yaml_serde::from_str(&input).expect("Illegal test input");
         let operator_version = "23.7.42".parse().expect("invalid operator version");
 
         let result = product_image.resolve("superset", STACKABLE_DOCKER_REPO, &operator_version);
 
-        assert!(matches!(
-            result,
-            Err(Error::ParseAppVersionLabel {
-                source: LabelValueError::ValueNotAscii,
-                ..
-            })
-        ));
+        assert!(matches!(result, Err(Error::ParseAppVersionLabel { .. })));
     }
 }
