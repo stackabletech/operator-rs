@@ -53,10 +53,10 @@ pub const WEBHOOK_CERTIFICATE_LIFETIME: Duration =
 
 /// Rotate the certificate when less than 1/6 of its lifetime remains (4 hours for the current 24h
 /// lifetime). Derived from [`CERTIFICATE_LIFETIME_HOURS`] so it scales if the lifetime changes.
-const CERTIFICATE_EXPIRY_BUFFER_HOURS: u64 = CERTIFICATE_LIFETIME_HOURS * 60 / 6;
+const CERTIFICATE_EXPIRY_BUFFER_MINUTES: u64 = CERTIFICATE_LIFETIME_HOURS * 60 / 6;
 
 const CERTIFICATE_EXPIRY_BUFFER: Duration =
-    Duration::from_minutes_unchecked(CERTIFICATE_EXPIRY_BUFFER_HOURS);
+    Duration::from_minutes_unchecked(CERTIFICATE_EXPIRY_BUFFER_MINUTES);
 
 /// How often to check whether the certificate needs rotation. This is intentionally independent of
 /// the certificate lifetime - it controls how quickly we detect wall-clock drift (from hibernation,
@@ -222,7 +222,7 @@ impl TlsServer {
                 // Check wall-clock time to decide if the certificate needs rotation.
                 // This is cancellation-safe: if cancelled, the tick is NOT consumed.
                 _ = rotation_check_interval.tick() => {
-                    if cert_resolver.needs_rotation(*CERTIFICATE_EXPIRY_BUFFER) {
+                    if cert_resolver.needs_rotation() {
                         tracing::info!("certificate approaching expiry, rotating");
                         cert_resolver
                             .rotate_certificate()
