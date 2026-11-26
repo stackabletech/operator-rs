@@ -1337,7 +1337,7 @@ sinks:
 ///         meta::ObjectMetaBuilder,
 ///         pod::{container::ContainerBuilder, resources::ResourceRequirementsBuilder, PodBuilder},
 ///     },
-///     product_logging::{self, framework:: {create_vector_shutdown_file_command, remove_vector_shutdown_file_command}},
+///     product_logging::{self, framework::remove_vector_shutdown_file_command},
 ///     utils::COMMON_BASH_TRAP_FUNCTIONS,
 /// };
 /// use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
@@ -1386,15 +1386,10 @@ sinks:
 /// {remove_vector_shutdown_file_command}
 /// prepare_signal_handlers
 /// my-application start &
-/// product_exit_code=0
-/// wait_for_termination $! || product_exit_code=$?
-/// {create_vector_shutdown_file_command}
-/// exit \"${{product_exit_code}}\"
+/// wait_for_termination $!
 /// ",
 ///             remove_vector_shutdown_file_command =
 ///                 remove_vector_shutdown_file_command(STACKABLE_LOG_DIR),
-///             create_vector_shutdown_file_command =
-///                 create_vector_shutdown_file_command(STACKABLE_LOG_DIR),
 ///         )])
 ///         .build(),
 /// );
@@ -1504,18 +1499,143 @@ touch {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}"
 
 /// Use this command to remove the shutdown file (if it exists) created by [`create_vector_shutdown_file_command`].
 /// You should execute this command before starting your application.
+///
+/// The command also installs an `EXIT` trap which creates the shutdown file, so the Vector
+/// container is shut down however the script ends: after a regular exit, after `set -e` aborts
+/// the script because `wait_for_termination` returned the non-zero exit status of the
+/// application, or after an explicit `exit`. The exit status of the script is not changed by the
+/// trap. A trailing [`create_vector_shutdown_file_command`] is therefore not needed anymore.
+///
+/// The command must be executed in the top-level shell of the script which owns the lifetime of
+/// the Vector container. In a subshell, the trap would fire when the subshell exits and shut down
+/// Vector too early. The script must not install another `EXIT` trap, because it would replace
+/// this one.
 pub fn remove_vector_shutdown_file_command(stackable_log_dir: &str) -> String {
-    format!("rm -f {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}")
+    format!(
+        "rm -f {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE} && \
+trap '{create_shutdown_file_command}' EXIT",
+        create_shutdown_file_command = create_vector_shutdown_file_command(stackable_log_dir),
+    )
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
+    use std::{collections::BTreeMap, process::Command};
 
+    use indoc::{formatdoc, indoc};
     use rstest::rstest;
 
     use super::*;
-    use crate::product_logging::spec::{AppenderConfig, LoggerConfig};
+    use crate::{
+        product_logging::spec::{AppenderConfig, LoggerConfig},
+        utils::COMMON_BASH_TRAP_FUNCTIONS,
+    };
+
+    /// Runs the given application commands like a product container does and returns the exit
+    /// status of the script and whether the Vector shutdown file exists afterwards.
+    fn run_application_script(application_commands: &str) -> (i32, bool) {
+        let stackable_log_dir =
+            tempfile::tempdir().expect("a temporary directory should be creatable");
+        let stackable_log_dir_path = stackable_log_dir
+            .path()
+            .to_str()
+            .expect("the temporary directory path should be valid UTF-8");
+
+        let script = formatdoc! {"
+            {COMMON_BASH_TRAP_FUNCTIONS}
+            {remove_vector_shutdown_file_command}
+            prepare_signal_handlers
+            {application_commands}",
+            remove_vector_shutdown_file_command =
+                remove_vector_shutdown_file_command(stackable_log_dir_path),
+            application_commands = application_commands.replace(
+                "{create_vector_shutdown_file_command}",
+                &create_vector_shutdown_file_command(stackable_log_dir_path),
+            ),
+        };
+
+        let output = Command::new("/bin/bash")
+            .args(["-euo", "pipefail", "-c", &script])
+            .output()
+            .expect("bash should be executable in the test environment");
+        let exit_code = output
+            .status
+            .code()
+            .expect("the script should terminate regularly and not by a signal");
+        let shutdown_file_exists = stackable_log_dir
+            .path()
+            .join(VECTOR_LOG_DIR)
+            .join(SHUTDOWN_FILE)
+            .exists();
+
+        (exit_code, shutdown_file_exists)
+    }
+
+    #[rstest]
+    #[case::application_crashes(
+        indoc! {"
+            bash -c 'exit 42' &
+            wait_for_termination $!
+        "},
+        42
+    )]
+    #[case::application_exits_successfully(
+        indoc! {"
+            bash -c 'exit 0' &
+            wait_for_termination $!
+        "},
+        0
+    )]
+    #[case::application_is_killed(
+        indoc! {"
+            bash -c 'kill -KILL $$' &
+            wait_for_termination $!
+        "},
+        137
+    )]
+    #[case::application_shuts_down_with_failure_on_sigterm(
+        indoc! {"
+            bash -c 'trap \"exit 143\" TERM; sleep 10 >/dev/null 2>&1 & wait $!' &
+            application_pid=$!
+            (sleep 0.2; kill -TERM $$) &
+            wait_for_termination $application_pid
+        "},
+        143
+    )]
+    #[case::application_shuts_down_successfully_on_sigterm(
+        indoc! {"
+            bash -c 'trap \"exit 0\" TERM; sleep 10 >/dev/null 2>&1 & wait $!' &
+            application_pid=$!
+            (sleep 0.2; kill -TERM $$) &
+            wait_for_termination $application_pid
+        "},
+        0
+    )]
+    #[case::application_crashes_with_trailing_create_command(
+        indoc! {"
+            bash -c 'exit 42' &
+            wait_for_termination $!
+            {create_vector_shutdown_file_command}
+        "},
+        42
+    )]
+    #[case::application_exits_successfully_with_trailing_create_command(
+        indoc! {"
+            bash -c 'exit 0' &
+            wait_for_termination $!
+            {create_vector_shutdown_file_command}
+        "},
+        0
+    )]
+    fn vector_shutdown_file_is_created_on_every_exit(
+        #[case] application_commands: &str,
+        #[case] expected_exit_code: i32,
+    ) {
+        let (exit_code, shutdown_file_exists) = run_application_script(application_commands);
+
+        assert_eq!(expected_exit_code, exit_code);
+        assert!(shutdown_file_exists);
+    }
 
     #[rstest]
     #[case("0Mi", &[])]

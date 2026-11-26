@@ -18,6 +18,10 @@ All notable changes to this project will be documented in this file.
   non-ASCII characters and returns an error instead ([#1339]).
 - BREAKING: `wait_for_termination` in `COMMON_BASH_TRAP_FUNCTIONS` now returns the exit status of the process
   it waited for instead of always returning `0` ([#1265]).
+- `remove_vector_shutdown_file_command` now also installs an `EXIT` trap which creates the Vector shutdown
+  file. The Vector container is therefore shut down even if the script is aborted by `set -e` because
+  `wait_for_termination` returned a non-zero exit status, instead of running until the termination grace
+  period expires. Operators do not need to change their scripts ([#1265]).
 - `handle_term_signal` in `COMMON_BASH_TRAP_FUNCTIONS` no longer aborts under `set -u` when SIGTERM arrives
   before the child process ID is known ([#1265]).
 
