@@ -1,6 +1,6 @@
 ---
 source: crates/stackable-operator/src/crd/git_sync/v1alpha1_impl.rs
-expression: "serde_yaml::to_string(&git_sync_resources.git_sync_containers).unwrap()"
+expression: "yaml_serde::to_string(&git_sync_resources.git_sync_containers).unwrap()"
 ---
 - args:
   - |-
@@ -9,7 +9,6 @@ expression: "serde_yaml::to_string(&git_sync_resources.git_sync_containers).unwr
     prepare_signal_handlers()
     {
         unset term_child_pid
-        unset term_kill_needed
         trap 'handle_term_signal' TERM
     }
 
@@ -18,7 +17,7 @@ expression: "serde_yaml::to_string(&git_sync_resources.git_sync_containers).unwr
         if [ -n "${term_child_pid:-}" ]; then
             kill -TERM "${term_child_pid}" 2>/dev/null
         else
-            term_kill_needed="yes"
+            exit 143
         fi
     }
 
@@ -26,9 +25,6 @@ expression: "serde_yaml::to_string(&git_sync_resources.git_sync_containers).unwr
     {
         set +e
         term_child_pid=$1
-        if [[ -v term_kill_needed ]]; then
-            kill -TERM "${term_child_pid}" 2>/dev/null
-        fi
         wait ${term_child_pid} 2>/dev/null
         term_child_status=$?
         trap - TERM
@@ -78,7 +74,6 @@ expression: "serde_yaml::to_string(&git_sync_resources.git_sync_containers).unwr
     prepare_signal_handlers()
     {
         unset term_child_pid
-        unset term_kill_needed
         trap 'handle_term_signal' TERM
     }
 
@@ -87,7 +82,7 @@ expression: "serde_yaml::to_string(&git_sync_resources.git_sync_containers).unwr
         if [ -n "${term_child_pid:-}" ]; then
             kill -TERM "${term_child_pid}" 2>/dev/null
         else
-            term_kill_needed="yes"
+            exit 143
         fi
     }
 
@@ -95,9 +90,6 @@ expression: "serde_yaml::to_string(&git_sync_resources.git_sync_containers).unwr
     {
         set +e
         term_child_pid=$1
-        if [[ -v term_kill_needed ]]; then
-            kill -TERM "${term_child_pid}" 2>/dev/null
-        fi
         wait ${term_child_pid} 2>/dev/null
         term_child_status=$?
         trap - TERM
@@ -152,7 +144,6 @@ expression: "serde_yaml::to_string(&git_sync_resources.git_sync_containers).unwr
     prepare_signal_handlers()
     {
         unset term_child_pid
-        unset term_kill_needed
         trap 'handle_term_signal' TERM
     }
 
@@ -161,7 +152,7 @@ expression: "serde_yaml::to_string(&git_sync_resources.git_sync_containers).unwr
         if [ -n "${term_child_pid:-}" ]; then
             kill -TERM "${term_child_pid}" 2>/dev/null
         else
-            term_kill_needed="yes"
+            exit 143
         fi
     }
 
@@ -169,9 +160,6 @@ expression: "serde_yaml::to_string(&git_sync_resources.git_sync_containers).unwr
     {
         set +e
         term_child_pid=$1
-        if [[ -v term_kill_needed ]]; then
-            kill -TERM "${term_child_pid}" 2>/dev/null
-        fi
         wait ${term_child_pid} 2>/dev/null
         term_child_status=$?
         trap - TERM

@@ -1,6 +1,6 @@
 ---
 source: crates/stackable-operator/src/crd/git_sync/v1alpha1_impl.rs
-expression: "serde_yaml::to_string(&git_sync_resources.git_sync_init_containers).unwrap()"
+expression: "yaml_serde::to_string(&git_sync_resources.git_sync_init_containers).unwrap()"
 ---
 - args:
   - |-
