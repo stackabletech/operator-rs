@@ -7,15 +7,29 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add `utils::crds::raw_any_nullable_value_schema`, which accepts any JSON value (not only objects) ([#1326]).
+- Add `product_logging::framework::manage_vector_shutdown_file_command`. It removes the Vector shutdown
+  file and installs an `EXIT` trap which creates it again, so Vector also shuts down when `set -e` aborts
+  the script. A trailing `create_vector_shutdown_file_command` is not needed ([#1265]).
 
 ### Changed
 
 - Bump `kube` to `5.2.0`, which fixes RUSTSEC-2026-0600 ([#1340]).
+- `remove_vector_shutdown_file_command` now also installs the `EXIT` trap of
+  `manage_vector_shutdown_file_command`, replacing any `EXIT` trap the script set before ([#1265]).
 
 ### Fixed
 
 - `ProductImage::resolve` no longer panics on long product versions or image tags containing
   non-ASCII characters and returns an error instead ([#1339]).
+- BREAKING: `wait_for_termination` in `COMMON_BASH_TRAP_FUNCTIONS` now returns the exit status of the process
+  it waited for instead of always returning `0`. Containers whose product exits non-zero on SIGTERM (e.g.
+  `143` for JVM products) now report that status on Pod deletion instead of `0` ([#1265]).
+- `handle_term_signal` in `COMMON_BASH_TRAP_FUNCTIONS` exits the script with status `143` when SIGTERM arrives
+  before the child process ID is known, instead of aborting under `set -u` with status `1` ([#1265]).
+
+### Deprecated
+
+- Deprecate `remove_vector_shutdown_file_command` in favour of `manage_vector_shutdown_file_command` ([#1265]).
 
 ### Removed
 
@@ -23,6 +37,7 @@ All notable changes to this project will be documented in this file.
   It was only needed when upgrading from SDP <= 26.3 to 26.7. The `DeleteRandomSecret` error variant
   is removed as well ([#1338]).
 
+[#1265]: https://github.com/stackabletech/operator-rs/pull/1265
 [#1326]: https://github.com/stackabletech/operator-rs/pull/1326
 [#1338]: https://github.com/stackabletech/operator-rs/pull/1338
 [#1339]: https://github.com/stackabletech/operator-rs/pull/1339
